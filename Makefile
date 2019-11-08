@@ -136,6 +136,10 @@ BUILDDIR := build
 .PHONY: all
 all: make_builddir \
 	emit_build_config \
+	$(BUILDDIR)/clang-check \
+	$(BUILDDIR)/rewritersample \
+	$(BUILDDIR)/matchers_rewriter \
+	$(BUILDDIR)/tooling_sample \
 	$(BUILDDIR)/s2s_translator
 
 .PHONY: test
@@ -150,6 +154,22 @@ emit_build_config: make_builddir
 make_builddir:
 	@test -d $(BUILDDIR) || mkdir $(BUILDDIR)
 
+
+$(BUILDDIR)/clang-check: $(SRC_CLANG_DIR)/ClangCheck.cpp
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+
+$(BUILDDIR)/rewritersample: $(SRC_CLANG_DIR)/rewritersample.cpp
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+
+$(BUILDDIR)/tooling_sample: $(SRC_CLANG_DIR)/tooling_sample.cpp
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+
+$(BUILDDIR)/matchers_rewriter: $(SRC_CLANG_DIR)/matchers_rewriter.cpp
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
 $(BUILDDIR)/s2s_translator: $(SRC_CLANG_DIR)/s2s_translator.cpp
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
