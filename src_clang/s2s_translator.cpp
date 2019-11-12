@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Lun 11 Nov 2019 21:43:04 MST
+ * Last Modified Date: Lun 11 Nov 2019 22:20:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky (eliben@gmail.com)
  */
@@ -42,13 +42,13 @@ class TempExpr {
 
     void setClangExpr(clang::Expr* clangExpr) { this->clangExpr = clangExpr; }
 
-    void toString() { cout << this->expr; }
+    string getExprStr() { return expr; }
 
     // helper function
     static TempExpr* getTempExprFromExpr(Expr* E) {
         cout << "[DEBUG]: getTempExpr" << endl;
         clang::CharSourceRange charRange =
-            clang::CharSourceRange::getCharRange(E->getSourceRange());
+            clang::CharSourceRange::getTokenRange(E->getSourceRange());
         const string text =
             Lexer::getSourceText(charRange, *mySourceManager, *myLangOpts);
         TempExpr* tmp = new TempExpr(text);
@@ -57,7 +57,7 @@ class TempExpr {
     }
 
    private:
-    const string expr;
+    string expr;
     clang::Expr* clangExpr;
 };
 
@@ -68,15 +68,20 @@ class TAC {
     TAC(TempExpr* A, TempExpr* B, TempExpr* C, clang::BinaryOperator::Opcode OP)
         : a(A), b(B), c(C), op(OP) {}
 
-    const TempExpr* getA() { return this->a; };
-    const TempExpr* getB() { return this->b; };
-    const TempExpr* getC() { return this->c; };
+    TempExpr* getA() { return this->a; };
+    TempExpr* getB() { return this->b; };
+    TempExpr* getC() { return this->c; };
+
+    void printTAC() {
+        cout << "t: " << this->getA()->getExprStr() << ", "
+             << this->b->getExprStr() << ", " << this->c->getExprStr() << endl;
+    }
 
    private:
-    const TempExpr* a;
-    const TempExpr* b;
-    const TempExpr* c;
-    const clang::BinaryOperator::Opcode op;
+    TempExpr* a;
+    TempExpr* b;
+    TempExpr* c;
+    clang::BinaryOperator::Opcode op;
 };
 
 class IterationHandler : public MatchFinder::MatchCallback {
@@ -93,13 +98,7 @@ class IterationHandler : public MatchFinder::MatchCallback {
         binaryOperator2TAC(S, &tacList, 0);
         // tacList.reverse();
         for (TAC tac : tacList) {
-            cout << "TAC: ";
-            tac.getA()->toString();
-            cout << " ";
-            tac.getB()->toString();
-            cout << " ";
-            tac.getC()->toString();
-            cout << endl;
+            tac.printTAC();
         }
         return tacList;
     }
