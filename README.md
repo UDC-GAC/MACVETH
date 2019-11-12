@@ -1,9 +1,3 @@
-[comment]: <> File              : README.md
-[comment]: <> Author            : Marcos Horro <marcos.horro@udc.gal>
-[comment]: <> Date              : Lun 11 Nov 2019 08:48:50 MST
-[comment]: <> Last Modified Date: Lun 11 Nov 2019 09:13:45 MST
-[comment]: <> Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
-
 # Reduction PASS
 Clang/LLVM reduction pass is the original name of this repo. The former idea was
 to implement a LLVM pass to perform a source-to-source translation of C/C++
