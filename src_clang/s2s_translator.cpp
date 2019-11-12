@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Lun 11 Nov 2019 18:47:50 MST
+ * Last Modified Date: Lun 11 Nov 2019 21:43:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky (eliben@gmail.com)
  */
@@ -199,7 +199,7 @@ class MyASTConsumer : public ASTConsumer {
         Matcher.addMatcher(
             forStmt(hasBody(
                 compoundStmt(
-                    hasDescendant(
+                    forEachDescendant(
                         binaryOperator(hasOperatorName("="),
                                        hasLHS(arraySubscriptExpr().bind("lhs")),
                                        hasRHS(binaryOperator().bind("rhs")))
