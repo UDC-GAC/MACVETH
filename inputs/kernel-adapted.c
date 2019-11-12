@@ -7,10 +7,8 @@
  */
 void kernel_spmvstyle(int m, int n, double A[m][n], double x[n], double y[n],
                       int uI, int uIt, int uIs, int uJ, int uJt, int uJs) {
-  int i, j;
-
-  for (i = uI; i < uI + uIt; i += uIs)
-    for (j = uJ; j < uJ + uJt; j += uJs) {
-      y[i] = y[i] + A[i][j] * x[j];
-    }
+    for (int i = uI; i < uI + uIt; i += uIs)
+        for (int j = uJ; j < uJ + uJt; j += uJs) {
+            y[i] = y[i] + A[i][j] * x[j];
+        }
 }

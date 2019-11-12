@@ -3,7 +3,7 @@
 # File              : test_s2s_translator.py
 # Author            : Marcos Horro <marcos.horro@udc.gal>
 # Date              : Ven 08 Nov 2019 09:06:23 MST
-# Last Modified Date: Ven 08 Nov 2019 09:06:38 MST
+# Last Modified Date: Ven 08 Nov 2019 09:19:24 MST
 # Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 import os
 import sys
@@ -28,7 +28,7 @@ PROG = 's2s_translator'
 
 class TestRewriterSample(SamplesTestCase):
     def test_live(self):
-        self.assertSampleOutput([PROG], 'kernel.c', OUTPUT)
+        self.assertSampleOutput([PROG], 's2s_translator.c', OUTPUT)
 
 
 if __name__ == '__main__':

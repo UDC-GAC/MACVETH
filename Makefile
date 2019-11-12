@@ -75,7 +75,7 @@ $(info Using LLVM_BIN_PATH = $(LLVM_BIN_PATH))
 $(info -----------------------------------------------)
 
 CXX := g++
-CXXFLAGS := -fno-rtti -O0 -g
+CXXFLAGS := -fno-rtti -O0 -fpermissive
 PLUGIN_CXXFLAGS := -fpic
 
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
