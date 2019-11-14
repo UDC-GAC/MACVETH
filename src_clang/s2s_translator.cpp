@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mar 12 Nov 2019 17:36:23 MST
+ * Last Modified Date: Mér 13 Nov 2019 17:43:08 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky (eliben@gmail.com)
  *
@@ -29,14 +29,18 @@
  */
 #include <iostream>
 #include <list>
+#include <memory>
 #include <string>
 #include <tuple>
 
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/ParentMap.h"
+#include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
+#include "clang/Analysis/CFG.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -46,18 +50,20 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/raw_ostream.h"
 
-using namespace std;
+// Do not use namespace std
+// using namespace std;
 using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
+// needed for the global variable, definition below
 class TAC;
 
 // global variables
 static const clang::SourceManager* mySourceManager;
 static const clang::LangOptions* myLangOpts;
-static vector<tuple<const BinaryOperator*, list<TAC>>> exprToTac;
+static std::vector<std::tuple<const BinaryOperator*, std::list<TAC>>> exprToTac;
 
 // SOME NOTES:
 // * Stmt - statements, could be a for loop, while, a single statement
@@ -71,19 +77,19 @@ static vector<tuple<const BinaryOperator*, list<TAC>>> exprToTac;
 // transformations
 class TempExpr {
    public:
-    TempExpr(string e) : expr(e) {}
+    TempExpr(std::string e) : expr(e) {}
 
     void setClangExpr(clang::Expr* clangExpr) { this->clangExpr = clangExpr; }
     clang::Expr* getClangExpr() { return this->clangExpr; }
 
-    void setExprStr(string expr) { this->expr = expr; }
-    string getExprStr() { return this->expr; }
+    void setExprStr(std::string expr) { this->expr = expr; }
+    std::string getExprStr() { return this->expr; }
 
     // A hack for translating Expr to string
     static TempExpr* getTempExprFromExpr(Expr* E) {
         clang::CharSourceRange charRange =
             clang::CharSourceRange::getTokenRange(E->getSourceRange());
-        const string text =
+        const std::string text =
             Lexer::getSourceText(charRange, *mySourceManager, *myLangOpts);
         TempExpr* tmp = new TempExpr(text);
         tmp->setClangExpr(E);
@@ -91,16 +97,17 @@ class TempExpr {
     }
 
    private:
-    string expr;
+    std::string expr;
     clang::Expr* clangExpr;
 };
 
-//
 // Class TAC: three-address-code
-//
+// This class is no more than a wrapper for holding three Expr and a Opcode, in
+// a way that:
 class TAC {
     // This class is meant to hold structures such as:
     //                  a = b op c
+    // Where a, b and c are Expr and op is an Opcode
    public:
     // Consturctor
     TAC(TempExpr* A, TempExpr* B, TempExpr* C, clang::BinaryOperator::Opcode OP)
@@ -113,9 +120,9 @@ class TAC {
 
     // Just for debugging purposes
     void printTAC() {
-        cout << "t: " << this->getA()->getExprStr() << ", "
-             << this->b->getExprStr() << ", " << this->c->getExprStr() << ", "
-             << this->getOP() << endl;
+        std::cout << "t: " << this->getA()->getExprStr() << ", "
+                  << this->b->getExprStr() << ", " << this->c->getExprStr()
+                  << ", " << this->getOP() << std::endl;
     }
 
    private:
@@ -135,11 +142,12 @@ class IterationHandler : public MatchFinder::MatchCallback {
         return "t" + std::to_string(val);
     }
 
-    list<TAC> wrapperStmt2TAC(const clang::BinaryOperator* S) {
+    std::list<TAC> wrapperStmt2TAC(const clang::BinaryOperator* S) {
         // cout << "[DEBUG]: wrapperStmt2TAC" << endl;
-        list<TAC> tacList;
+        std::list<TAC> tacList;
         binaryOperator2TAC(S, &tacList, 0);
-        tuple<const BinaryOperator*, list<TAC>> tup = make_tuple(S, tacList);
+        std::tuple<const BinaryOperator*, std::list<TAC>> tup =
+            std::make_tuple(S, tacList);
         exprToTac.push_back(tup);
         for (TAC tac : tacList) {
             tac.printTAC();
@@ -148,8 +156,8 @@ class IterationHandler : public MatchFinder::MatchCallback {
     }
 
     // Return list of 3AC from a starting Binary Operator
-    void binaryOperator2TAC(const clang::BinaryOperator* S, list<TAC>* tacList,
-                            int val) {
+    void binaryOperator2TAC(const clang::BinaryOperator* S,
+                            std::list<TAC>* tacList, int val) {
         // cout << "[DEBUG]: bo2TAC" << endl;
         Expr* lhs = S->getLHS();
         Expr* rhs = S->getRHS();
@@ -203,10 +211,20 @@ class IterationHandler : public MatchFinder::MatchCallback {
     virtual void run(const MatchFinder::MatchResult& Result) {
         const BinaryOperator* tacBinOp =
             Result.Nodes.getNodeAs<clang::BinaryOperator>("tacStmt");
-        list<TAC> tacList = IterationHandler::wrapperStmt2TAC(tacBinOp);
+        std::list<TAC> tacList = IterationHandler::wrapperStmt2TAC(tacBinOp);
 
-        Rewrite.InsertText(tacBinOp->getBeginLoc(), "/* converting to 3AC */\n",
-                           true, true);
+        // charRange generated this way does not include the ;, therefore when
+        // replacing, the ; is not. Need to find explanation
+        clang::CharSourceRange charRange =
+            clang::CharSourceRange::getTokenRange(tacBinOp->getSourceRange());
+        // Can not use this function because I do not have
+        // llvm/clang/lib/include/ARCMT/Transformations.h, dunno why tho
+        //        clang::SourceLocation SemiLoc =
+        //            clang::arcmt::trans::findSemiAfterLocation(
+        //                tacBinOp->getLocEnd(), tacBinOp->getASTContext());
+        Rewrite.ReplaceText(charRange, "/* converting to 3AC */");
+        // Rewrite.InsertText(charRange, "/* converting to 3AC */\n", true,
+        // true);
     }
 
    private:
@@ -219,8 +237,13 @@ class IncrementForLoopHandler : public MatchFinder::MatchCallback {
 
     virtual void run(const MatchFinder::MatchResult& Result) {
         const VarDecl* IncVar = Result.Nodes.getNodeAs<VarDecl>("incVarName");
+        const BinaryOperator* tacBinOp =
+            Result.Nodes.getNodeAs<clang::BinaryOperator>("tacStmt");
         Rewrite.InsertText(IncVar->getBeginLoc(), "/* increment */", true,
                            true);
+        //        Rewrite.InsertText(tacBinOp->getBeginLoc(), "/* converting to
+        //        3AC */\n",
+        //                           true, true);
     }
 
    private:
@@ -250,6 +273,7 @@ class MyASTConsumer : public ASTConsumer {
                                 .bind("bodyForLoop"))),
             &HandlerIteration);
 
+        // ***This matcher only works for the inner loop***
         // Add a complex matcher for finding 'for' loops with an initializer
         // set to 0, < comparison in the codition and an increment. For
         // example:
@@ -269,7 +293,8 @@ class MyASTConsumer : public ASTConsumer {
                     hasLHS(ignoringParenImpCasts(declRefExpr(to(
                         varDecl(hasType(isInteger())).bind("condVarName"))))),
                     hasRHS(expr(hasType(isInteger()))))),
-                hasBody(compoundStmt(hasDescendant(assignment))))
+                hasBody(compoundStmt(hasDescendant(assignment))
+                            .bind("forLoopBody")))
                 .bind("forLoop"),
             &HandlerForFor);
     }
