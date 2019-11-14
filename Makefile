@@ -75,7 +75,7 @@ $(info Using LLVM_BIN_PATH = $(LLVM_BIN_PATH))
 $(info -----------------------------------------------)
 
 CXX := g++
-CXXFLAGS := -fno-rtti -O0
+CXXFLAGS := -std=c++17 -fno-rtti -O0
 PLUGIN_CXXFLAGS := -fpic
 
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
@@ -91,7 +91,7 @@ PLUGIN_LDFLAGS := -shared
 # These are required when compiling vs. a source distribution of Clang. For
 # binary distributions llvm-config --cxxflags gives the right path.
 CLANG_INCLUDES := \
-	-I/usr/lib/llvm-9/include/clang\
+	-I/usr/lib/llvm-9/include/clang \
 	-I/usr/lib/llvm-9/build/include/clang
 
 # List of Clang libraries to link. The proper -L will be provided by the
@@ -100,8 +100,10 @@ CLANG_INCLUDES := \
 # because there are circular dependencies that make the correct order difficult
 # to specify and maintain. The linker group options make the linking somewhat
 # slower, but IMHO they're still perfectly fine for tools that link with Clang.
+
 CLANG_LIBS := \
 	-Wl,--start-group \
+	-lclangAnalysis \
 	-lclangAST \
 	-lclangASTMatchers \
 	-lclangAnalysis \
