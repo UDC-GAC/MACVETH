@@ -131,8 +131,7 @@ CLANG_LIBS := \
 
 # Internal paths in this project: where to find sources, and where to put
 # build artifacts.
-SRC_LLVM_DIR := src_llvm
-SRC_CLANG_DIR := src_clang
+SRC_CLANG := src
 BUILDDIR := build
 
 .PHONY: all
