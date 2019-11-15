@@ -92,7 +92,8 @@ PLUGIN_LDFLAGS := -shared
 # binary distributions llvm-config --cxxflags gives the right path.
 CLANG_INCLUDES := \
 	-I/usr/lib/llvm-9/include/clang \
-	-I/usr/lib/llvm-9/build/include/clang
+	-I/usr/lib/llvm-9/build/include/clang \
+	-Iinclude
 
 # List of Clang libraries to link. The proper -L will be provided by the
 # call to llvm-config
@@ -131,17 +132,17 @@ CLANG_LIBS := \
 
 # Internal paths in this project: where to find sources, and where to put
 # build artifacts.
-SRC_CLANG := src
+SRC_CLANG_DIR := src
 BUILDDIR := build
 
 .PHONY: all
 all: make_builddir \
 	emit_build_config \
-	$(BUILDDIR)/clang-check \
-	$(BUILDDIR)/rewritersample \
-	$(BUILDDIR)/matchers_rewriter \
-	$(BUILDDIR)/tooling_sample \
 	$(BUILDDIR)/s2s_translator
+	#$(BUILDDIR)/clang-check \
+		#		$(BUILDDIR)/rewritersample \
+		#		$(BUILDDIR)/matchers_rewriter \
+		#		$(BUILDDIR)/tooling_sample \
 
 .PHONY: test
 test: emit_build_config
@@ -156,24 +157,32 @@ make_builddir:
 	@test -d $(BUILDDIR) || mkdir $(BUILDDIR)
 
 
-$(BUILDDIR)/clang-check: $(SRC_CLANG_DIR)/ClangCheck.cpp
+##$(BUILDDIR)/clang-check: $(SRC_CLANG_DIR)/ClangCheck.cpp
+##	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+	##		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+##
+##$(BUILDDIR)/rewritersample: $(SRC_CLANG_DIR)/rewritersample.cpp
+##	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+	##		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+##
+##$(BUILDDIR)/tooling_sample: $(SRC_CLANG_DIR)/tooling_sample.cpp
+##	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+	##		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+##
+##$(BUILDDIR)/matchers_rewriter: $(SRC_CLANG_DIR)/matchers_rewriter.cpp
+##	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+	##		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+
+$(BUILDDIR)/s2s_translator: $(BUILDDIR)/s2s_translator.o $(BUILDDIR)/CustomMatchers.o
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-$(BUILDDIR)/rewritersample: $(SRC_CLANG_DIR)/rewritersample.cpp
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+$(BUILDDIR)/s2s_translator.o: $(SRC_CLANG_DIR)/s2s_translator.cpp
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) -c $^ \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-$(BUILDDIR)/tooling_sample: $(SRC_CLANG_DIR)/tooling_sample.cpp
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
-
-$(BUILDDIR)/matchers_rewriter: $(SRC_CLANG_DIR)/matchers_rewriter.cpp
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
-
-$(BUILDDIR)/s2s_translator: $(SRC_CLANG_DIR)/s2s_translator.cpp
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+$(BUILDDIR)/CustomMatchers.o: $(SRC_CLANG_DIR)/CustomMatchers.cpp include/CustomMatchers.h
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) -c $< \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
 .PHONY: clean format

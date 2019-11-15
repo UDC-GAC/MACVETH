@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Xov 14 Nov 2019 17:41:39 MST
+ * Last Modified Date: Ven 15 Nov 2019 12:02:38 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky (eliben@gmail.com)
  *
@@ -32,6 +32,7 @@
 #include <string>
 #include <tuple>
 
+#include "CustomMatchers.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -55,7 +56,6 @@ using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
-
 // needed for the global variable, definition below
 class TAC;
 
@@ -65,44 +65,6 @@ static const clang::LangOptions* myLangOpts;
 static std::vector<std::tuple<const BinaryOperator*, std::list<TAC>>> exprToTac;
 
 // FIXME: refactor this
-static StatementMatcher assignArrayBinOp =
-    binaryOperator(hasOperatorName("="),
-                   hasLHS(arraySubscriptExpr().bind("lhs")),
-                   hasRHS(binaryOperator().bind("rhs")))
-        .bind("assignArrayBinOp");
-
-static StatementMatcher forLoopInner =
-    forStmt(hasLoopInit(declStmt(
-                hasSingleDecl(varDecl(hasInitializer(integerLiteral(equals(0))))
-                                  .bind("initVarInner")))),
-            hasIncrement(unaryOperator(hasOperatorName("++"),
-                                       hasUnaryOperand(declRefExpr(
-                                           to(varDecl(hasType(isInteger()))))))
-                             .bind("incVarInner")),
-            hasCondition(binaryOperator(
-                hasOperatorName("<"),
-                hasLHS(ignoringParenImpCasts(declRefExpr(
-                    to(varDecl(hasType(isInteger())).bind("condVarInner"))))),
-                hasRHS(expr(hasType(isInteger()))))),
-            hasBody(compoundStmt(forEachDescendant(assignArrayBinOp))
-                        .bind("forLoopBodyInner")))
-        .bind("forLoopInner");
-
-static StatementMatcher forLoopOuter =
-    forStmt(hasLoopInit(declStmt(
-                hasSingleDecl(varDecl(hasInitializer(integerLiteral(equals(0))))
-                                  .bind("initVarOuter")))),
-            hasIncrement(unaryOperator(
-                hasOperatorName("++"),
-                hasUnaryOperand(declRefExpr(to(varDecl(hasType(isInteger()))))
-                                    .bind("incVarOuter")))),
-            hasCondition(binaryOperator(
-                hasOperatorName("<"),
-                hasLHS(ignoringParenImpCasts(declRefExpr(
-                    to(varDecl(hasType(isInteger())).bind("condVarOuter"))))),
-                hasRHS(expr(hasType(isInteger()))))),
-            hasBody(forLoopInner))
-        .bind("forLoopOuter");
 
 // SOME NOTES:
 // * Stmt - statements, could be a for loop, while, a single statement
@@ -305,61 +267,11 @@ class IncrementForLoopHandler : public MatchFinder::MatchCallback {
 class MyASTConsumer : public ASTConsumer {
    public:
     MyASTConsumer(Rewriter& R) : HandlerIteration(R), HandlerForFor(R) {
-        // Handling iteration
-        // For each inner loop, looks in the body a compoundStmt, in order
-        // to get the binaryOperator which has an assignment
-        // (hasOperatorName("=")) in the following way:
-        //    array[] = BinaryOperator(lhs,rhs,op)
-        // This way we invoke HandlerIteration to
-        // perform 3AC/TAC transformation
-        // Matcher.addMatcher(
-        //     forStmt(hasBody(compoundStmt(forEachDescendant(assignArrayBinOp))
-        //                         .bind("bodyForLoop"))),
-        //     &HandlerIteration);
-
-        Matcher.addMatcher(forLoopOuter, &HandlerForFor);
-
         // EXPERIMENTAL MATCHER
-        // ***This matcher only works for the inner loop***
-        // Add a complex matcher for finding 'for' loops with an initializer
-        // set to 0, < comparison in the codition and an increment. For
-        // example:
-        //
-        //  for (int i = 0; i < N; ++i)
-        // Matcher.addMatcher(
-        //    forStmt(
-        //        hasLoopInit(declStmt(hasSingleDecl(
-        //            varDecl(hasInitializer(integerLiteral(equals(0))))
-        //                .bind("initVarName")))),
-        //        hasIncrement(unaryOperator(
-        //            hasOperatorName("++"),
-        //            hasUnaryOperand(declRefExpr(to(
-        //                varDecl(hasType(isInteger())).bind("incVarName")))))),
-        //        hasCondition(binaryOperator(
-        //            hasOperatorName("<"),
-        //            hasLHS(ignoringParenImpCasts(declRefExpr(to(
-        //                varDecl(hasType(isInteger())).bind("condVarName"))))),
-        //            hasRHS(expr(hasType(isInteger()))))))
-        //        .bind("forLoop"),
-        //    &HandlerForFor);
-        // Matcher.addMatcher(
-        //    forStmt(
-        //        hasLoopInit(declStmt(hasSingleDecl(
-        //            varDecl(hasInitializer(integerLiteral(equals(0))))
-        //                .bind("initVarName")))),
-        //        hasIncrement(unaryOperator(
-        //            hasOperatorName("++"),
-        //            hasUnaryOperand(declRefExpr(to(
-        //                varDecl(hasType(isInteger())).bind("incVarName")))))),
-        //        hasCondition(binaryOperator(
-        //            hasOperatorName("<"),
-        //            hasLHS(ignoringParenImpCasts(declRefExpr(to(
-        //                varDecl(hasType(isInteger())).bind("condVarName"))))),
-        //            hasRHS(expr(hasType(isInteger()))))),
-        //        hasBody(compoundStmt(hasDescendant(assignArrayBinOp))
-        //                    .bind("forLoopBody")))
-        //        .bind("forLoop"),
-        //    &HandlerForFor);
+        // This matcher works for 2-level for loops
+        StatementMatcher forLoopNestedMatcher = utils::forLoopNested(
+            2, utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
+        Matcher.addMatcher(forLoopNestedMatcher, &HandlerIteration);
     }
 
     void HandleTranslationUnit(ASTContext& Context) override {
