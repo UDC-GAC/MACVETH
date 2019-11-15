@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Ven 15 Nov 2019 12:02:38 MST
+ * Last Modified Date: Ven 15 Nov 2019 14:58:03 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky (eliben@gmail.com)
  *
@@ -209,10 +209,29 @@ class IterationHandler : public MatchFinder::MatchCallback {
         return;
     }
 
+    // Perform unrolling
     virtual void run(const MatchFinder::MatchResult& Result) {
+        std::list<const DeclRefExpr*> incVarList;
         const BinaryOperator* tacBinOp =
             Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
         std::list<TAC> tacList = IterationHandler::wrapperStmt2TAC(tacBinOp);
+        int nLevel = 2;
+        int unroll_factor = 5;
+
+        // Unroll factor applied to the for header
+        for (int inc = nLevel; inc > 0; --inc) {
+            const UnaryOperator* incVarPos =
+                Result.Nodes.getNodeAs<clang::UnaryOperator>(
+                    matchers_utils::varnames::nVarIncPos + std::to_string(inc));
+            const DeclRefExpr* incVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
+                matchers_utils::varnames::nVarInc + std::to_string(inc));
+            clang::CharSourceRange charRange =
+                clang::CharSourceRange::getTokenRange(incVarPos->getBeginLoc(),
+                                                      incVarPos->getEndLoc());
+            Rewrite.ReplaceText(charRange,
+                                incVarName->getNameInfo().getAsString() +
+                                    "+=" + std::to_string(unroll_factor));
+        }
 
         // charRange generated this way does not include the ;, therefore when
         // replacing, the ; is not. Need to find explanation
@@ -224,8 +243,6 @@ class IterationHandler : public MatchFinder::MatchCallback {
         //            clang::arcmt::trans::findSemiAfterLocation(
         //                tacBinOp->getLocEnd(), tacBinOp->getASTContext());
         Rewrite.ReplaceText(charRange, "/* converting to 3AC */");
-        // Rewrite.InsertText(charRange, "/* converting to 3AC */\n", true,
-        // true);
     }
 
    private:
@@ -269,8 +286,9 @@ class MyASTConsumer : public ASTConsumer {
     MyASTConsumer(Rewriter& R) : HandlerIteration(R), HandlerForFor(R) {
         // EXPERIMENTAL MATCHER
         // This matcher works for 2-level for loops
-        StatementMatcher forLoopNestedMatcher = utils::forLoopNested(
-            2, utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
+        StatementMatcher forLoopNestedMatcher = matchers_utils::forLoopNested(
+            2,
+            matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
         Matcher.addMatcher(forLoopNestedMatcher, &HandlerIteration);
     }
 

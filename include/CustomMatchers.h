@@ -2,10 +2,9 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Ven 15 Nov 2019 11:17:38 MST
+ * Last Modified Date: Ven 15 Nov 2019 13:18:34 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
- * include/CustomMatchers.h
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,11 +27,7 @@
  */
 #ifndef CUSTOM_MATCHERS_H
 #define CUSTOM_MATCHERS_H
-#include <iostream>
-#include <list>
-#include <memory>
 #include <string>
-#include <tuple>
 
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
@@ -58,10 +53,17 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
-namespace utils {
+namespace matchers_utils {
+
+namespace varnames {
+const std::string nVarInc = "incVar";
+const std::string nVarIncPos = "incVarPos";
+const std::string nVarInit = "initVar";
+const std::string nVarCond = "condVar";
+}  // namespace varnames
 StatementMatcher assignArrayBinOp(std::string name, std::string lhs,
                                   std::string rhs);
 StatementMatcher forLoopMatcher(std::string name, StatementMatcher innerStmt);
 StatementMatcher forLoopNested(int numLevels, StatementMatcher innerStmt);
-}  // namespace utils
+}  // namespace matchers_utils
 #endif

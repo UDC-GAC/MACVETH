@@ -1,7 +1,7 @@
 # File              : Makefile
 # Author            : Marcos Horro <marcos.horro@udc.gal>
 # Date              : Mar 05 Nov 2019 22:44:25 MST
-# Last Modified Date: Mér 06 Nov 2019 09:17:47 MST
+# Last Modified Date: Ven 15 Nov 2019 12:14:45 MST
 # Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 #-------------------------------------------------------------------------------
 # Sample makefile for building the code samples. Read inline comments for
@@ -139,10 +139,6 @@ BUILDDIR := build
 all: make_builddir \
 	emit_build_config \
 	$(BUILDDIR)/s2s_translator
-	#$(BUILDDIR)/clang-check \
-		#		$(BUILDDIR)/rewritersample \
-		#		$(BUILDDIR)/matchers_rewriter \
-		#		$(BUILDDIR)/tooling_sample \
 
 .PHONY: test
 test: emit_build_config
@@ -156,22 +152,6 @@ emit_build_config: make_builddir
 make_builddir:
 	@test -d $(BUILDDIR) || mkdir $(BUILDDIR)
 
-
-##$(BUILDDIR)/clang-check: $(SRC_CLANG_DIR)/ClangCheck.cpp
-##	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-	##		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
-##
-##$(BUILDDIR)/rewritersample: $(SRC_CLANG_DIR)/rewritersample.cpp
-##	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-	##		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
-##
-##$(BUILDDIR)/tooling_sample: $(SRC_CLANG_DIR)/tooling_sample.cpp
-##	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-	##		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
-##
-##$(BUILDDIR)/matchers_rewriter: $(SRC_CLANG_DIR)/matchers_rewriter.cpp
-##	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-	##		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
 $(BUILDDIR)/s2s_translator: $(BUILDDIR)/s2s_translator.o $(BUILDDIR)/CustomMatchers.o
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
