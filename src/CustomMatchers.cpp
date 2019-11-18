@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Ven 15 Nov 2019 14:41:39 MST
+ * Last Modified Date: Lun 18 Nov 2019 14:37:57 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -30,45 +30,47 @@
 #include <iostream>
 #include <string>
 
-StatementMatcher matchers_utils::assignArrayBinOp(std::string name,
-                                                  std::string lhs,
-                                                  std::string rhs) {
+StatementMatcher matchers_utils::assignArrayBinOp(std::string Name,
+                                                  std::string Lhs,
+                                                  std::string Rhs) {
     return binaryOperator(hasOperatorName("="),
-                          hasLHS(arraySubscriptExpr().bind(lhs)),
-                          hasRHS(binaryOperator().bind(rhs)))
-        .bind(name);
+                          hasLHS(arraySubscriptExpr().bind(Lhs)),
+                          hasRHS(binaryOperator().bind(Rhs)))
+        .bind(Name);
 }
 
-StatementMatcher matchers_utils::forLoopMatcher(std::string name,
-                                                StatementMatcher innerStmt) {
+StatementMatcher matchers_utils::forLoopMatcher(std::string Name,
+                                                StatementMatcher InnerStmt) {
     return forStmt(
                hasLoopInit(declStmt(hasSingleDecl(
                    varDecl(hasInitializer(integerLiteral(equals(0))))
-                       .bind(matchers_utils::varnames::nVarInit + name)))),
+                       .bind(matchers_utils::varnames::NameVarInit + Name)))),
                hasIncrement(
                    unaryOperator(
                        hasOperatorName("++"),
                        hasUnaryOperand(
                            declRefExpr(to(varDecl(hasType(isInteger()))))
-                               .bind(matchers_utils::varnames::nVarInc + name)))
-                       .bind(matchers_utils::varnames::nVarIncPos + name)),
+                               .bind(matchers_utils::varnames::NameVarInc +
+                                     Name)))
+                       .bind(matchers_utils::varnames::NameVarIncPos + Name)),
                hasCondition(binaryOperator(
                    hasOperatorName("<"),
-                   hasLHS(ignoringParenImpCasts(declRefExpr(to(
-                       varDecl(hasType(isInteger()))
-                           .bind(matchers_utils::varnames::nVarCond + name))))),
+                   hasLHS(ignoringParenImpCasts(declRefExpr(
+                       to(varDecl(hasType(isInteger()))
+                              .bind(matchers_utils::varnames::NameVarCond +
+                                    Name))))),
                    hasRHS(expr(hasType(isInteger()))))),
-               hasBody(anyOf(innerStmt,
-                             compoundStmt(forEachDescendant(innerStmt)))))
-        .bind("forLoop" + name);
+               hasBody(anyOf(InnerStmt,
+                             compoundStmt(forEachDescendant(InnerStmt)))))
+        .bind("forLoop" + Name);
 }
 
-StatementMatcher matchers_utils::forLoopNested(int numLevels,
-                                               StatementMatcher innerStmt) {
-    StatementMatcher nestedMatcher = innerStmt;
-    for (int n = numLevels; n > 0; --n) {
-        nestedMatcher =
-            matchers_utils::forLoopMatcher(std::to_string(n), nestedMatcher);
+StatementMatcher matchers_utils::forLoopNested(int NumLevels,
+                                               StatementMatcher InnerStmt) {
+    StatementMatcher NestedMatcher = InnerStmt;
+    for (int N = NumLevels; N > 0; --N) {
+        NestedMatcher =
+            matchers_utils::forLoopMatcher(std::to_string(N), NestedMatcher);
     }
-    return nestedMatcher;
+    return NestedMatcher;
 }

@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Ven 15 Nov 2019 14:58:03 MST
+ * Last Modified Date: Lun 18 Nov 2019 14:37:32 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky (eliben@gmail.com)
  *
@@ -48,6 +48,9 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Signals.h"
 #include "llvm/Support/raw_ostream.h"
 
 // Do not use namespace std
@@ -56,13 +59,16 @@ using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
+using namespace llvm;
+
 // needed for the global variable, definition below
 class TAC;
 
 // global variables
-static const clang::SourceManager* mySourceManager;
-static const clang::LangOptions* myLangOpts;
-static std::vector<std::tuple<const BinaryOperator*, std::list<TAC>>> exprToTac;
+static const clang::SourceManager* S2SSourceManager;
+static const clang::LangOptions* S2SLangOpts;
+// static std::vector<std::tuple<const BinaryOperator*, std::list<TAC>>>
+// ExprToTac;
 
 // FIXME: refactor this
 
@@ -78,28 +84,33 @@ static std::vector<std::tuple<const BinaryOperator*, std::list<TAC>>> exprToTac;
 // transformations
 class TempExpr {
    public:
-    TempExpr(std::string e) : expr(e) {}
+    TempExpr(std::string E) : ExprStr(E) {}
 
-    void setClangExpr(clang::Expr* clangExpr) { this->clangExpr = clangExpr; }
-    clang::Expr* getClangExpr() { return this->clangExpr; }
+    void setClangExpr(clang::Expr* ClangExpr) { this->ClangExpr = ClangExpr; }
+    clang::Expr* getClangExpr() { return this->ClangExpr; }
 
-    void setExprStr(std::string expr) { this->expr = expr; }
-    std::string getExprStr() { return this->expr; }
+    void setExprStr(std::string Expr) { this->ExprStr = ExprStr; }
+    std::string getExprStr() { return this->ExprStr; }
+
+    static std::string getNameTempReg(int val) {
+        return "t" + std::to_string(val);
+    }
 
     // A hack for translating Expr to string
     static TempExpr* getTempExprFromExpr(Expr* E) {
-        clang::CharSourceRange charRange =
+        clang::CharSourceRange CharRangeExpr =
             clang::CharSourceRange::getTokenRange(E->getSourceRange());
-        const std::string text =
-            Lexer::getSourceText(charRange, *mySourceManager, *myLangOpts);
-        TempExpr* tmp = new TempExpr(text);
-        tmp->setClangExpr(E);
-        return tmp;
+        const std::string Text = Lexer::getSourceText(
+            CharRangeExpr, *S2SSourceManager, *S2SLangOpts);
+        TempExpr* Temp = new TempExpr(Text);
+        Temp->setClangExpr(E);
+        return Temp;
     }
 
    private:
-    std::string expr;
-    clang::Expr* clangExpr;
+    std::string TypeStr;
+    std::string ExprStr;
+    clang::Expr* ClangExpr;
 };
 
 // Class TAC: three-address-code
@@ -112,25 +123,103 @@ class TAC {
    public:
     // Consturctor
     TAC(TempExpr* A, TempExpr* B, TempExpr* C, clang::BinaryOperator::Opcode OP)
-        : a(A), b(B), c(C), op(OP) {}
+        : A(A), B(B), C(C), OP(OP) {}
 
-    TempExpr* getA() { return this->a; };
-    TempExpr* getB() { return this->b; };
-    TempExpr* getC() { return this->c; };
-    clang::BinaryOperator::Opcode getOP() { return this->op; };
+    TempExpr* getA() { return this->A; };
+    TempExpr* getB() { return this->B; };
+    TempExpr* getC() { return this->C; };
+    clang::BinaryOperator::Opcode getOP() { return this->OP; };
 
     // Just for debugging purposes
     void printTAC() {
         std::cout << "t: " << this->getA()->getExprStr() << ", "
-                  << this->b->getExprStr() << ", " << this->c->getExprStr()
-                  << ", " << this->getOP() << std::endl;
+                  << this->getB()->getExprStr() << ", "
+                  << this->getC()->getExprStr() << ", " << this->getOP()
+                  << std::endl;
+    }
+
+    static Expr* createExprFromTAC(TAC* TacExpr) { return NULL; }
+
+    Expr* getExprFromTAC() { return TAC::createExprFromTAC(this); }
+
+    // Return list of 3AC from a starting Binary Operator
+    static void binaryOperator2TAC(const clang::BinaryOperator* S,
+                                   std::list<TAC>* TacList, int Val) {
+        // cout << "[DEBUG]: bo2TAC" << endl;
+        Expr* Lhs = S->getLHS();
+        Expr* Rhs = S->getRHS();
+        bool LhsTypeBin = false;
+        bool RhsTypeBin = false;
+        clang::BinaryOperator* LhsBin = NULL;
+        clang::BinaryOperator* RhsBin = NULL;
+        if (LhsBin = dyn_cast<clang::BinaryOperator>(Lhs)) {
+            LhsTypeBin = true;
+        }
+        if (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs)) {
+            RhsTypeBin = true;
+        }
+
+        // recursive part, to delve deeper into BinaryOperators
+        if ((LhsTypeBin == true) && (RhsTypeBin == true)) {
+            // both true
+            TempExpr* TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
+            TempExpr* TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
+            TempExpr* TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 2));
+            TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+            TacList->push_back(NewTac);
+            binaryOperator2TAC(RhsBin, TacList, Val + 1);
+            binaryOperator2TAC(LhsBin, TacList, Val + 2);
+        } else if ((LhsTypeBin == false) && (RhsTypeBin == true)) {
+            TempExpr* TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
+            TempExpr* TmpB = TempExpr::getTempExprFromExpr(Lhs);
+            TmpB->setClangExpr(Lhs);
+            TempExpr* TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 1));
+            TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+            TacList->push_back(NewTac);
+            binaryOperator2TAC(RhsBin, TacList, Val + 1);
+        } else if ((LhsTypeBin == true) && (RhsTypeBin == false)) {
+            TempExpr* TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
+            TempExpr* TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
+            TempExpr* TmpC = TempExpr::getTempExprFromExpr(Rhs);
+            TmpC->setClangExpr(Rhs);
+            TAC newTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+            TacList->push_back(newTac);
+            binaryOperator2TAC(LhsBin, TacList, Val + 1);
+        } else {
+            TempExpr* TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
+            TAC NewTac =
+                TAC(TmpA, TempExpr::getTempExprFromExpr(Lhs),
+                    TempExpr::getTempExprFromExpr(Rhs), S->getOpcode());
+            TacList->push_back(NewTac);
+        }
+        return;
     }
 
    private:
-    TempExpr* a;
-    TempExpr* b;
-    TempExpr* c;
-    clang::BinaryOperator::Opcode op;
+    TempExpr* A;
+    TempExpr* B;
+    TempExpr* C;
+    clang::BinaryOperator::Opcode OP;
+};
+
+class LoopStmtClassVisitor : public RecursiveASTVisitor<LoopStmtClassVisitor> {
+   public:
+    explicit LoopStmtClassVisitor(ASTContext* Context) : Context(Context) {}
+
+    bool VisitCXXRecordDecl(CXXRecordDecl* Declaration) {
+        if (Declaration->getQualifiedNameAsString() == "n::m::C") {
+            FullSourceLoc FullLocation =
+                Context->getFullLoc(Declaration->getBeginLoc());
+            if (FullLocation.isValid())
+                llvm::outs() << "Found declaration at "
+                             << FullLocation.getSpellingLineNumber() << ":"
+                             << FullLocation.getSpellingColumnNumber() << "\n";
+        }
+        return true;
+    }
+
+   private:
+    ASTContext* Context;
 };
 
 // IteartionHandler is called every time we find an assignment like:
@@ -139,139 +228,55 @@ class IterationHandler : public MatchFinder::MatchCallback {
    public:
     IterationHandler(Rewriter& R) : Rewrite(R) {}
 
-    static std::string getNameTempReg(int val) {
-        return "t" + std::to_string(val);
-    }
-
     std::list<TAC> wrapperStmt2TAC(const clang::BinaryOperator* S) {
         // cout << "[DEBUG]: wrapperStmt2TAC" << endl;
-        std::list<TAC> tacList;
-        binaryOperator2TAC(S, &tacList, 0);
-        std::tuple<const BinaryOperator*, std::list<TAC>> tup =
-            std::make_tuple(S, tacList);
-        exprToTac.push_back(tup);
-        for (TAC tac : tacList) {
-            tac.printTAC();
+        std::list<TAC> TacList;
+        TAC::binaryOperator2TAC(S, &TacList, 0);
+        std::tuple<const BinaryOperator*, std::list<TAC>> Tup =
+            std::make_tuple(S, TacList);
+        // exprToTac.push_back(tup);
+        for (TAC Tac : TacList) {
+            Tac.printTAC();
         }
-        return tacList;
-    }
-
-    // Return list of 3AC from a starting Binary Operator
-    void binaryOperator2TAC(const clang::BinaryOperator* S,
-                            std::list<TAC>* tacList, int val) {
-        // cout << "[DEBUG]: bo2TAC" << endl;
-        Expr* lhs = S->getLHS();
-        Expr* rhs = S->getRHS();
-        bool lhsTypeBin = false;
-        bool rhsTypeBin = false;
-        clang::BinaryOperator* lhsBin = NULL;
-        clang::BinaryOperator* rhsBin = NULL;
-        if (lhsBin = dyn_cast<clang::BinaryOperator>(lhs)) {
-            lhsTypeBin = true;
-        }
-        if (rhsBin = dyn_cast<clang::BinaryOperator>(rhs)) {
-            rhsTypeBin = true;
-        }
-
-        // recursive part, to delve deeper into BinaryOperators
-        if ((lhsTypeBin == true) && (rhsTypeBin == true)) {
-            // both true
-            TempExpr* tmpA = new TempExpr(getNameTempReg(val));
-            TempExpr* tmpB = new TempExpr(getNameTempReg(val + 1));
-            TempExpr* tmpC = new TempExpr(getNameTempReg(val + 2));
-            TAC newTac = TAC(tmpA, tmpB, tmpC, S->getOpcode());
-            tacList->push_back(newTac);
-            binaryOperator2TAC(rhsBin, tacList, val + 1);
-            binaryOperator2TAC(lhsBin, tacList, val + 2);
-        } else if ((lhsTypeBin == false) && (rhsTypeBin == true)) {
-            TempExpr* tmpA = new TempExpr(getNameTempReg(val));
-            TempExpr* tmpB = TempExpr::getTempExprFromExpr(lhs);
-            tmpB->setClangExpr(lhs);
-            TempExpr* tmpC = new TempExpr(getNameTempReg(val + 1));
-            TAC newTac = TAC(tmpA, tmpB, tmpC, S->getOpcode());
-            tacList->push_back(newTac);
-            binaryOperator2TAC(rhsBin, tacList, val + 1);
-        } else if ((lhsTypeBin == true) && (rhsTypeBin == false)) {
-            TempExpr* tmpA = new TempExpr(getNameTempReg(val));
-            TempExpr* tmpB = new TempExpr(getNameTempReg(val + 1));
-            TempExpr* tmpC = TempExpr::getTempExprFromExpr(rhs);
-            tmpC->setClangExpr(rhs);
-            TAC newTac = TAC(tmpA, tmpB, tmpC, S->getOpcode());
-            tacList->push_back(newTac);
-            binaryOperator2TAC(lhsBin, tacList, val + 1);
-        } else {
-            TempExpr* tmpA = new TempExpr(getNameTempReg(val));
-            TAC newTac =
-                TAC(tmpA, TempExpr::getTempExprFromExpr(lhs),
-                    TempExpr::getTempExprFromExpr(rhs), S->getOpcode());
-            tacList->push_back(newTac);
-        }
-        return;
+        return TacList;
     }
 
     // Perform unrolling
     virtual void run(const MatchFinder::MatchResult& Result) {
-        std::list<const DeclRefExpr*> incVarList;
-        const BinaryOperator* tacBinOp =
+        std::list<const DeclRefExpr*> IncVarList;
+        const BinaryOperator* TacBinOp =
             Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
-        std::list<TAC> tacList = IterationHandler::wrapperStmt2TAC(tacBinOp);
-        int nLevel = 2;
-        int unroll_factor = 5;
+        std::list<TAC> TacList = IterationHandler::wrapperStmt2TAC(TacBinOp);
+        int NLevel = 2;
+        int UnrollFactor = 5;
 
         // Unroll factor applied to the for header
-        for (int inc = nLevel; inc > 0; --inc) {
-            const UnaryOperator* incVarPos =
+        for (int Inc = NLevel; Inc > 0; --Inc) {
+            const UnaryOperator* IncVarPos =
                 Result.Nodes.getNodeAs<clang::UnaryOperator>(
-                    matchers_utils::varnames::nVarIncPos + std::to_string(inc));
-            const DeclRefExpr* incVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
-                matchers_utils::varnames::nVarInc + std::to_string(inc));
+                    matchers_utils::varnames::NameVarIncPos +
+                    std::to_string(Inc));
+            const DeclRefExpr* IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
+                matchers_utils::varnames::NameVarInc + std::to_string(Inc));
             clang::CharSourceRange charRange =
-                clang::CharSourceRange::getTokenRange(incVarPos->getBeginLoc(),
-                                                      incVarPos->getEndLoc());
+                clang::CharSourceRange::getTokenRange(IncVarPos->getBeginLoc(),
+                                                      IncVarPos->getEndLoc());
             Rewrite.ReplaceText(charRange,
-                                incVarName->getNameInfo().getAsString() +
-                                    "+=" + std::to_string(unroll_factor));
+                                IncVarName->getNameInfo().getAsString() +
+                                    "+=" + std::to_string(UnrollFactor));
         }
 
-        // charRange generated this way does not include the ;, therefore when
-        // replacing, the ; is not. Need to find explanation
-        clang::CharSourceRange charRange =
-            clang::CharSourceRange::getTokenRange(tacBinOp->getSourceRange());
-        // Can not use this function because I do not have
-        // llvm/clang/lib/include/ARCMT/Transformations.h, dunno why tho
-        //        clang::SourceLocation SemiLoc =
-        //            clang::arcmt::trans::findSemiAfterLocation(
-        //                tacBinOp->getLocEnd(), tacBinOp->getASTContext());
-        Rewrite.ReplaceText(charRange, "/* converting to 3AC */");
-    }
+        clang::CharSourceRange CharRangeStr =
+            clang::CharSourceRange::getTokenRange(TacBinOp->getSourceRange());
 
-   private:
-    Rewriter& Rewrite;
-};
-
-class IncrementForLoopHandler : public MatchFinder::MatchCallback {
-   public:
-    IncrementForLoopHandler(Rewriter& Rewrite) : Rewrite(Rewrite) {}
-
-    virtual void run(const MatchFinder::MatchResult& Result) {
-        const DeclRefExpr* incVarOuter =
-            Result.Nodes.getNodeAs<DeclRefExpr>("incVarOuter");
-        const UnaryOperator* incVarInner =
-            Result.Nodes.getNodeAs<UnaryOperator>("incVarInner");
-        const BinaryOperator* tacBinOp =
-            Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
-        clang::CharSourceRange charRange =
-            clang::CharSourceRange::getTokenRange(incVarInner->getBeginLoc(),
-                                                  incVarInner->getEndLoc());
-        Rewrite.ReplaceText(charRange, "j+=4");
-        charRange = clang::CharSourceRange::getTokenRange(
-            incVarOuter->getBeginLoc(), incVarOuter->getEndLoc());
-        Rewrite.ReplaceText(charRange, "i+=4");
-        Rewrite.InsertText(tacBinOp->getBeginLoc(), "/* unrolling */\n", true,
-                           true);
-        //        Rewrite.InsertText(tacBinOp->getBeginLoc(), "/* converting to
-        //        3AC */\n",
-        //                           true, true);
+        Rewrite.InsertText(
+            TacBinOp->getBeginLoc(),
+            "/* unrolling factor " + std::to_string(UnrollFactor) + " */\n",
+            true, true);
+        // tacBinOp = statement to unroll
+        // need to find all the array subscripts
+        for (int Unroll = 0; Unroll < UnrollFactor; ++Unroll) {
+        }
     }
 
    private:
@@ -281,15 +286,15 @@ class IncrementForLoopHandler : public MatchFinder::MatchCallback {
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser. It registers a couple of matchers and runs them on
 // the AST.
-class MyASTConsumer : public ASTConsumer {
+class S2SConsumer : public ASTConsumer {
    public:
-    MyASTConsumer(Rewriter& R) : HandlerIteration(R), HandlerForFor(R) {
+    S2SConsumer(Rewriter& R, ASTContext* C) : HandlerIteration(R), Context(C) {
         // EXPERIMENTAL MATCHER
         // This matcher works for 2-level for loops
-        StatementMatcher forLoopNestedMatcher = matchers_utils::forLoopNested(
+        StatementMatcher ForLoopNestedMatcher = matchers_utils::forLoopNested(
             2,
             matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
-        Matcher.addMatcher(forLoopNestedMatcher, &HandlerIteration);
+        Matcher.addMatcher(ForLoopNestedMatcher, &HandlerIteration);
     }
 
     void HandleTranslationUnit(ASTContext& Context) override {
@@ -298,18 +303,18 @@ class MyASTConsumer : public ASTConsumer {
     }
 
    private:
+    ASTContext* Context;
     IterationHandler HandlerIteration;
-    IncrementForLoopHandler HandlerForFor;
     MatchFinder Matcher;
 };
 
 // SECOND STEP
 // For each source file provided to the tool, a new ASTFrontendAction is
 // created, which inherits from FrontendAction (abstract class)
-class MyFrontendAction : public ASTFrontendAction {
+class S2SFrontendAction : public ASTFrontendAction {
    public:
     // empty constructor
-    MyFrontendAction() {}
+    S2SFrontendAction() {}
 
     // This routine is called in BeginSourceFile(), from
     // CreateWrapperASTConsumer.
@@ -317,8 +322,8 @@ class MyFrontendAction : public ASTFrontendAction {
     // * StringRef file: input file, provided by getCurrentFile()
     std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance& CI,
                                                    StringRef file) override {
-        mySourceManager = &CI.getSourceManager();
-        myLangOpts = &CI.getLangOpts();
+        S2SSourceManager = &CI.getSourceManager();
+        S2SLangOpts = &CI.getLangOpts();
         // setSourceMgr: setter for the Rewriter
         // * SourceManager: handles loading and caching of source files into
         // memory. It can be queried for information such as SourceLocation
@@ -327,7 +332,7 @@ class MyFrontendAction : public ASTFrontendAction {
         TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
         // std::make_unique is C++14, while LLVM is written in C++11, this
         // is the reason of this custom implementation
-        return llvm::make_unique<MyASTConsumer>(TheRewriter);
+        return llvm::make_unique<S2SConsumer>(TheRewriter, &CI.getASTContext());
     }
 
     // this is called only following a successful call to
@@ -353,17 +358,19 @@ static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static llvm::cl::OptionCategory MatcherSampleCategory("Matcher Sample");
 
 int main(int argc, const char** argv) {
+    llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
+
     // FIRST STEP
     // Parser for options common to all cmd-line Clang tools
-    CommonOptionsParser op(argc, argv, MatcherSampleCategory);
+    CommonOptionsParser Op(argc, argv, MatcherSampleCategory);
     // Utility to run a FrontendAction over a set of files
     // * getCompilations(): contains compile cmd lines for the given source
     // paths
     // * getSourcePathList(): source files to run over
-    ClangTool Tool(op.getCompilations(), op.getSourcePathList());
+    ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
     // Runs ToolAction over all files specified in the cmd line
     // newFrontendActionFactory returns a new FrontendActionFactory for
-    // a given type, in this case out MyFrontendAction, declared above
-    return Tool.run(newFrontendActionFactory<MyFrontendAction>().get());
+    // a given type, in this case out S2SFrontendAction, declared above
+    return Tool.run(newFrontendActionFactory<S2SFrontendAction>().get());
 }
