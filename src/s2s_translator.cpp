@@ -2,9 +2,9 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Lun 18 Nov 2019 14:37:32 MST
+ * Last Modified Date: Mar 19 Nov 2019 13:16:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- * Original Code     : Eli Bendersky (eliben@gmail.com)
+ * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
  *
@@ -33,6 +33,9 @@
 #include <tuple>
 
 #include "CustomMatchers.h"
+#include "IntrinsicsGenerator.h"
+#include "S2SUtils.h"
+#include "ThreeAddressCode.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -60,15 +63,7 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 using namespace llvm;
-
-// needed for the global variable, definition below
-class TAC;
-
-// global variables
-static const clang::SourceManager* S2SSourceManager;
-static const clang::LangOptions* S2SLangOpts;
-// static std::vector<std::tuple<const BinaryOperator*, std::list<TAC>>>
-// ExprToTac;
+using namespace s2stranslator;
 
 // FIXME: refactor this
 
@@ -78,129 +73,6 @@ static const clang::LangOptions* S2SLangOpts;
 // * Type - types, CanonicalType, Builtin-type
 // * Expr - expressions, they inherit from Stmt tho; this is quite weird for
 // me...
-
-// This class holds a double identity for expressions: a string name (for
-// debugging purposes and for clarity) and the actual Clang Expr, for
-// transformations
-class TempExpr {
-   public:
-    TempExpr(std::string E) : ExprStr(E) {}
-
-    void setClangExpr(clang::Expr* ClangExpr) { this->ClangExpr = ClangExpr; }
-    clang::Expr* getClangExpr() { return this->ClangExpr; }
-
-    void setExprStr(std::string Expr) { this->ExprStr = ExprStr; }
-    std::string getExprStr() { return this->ExprStr; }
-
-    static std::string getNameTempReg(int val) {
-        return "t" + std::to_string(val);
-    }
-
-    // A hack for translating Expr to string
-    static TempExpr* getTempExprFromExpr(Expr* E) {
-        clang::CharSourceRange CharRangeExpr =
-            clang::CharSourceRange::getTokenRange(E->getSourceRange());
-        const std::string Text = Lexer::getSourceText(
-            CharRangeExpr, *S2SSourceManager, *S2SLangOpts);
-        TempExpr* Temp = new TempExpr(Text);
-        Temp->setClangExpr(E);
-        return Temp;
-    }
-
-   private:
-    std::string TypeStr;
-    std::string ExprStr;
-    clang::Expr* ClangExpr;
-};
-
-// Class TAC: three-address-code
-// This class is no more than a wrapper for holding three Expr and a Opcode, in
-// a way that:
-class TAC {
-    // This class is meant to hold structures such as:
-    //                  a = b op c
-    // Where a, b and c are Expr and op is an Opcode
-   public:
-    // Consturctor
-    TAC(TempExpr* A, TempExpr* B, TempExpr* C, clang::BinaryOperator::Opcode OP)
-        : A(A), B(B), C(C), OP(OP) {}
-
-    TempExpr* getA() { return this->A; };
-    TempExpr* getB() { return this->B; };
-    TempExpr* getC() { return this->C; };
-    clang::BinaryOperator::Opcode getOP() { return this->OP; };
-
-    // Just for debugging purposes
-    void printTAC() {
-        std::cout << "t: " << this->getA()->getExprStr() << ", "
-                  << this->getB()->getExprStr() << ", "
-                  << this->getC()->getExprStr() << ", " << this->getOP()
-                  << std::endl;
-    }
-
-    static Expr* createExprFromTAC(TAC* TacExpr) { return NULL; }
-
-    Expr* getExprFromTAC() { return TAC::createExprFromTAC(this); }
-
-    // Return list of 3AC from a starting Binary Operator
-    static void binaryOperator2TAC(const clang::BinaryOperator* S,
-                                   std::list<TAC>* TacList, int Val) {
-        // cout << "[DEBUG]: bo2TAC" << endl;
-        Expr* Lhs = S->getLHS();
-        Expr* Rhs = S->getRHS();
-        bool LhsTypeBin = false;
-        bool RhsTypeBin = false;
-        clang::BinaryOperator* LhsBin = NULL;
-        clang::BinaryOperator* RhsBin = NULL;
-        if (LhsBin = dyn_cast<clang::BinaryOperator>(Lhs)) {
-            LhsTypeBin = true;
-        }
-        if (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs)) {
-            RhsTypeBin = true;
-        }
-
-        // recursive part, to delve deeper into BinaryOperators
-        if ((LhsTypeBin == true) && (RhsTypeBin == true)) {
-            // both true
-            TempExpr* TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
-            TempExpr* TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-            TempExpr* TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 2));
-            TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-            TacList->push_back(NewTac);
-            binaryOperator2TAC(RhsBin, TacList, Val + 1);
-            binaryOperator2TAC(LhsBin, TacList, Val + 2);
-        } else if ((LhsTypeBin == false) && (RhsTypeBin == true)) {
-            TempExpr* TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
-            TempExpr* TmpB = TempExpr::getTempExprFromExpr(Lhs);
-            TmpB->setClangExpr(Lhs);
-            TempExpr* TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-            TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-            TacList->push_back(NewTac);
-            binaryOperator2TAC(RhsBin, TacList, Val + 1);
-        } else if ((LhsTypeBin == true) && (RhsTypeBin == false)) {
-            TempExpr* TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
-            TempExpr* TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-            TempExpr* TmpC = TempExpr::getTempExprFromExpr(Rhs);
-            TmpC->setClangExpr(Rhs);
-            TAC newTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-            TacList->push_back(newTac);
-            binaryOperator2TAC(LhsBin, TacList, Val + 1);
-        } else {
-            TempExpr* TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
-            TAC NewTac =
-                TAC(TmpA, TempExpr::getTempExprFromExpr(Lhs),
-                    TempExpr::getTempExprFromExpr(Rhs), S->getOpcode());
-            TacList->push_back(NewTac);
-        }
-        return;
-    }
-
-   private:
-    TempExpr* A;
-    TempExpr* B;
-    TempExpr* C;
-    clang::BinaryOperator::Opcode OP;
-};
 
 class LoopStmtClassVisitor : public RecursiveASTVisitor<LoopStmtClassVisitor> {
    public:
@@ -232,12 +104,14 @@ class IterationHandler : public MatchFinder::MatchCallback {
         // cout << "[DEBUG]: wrapperStmt2TAC" << endl;
         std::list<TAC> TacList;
         TAC::binaryOperator2TAC(S, &TacList, 0);
+        TacList.reverse();
         std::tuple<const BinaryOperator*, std::list<TAC>> Tup =
             std::make_tuple(S, TacList);
         // exprToTac.push_back(tup);
         for (TAC Tac : TacList) {
             Tac.printTAC();
         }
+        intrinsics::translateTAC(TacList);
         return TacList;
     }
 
@@ -322,14 +196,13 @@ class S2SFrontendAction : public ASTFrontendAction {
     // * StringRef file: input file, provided by getCurrentFile()
     std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance& CI,
                                                    StringRef file) override {
-        S2SSourceManager = &CI.getSourceManager();
-        S2SLangOpts = &CI.getLangOpts();
         // setSourceMgr: setter for the Rewriter
         // * SourceManager: handles loading and caching of source files into
         // memory. It can be queried for information such as SourceLocation
         // of objects.
         // * LangOptions: controls the dialect of C/C++ accepted
         TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
+        S2SUtils::setOpts(&CI.getSourceManager(), &CI.getLangOpts());
         // std::make_unique is C++14, while LLVM is written in C++11, this
         // is the reason of this custom implementation
         return llvm::make_unique<S2SConsumer>(TheRewriter, &CI.getASTContext());

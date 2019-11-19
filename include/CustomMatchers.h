@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Lun 18 Nov 2019 14:34:43 MST
+ * Last Modified Date: Lun 18 Nov 2019 14:49:41 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -53,6 +53,7 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
+namespace s2stranslator {
 namespace matchers_utils {
 
 namespace varnames {
@@ -66,4 +67,5 @@ StatementMatcher assignArrayBinOp(std::string Name, std::string Lhs,
 StatementMatcher forLoopMatcher(std::string Name, StatementMatcher InnerStmt);
 StatementMatcher forLoopNested(int NumLevels, StatementMatcher InnerStmt);
 }  // namespace matchers_utils
+}  // namespace s2stranslator
 #endif

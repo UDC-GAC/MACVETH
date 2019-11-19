@@ -1,7 +1,7 @@
 # File              : Makefile
 # Author            : Marcos Horro <marcos.horro@udc.gal>
 # Date              : Mar 05 Nov 2019 22:44:25 MST
-# Last Modified Date: Ven 15 Nov 2019 12:14:45 MST
+# Last Modified Date: Mar 19 Nov 2019 09:22:55 MST
 # Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 #-------------------------------------------------------------------------------
 # Sample makefile for building the code samples. Read inline comments for
@@ -157,13 +157,14 @@ $(BUILDDIR)/s2s_translator: $(BUILDDIR)/s2s_translator.o $(BUILDDIR)/CustomMatch
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-$(BUILDDIR)/s2s_translator.o: $(SRC_CLANG_DIR)/s2s_translator.cpp
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) -c $^ \
+$(BUILDDIR)/s2s_translator.o: $(SRC_CLANG_DIR)/s2s_translator.cpp include/S2SUtils.h
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) -c $< \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
 $(BUILDDIR)/CustomMatchers.o: $(SRC_CLANG_DIR)/CustomMatchers.cpp include/CustomMatchers.h
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) -c $< \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+
 
 .PHONY: clean format
 

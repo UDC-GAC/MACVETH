@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 18 Nov 2019 14:37:57 MST
+ * Last Modified Date: Lun 18 Nov 2019 14:50:19 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,6 +29,8 @@
 
 #include <iostream>
 #include <string>
+
+using namespace s2stranslator;
 
 StatementMatcher matchers_utils::assignArrayBinOp(std::string Name,
                                                   std::string Lhs,
