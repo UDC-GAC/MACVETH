@@ -2,7 +2,7 @@
  * File              : ThreeAddressCode.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mar 19 Nov 2019 14:49:46 MST
+ * Last Modified Date: Mér 20 Nov 2019 08:42:58 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -25,12 +25,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 #ifndef TAC_H
 #define TAC_H
 #include <iostream>
 #include <string>
 
-//#include "IntrinsicsGenerator.h"
 #include "S2SUtils.h"
 #include "clang/AST/AST.h"
 
@@ -127,7 +127,7 @@ class TAC {
 
         // we are in the the first case
         TempExpr* TmpA = NULL;
-        if (Val == 0) {
+        if (Val == -1) {
             TmpA = TempExpr::getTempExprFromExpr(Lhs);
             TmpA->setClangExpr(Lhs);
         } else {

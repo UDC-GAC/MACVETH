@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mar 19 Nov 2019 13:16:18 MST
+ * Last Modified Date: Mér 20 Nov 2019 08:30:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -103,7 +103,7 @@ class IterationHandler : public MatchFinder::MatchCallback {
     std::list<TAC> wrapperStmt2TAC(const clang::BinaryOperator* S) {
         // cout << "[DEBUG]: wrapperStmt2TAC" << endl;
         std::list<TAC> TacList;
-        TAC::binaryOperator2TAC(S, &TacList, 0);
+        TAC::binaryOperator2TAC(S, &TacList, -1);
         TacList.reverse();
         std::tuple<const BinaryOperator*, std::list<TAC>> Tup =
             std::make_tuple(S, TacList);
