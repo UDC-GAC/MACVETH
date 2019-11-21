@@ -1,8 +1,8 @@
 /**
- * File              : S2SUtils.h
+ * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Mar 19 Nov 2019 09:36:49 MST
+ * Last Modified Date: Xov 21 Nov 2019 15:39:05 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -25,35 +25,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef S2S_UTILS
-#define S2S_UTILS
+#ifndef MACVETH_UTILS
+#define MACVETH_UTILS
 
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
 
 using namespace clang;
 
-namespace s2stranslator {
+namespace macveth {
 
-class S2SUtils {
+class Utils {
    public:
+    // some definitions to avoid repetition
+    typedef std::list<std::string> StrList;
+
     // when declaring static members of class, when assigning them you need
     // to redeclare them or since C++17 you can just put inline
     inline static clang::SourceManager* SourceMgr;
     inline static clang::LangOptions* LangOpts;
 
+    // some auxiliary functions
+    template <typename T>
+    static bool contains(std::list<T>& listOfElements, const T& element);
     static clang::SourceManager* getSourceMgr();
     static clang::LangOptions* getLangOpts();
     static void setOpts(SourceManager* SO, LangOptions* LO);
 };
 
-// since they are only getters/setters
-SourceManager* S2SUtils::getSourceMgr() { return S2SUtils::SourceMgr; }
-LangOptions* S2SUtils::getLangOpts() { return S2SUtils::LangOpts; }
-void S2SUtils::setOpts(SourceManager* SO, LangOptions* LO) {
-    S2SUtils::SourceMgr = SO;
-    S2SUtils::LangOpts = LO;
+/*
+ * Generic function to find if an element of any type exists in list
+ */
+template <typename T>
+bool Utils::contains(std::list<T>& listOfElements, const T& element) {
+    // Find the iterator if element in list
+    auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
+    // return if iterator points to end or not. It points to end then it
+    // means element does not exists in list
+    return it != listOfElements.end();
 }
 
-}  // namespace s2stranslator
+//-------------------------------------------------------------
+SourceManager* Utils::getSourceMgr() { return Utils::SourceMgr; }
+
+//-------------------------------------------------------------
+LangOptions* Utils::getLangOpts() { return Utils::LangOpts; }
+
+//-------------------------------------------------------------
+void Utils::setOpts(SourceManager* SO, LangOptions* LO) {
+    Utils::SourceMgr = SO;
+    Utils::LangOpts = LO;
+}
+
+//-------------------------------------------------------------
+
+}  // namespace macveth
 #endif

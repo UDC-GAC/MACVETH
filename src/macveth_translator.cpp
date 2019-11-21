@@ -1,8 +1,8 @@
 /**
- * File              : s2s_translator.cpp
+ * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mér 20 Nov 2019 17:29:39 MST
+ * Last Modified Date: Xov 21 Nov 2019 15:29:49 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -34,8 +34,8 @@
 
 #include "CustomMatchers.h"
 #include "IntrinsicsGenerator.h"
-#include "S2SUtils.h"
 #include "ThreeAddressCode.h"
+#include "Utils.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -63,9 +63,7 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 using namespace llvm;
-using namespace s2stranslator;
-
-// FIXME: refactor this
+using namespace macveth;
 
 // SOME NOTES:
 // * Stmt - statements, could be a for loop, while, a single statement
@@ -73,26 +71,6 @@ using namespace s2stranslator;
 // * Type - types, CanonicalType, Builtin-type
 // * Expr - expressions, they inherit from Stmt tho; this is quite weird for
 // me...
-
-class LoopStmtClassVisitor : public RecursiveASTVisitor<LoopStmtClassVisitor> {
-   public:
-    explicit LoopStmtClassVisitor(ASTContext* Context) : Context(Context) {}
-
-    bool VisitCXXRecordDecl(CXXRecordDecl* Declaration) {
-        if (Declaration->getQualifiedNameAsString() == "n::m::C") {
-            FullSourceLoc FullLocation =
-                Context->getFullLoc(Declaration->getBeginLoc());
-            if (FullLocation.isValid())
-                llvm::outs() << "Found declaration at "
-                             << FullLocation.getSpellingLineNumber() << ":"
-                             << FullLocation.getSpellingColumnNumber() << "\n";
-        }
-        return true;
-    }
-
-   private:
-    ASTContext* Context;
-};
 
 // IteartionHandler is called every time we find an assignment like:
 // BinaryOperator(lhs, rhs, "=") inside a loop
@@ -151,11 +129,6 @@ class IterationHandler : public MatchFinder::MatchCallback {
             }
         }
         Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
-
-        // tacBinOp = statement to unroll
-        // need to find all the array subscripts
-        // for (int Unroll = 0; Unroll < UnrollFactor; ++Unroll) {
-        //}
     }
 
    private:
@@ -165,9 +138,10 @@ class IterationHandler : public MatchFinder::MatchCallback {
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser. It registers a couple of matchers and runs them on
 // the AST.
-class S2SConsumer : public ASTConsumer {
+class MACVETHConsumer : public ASTConsumer {
    public:
-    S2SConsumer(Rewriter& R, ASTContext* C) : HandlerIteration(R), Context(C) {
+    MACVETHConsumer(Rewriter& R, ASTContext* C)
+        : HandlerIteration(R), Context(C) {
         // EXPERIMENTAL MATCHER
         // This matcher works for 2-level for loops
         // StatementMatcher ForLoopNestedMatcher =
@@ -196,10 +170,10 @@ class S2SConsumer : public ASTConsumer {
 // SECOND STEP
 // For each source file provided to the tool, a new ASTFrontendAction is
 // created, which inherits from FrontendAction (abstract class)
-class S2SFrontendAction : public ASTFrontendAction {
+class MACVETHFrontendAction : public ASTFrontendAction {
    public:
     // empty constructor
-    S2SFrontendAction() {}
+    MACVETHFrontendAction() {}
 
     // This routine is called in BeginSourceFile(), from
     // CreateWrapperASTConsumer.
@@ -213,10 +187,11 @@ class S2SFrontendAction : public ASTFrontendAction {
         // of objects.
         // * LangOptions: controls the dialect of C/C++ accepted
         TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-        S2SUtils::setOpts(&CI.getSourceManager(), &CI.getLangOpts());
+        Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts());
         // std::make_unique is C++14, while LLVM is written in C++11, this
         // is the reason of this custom implementation
-        return llvm::make_unique<S2SConsumer>(TheRewriter, &CI.getASTContext());
+        return llvm::make_unique<MACVETHConsumer>(TheRewriter,
+                                                  &CI.getASTContext());
     }
 
     // this is called only following a successful call to
@@ -255,6 +230,6 @@ int main(int argc, const char** argv) {
 
     // Runs ToolAction over all files specified in the cmd line
     // newFrontendActionFactory returns a new FrontendActionFactory for
-    // a given type, in this case out S2SFrontendAction, declared above
-    return Tool.run(newFrontendActionFactory<S2SFrontendAction>().get());
+    // a given type, in this case our FrontendAction, declared above
+    return Tool.run(newFrontendActionFactory<MACVETHFrontendAction>().get());
 }

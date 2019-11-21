@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Mér 20 Nov 2019 18:16:58 MST
+ * Last Modified Date: Xov 21 Nov 2019 15:34:15 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -35,46 +35,54 @@
 #include <string>
 
 #include "ThreeAddressCode.h"
+#include "Utils.h"
 
-namespace s2stranslator {
+namespace macveth {
 
 // to avoid long declarations
 typedef std::list<std::string> InstListType;
 
-/*
- * Generic function to find if an element of any type exists in list
- */
-template <typename T>
-bool contains(std::list<T>& listOfElements, const T& element) {
-    // Find the iterator if element in list
-    auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
-    // return if iterator points to end or not. It points to end then it means
-    // element
-    // does not exists in list
-    return it != listOfElements.end();
-}
-
 class IntrinsicsInsGen {
    public:
-    // public function
+    // Main function:
+    // It basically performs three passes:
+    // 1.- Looks for memory loads
+    // 2.- Looks for arithmetic operations
+    // 3.- Generates memory stores
     static std::list<InstListType> translateTAC(
-        std::list<s2stranslator::TAC> TacList) {
-        s2stranslator::TAC* PrevTAC = NULL;
+        std::list<macveth::TAC> TacList) {
+        macveth::TAC* PrevTAC = NULL;
         std::list<InstListType> InstList;
-        // generate instructions for each TAC
-        for (s2stranslator::TAC Tac : TacList) {
-            // check whether you can fuse a multiplication and addition
-            if (potentialFMA(PrevTAC, &Tac)) {
-                InstList.pop_back();
-                InstListType NewInstList = generateFMA(PrevTAC, &Tac);
-                InstList.push_back(NewInstList);
-                continue;
+        InstListType LoadList;
+        // InstListType FuncList;
+        InstListType StoreList;
+        // generate loads
+        for (macveth::TAC Tac : TacList) {
+            TempExpr* Op1 = Tac.getB();
+            TempExpr* Op2 = Tac.getC();
+            if (needLoad(Op1)) {
+                LoadList.push_back(genLoad(Op1));
             }
-            // otherwise
-            InstListType NewInstList = genIntrinsicsIns(Tac);
-            InstList.push_back(NewInstList);
-            PrevTAC = &Tac;
+            if (needLoad(Op2)) {
+                LoadList.push_back(genLoad(Op2));
+            }
         }
+        InstList.push_back(LoadList);
+
+        // generate operations
+        InstList.push_back(genIntrinsicsIns(TacList));
+
+        // generate stores
+        for (TAC Tac : TacList) {
+            TempExpr* Res = Tac.getA();
+            TempExpr* Op1 = Tac.getB();
+            TempExpr* Op2 = Tac.getC();
+            if (!Res->isNotClang()) {
+                // Store in memory address given
+                StoreList.push_back(genStore(Op1, Op2->getExprStr()));
+            }
+        }
+        InstList.push_back(StoreList);
         printInstList(InstList);
         return InstList;
     }
@@ -83,6 +91,7 @@ class IntrinsicsInsGen {
     inline static std::list<std::string> RegDeclared;
     inline static std::list<std::string> TempRegDeclared;
     inline static std::map<std::string, std::string> RegMap;
+
     inline static std::map<std::string, int> TypeToWidth;
     inline static std::map<std::string, std::string> TypeToDataType;
     inline static std::map<BinaryOperator::Opcode, std::string> BOtoIntrinsic;
@@ -149,7 +158,7 @@ class IntrinsicsInsGen {
 
     static std::string getRegister(TempExpr* Op) {
         std::string RegName = Op->getExprStr();
-        if (!contains(TempRegDeclared, RegName)) {
+        if (!Utils::contains(TempRegDeclared, RegName)) {
             TempRegDeclared.push_back(RegName);
             // FIXME
             // int BitWidth =
@@ -167,10 +176,10 @@ class IntrinsicsInsGen {
         // FIXME
         int BitWidth = 256;
         std::string DataType = "pd";
+        std::string LhsStr = getRegister(Res);
         std::string RhsStr = genVarArgsFunc(
             genAVX2Ins(BitWidth, FuncName, DataType),
             {RegMap[Op1->getExprStr()], RegMap[Op2->getExprStr()]});
-        std::string LhsStr = getRegister(Res);
         std::string FullInstruction = genAssignment(LhsStr, RhsStr);
         return FullInstruction;
     }
@@ -232,7 +241,7 @@ class IntrinsicsInsGen {
     // TempExpr are used as wrappers of Expr and new Nodes. This class has
     // been created for the ease of TAC handling. So, if a TAC does not
     // belong to Expr class.
-    static bool needLoad(s2stranslator::TempExpr* Op) {
+    static bool needLoad(macveth::TempExpr* Op) {
         if (IntrinsicsInsGen::RegMap.find(Op->getExprStr()) !=
             IntrinsicsInsGen::RegMap.end()) {
             return false;
@@ -242,62 +251,73 @@ class IntrinsicsInsGen {
     }
 
     // Main function when generating instructions
-    static InstListType genIntrinsicsIns(s2stranslator::TAC Tac) {
+    static InstListType genIntrinsicsIns(std::list<macveth::TAC> TacList) {
         // we can have basically these situations:
         // 1.- a/tmp = tmp op tmp
         // 2.- a/tmp = b   op tmp
         // 3.- a/tmp = tmp op c
         // 4.- a/tmp = b   op c
-        InstListType IntrinsicInsList;
-        std::string FuncName = getFuncFromOpCode(Tac.getOP());
-        TempExpr* Res = Tac.getA();
-        TempExpr* Op1 = Tac.getB();
-        TempExpr* Op2 = Tac.getC();
-
-        // std::cout << Res->getExprStr() << " " << Op1->getExprStr() << " "
-        //          << Op2->getExprStr() << std::endl;
-        if (!FuncName.compare("store")) {
-            goto store_inst;
+        InstListType InsList;
+        TAC PrevTAC;
+        for (macveth::TAC Tac : TacList) {
+            std::string FuncName = getFuncFromOpCode(Tac.getOP());
+            if (!FuncName.compare("store")) {
+                continue;
+            }
+            TempExpr* Res = Tac.getA();
+            TempExpr* Op1 = Tac.getB();
+            TempExpr* Op2 = Tac.getC();
+            // check whether you can fuse a mul and add/sub
+            if (potentialFMA(&PrevTAC, &Tac)) {
+                InsList.pop_back();
+                std::string NewInst = generateFMA(&PrevTAC, &Tac);
+                InsList.push_back(NewInst);
+                PrevTAC = Tac;
+                continue;
+            }
+            InsList.push_back(getGenericFunction(FuncName, Res, Op1, Op2));
+            PrevTAC = Tac;
         }
-
-        if (needLoad(Op1)) {
-            IntrinsicInsList.push_back(genLoad(Op1));
-        }
-        if (needLoad(Op2)) {
-            IntrinsicInsList.push_back(genLoad(Op2));
-        }
-
-        IntrinsicInsList.push_back(getGenericFunction(FuncName, Res, Op1, Op2));
-
-        // FIXME
-        // if the A operand is a Clang expresion, then we must store the result
-        // obtained. Need to fix this somehow, I think this could be confusing
-        // for someone.
-    store_inst:
-        if (!Res->isNotClang()) {
-            // Store in memory address given
-            IntrinsicInsList.push_back(genStore(Op1, Op2->getExprStr()));
-        }
-        return IntrinsicInsList;
+        return InsList;
     }
 
     // generates a FMA from two consecutives TACs
-    static InstListType generateFMA(s2stranslator::TAC* PrevTAC,
-                                    s2stranslator::TAC* ActualTAC) {
-        InstListType InstList;
-        return InstList;
+    static std::string generateFMA(macveth::TAC* PrevTAC,
+                                   macveth::TAC* ActualTAC) {
+        std::string FuncName = getFuncFromOpCode(ActualTAC->getOP());
+        macveth::TAC* MulTAC = (!FuncName.compare("mul")) ? ActualTAC : PrevTAC;
+        macveth::TAC* OtherTAC =
+            (FuncName.compare("mul")) ? ActualTAC : PrevTAC;
+
+        FuncName = "fm" + getFuncFromOpCode(OtherTAC->getOP());
+        TempExpr* OpA = MulTAC->getB();
+        TempExpr* OpB = MulTAC->getC();
+        TempExpr* OpC = !OtherTAC->getB()->isNotClang() ? OtherTAC->getB()
+                                                        : OtherTAC->getC();
+
+        int BitWidth = 256;
+        std::string DataType = "pd";
+        std::string LhsStr = getRegister(OtherTAC->getA());
+        std::string RhsStr = genVarArgsFunc(
+            genAVX2Ins(BitWidth, FuncName, DataType),
+            {RegMap[OpA->getExprStr()], RegMap[OpB->getExprStr()],
+             RegMap[OpC->getExprStr()]});
+        std::string FullInstruction = genAssignment(LhsStr, RhsStr);
+
+        return FullInstruction;
     }
 
     // checks whether a FMA can be generated
-    static bool potentialFMA(s2stranslator::TAC* PrevTAC,
-                             s2stranslator::TAC* Tac) {
-        return false;
-        if (!getFuncFromOpCode(PrevTAC->getOP()).compare("mul") &&
-            (!getFuncFromOpCode(Tac->getOP()).compare("add"))) {
+    static bool potentialFMA(macveth::TAC* PrevTAC, macveth::TAC* Tac) {
+        if (PrevTAC == NULL) return false;
+        std::string PrevTACOp = getFuncFromOpCode(PrevTAC->getOP());
+        std::string TACOp = getFuncFromOpCode(Tac->getOP());
+        if ((!PrevTACOp.compare("mul")) &&
+            ((!TACOp.compare("add")) || (!TACOp.compare("sub")))) {
             return true;
         }
-        if (!getFuncFromOpCode(PrevTAC->getOP()).compare("add") &&
-            (!getFuncFromOpCode(Tac->getOP()).compare("mul"))) {
+        if (((!PrevTACOp.compare("add")) || (!PrevTACOp.compare("sub"))) &&
+            (!TACOp.compare("mul"))) {
             return true;
         }
         return false;
@@ -329,5 +349,5 @@ IntrinsicsInsGen* IntrinsicsInsGen::getInstance() {
     return IntrinsicsInsGen::Singleton;
 }
 
-}  // namespace s2stranslator
+}  // namespace macveth
 #endif

@@ -2,7 +2,7 @@
  * File              : ThreeAddressCode.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 20 Nov 2019 08:42:58 MST
+ * Last Modified Date: Xov 21 Nov 2019 15:33:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -31,12 +31,12 @@
 #include <iostream>
 #include <string>
 
-#include "S2SUtils.h"
+#include "Utils.h"
 #include "clang/AST/AST.h"
 
 using namespace clang;
 
-namespace s2stranslator {
+namespace macveth {
 // This class holds a double identity for expressions: a string name (for
 // debugging purposes and for clarity) and the actual Clang Expr, for
 // transformations
@@ -61,17 +61,7 @@ class TempExpr {
     }
 
     // A hack for translating Expr to string
-    static TempExpr* getTempExprFromExpr(Expr* E) {
-        SourceManager* S2SSourceManager = S2SUtils::getSourceMgr();
-        LangOptions* S2SLangOpts = S2SUtils::getLangOpts();
-        clang::CharSourceRange CharRangeExpr =
-            clang::CharSourceRange::getTokenRange(E->getSourceRange());
-        const std::string Text = Lexer::getSourceText(
-            CharRangeExpr, *S2SSourceManager, *S2SLangOpts);
-        TempExpr* Temp = new TempExpr(Text);
-        Temp->setClangExpr(E);
-        return Temp;
-    }
+    static TempExpr* getTempExprFromExpr(Expr* E);
 
    private:
     std::string TypeStr = "double";
@@ -86,8 +76,9 @@ class TAC {
     // This class is meant to hold structures such as:
     //                  a = b op c
     // Where a, b and c are Expr and op is an Opcode
-   public:
     // Consturctor
+   public:
+    TAC(){};  // empty constructor
     TAC(TempExpr* A, TempExpr* B, TempExpr* C, clang::BinaryOperator::Opcode OP)
         : A(A), B(B), C(C), OP(OP) {}
 
@@ -173,5 +164,18 @@ class TAC {
     TempExpr* C;
     clang::BinaryOperator::Opcode OP;
 };
-}  // namespace s2stranslator
+
+TempExpr* TempExpr::getTempExprFromExpr(Expr* E) {
+    SourceManager* SM = Utils::getSourceMgr();
+    LangOptions* LO = Utils::getLangOpts();
+    clang::CharSourceRange CharRangeExpr =
+        clang::CharSourceRange::getTokenRange(E->getSourceRange());
+    const std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO);
+    // const std::string Text = "";
+    TempExpr* Temp = new TempExpr(Text);
+    //    Temp->setClangExpr(E);
+    return Temp;
+}
+
+}  // namespace macveth
 #endif

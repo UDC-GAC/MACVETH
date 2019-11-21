@@ -1,7 +1,7 @@
 # File              : Makefile
 # Author            : Marcos Horro <marcos.horro@udc.gal>
 # Date              : Mar 05 Nov 2019 22:44:25 MST
-# Last Modified Date: Mér 20 Nov 2019 11:14:22 MST
+# Last Modified Date: Xov 21 Nov 2019 14:50:20 MST
 # Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 #-------------------------------------------------------------------------------
 # Sample makefile for building the code samples. Read inline comments for
@@ -138,7 +138,7 @@ BUILDDIR := build
 .PHONY: all
 all: make_builddir \
 	emit_build_config \
-	$(BUILDDIR)/s2s_translator
+	$(BUILDDIR)/macveth_translator
 
 .PHONY: test
 test: emit_build_config
@@ -153,11 +153,11 @@ make_builddir:
 	@test -d $(BUILDDIR) || mkdir $(BUILDDIR)
 
 
-$(BUILDDIR)/s2s_translator: $(BUILDDIR)/s2s_translator.o $(BUILDDIR)/CustomMatchers.o
+$(BUILDDIR)/macveth_translator: $(BUILDDIR)/macveth_translator.o $(BUILDDIR)/CustomMatchers.o
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-$(BUILDDIR)/s2s_translator.o: $(SRC_CLANG_DIR)/s2s_translator.cpp include/S2SUtils.h
+$(BUILDDIR)/macveth_translator.o: $(SRC_CLANG_DIR)/macveth_translator.cpp include/Utils.h include/IntrinsicsGenerator.h
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) -c $< \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
