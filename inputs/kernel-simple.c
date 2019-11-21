@@ -9,6 +9,6 @@ void kernel_spmvstyle(int m, int n, double A[m][n], double x[n], double y[n],
                       int uI, int uIt, int uIs, int uJ, int uJt, int uJs) {
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < m; j++) {
-            y[i] = y[i] + A[i][j] * x[j];
+            y[i] = A[i][j] * 5.;
         }
 }

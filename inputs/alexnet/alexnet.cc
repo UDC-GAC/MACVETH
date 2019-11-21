@@ -2,7 +2,7 @@
  * File              : alexnet.cc
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 11 Nov 2019 21:24:25 MST
- * Last Modified Date: Lun 11 Nov 2019 21:24:25 MST
+ * Last Modified Date: Mar 19 Nov 2019 15:35:11 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include <omp.h>

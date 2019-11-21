@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mér 20 Nov 2019 08:30:18 MST
+ * Last Modified Date: Mér 20 Nov 2019 16:52:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -111,7 +111,7 @@ class IterationHandler : public MatchFinder::MatchCallback {
         for (TAC Tac : TacList) {
             Tac.printTAC();
         }
-        intrinsics::translateTAC(TacList);
+        IntrinsicsInsGen::translateTAC(TacList);
         return TacList;
     }
 
@@ -121,8 +121,8 @@ class IterationHandler : public MatchFinder::MatchCallback {
         const BinaryOperator* TacBinOp =
             Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
         std::list<TAC> TacList = IterationHandler::wrapperStmt2TAC(TacBinOp);
-        int NLevel = 2;
-        int UnrollFactor = 5;
+        int NLevel = 1;
+        int UnrollFactor = 4;
 
         // Unroll factor applied to the for header
         for (int Inc = NLevel; Inc > 0; --Inc) {
@@ -149,8 +149,8 @@ class IterationHandler : public MatchFinder::MatchCallback {
             true, true);
         // tacBinOp = statement to unroll
         // need to find all the array subscripts
-        for (int Unroll = 0; Unroll < UnrollFactor; ++Unroll) {
-        }
+        // for (int Unroll = 0; Unroll < UnrollFactor; ++Unroll) {
+        //}
     }
 
    private:
@@ -165,8 +165,14 @@ class S2SConsumer : public ASTConsumer {
     S2SConsumer(Rewriter& R, ASTContext* C) : HandlerIteration(R), Context(C) {
         // EXPERIMENTAL MATCHER
         // This matcher works for 2-level for loops
-        StatementMatcher ForLoopNestedMatcher = matchers_utils::forLoopNested(
-            2,
+        // StatementMatcher ForLoopNestedMatcher =
+        // matchers_utils::forLoopNested(
+        //    1,
+        //    matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs",
+        //    "rhs"));
+        // Matcher.addMatcher(ForLoopNestedMatcher, &HandlerIteration);
+        StatementMatcher ForLoopNestedMatcher = matchers_utils::forLoopMatcher(
+            "1",
             matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
         Matcher.addMatcher(ForLoopNestedMatcher, &HandlerIteration);
     }
