@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Mér 20 Nov 2019 16:40:51 MST
+ * Last Modified Date: Mér 20 Nov 2019 18:12:09 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -62,9 +62,9 @@ StatementMatcher matchers_utils::forLoopMatcher(std::string Name,
                               .bind(matchers_utils::varnames::NameVarCond +
                                     Name))))),
                    hasRHS(expr(hasType(isInteger()))))),
-               hasBody(has(compoundStmt(has(InnerStmt)))))
-        //               hasBody(anyOf(InnerStmt,
-        //                             compoundStmt(forEachDescendant(InnerStmt)))))
+               //               hasBody(has(compoundStmt(forEach(InnerStmt)))))
+               // hasBody(anyOf(InnerStmt,
+               hasBody(has(compoundStmt(hasDescendant(InnerStmt)))))
         .bind("forLoop" + Name);
 }
 

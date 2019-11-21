@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Mér 20 Nov 2019 17:19:13 MST
+ * Last Modified Date: Mér 20 Nov 2019 18:16:58 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -57,7 +57,8 @@ bool contains(std::list<T>& listOfElements, const T& element) {
 class IntrinsicsInsGen {
    public:
     // public function
-    static std::string translateTAC(std::list<s2stranslator::TAC> TacList) {
+    static std::list<InstListType> translateTAC(
+        std::list<s2stranslator::TAC> TacList) {
         s2stranslator::TAC* PrevTAC = NULL;
         std::list<InstListType> InstList;
         // generate instructions for each TAC
@@ -75,14 +76,13 @@ class IntrinsicsInsGen {
             PrevTAC = &Tac;
         }
         printInstList(InstList);
-        return "translateTAC";
+        return InstList;
     }
 
    private:
     inline static std::list<std::string> RegDeclared;
-    inline static std::map<std::string, std::string> LoadReg;
     inline static std::list<std::string> TempRegDeclared;
-    inline static std::map<std::string, std::string> TempReg;
+    inline static std::map<std::string, std::string> RegMap;
     inline static std::map<std::string, int> TypeToWidth;
     inline static std::map<std::string, std::string> TypeToDataType;
     inline static std::map<BinaryOperator::Opcode, std::string> BOtoIntrinsic;
@@ -143,7 +143,7 @@ class IntrinsicsInsGen {
         std::string RegName = loadRegToStr(RegNo);
         std::string RegDecl = genRegDecl(RegName, BitWidth);
         RegDeclared.push_back(Op->getExprStr());
-        LoadReg[Op->getExprStr()] = RegName;
+        RegMap[Op->getExprStr()] = RegName;
         return RegDecl;
     }
 
@@ -155,8 +155,8 @@ class IntrinsicsInsGen {
             // int BitWidth =
             // getBitWidthFromType(Op->getClangExpr()->getType());
             int BitWidth = 256;
+            RegMap[Op->getExprStr()] = RegName;
             RegName = genRegDecl(RegName, BitWidth);
-            TempReg[Op->getExprStr()] = RegName;
         }
         return RegName;
     }
@@ -169,7 +169,7 @@ class IntrinsicsInsGen {
         std::string DataType = "pd";
         std::string RhsStr = genVarArgsFunc(
             genAVX2Ins(BitWidth, FuncName, DataType),
-            {LoadReg[Op1->getExprStr()], LoadReg[Op2->getExprStr()]});
+            {RegMap[Op1->getExprStr()], RegMap[Op2->getExprStr()]});
         std::string LhsStr = getRegister(Res);
         std::string FullInstruction = genAssignment(LhsStr, RhsStr);
         return FullInstruction;
@@ -233,8 +233,8 @@ class IntrinsicsInsGen {
     // been created for the ease of TAC handling. So, if a TAC does not
     // belong to Expr class.
     static bool needLoad(s2stranslator::TempExpr* Op) {
-        if (IntrinsicsInsGen::LoadReg.find(Op->getExprStr()) !=
-            IntrinsicsInsGen::LoadReg.end()) {
+        if (IntrinsicsInsGen::RegMap.find(Op->getExprStr()) !=
+            IntrinsicsInsGen::RegMap.end()) {
             return false;
         }
         // std::cout << "checking if it is not Clang" << std::endl;

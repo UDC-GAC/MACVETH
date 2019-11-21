@@ -2,7 +2,7 @@
  * File              : s2s_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mér 20 Nov 2019 16:52:26 MST
+ * Last Modified Date: Mér 20 Nov 2019 17:29:39 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -111,7 +111,6 @@ class IterationHandler : public MatchFinder::MatchCallback {
         for (TAC Tac : TacList) {
             Tac.printTAC();
         }
-        IntrinsicsInsGen::translateTAC(TacList);
         return TacList;
     }
 
@@ -121,6 +120,8 @@ class IterationHandler : public MatchFinder::MatchCallback {
         const BinaryOperator* TacBinOp =
             Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
         std::list<TAC> TacList = IterationHandler::wrapperStmt2TAC(TacBinOp);
+        std::list<InstListType> InstList =
+            IntrinsicsInsGen::translateTAC(TacList);
         int NLevel = 1;
         int UnrollFactor = 4;
 
@@ -143,10 +144,14 @@ class IterationHandler : public MatchFinder::MatchCallback {
         clang::CharSourceRange CharRangeStr =
             clang::CharSourceRange::getTokenRange(TacBinOp->getSourceRange());
 
-        Rewrite.InsertText(
-            TacBinOp->getBeginLoc(),
-            "/* unrolling factor " + std::to_string(UnrollFactor) + " */\n",
-            true, true);
+        for (InstListType IList : InstList) {
+            for (std::string S : IList) {
+                Rewrite.InsertText(TacBinOp->getBeginLoc(), S + ";\n", true,
+                                   true);
+            }
+        }
+        Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
+
         // tacBinOp = statement to unroll
         // need to find all the array subscripts
         // for (int Unroll = 0; Unroll < UnrollFactor; ++Unroll) {
