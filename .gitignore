@@ -3,6 +3,13 @@
 # Some folders
 build/
 
+# CMake generated files
+Makefile
+*Cache*
+*CMakeFiles*
+*.cmake
+compile_options.json
+
 # Prerequisites
 *.d
 

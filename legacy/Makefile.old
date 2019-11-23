@@ -1,7 +1,7 @@
-# File              : Makefile
+# File              : Makefile.old
 # Author            : Marcos Horro <marcos.horro@udc.gal>
 # Date              : Mar 05 Nov 2019 22:44:25 MST
-# Last Modified Date: Xov 21 Nov 2019 14:50:20 MST
+# Last Modified Date: Ven 22 Nov 2019 21:52:01 MST
 # Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 #-------------------------------------------------------------------------------
 # Sample makefile for building the code samples. Read inline comments for
@@ -162,8 +162,7 @@ $(BUILDDIR)/macveth_translator.o: $(SRC_CLANG_DIR)/macveth_translator.cpp includ
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
 $(BUILDDIR)/CustomMatchers.o: $(SRC_CLANG_DIR)/CustomMatchers.cpp include/CustomMatchers.h
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) -c $< \
-		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) -c $< -o $@
 
 
 .PHONY: clean format
@@ -173,3 +172,4 @@ clean:
 
 format:
 	find . -name "*.cpp" | xargs clang-format -style=file -i
+

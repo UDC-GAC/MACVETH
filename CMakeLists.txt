@@ -1,6 +1,7 @@
 # Minimum version required
 cmake_minimum_required(VERSION 3.13)
 
+
 # Project name
 set(PROJECT_NAME MACVETH)
 project(${PROJECT_NAME} VERSION 0.1)
@@ -12,9 +13,6 @@ set(LLVM_BUILD_PATH /usr/lib/llvm-9)
 set(LLVM_BIN_PATH ${LLVM_BUILD_PATH}/bin)
 set(CURSES_USE_NCURSES TRUE)
 
-#add_library(macveth_flags INTERFACE)
-#target_link_libraries(macveth_flags INTERFACE
-#    "$<BUILD_INTERFACE:-L/usr/lib/llvm-9/lib>")
 
 ############################################################
 # Setting CXXFLAGS using llvm-config + custom flags
@@ -41,6 +39,9 @@ find_library(LibClang_LIBRARY NAMES clang HINTS /usr/lib/llvm-9/lib)
 set(LibClang_LIBRARIES ${LibClang_LIBRARY})
 set(LibClang_INCLUDE_DIRS ${CLANG_INCLUDE_DIR})
 
+# for YCM
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # configuration file, for macros for instance
 configure_file(macveth_translator.h.in src/macveth_translator.h)
 
@@ -63,7 +64,6 @@ target_include_directories(MACVETH_MAIN PUBLIC
 target_link_libraries(MACVETH_MAIN
     PRIVATE
     macveth_lib
-    #    macveth_flags
     ${LibClang_LIBRARIES}
     -L/usr/lib/llvm-9/lib)
 
@@ -103,6 +103,7 @@ target_link_libraries(MACVETH_MAIN
 target_link_libraries(MACVETH_MAIN
     PRIVATE
     LLVM)
+
 ##target_link_libraries(MACVETH_MAIN
 ##    PUBLIC
 ##    LLVMX86AsmParser # MC, MCParser, Support, X86Desc, X86Info
