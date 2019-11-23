@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Xov 21 Nov 2019 15:29:49 MST
+ * Last Modified Date: Sáb 23 Nov 2019 12:01:47 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -32,10 +32,6 @@
 #include <string>
 #include <tuple>
 
-#include "CustomMatchers.h"
-#include "IntrinsicsGenerator.h"
-#include "ThreeAddressCode.h"
-#include "Utils.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -51,6 +47,10 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
+#include "include/CustomMatchers.h"
+#include "include/IntrinsicsGenerator.h"
+#include "include/TAC.h"
+#include "include/Utils.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Signals.h"
@@ -81,7 +81,7 @@ class IterationHandler : public MatchFinder::MatchCallback {
     std::list<TAC> wrapperStmt2TAC(const clang::BinaryOperator* S) {
         // cout << "[DEBUG]: wrapperStmt2TAC" << endl;
         std::list<TAC> TacList;
-        TAC::binaryOperator2TAC(S, &TacList, -1);
+        // TAC::binaryOperator2TAC(S, &TacList, -1);
         TacList.reverse();
         std::tuple<const BinaryOperator*, std::list<TAC>> Tup =
             std::make_tuple(S, TacList);

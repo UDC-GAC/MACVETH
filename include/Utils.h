@@ -2,7 +2,7 @@
  * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Xov 21 Nov 2019 15:39:05 MST
+ * Last Modified Date: Sáb 23 Nov 2019 11:51:25 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -25,11 +25,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef MACVETH_UTILS
-#define MACVETH_UTILS
+#ifndef MACVETH_UTILS_H
+#define MACVETH_UTILS_H
 
+#include "clang/AST/AST.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/Lex/Lexer.h"
 
 using namespace clang;
 
@@ -48,14 +50,17 @@ class Utils {
     // some auxiliary functions
     template <typename T>
     static bool contains(std::list<T>& listOfElements, const T& element);
+
+    // converting expressions to strings
+    static std::string getStringFromExpr(Expr* E);
+
+    // managing resources
     static clang::SourceManager* getSourceMgr();
     static clang::LangOptions* getLangOpts();
     static void setOpts(SourceManager* SO, LangOptions* LO);
 };
 
-/*
- * Generic function to find if an element of any type exists in list
- */
+//-------------------------------------------------------------
 template <typename T>
 bool Utils::contains(std::list<T>& listOfElements, const T& element) {
     // Find the iterator if element in list
@@ -65,19 +70,6 @@ bool Utils::contains(std::list<T>& listOfElements, const T& element) {
     return it != listOfElements.end();
 }
 
-//-------------------------------------------------------------
-SourceManager* Utils::getSourceMgr() { return Utils::SourceMgr; }
-
-//-------------------------------------------------------------
-LangOptions* Utils::getLangOpts() { return Utils::LangOpts; }
-
-//-------------------------------------------------------------
-void Utils::setOpts(SourceManager* SO, LangOptions* LO) {
-    Utils::SourceMgr = SO;
-    Utils::LangOpts = LO;
-}
-
-//-------------------------------------------------------------
-
 }  // namespace macveth
+//}  // namespace macveth
 #endif

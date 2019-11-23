@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Xov 21 Nov 2019 15:34:15 MST
+ * Last Modified Date: Sáb 23 Nov 2019 11:40:07 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,16 +26,16 @@
  * SOFTWARE.
  */
 
-#ifndef INTRINSICS_H
-#define INTRINSICS_H
+#ifndef MACVETH_INTRINSICS_H
+#define MACVETH_INTRINSICS_H
 #include <cstdarg>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 
-#include "ThreeAddressCode.h"
-#include "Utils.h"
+#include "include/TAC.h"
+#include "include/Utils.h"
 
 namespace macveth {
 
@@ -96,6 +96,9 @@ class IntrinsicsInsGen {
     inline static std::map<std::string, std::string> TypeToDataType;
     inline static std::map<BinaryOperator::Opcode, std::string> BOtoIntrinsic;
 
+    // declaration of functions
+    static std::string getRegister(TempExpr* Op);
+
     // FIXME
     static std::string getFuncFromOpCode(BinaryOperator::Opcode Op) {
         return BOtoIntrinsic[Op];
@@ -154,20 +157,6 @@ class IntrinsicsInsGen {
         RegDeclared.push_back(Op->getExprStr());
         RegMap[Op->getExprStr()] = RegName;
         return RegDecl;
-    }
-
-    static std::string getRegister(TempExpr* Op) {
-        std::string RegName = Op->getExprStr();
-        if (!Utils::contains(TempRegDeclared, RegName)) {
-            TempRegDeclared.push_back(RegName);
-            // FIXME
-            // int BitWidth =
-            // getBitWidthFromType(Op->getClangExpr()->getType());
-            int BitWidth = 256;
-            RegMap[Op->getExprStr()] = RegName;
-            RegName = genRegDecl(RegName, BitWidth);
-        }
-        return RegName;
     }
 
     static std::string getGenericFunction(std::string FuncName, TempExpr* Res,
@@ -339,15 +328,6 @@ class IntrinsicsInsGen {
    public:
     static IntrinsicsInsGen* getInstance();
 };  // class IntrinsicsInsGen
-
-// Singleton pattern
-IntrinsicsInsGen* IntrinsicsInsGen::Singleton = new IntrinsicsInsGen();
-IntrinsicsInsGen* IntrinsicsInsGen::getInstance() {
-    if (IntrinsicsInsGen::Singleton == 0) {
-        IntrinsicsInsGen::Singleton = new IntrinsicsInsGen();
-    }
-    return IntrinsicsInsGen::Singleton;
-}
 
 }  // namespace macveth
 #endif

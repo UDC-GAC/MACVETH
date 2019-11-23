@@ -1,8 +1,8 @@
 /**
- * File              : ThreeAddressCode.h
+ * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Xov 21 Nov 2019 15:33:53 MST
+ * Last Modified Date: Sáb 23 Nov 2019 11:12:49 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,13 +26,13 @@
  * SOFTWARE.
  */
 
-#ifndef TAC_H
-#define TAC_H
+#ifndef MACVETH_TAC_H
+#define MACVETH_TAC_H
 #include <iostream>
 #include <string>
 
-#include "Utils.h"
 #include "clang/AST/AST.h"
+#include "include/Utils.h"
 
 using namespace clang;
 
@@ -43,6 +43,9 @@ namespace macveth {
 class TempExpr {
    public:
     TempExpr(std::string E) : ExprStr(E) {}
+    TempExpr(Expr* E) : ClangExpr(E) {
+        this->ExprStr = Utils::getStringFromExpr(E);
+    }
 
     void setClangExpr(clang::Expr* ClangExpr) { this->ClangExpr = ClangExpr; }
     clang::Expr* getClangExpr() { return this->ClangExpr; }
@@ -59,9 +62,6 @@ class TempExpr {
     static std::string getNameTempReg(int Val) {
         return "t" + std::to_string(Val);
     }
-
-    // A hack for translating Expr to string
-    static TempExpr* getTempExprFromExpr(Expr* E);
 
    private:
     std::string TypeStr = "double";
@@ -95,68 +95,14 @@ class TAC {
                   << this->getC()->getExprStr() << ", " << Op << std::endl;
     }
 
+    // TODO
     static Expr* createExprFromTAC(TAC* TacExpr) { return NULL; }
 
     Expr* getExprFromTAC() { return TAC::createExprFromTAC(this); }
 
     // Return list of 3AC from a starting Binary Operator
     static void binaryOperator2TAC(const clang::BinaryOperator* S,
-                                   std::list<TAC>* TacList, int Val) {
-        // cout << "[DEBUG]: bo2TAC" << endl;
-        Expr* Lhs = S->getLHS();
-        Expr* Rhs = S->getRHS();
-        bool LhsTypeBin = false;
-        bool RhsTypeBin = false;
-        clang::BinaryOperator* LhsBin = NULL;
-        clang::BinaryOperator* RhsBin = NULL;
-        if (LhsBin = dyn_cast<clang::BinaryOperator>(Lhs)) {
-            LhsTypeBin = true;
-        }
-        if (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs)) {
-            RhsTypeBin = true;
-        }
-
-        // we are in the the first case
-        TempExpr* TmpA = NULL;
-        if (Val == -1) {
-            TmpA = TempExpr::getTempExprFromExpr(Lhs);
-            TmpA->setClangExpr(Lhs);
-        } else {
-            TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
-        }
-        // recursive part, to delve deeper into BinaryOperators
-        if ((LhsTypeBin == true) && (RhsTypeBin == true)) {
-            // both true
-            TempExpr* TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-            TempExpr* TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 2));
-            TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-            TacList->push_back(NewTac);
-            binaryOperator2TAC(RhsBin, TacList, Val + 1);
-            binaryOperator2TAC(LhsBin, TacList, Val + 2);
-        } else if ((LhsTypeBin == false) && (RhsTypeBin == true)) {
-            TempExpr* TmpB = TempExpr::getTempExprFromExpr(Lhs);
-            TmpB->setClangExpr(Lhs);
-            TempExpr* TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-            TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-            TacList->push_back(NewTac);
-            binaryOperator2TAC(RhsBin, TacList, Val + 1);
-        } else if ((LhsTypeBin == true) && (RhsTypeBin == false)) {
-            TempExpr* TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-            TempExpr* TmpC = TempExpr::getTempExprFromExpr(Rhs);
-            TmpC->setClangExpr(Rhs);
-            TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-            TacList->push_back(NewTac);
-            binaryOperator2TAC(LhsBin, TacList, Val + 1);
-        } else {
-            TempExpr* TmpB = TempExpr::getTempExprFromExpr(Lhs);
-            TmpB->setClangExpr(Lhs);
-            TempExpr* TmpC = TempExpr::getTempExprFromExpr(Rhs);
-            TmpC->setClangExpr(Rhs);
-            TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-            TacList->push_back(NewTac);
-        }
-        return;
-    }
+                                   std::list<TAC>* TacList, int Val);
 
    private:
     TempExpr* A;
@@ -164,18 +110,6 @@ class TAC {
     TempExpr* C;
     clang::BinaryOperator::Opcode OP;
 };
-
-TempExpr* TempExpr::getTempExprFromExpr(Expr* E) {
-    SourceManager* SM = Utils::getSourceMgr();
-    LangOptions* LO = Utils::getLangOpts();
-    clang::CharSourceRange CharRangeExpr =
-        clang::CharSourceRange::getTokenRange(E->getSourceRange());
-    const std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO);
-    // const std::string Text = "";
-    TempExpr* Temp = new TempExpr(Text);
-    //    Temp->setClangExpr(E);
-    return Temp;
-}
 
 }  // namespace macveth
 #endif

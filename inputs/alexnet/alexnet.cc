@@ -2,7 +2,7 @@
  * File              : alexnet.cc
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 11 Nov 2019 21:24:25 MST
- * Last Modified Date: Mar 19 Nov 2019 15:35:11 MST
+ * Last Modified Date: Xov 21 Nov 2019 11:41:55 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include <omp.h>
@@ -193,6 +193,12 @@ inline void fullconnection3(const vector<float>& bottom,
 //		}
 //}
 
+// local response normalization
+// based on the lateral inhibition, concept in neurobiology which refers to the
+// capacity of a neuron to reduce the activity of its neighbors. In this case,
+// the idea is to carry out local contrast enhacement so that locally maximum
+// pixels value are used as excitation for next layers.
+// Non-trainable layer
 inline void lrn(quote_vector3D(bottom), float k, float alpha, float beta,
                 int local_size) {
     // bottom: n x c x n x m
@@ -226,12 +232,12 @@ inline void lrn(quote_vector3D(bottom), float k, float alpha, float beta,
     }
 }
 
+// activation function that turns numbers (aka logits) into probabilities that
+// sum to one; basically outputs a vector that represents the probability
+// distributions of a list of potential outcomes
 inline void softmax(vector<float>& bottom) {
     double lat_sw = 561000;
     double power_sw = 1.32;
-
-    //一般softmax作为最后一层输出，此时输入是一个vector，输出是一个vector
-    //我们可以认为：
 
     int count = bottom.size();
     vector<float> exp_rst(count);
