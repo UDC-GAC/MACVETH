@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Sáb 23 Nov 2019 11:40:07 MST
+ * Last Modified Date: Lun 25 Nov 2019 11:15:28 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,14 +28,15 @@
 
 #ifndef MACVETH_INTRINSICS_H
 #define MACVETH_INTRINSICS_H
+
+#include "include/TAC.h"
+#include "include/TempExpr.h"
+#include "include/Utils.h"
 #include <cstdarg>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
-
-#include "include/TAC.h"
-#include "include/Utils.h"
 
 namespace macveth {
 
@@ -43,291 +44,143 @@ namespace macveth {
 typedef std::list<std::string> InstListType;
 
 class IntrinsicsInsGen {
-   public:
-    // Main function:
-    // It basically performs three passes:
-    // 1.- Looks for memory loads
-    // 2.- Looks for arithmetic operations
-    // 3.- Generates memory stores
-    static std::list<InstListType> translateTAC(
-        std::list<macveth::TAC> TacList) {
-        macveth::TAC* PrevTAC = NULL;
-        std::list<InstListType> InstList;
-        InstListType LoadList;
-        // InstListType FuncList;
-        InstListType StoreList;
-        // generate loads
-        for (macveth::TAC Tac : TacList) {
-            TempExpr* Op1 = Tac.getB();
-            TempExpr* Op2 = Tac.getC();
-            if (needLoad(Op1)) {
-                LoadList.push_back(genLoad(Op1));
-            }
-            if (needLoad(Op2)) {
-                LoadList.push_back(genLoad(Op2));
-            }
-        }
-        InstList.push_back(LoadList);
+public:
+  // Main function:
+  // It basically performs three passes:
+  // 1.- Looks for memory loads
+  // 2.- Looks for arithmetic operations
+  // 3.- Generates memory stores
+  static std::list<InstListType> translateTAC(std::list<macveth::TAC> TacList);
 
-        // generate operations
-        InstList.push_back(genIntrinsicsIns(TacList));
+private:
+  inline static std::list<std::string> RegDeclared;
+  inline static std::list<std::string> TempRegDeclared;
+  inline static std::map<std::string, std::string> RegMap;
 
-        // generate stores
-        for (TAC Tac : TacList) {
-            TempExpr* Res = Tac.getA();
-            TempExpr* Op1 = Tac.getB();
-            TempExpr* Op2 = Tac.getC();
-            if (!Res->isNotClang()) {
-                // Store in memory address given
-                StoreList.push_back(genStore(Op1, Op2->getExprStr()));
-            }
-        }
-        InstList.push_back(StoreList);
-        printInstList(InstList);
-        return InstList;
+  inline static std::map<std::string, int> TypeToWidth;
+  inline static std::map<std::string, std::string> TypeToDataType;
+  inline static std::map<BinaryOperator::Opcode, std::string> BOtoIntrinsic;
+
+  /// Get a register given the operand, to check whether it is already mapped or
+  /// if it needs a new declaration
+  static std::string getRegister(TempExpr *Op);
+
+  /// Retrieves mapping from OpCode to string
+  static std::string getFuncFromOpCode(BinaryOperator::Opcode Op) {
+    return BOtoIntrinsic[Op];
+  }
+
+  /// Get bit width from data type
+  static int getBitWidthFromType(clang::QualType ExprType) {
+    return IntrinsicsInsGen::TypeToWidth[ExprType.getAsString()];
+  }
+
+  /// Get intrinsics instruction suffix from data type
+  static std::string getDataTypeFromType(clang::QualType ExprType) {
+    return IntrinsicsInsGen::TypeToDataType[ExprType.getAsString()];
+  }
+
+  /// FIXME
+  /// Generates the body of the AVX2 instruction, e.g. __mm256_add_pd,
+  /// without any arguments. It is an auxiliary function
+  static std::string genAVX2Ins(int BitWidth, std::string Name,
+                                std::string DataType) {
+    std::string IntrinsicsIns =
+        "_mm" + std::to_string(BitWidth) + "_" + Name + "_" + DataType;
+    return IntrinsicsIns;
+  }
+
+  /// FIXME
+  /// Generate AVX declarations
+  static std::string genRegDecl(std::string Name, int Width) {
+    std::string RegDecl = "__m" + std::to_string(Width) + " " + Name;
+    return RegDecl;
+  }
+
+  /// Creates a loadReg# string
+  static std::string loadRegToStr(int RegNo) {
+    return "loadReg" + std::to_string(RegNo);
+  }
+
+  /// Debugging purposes
+  static void printInstList(std::list<InstListType> List) {
+    for (InstListType L : List) {
+      printList(L);
     }
+  }
 
-   private:
-    inline static std::list<std::string> RegDeclared;
-    inline static std::list<std::string> TempRegDeclared;
-    inline static std::map<std::string, std::string> RegMap;
-
-    inline static std::map<std::string, int> TypeToWidth;
-    inline static std::map<std::string, std::string> TypeToDataType;
-    inline static std::map<BinaryOperator::Opcode, std::string> BOtoIntrinsic;
-
-    // declaration of functions
-    static std::string getRegister(TempExpr* Op);
-
-    // FIXME
-    static std::string getFuncFromOpCode(BinaryOperator::Opcode Op) {
-        return BOtoIntrinsic[Op];
+  /// Debugging purposes
+  static void printList(InstListType List) {
+    for (std::string S : List) {
+      std::cout << S << std::endl;
     }
+  }
 
-    // get bit width from data type
-    static int getBitWidthFromType(clang::QualType ExprType) {
-        return IntrinsicsInsGen::TypeToWidth[ExprType.getAsString()];
+  /// Maps a register allocation for an operator
+  static std::string getAvailableReg(TempExpr *Op);
+
+  /// Retrieves the source code for a function
+  static std::string getGenericFunction(std::string FuncName, TempExpr *Res,
+                                        TempExpr *Op1, TempExpr *Op2);
+
+  /// Given the name of the function and a list of operands, creates the source
+  /// code for it
+  static std::string genVarArgsFunc(std::string NameFunc,
+                                    std::list<std::string> Operands);
+
+  /// Generate load instruction from operand
+  static std::string genLoad(TempExpr *Op);
+
+  /// Generates the store instruction
+  static std::string genStore(TempExpr *St, std::string Rhs);
+
+  /// Generates the assignment code given LHS and RHS
+  static std::string genAssignment(std::string Lhs, std::string Rhs) {
+    std::string AssignmentStr = Lhs + " = " + Rhs;
+    return AssignmentStr;
+  }
+
+  /// FIXME
+  /// This is a fucking awful hack
+  /// TempExpr are used as wrappers of Expr and new Nodes. This class has
+  /// been created for the ease of TAC handling. So, if a TAC does not
+  /// belong to Expr class.
+  static bool needLoad(macveth::TempExpr *Op) {
+    if (IntrinsicsInsGen::RegMap.find(Op->getExprStr()) !=
+        IntrinsicsInsGen::RegMap.end()) {
+      return false;
     }
+    // std::cout << "checking if it is not Clang" << std::endl;
+    return !Op->isNotClang();
+  }
 
-    // get intrinsics instruction suffix from data type
-    static std::string getDataTypeFromType(clang::QualType ExprType) {
-        return IntrinsicsInsGen::TypeToDataType[ExprType.getAsString()];
-    }
+  /// Main function when generating instructions: takes a list of TAC and
+  /// iteratively creates for each its equivalent in intrinsics code
+  static InstListType genIntrinsicsIns(std::list<macveth::TAC> TacList);
 
-    // FIXME: global variable
+  /// Generates a FMA from two consecutives TACs
+  static std::string generateFMA(macveth::TAC *PrevTAC,
+                                 macveth::TAC *ActualTAC);
 
-    // Generates the body of the AVX2 instruction, e.g. __mm256_add_pd,
-    // without any arguments. It is an auxiliary function
-    static std::string genAVX2Ins(int BitWidth, std::string Name,
-                                  std::string DataType) {
-        std::string IntrinsicsIns =
-            "_mm" + std::to_string(BitWidth) + "_" + Name + "_" + DataType;
-        return IntrinsicsIns;
-    }
+  /// Checks whether a FMA can be generated
+  static bool potentialFMA(macveth::TAC *PrevTAC, macveth::TAC *Tac);
 
-    // generate AVX declarations if needed
-    static std::string genRegDecl(std::string Name, int Width) {
-        std::string RegDecl = "__m" + std::to_string(Width) + " " + Name;
-        return RegDecl;
-    }
+private:
+  /// Singleton pattern declaratio
+  static IntrinsicsInsGen *Singleton;
+  IntrinsicsInsGen() {
+    TypeToWidth = {{"double", 256}, {"float", 256}};
+    TypeToDataType = {{"double", "pd"}, {"float", "sp"}};
+    BOtoIntrinsic = {{BO_Mul, "mul"},
+                     {BO_Div, "div"},
+                     {BO_Add, "add"},
+                     {BO_Sub, "sub"},
+                     {BO_Assign, "store"}};
+  };
 
-    static std::string loadRegToStr(int RegNo) {
-        return "loadReg" + std::to_string(RegNo);
-    }
+public:
+  static IntrinsicsInsGen *getInstance();
+}; // class IntrinsicsInsGen
 
-    // debugging purposes
-    static void printInstList(std::list<InstListType> List) {
-        for (InstListType L : List) {
-            printList(L);
-        }
-    }
-
-    // debugging purposes
-    static void printList(InstListType List) {
-        for (std::string S : List) {
-            std::cout << S << std::endl;
-        }
-    }
-
-    static std::string getAvailableReg(TempExpr* Op) {
-        int RegNo = RegDeclared.size();
-        int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
-        std::string RegName = loadRegToStr(RegNo);
-        std::string RegDecl = genRegDecl(RegName, BitWidth);
-        RegDeclared.push_back(Op->getExprStr());
-        RegMap[Op->getExprStr()] = RegName;
-        return RegDecl;
-    }
-
-    static std::string getGenericFunction(std::string FuncName, TempExpr* Res,
-                                          TempExpr* Op1, TempExpr* Op2) {
-        // int BitWidth = getBitWidthFromType(St->getClangExpr()->getType());
-        // FIXME
-        int BitWidth = 256;
-        std::string DataType = "pd";
-        std::string LhsStr = getRegister(Res);
-        std::string RhsStr = genVarArgsFunc(
-            genAVX2Ins(BitWidth, FuncName, DataType),
-            {RegMap[Op1->getExprStr()], RegMap[Op2->getExprStr()]});
-        std::string FullInstruction = genAssignment(LhsStr, RhsStr);
-        return FullInstruction;
-    }
-
-    static std::string genVarArgsFunc(std::string NameFunc,
-                                      std::list<std::string> Operands) {
-        std::string FullFunc = NameFunc + "(";
-        std::list<std::string>::iterator Op;
-        int i = 0;
-        for (Op = Operands.begin(); Op != Operands.end(); ++Op) {
-            if (i++ == (Operands.size() - 1)) {
-                FullFunc += *Op;
-            } else {
-                FullFunc += *Op + ", ";
-            }
-        }
-        FullFunc += ")";
-        return FullFunc;
-    }
-
-    // Generate load instruction
-    static std::string genLoad(TempExpr* Op) {
-        std::string RegRes = getAvailableReg(Op);
-        int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
-        std::string Name = "load";
-        std::string DataType =
-            getDataTypeFromType(Op->getClangExpr()->getType());
-        // std::cout << Op->getClangExpr()->getType().getAsString() <<
-        // std::endl;
-        std::string RhsStr = genVarArgsFunc(
-            genAVX2Ins(BitWidth, Name, DataType), {Op->getExprStr()});
-        std::string AssignmentStr = genAssignment(RegRes, RhsStr);
-        // std::cout << AssignmentStr << std::endl;
-        return AssignmentStr;
-    }
-
-    // Generates the store instruction
-    static std::string genStore(TempExpr* St, std::string Rhs) {
-        int BitWidth = getBitWidthFromType(St->getClangExpr()->getType());
-        std::string Name = "store";
-        std::string DataType =
-            getDataTypeFromType(St->getClangExpr()->getType());
-        // std::cout << St->getClangExpr()->getType().getAsString() <<
-        // std::endl;
-        std::string AssignmentStr = genVarArgsFunc(
-            genAVX2Ins(BitWidth, Name, DataType), {St->getExprStr(), Rhs});
-        // std::cout << AssignmentStr << std::endl;
-        return AssignmentStr;
-    }
-
-    // Generates the assignment code given LHS and RHS
-    static std::string genAssignment(std::string Lhs, std::string Rhs) {
-        std::string AssignmentStr = Lhs + " = " + Rhs;
-        return AssignmentStr;
-    }
-
-    // FIXME
-    // This is a fucking awful hack
-    // TempExpr are used as wrappers of Expr and new Nodes. This class has
-    // been created for the ease of TAC handling. So, if a TAC does not
-    // belong to Expr class.
-    static bool needLoad(macveth::TempExpr* Op) {
-        if (IntrinsicsInsGen::RegMap.find(Op->getExprStr()) !=
-            IntrinsicsInsGen::RegMap.end()) {
-            return false;
-        }
-        // std::cout << "checking if it is not Clang" << std::endl;
-        return !Op->isNotClang();
-    }
-
-    // Main function when generating instructions
-    static InstListType genIntrinsicsIns(std::list<macveth::TAC> TacList) {
-        // we can have basically these situations:
-        // 1.- a/tmp = tmp op tmp
-        // 2.- a/tmp = b   op tmp
-        // 3.- a/tmp = tmp op c
-        // 4.- a/tmp = b   op c
-        InstListType InsList;
-        TAC PrevTAC;
-        for (macveth::TAC Tac : TacList) {
-            std::string FuncName = getFuncFromOpCode(Tac.getOP());
-            if (!FuncName.compare("store")) {
-                continue;
-            }
-            TempExpr* Res = Tac.getA();
-            TempExpr* Op1 = Tac.getB();
-            TempExpr* Op2 = Tac.getC();
-            // check whether you can fuse a mul and add/sub
-            if (potentialFMA(&PrevTAC, &Tac)) {
-                InsList.pop_back();
-                std::string NewInst = generateFMA(&PrevTAC, &Tac);
-                InsList.push_back(NewInst);
-                PrevTAC = Tac;
-                continue;
-            }
-            InsList.push_back(getGenericFunction(FuncName, Res, Op1, Op2));
-            PrevTAC = Tac;
-        }
-        return InsList;
-    }
-
-    // generates a FMA from two consecutives TACs
-    static std::string generateFMA(macveth::TAC* PrevTAC,
-                                   macveth::TAC* ActualTAC) {
-        std::string FuncName = getFuncFromOpCode(ActualTAC->getOP());
-        macveth::TAC* MulTAC = (!FuncName.compare("mul")) ? ActualTAC : PrevTAC;
-        macveth::TAC* OtherTAC =
-            (FuncName.compare("mul")) ? ActualTAC : PrevTAC;
-
-        FuncName = "fm" + getFuncFromOpCode(OtherTAC->getOP());
-        TempExpr* OpA = MulTAC->getB();
-        TempExpr* OpB = MulTAC->getC();
-        TempExpr* OpC = !OtherTAC->getB()->isNotClang() ? OtherTAC->getB()
-                                                        : OtherTAC->getC();
-
-        int BitWidth = 256;
-        std::string DataType = "pd";
-        std::string LhsStr = getRegister(OtherTAC->getA());
-        std::string RhsStr = genVarArgsFunc(
-            genAVX2Ins(BitWidth, FuncName, DataType),
-            {RegMap[OpA->getExprStr()], RegMap[OpB->getExprStr()],
-             RegMap[OpC->getExprStr()]});
-        std::string FullInstruction = genAssignment(LhsStr, RhsStr);
-
-        return FullInstruction;
-    }
-
-    // checks whether a FMA can be generated
-    static bool potentialFMA(macveth::TAC* PrevTAC, macveth::TAC* Tac) {
-        if (PrevTAC == NULL) return false;
-        std::string PrevTACOp = getFuncFromOpCode(PrevTAC->getOP());
-        std::string TACOp = getFuncFromOpCode(Tac->getOP());
-        if ((!PrevTACOp.compare("mul")) &&
-            ((!TACOp.compare("add")) || (!TACOp.compare("sub")))) {
-            return true;
-        }
-        if (((!PrevTACOp.compare("add")) || (!PrevTACOp.compare("sub"))) &&
-            (!TACOp.compare("mul"))) {
-            return true;
-        }
-        return false;
-    }
-
-   private:
-    static IntrinsicsInsGen* Singleton;
-    // to avoid creating instances of this class
-    IntrinsicsInsGen() {
-        TypeToWidth = {{"double", 256}, {"float", 256}};
-        TypeToDataType = {{"double", "pd"}, {"float", "sp"}};
-        BOtoIntrinsic = {{BO_Mul, "mul"},
-                         {BO_Div, "div"},
-                         {BO_Add, "add"},
-                         {BO_Sub, "sub"},
-                         {BO_Assign, "store"}};
-    };
-
-   public:
-    static IntrinsicsInsGen* getInstance();
-};  // class IntrinsicsInsGen
-
-}  // namespace macveth
+} // namespace macveth
 #endif

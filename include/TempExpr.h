@@ -1,8 +1,8 @@
 /**
- * File              : TAC.h
+ * File              : TempExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Lun 25 Nov 2019 11:00:51 MST
+ * Last Modified Date: Lun 25 Nov 2019 11:01:09 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,7 +28,7 @@
 
 #ifndef MACVETH_TAC_H
 #define MACVETH_TAC_H
-#include "include/TempExpr.h"
+
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include <iostream>
@@ -67,48 +67,6 @@ private:
   std::string TypeStr = "double";
   std::string ExprStr;
   clang::Expr *ClangExpr = NULL;
-};
-
-// Class TAC: three-address-code
-// This class is no more than a wrapper for holding three Expr and a Opcode, in
-// a way that:
-class TAC {
-  // This class is meant to hold structures such as:
-  //                  a = b op c
-  // Where a, b and c are Expr and op is an Opcode
-  // Consturctor
-public:
-  TAC(){}; // empty constructor
-  TAC(TempExpr *A, TempExpr *B, TempExpr *C, clang::BinaryOperator::Opcode OP)
-      : A(A), B(B), C(C), OP(OP) {}
-
-  TempExpr *getA() { return this->A; };
-  TempExpr *getB() { return this->B; };
-  TempExpr *getC() { return this->C; };
-  clang::BinaryOperator::Opcode getOP() { return this->OP; };
-
-  // Just for debugging purposes
-  void printTAC() {
-    std::string Op = BinaryOperator::getOpcodeStr(this->getOP()).str();
-    std::cout << "t: " << this->getA()->getExprStr() << ", "
-              << this->getB()->getExprStr() << ", "
-              << this->getC()->getExprStr() << ", " << Op << std::endl;
-  }
-
-  // TODO
-  static Expr *createExprFromTAC(TAC *TacExpr) { return NULL; }
-
-  Expr *getExprFromTAC() { return TAC::createExprFromTAC(this); }
-
-  // Return list of 3AC from a starting Binary Operator
-  static void binaryOperator2TAC(const clang::BinaryOperator *S,
-                                 std::list<TAC> *TacList, int Val);
-
-private:
-  TempExpr *A;
-  TempExpr *B;
-  TempExpr *C;
-  clang::BinaryOperator::Opcode OP;
 };
 
 } // namespace macveth

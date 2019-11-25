@@ -1,8 +1,8 @@
 /**
- * File              : StmtWrapper.h
+ * File              : TempExpr.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 25 Nov 2019 11:27:50 MST
+ * Date              : Ven 22 Nov 2019 14:18:48 MST
+ * Last Modified Date: Lun 25 Nov 2019 10:57:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -25,53 +25,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef MACVETH_STMTWRAPPER_H
-#define MACVETH_STMTWRAPPER_H
 
-#include "include/IntrinsicsGenerator.h"
-#include "include/TAC.h"
 #include "include/TempExpr.h"
-#include "include/Utils.h"
-#include "clang/AST/AST.h"
+
+#include "clang/Lex/Lexer.h"
 
 using namespace clang;
 using namespace macveth;
-
-namespace macveth {
-
-typedef std::list<TAC> TacListT;
-
-class StmtWrapper {
-public:
-  /// Constructors
-  StmtWrapper(){};
-  StmtWrapper(const BinaryOperator *S) {
-    TAC::binaryOperator2TAC(S, &this->TacList, -1);
-    this->TacList.reverse();
-    for (TAC Tac : TacList) {
-      Tac.printTAC();
-    }
-  };
-
-  /// Translator
-  void translateTacToIntrinsics() {
-    this->InstList = IntrinsicsInsGen::translateTAC(this->getTacList());
-  }
-
-  /// Getters and setters
-  std::list<InstListType> getInstList() { return this->InstList; };
-  void setInstList(std::list<InstListType> InstList) {
-    this->InstList = InstList;
-  };
-  Stmt *getStmt() { return this->S; };
-  void setStmt(Stmt *S) { this->S = S; };
-  TacListT getTacList() { return this->TacList; };
-  void setTacList(TacListT TacList) { this->TacList = TacList; };
-
-private:
-  Stmt *S;
-  TacListT TacList;
-  std::list<InstListType> InstList;
-}; // namespace macveth
-} // namespace macveth
-#endif // MACVETH_STMTWRAPPER_H

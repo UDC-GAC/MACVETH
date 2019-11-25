@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Ven 22 Nov 2019 16:32:58 MST
+ * Last Modified Date: Lun 25 Nov 2019 10:57:01 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -33,48 +33,48 @@
 using namespace clang;
 using namespace macveth;
 
-void TAC::binaryOperator2TAC(const clang::BinaryOperator* S,
-                             std::list<TAC>* TacList, int Val) {
-    Expr* Lhs = S->getLHS();
-    Expr* Rhs = S->getRHS();
-    clang::BinaryOperator* LhsBin = NULL;
-    clang::BinaryOperator* RhsBin = NULL;
-    bool LhsTypeBin = (LhsBin = dyn_cast<clang::BinaryOperator>(Lhs));
-    bool RhsTypeBin = (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs));
+void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
+                             std::list<TAC> *TacList, int Val) {
+  Expr *Lhs = S->getLHS();
+  Expr *Rhs = S->getRHS();
+  clang::BinaryOperator *LhsBin = NULL;
+  clang::BinaryOperator *RhsBin = NULL;
+  bool LhsTypeBin = (LhsBin = dyn_cast<clang::BinaryOperator>(Lhs));
+  bool RhsTypeBin = (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs));
 
-    // we are in the the first case
-    TempExpr* TmpA = NULL;
-    if (Val == -1) {
-        TmpA = new TempExpr(Lhs);
-    } else {
-        TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
-    }
-    // recursive part, to delve deeper into BinaryOperators
-    if (LhsTypeBin && RhsTypeBin) {
-        // both true
-        TempExpr* TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-        TempExpr* TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 2));
-        TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-        TacList->push_back(NewTac);
-        binaryOperator2TAC(RhsBin, TacList, Val + 1);
-        binaryOperator2TAC(LhsBin, TacList, Val + 2);
-    } else if (!LhsTypeBin && RhsTypeBin) {
-        TempExpr* TmpB = new TempExpr(Lhs);
-        TempExpr* TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-        TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-        TacList->push_back(NewTac);
-        binaryOperator2TAC(RhsBin, TacList, Val + 1);
-    } else if (LhsTypeBin && !RhsTypeBin) {
-        TempExpr* TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-        TempExpr* TmpC = new TempExpr(Rhs);
-        TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-        TacList->push_back(NewTac);
-        binaryOperator2TAC(LhsBin, TacList, Val + 1);
-    } else {
-        TempExpr* TmpB = new TempExpr(Lhs);
-        TempExpr* TmpC = new TempExpr(Rhs);
-        TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
-        TacList->push_back(NewTac);
-    }
-    return;
+  /// Since this is a recursive function, we have to test the first case
+  TempExpr *TmpA = NULL;
+  if (Val == -1) {
+    TmpA = new TempExpr(Lhs);
+  } else {
+    TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
+  }
+  // recursive part, to delve deeper into BinaryOperators
+  if (LhsTypeBin && RhsTypeBin) {
+    // both true
+    TempExpr *TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
+    TempExpr *TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 2));
+    TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+    TacList->push_back(NewTac);
+    binaryOperator2TAC(RhsBin, TacList, Val + 1);
+    binaryOperator2TAC(LhsBin, TacList, Val + 2);
+  } else if (!LhsTypeBin && RhsTypeBin) {
+    TempExpr *TmpB = new TempExpr(Lhs);
+    TempExpr *TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 1));
+    TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+    TacList->push_back(NewTac);
+    binaryOperator2TAC(RhsBin, TacList, Val + 1);
+  } else if (LhsTypeBin && !RhsTypeBin) {
+    TempExpr *TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
+    TempExpr *TmpC = new TempExpr(Rhs);
+    TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+    TacList->push_back(NewTac);
+    binaryOperator2TAC(LhsBin, TacList, Val + 1);
+  } else {
+    TempExpr *TmpB = new TempExpr(Lhs);
+    TempExpr *TmpC = new TempExpr(Rhs);
+    TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+    TacList->push_back(NewTac);
+  }
+  return;
 }

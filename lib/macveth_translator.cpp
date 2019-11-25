@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Sáb 23 Nov 2019 13:22:33 MST
+ * Last Modified Date: Lun 25 Nov 2019 09:17:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -72,69 +72,6 @@ using namespace macveth;
 // * Expr - expressions, they inherit from Stmt tho; this is quite weird for
 // me...
 
-// IteartionHandler is called every time we find an assignment like:
-// BinaryOperator(lhs, rhs, "=") inside a loop
-class IterationHandler : public MatchFinder::MatchCallback {
-   public:
-    IterationHandler(Rewriter& R) : Rewrite(R) {}
-
-    std::list<TAC> wrapperStmt2TAC(const clang::BinaryOperator* S) {
-        // cout << "[DEBUG]: wrapperStmt2TAC" << endl;
-        std::list<TAC> TacList;
-        TAC::binaryOperator2TAC(S, &TacList, -1);
-        TacList.reverse();
-        std::tuple<const BinaryOperator*, std::list<TAC>> Tup =
-            std::make_tuple(S, TacList);
-        // exprToTac.push_back(tup);
-        for (TAC Tac : TacList) {
-            Tac.printTAC();
-        }
-        return TacList;
-    }
-
-    // Perform unrolling
-    virtual void run(const MatchFinder::MatchResult& Result) {
-        std::list<const DeclRefExpr*> IncVarList;
-        const BinaryOperator* TacBinOp =
-            Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
-        std::list<TAC> TacList = IterationHandler::wrapperStmt2TAC(TacBinOp);
-        std::list<InstListType> InstList =
-            IntrinsicsInsGen::translateTAC(TacList);
-        int NLevel = 1;
-        int UnrollFactor = 4;
-
-        // Unroll factor applied to the for header
-        for (int Inc = NLevel; Inc > 0; --Inc) {
-            const UnaryOperator* IncVarPos =
-                Result.Nodes.getNodeAs<clang::UnaryOperator>(
-                    matchers_utils::varnames::NameVarIncPos +
-                    std::to_string(Inc));
-            const DeclRefExpr* IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
-                matchers_utils::varnames::NameVarInc + std::to_string(Inc));
-            clang::CharSourceRange charRange =
-                clang::CharSourceRange::getTokenRange(IncVarPos->getBeginLoc(),
-                                                      IncVarPos->getEndLoc());
-            Rewrite.ReplaceText(charRange,
-                                IncVarName->getNameInfo().getAsString() +
-                                    "+=" + std::to_string(UnrollFactor));
-        }
-
-        clang::CharSourceRange CharRangeStr =
-            clang::CharSourceRange::getTokenRange(TacBinOp->getSourceRange());
-
-        for (InstListType IList : InstList) {
-            for (std::string S : IList) {
-                Rewrite.InsertText(TacBinOp->getBeginLoc(), S + ";\n", true,
-                                   true);
-            }
-        }
-        Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
-    }
-
-   private:
-    Rewriter& Rewrite;
-};
-
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser. It registers a couple of matchers and runs them on
 // the AST.
@@ -142,14 +79,6 @@ class MACVETHConsumer : public ASTConsumer {
    public:
     MACVETHConsumer(Rewriter& R, ASTContext* C)
         : HandlerIteration(R), Context(C) {
-        // EXPERIMENTAL MATCHER
-        // This matcher works for 2-level for loops
-        // StatementMatcher ForLoopNestedMatcher =
-        // matchers_utils::forLoopNested(
-        //    1,
-        //    matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs",
-        //    "rhs"));
-        // Matcher.addMatcher(ForLoopNestedMatcher, &HandlerIteration);
         StatementMatcher ForLoopNestedMatcher = matchers_utils::forLoopMatcher(
             "1",
             matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
@@ -163,7 +92,7 @@ class MACVETHConsumer : public ASTConsumer {
 
    private:
     ASTContext* Context;
-    IterationHandler HandlerIteration;
+    matchers_utils::IterationHandler HandlerIteration;
     MatchFinder Matcher;
 };
 

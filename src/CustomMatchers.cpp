@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Sáb 23 Nov 2019 09:57:41 MST
+ * Last Modified Date: Lun 25 Nov 2019 11:31:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,54 +26,95 @@
  * SOFTWARE.
  */
 #include "include/CustomMatchers.h"
-
 #include <iostream>
 #include <string>
 
 using namespace macveth;
 
+/// FIXME
+/// Perform rewriting in original code
+void matchers_utils::IterationHandler::run(
+    const MatchFinder::MatchResult &Result) {
+  std::list<const DeclRefExpr *> IncVarList;
+  const BinaryOperator *TacBinOp =
+      Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
+  StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
+  std::list<InstListType> InstList =
+      IntrinsicsInsGen::translateTAC(SWrap->getTacList());
+  int NLevel = 1;
+  int UnrollFactor = 4;
+
+  // Unroll factor applied to the for header
+  for (int Inc = NLevel; Inc > 0; --Inc) {
+    const UnaryOperator *IncVarPos =
+        Result.Nodes.getNodeAs<clang::UnaryOperator>(
+            matchers_utils::varnames::NameVarIncPos + std::to_string(Inc));
+    const DeclRefExpr *IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
+        matchers_utils::varnames::NameVarInc + std::to_string(Inc));
+    clang::CharSourceRange charRange = clang::CharSourceRange::getTokenRange(
+        IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
+    Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
+                                       "+=" + std::to_string(UnrollFactor));
+  }
+
+  clang::CharSourceRange CharRangeStr =
+      clang::CharSourceRange::getTokenRange(TacBinOp->getSourceRange());
+
+  for (InstListType IList : InstList) {
+    for (std::string S : IList) {
+      Rewrite.InsertText(TacBinOp->getBeginLoc(), S + ";\n", true, true);
+    }
+  }
+  Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
+}
+
+/// Function wrapper for matching expressions such as:
+/// var      = expr op expr
+/// vat[idx] = expr op expr
 StatementMatcher matchers_utils::assignArrayBinOp(std::string Name,
                                                   std::string Lhs,
                                                   std::string Rhs) {
-    return binaryOperator(hasOperatorName("="),
-                          hasLHS(anyOf(declRefExpr().bind(Lhs),
-                                       arraySubscriptExpr().bind(Lhs))),
-                          hasRHS(binaryOperator().bind(Rhs)))
-        .bind(Name);
+  return binaryOperator(hasOperatorName("="),
+                        hasLHS(anyOf(declRefExpr().bind(Lhs),
+                                     arraySubscriptExpr().bind(Lhs))),
+                        hasRHS(binaryOperator().bind(Rhs)))
+      .bind(Name);
 }
 
+/// Function wrapper for matching expressions such as:
+/// for (int var = 0; var < upper_bound; [++]var[++])
 StatementMatcher matchers_utils::forLoopMatcher(std::string Name,
                                                 StatementMatcher InnerStmt) {
-    return forStmt(
-               hasLoopInit(declStmt(hasSingleDecl(
-                   varDecl(hasInitializer(integerLiteral(equals(0))))
-                       .bind(matchers_utils::varnames::NameVarInit + Name)))),
-               hasIncrement(
-                   unaryOperator(
-                       hasOperatorName("++"),
-                       hasUnaryOperand(
-                           declRefExpr(to(varDecl(hasType(isInteger()))))
-                               .bind(matchers_utils::varnames::NameVarInc +
-                                     Name)))
-                       .bind(matchers_utils::varnames::NameVarIncPos + Name)),
-               hasCondition(binaryOperator(
-                   hasOperatorName("<"),
-                   hasLHS(ignoringParenImpCasts(declRefExpr(
-                       to(varDecl(hasType(isInteger()))
-                              .bind(matchers_utils::varnames::NameVarCond +
-                                    Name))))),
-                   hasRHS(expr(hasType(isInteger()))))),
-               hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt)))))
-        // hasBody(has(compoundStmt(hasDescendant(InnerStmt)))))
-        .bind("forLoop" + Name);
+  return forStmt(hasLoopInit(declStmt(hasSingleDecl(
+                     varDecl(hasInitializer(integerLiteral(equals(0))))
+                         .bind(matchers_utils::varnames::NameVarInit + Name)))),
+                 hasIncrement(
+                     unaryOperator(
+                         hasOperatorName("++"),
+                         hasUnaryOperand(
+                             declRefExpr(to(varDecl(hasType(isInteger()))))
+                                 .bind(matchers_utils::varnames::NameVarInc +
+                                       Name)))
+                         .bind(matchers_utils::varnames::NameVarIncPos + Name)),
+                 hasCondition(binaryOperator(
+                     hasOperatorName("<"),
+                     hasLHS(ignoringParenImpCasts(declRefExpr(
+                         to(varDecl(hasType(isInteger()))
+                                .bind(matchers_utils::varnames::NameVarCond +
+                                      Name))))),
+                     hasRHS(expr(hasType(isInteger()))))),
+                 hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt)))))
+      // hasBody(has(compoundStmt(hasDescendant(InnerStmt)))))
+      .bind("forLoop" + Name);
 }
 
+/// Function wrapper for loop nests with the forLoopMatcher form
 StatementMatcher matchers_utils::forLoopNested(int NumLevels,
                                                StatementMatcher InnerStmt) {
-    StatementMatcher NestedMatcher = InnerStmt;
-    for (int N = NumLevels; N > 0; --N) {
-        NestedMatcher =
-            matchers_utils::forLoopMatcher(std::to_string(N), NestedMatcher);
-    }
-    return NestedMatcher;
+  StatementMatcher NestedMatcher = InnerStmt;
+  for (int N = NumLevels; N > 0; --N) {
+    NestedMatcher =
+        matchers_utils::forLoopMatcher(std::to_string(N), NestedMatcher);
+  }
+  return NestedMatcher;
 }

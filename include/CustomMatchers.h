@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Xov 21 Nov 2019 15:16:30 MST
+ * Last Modified Date: Lun 25 Nov 2019 11:00:33 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,8 +27,11 @@
  */
 #ifndef CUSTOM_MATCHERS_H
 #define CUSTOM_MATCHERS_H
-#include <string>
 
+#include "include/IntrinsicsGenerator.h"
+#include "include/StmtWrapper.h"
+#include "include/TAC.h"
+#include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -45,6 +48,7 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/raw_ostream.h"
+#include <string>
 
 // Do not use namespace std
 // using namespace std;
@@ -61,11 +65,27 @@ const std::string NameVarInc = "incVar";
 const std::string NameVarIncPos = "incVarPos";
 const std::string NameVarInit = "initVar";
 const std::string NameVarCond = "condVar";
-}  // namespace varnames
+} // namespace varnames
+
+// IteartionHandler is called every time we find an assignment like:
+// BinaryOperator(lhs, rhs, "=") inside a loop
+class IterationHandler : public MatchFinder::MatchCallback {
+public:
+  IterationHandler(Rewriter &R) : Rewrite(R) {}
+
+  std::list<TAC> wrapperStmt2TAC(const clang::BinaryOperator *S);
+
+  virtual void run(const MatchFinder::MatchResult &Result);
+
+private:
+  Rewriter &Rewrite;
+};
+
+// Matcher related functions for simplifying
 StatementMatcher assignArrayBinOp(std::string Name, std::string Lhs,
                                   std::string Rhs);
 StatementMatcher forLoopMatcher(std::string Name, StatementMatcher InnerStmt);
 StatementMatcher forLoopNested(int NumLevels, StatementMatcher InnerStmt);
-}  // namespace matchers_utils
-}  // namespace macveth
+} // namespace matchers_utils
+} // namespace macveth
 #endif

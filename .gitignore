@@ -2,6 +2,7 @@
 *.swo
 # Some folders
 build/
+.clangd/
 
 # CMake generated files
 Makefile
