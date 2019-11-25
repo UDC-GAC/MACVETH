@@ -1,7 +1,6 @@
 # Minimum version required
 cmake_minimum_required(VERSION 3.13)
 
-
 # Project name
 set(PROJECT_NAME MACVETH)
 project(${PROJECT_NAME} VERSION 0.1)
@@ -13,6 +12,9 @@ set(LLVM_BUILD_PATH /usr/lib/llvm-9)
 set(LLVM_BIN_PATH ${LLVM_BUILD_PATH}/bin)
 set(CURSES_USE_NCURSES TRUE)
 
+# Custom flags
+set(CUSTOM_CXXFLAGS " -std=c++17 -fno-rtti -O0")
+add_definitions(${CUSTOM_CXXFLAGS})
 
 ############################################################
 # Setting CXXFLAGS using llvm-config + custom flags
@@ -20,7 +22,7 @@ set(CURSES_USE_NCURSES TRUE)
 execute_process(
     COMMAND ${LLVM_BIN_PATH}/llvm-config --cxxflags
     OUTPUT_VARIABLE LLVM_CXXFLAGS)
-set(LLVM_CXXFLAGS ${LLVM_CXXFLAGS} " -std=c++17 -fno-rtti -O0 -L/usr/lib/llvm-9/lib")
+set(LLVM_CXXFLAGS ${LLVM_CXXFLAGS})
 add_definitions(${LLVM_CXXFLAGS})
 
 ############################################################
@@ -39,7 +41,7 @@ find_library(LibClang_LIBRARY NAMES clang HINTS /usr/lib/llvm-9/lib)
 set(LibClang_LIBRARIES ${LibClang_LIBRARY})
 set(LibClang_INCLUDE_DIRS ${CLANG_INCLUDE_DIR})
 
-# for YCM
+# for generating compile_options.json for IDEs
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # configuration file, for macros for instance
@@ -49,26 +51,26 @@ configure_file(macveth_translator.h.in src/macveth_translator.h)
 add_subdirectory(src)
 
 # define the binary to compile
-add_executable(MACVETH_MAIN
+add_executable(macveth
     lib/macveth_translator.cpp
     )
 
 # CLANG_INCLUDES (former Makefile)
-target_include_directories(MACVETH_MAIN PUBLIC
+target_include_directories(macveth PUBLIC
     # ${CLANG_INCLUDE_DIR}
     include
     /usr/lib/llvm-9/build/include/clang
     /usr/lib/llvm-9/build/clang/include)
 
 # Custom libraries needed
-target_link_libraries(MACVETH_MAIN
+target_link_libraries(macveth
     PRIVATE
     macveth_lib
     ${LibClang_LIBRARIES}
     -L/usr/lib/llvm-9/lib)
 
 # Clang libraries needed
-target_link_libraries(MACVETH_MAIN
+target_link_libraries(macveth
     PRIVATE
     clangTooling
     clangBasic
@@ -100,34 +102,12 @@ target_link_libraries(MACVETH_MAIN
     )
 
 # LLVM flags needed
-target_link_libraries(MACVETH_MAIN
+target_link_libraries(macveth
     PRIVATE
     LLVM)
 
-##target_link_libraries(MACVETH_MAIN
-##    PUBLIC
-##    LLVMX86AsmParser # MC, MCParser, Support, X86Desc, X86Info
-##    LLVMX86Desc # MC, Support, X86AsmPrinter, X86Info
-##    LLVMX86Info # MC, Support, Target
-##    LLVMX86Utils # Core, Support
-##    LLVMipo
-##    LLVMScalarOpts
-##    LLVMInstCombine
-##    LLVMTransformUtils
-##    LLVMAnalysis
-##    LLVMTarget
-##    LLVMOption # Support
-##    LLVMMCParser # MC, Support
-##    LLVMMC # Object, Support
-##    LLVMObject # BitReader, Core, Support
-##    LLVMBitReader # Core, Support
-##    LLVMCore # Support
-##    LLVMSupport
-##    LLVM
-##    )
-
 # needed flags
-target_link_libraries(MACVETH_MAIN
+target_link_libraries(macveth
     PUBLIC
     pthread
     z
@@ -136,5 +116,5 @@ target_link_libraries(MACVETH_MAIN
     )
 
 # tell to compiler MACVETH where to place the binary
-install(TARGETS MACVETH_MAIN DESTINATION build)
+install(TARGETS macveth DESTINATION build)
 
