@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 25 Nov 2019 11:27:50 MST
+ * Last Modified Date: Mar 26 Nov 2019 10:53:27 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,9 +28,8 @@
 #ifndef MACVETH_STMTWRAPPER_H
 #define MACVETH_STMTWRAPPER_H
 
-#include "include/IntrinsicsGenerator.h"
+#include "include/Intrinsics/IntrinsicsGenerator.h"
 #include "include/TAC.h"
-#include "include/TempExpr.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 
@@ -39,10 +38,13 @@ using namespace macveth;
 
 namespace macveth {
 
-typedef std::list<TAC> TacListT;
+typedef std::list<TAC> TacListType;
 
+/// StmtWrapper, as its name suggests, wraps statements, its TAC representation
+/// and the desired intrinsic translation
 class StmtWrapper {
 public:
+  enum StmtType { REDUCTION, VECTORIZABLE };
   /// Constructors
   StmtWrapper(){};
   StmtWrapper(const BinaryOperator *S) {
@@ -53,10 +55,17 @@ public:
     }
   };
 
+  static StmtType getStmtType(const BinaryOperator *S);
+  StmtType getStmtType() { return this->ST; }
+  void setStmtType(StmtType ST) { this->ST = ST; }
+
   /// Translator
   void translateTacToIntrinsics() {
     this->InstList = IntrinsicsInsGen::translateTAC(this->getTacList());
   }
+
+  /// Unroll
+  void unroll(int UnrollFactor, int UpperBound);
 
   /// Getters and setters
   std::list<InstListType> getInstList() { return this->InstList; };
@@ -65,12 +74,13 @@ public:
   };
   Stmt *getStmt() { return this->S; };
   void setStmt(Stmt *S) { this->S = S; };
-  TacListT getTacList() { return this->TacList; };
-  void setTacList(TacListT TacList) { this->TacList = TacList; };
+  TacListType getTacList() { return this->TacList; };
+  void setTacList(TacListType TacList) { this->TacList = TacList; };
 
 private:
   Stmt *S;
-  TacListT TacList;
+  StmtType ST;
+  TacListType TacList;
   std::list<InstListType> InstList;
 }; // namespace macveth
 } // namespace macveth

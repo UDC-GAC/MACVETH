@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Lun 25 Nov 2019 11:00:51 MST
+ * Last Modified Date: Lun 25 Nov 2019 17:44:21 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,47 +28,18 @@
 
 #ifndef MACVETH_TAC_H
 #define MACVETH_TAC_H
+
 #include "include/TempExpr.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include <iostream>
+#include <list>
 #include <string>
 
 using namespace clang;
+using namespace macveth;
 
 namespace macveth {
-// This class holds a double identity for expressions: a string name (for
-// debugging purposes and for clarity) and the actual Clang Expr, for
-// transformations
-class TempExpr {
-public:
-  TempExpr(std::string E) : ExprStr(E) {}
-  TempExpr(Expr *E) : ClangExpr(E) {
-    this->ExprStr = Utils::getStringFromExpr(E);
-  }
-
-  void setClangExpr(clang::Expr *ClangExpr) { this->ClangExpr = ClangExpr; }
-  clang::Expr *getClangExpr() { return this->ClangExpr; }
-
-  void setTypeStr(std::string TypeStr) { this->TypeStr = TypeStr; }
-  std::string getTypeStr() { return this->TypeStr; }
-
-  void setExprStr(std::string ExprStr) { this->ExprStr = ExprStr; }
-  std::string getExprStr() { return this->ExprStr; }
-
-  bool isNotClang() { return (this->ClangExpr == NULL); }
-
-  // dumb method
-  static std::string getNameTempReg(int Val) {
-    return "t" + std::to_string(Val);
-  }
-
-private:
-  std::string TypeStr = "double";
-  std::string ExprStr;
-  clang::Expr *ClangExpr = NULL;
-};
-
 // Class TAC: three-address-code
 // This class is no more than a wrapper for holding three Expr and a Opcode, in
 // a way that:
@@ -95,14 +66,19 @@ public:
               << this->getC()->getExprStr() << ", " << Op << std::endl;
   }
 
-  // TODO
-  static Expr *createExprFromTAC(TAC *TacExpr) { return NULL; }
-
-  Expr *getExprFromTAC() { return TAC::createExprFromTAC(this); }
-
   // Return list of 3AC from a starting Binary Operator
   static void binaryOperator2TAC(const clang::BinaryOperator *S,
                                  std::list<TAC> *TacList, int Val);
+
+  /// Modifies given list adding at the end the unrolled TACs
+  static void unrollTacList(std::list<TAC> *Tac, int UnrollFactor,
+                            int UpperBound);
+
+  /// Unrolls TacList given onto a new list
+  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
+                                      int UpperBound);
+  static TAC *unroll(TAC *Tac, int UnrollFactor);
+  TAC *unroll(int UnrollFactor);
 
 private:
   TempExpr *A;

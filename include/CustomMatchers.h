@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Lun 25 Nov 2019 11:00:33 MST
+ * Last Modified Date: Lun 25 Nov 2019 13:20:05 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,7 +28,7 @@
 #ifndef CUSTOM_MATCHERS_H
 #define CUSTOM_MATCHERS_H
 
-#include "include/IntrinsicsGenerator.h"
+#include "include/Intrinsics/IntrinsicsGenerator.h"
 #include "include/StmtWrapper.h"
 #include "include/TAC.h"
 #include "include/Utils.h"

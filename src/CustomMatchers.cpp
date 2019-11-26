@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 25 Nov 2019 11:31:50 MST
+ * Last Modified Date: Lun 25 Nov 2019 22:45:48 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,6 +26,7 @@
  * SOFTWARE.
  */
 #include "include/CustomMatchers.h"
+#include "include/StmtWrapper.h"
 #include <iostream>
 #include <string>
 
@@ -39,8 +40,8 @@ void matchers_utils::IterationHandler::run(
   const BinaryOperator *TacBinOp =
       Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
   StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
-  std::list<InstListType> InstList =
-      IntrinsicsInsGen::translateTAC(SWrap->getTacList());
+  SWrap->unroll(4);
+  SWrap->translateTacToIntrinsics();
   int NLevel = 1;
   int UnrollFactor = 4;
 
@@ -60,7 +61,7 @@ void matchers_utils::IterationHandler::run(
   clang::CharSourceRange CharRangeStr =
       clang::CharSourceRange::getTokenRange(TacBinOp->getSourceRange());
 
-  for (InstListType IList : InstList) {
+  for (InstListType IList : SWrap->getInstList()) {
     for (std::string S : IList) {
       Rewrite.InsertText(TacBinOp->getBeginLoc(), S + ";\n", true, true);
     }

@@ -1,5 +1,7 @@
 # set of files to compile and create the library and this stuff
-file(GLOB MACVETH_SRC ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+file(GLOB MACVETH_SRC ${CMAKE_CURRENT_SOURCE_DIR}/*
+    ${CMAKE_CURRENT_SOURCE_DIR}/*/*)
+
 add_library(macveth_lib OBJECT ${MACVETH_SRC})
 
 target_include_directories(macveth_lib PUBLIC ../include ../)

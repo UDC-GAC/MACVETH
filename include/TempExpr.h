@@ -2,7 +2,7 @@
  * File              : TempExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Lun 25 Nov 2019 11:01:09 MST
+ * Last Modified Date: Mar 26 Nov 2019 10:25:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,8 +26,8 @@
  * SOFTWARE.
  */
 
-#ifndef MACVETH_TAC_H
-#define MACVETH_TAC_H
+#ifndef MACVETH_TEMPEXPR_H
+#define MACVETH_TEMPEXPR_H
 
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
@@ -42,10 +42,25 @@ namespace macveth {
 // transformations
 class TempExpr {
 public:
-  TempExpr(std::string E) : ExprStr(E) {}
+  enum TempExprType { ARRAY, TEMP_RES, LITERAL, VARIABLE, POINTER };
+
+  /// Constructors
+  TempExpr(){};
+  TempExpr(TempExpr *TE) {
+    this->setExprStr(TE->getExprStr());
+    this->setClangExpr(TE->getClangExpr());
+    this->setTypeStr(TE->getTypeStr());
+    this->setTempType(TE->getTempType());
+  }
+  TempExpr(std::string E) : ExprStr(E) { this->TempType = TEMP_RES; }
   TempExpr(Expr *E) : ClangExpr(E) {
     this->ExprStr = Utils::getStringFromExpr(E);
+    this->setTypeStr(this->getClangExpr()->getType().getAsString());
   }
+
+  /// Getters and setters
+  void setTempType(TempExprType TempType) { this->TempType = TempType; }
+  TempExprType getTempType() { return this->TempType; }
 
   void setClangExpr(clang::Expr *ClangExpr) { this->ClangExpr = ClangExpr; }
   clang::Expr *getClangExpr() { return this->ClangExpr; }
@@ -56,14 +71,17 @@ public:
   void setExprStr(std::string ExprStr) { this->ExprStr = ExprStr; }
   std::string getExprStr() { return this->ExprStr; }
 
+  /// This method allows to check whether the expression belongs or not to the
+  /// original AST created by Clang
   bool isNotClang() { return (this->ClangExpr == NULL); }
 
-  // dumb method
+  /// Get name of TempReg given a value
   static std::string getNameTempReg(int Val) {
     return "t" + std::to_string(Val);
   }
 
 private:
+  TempExprType TempType = POINTER;
   std::string TypeStr = "double";
   std::string ExprStr;
   clang::Expr *ClangExpr = NULL;

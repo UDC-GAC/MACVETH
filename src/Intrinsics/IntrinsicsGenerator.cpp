@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Lun 25 Nov 2019 11:18:32 MST
+ * Last Modified Date: Mar 26 Nov 2019 10:09:30 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,8 +26,7 @@
  * SOFTWARE.
  */
 
-#include "include/IntrinsicsGenerator.h"
-#include "include/Utils.h"
+#include "include/Intrinsics/IntrinsicsGenerator.h"
 
 using namespace macveth;
 
@@ -120,7 +119,6 @@ IntrinsicsInsGen::genIntrinsicsIns(std::list<macveth::TAC> TacList) {
       InsList.pop_back();
       std::string NewInst = generateFMA(&PrevTAC, &Tac);
       InsList.push_back(NewInst);
-      PrevTAC = Tac;
       continue;
     }
     InsList.push_back(getGenericFunction(FuncName, Res, Op1, Op2));
@@ -198,10 +196,12 @@ bool IntrinsicsInsGen::potentialFMA(macveth::TAC *PrevTAC, macveth::TAC *Tac) {
   std::string TACOp = getFuncFromOpCode(Tac->getOP());
   if ((!PrevTACOp.compare("mul")) &&
       ((!TACOp.compare("add")) || (!TACOp.compare("sub")))) {
+    PrevTAC = NULL;
     return true;
   }
   if (((!PrevTACOp.compare("add")) || (!PrevTACOp.compare("sub"))) &&
       (!TACOp.compare("mul"))) {
+    PrevTAC = NULL;
     return true;
   }
   return false;

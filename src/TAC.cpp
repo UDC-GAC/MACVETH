@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Lun 25 Nov 2019 10:57:01 MST
+ * Last Modified Date: Mar 26 Nov 2019 10:29:29 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,7 +27,6 @@
  */
 
 #include "include/TAC.h"
-
 #include "clang/Lex/Lexer.h"
 
 using namespace clang;
@@ -77,4 +76,54 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
     TacList->push_back(NewTac);
   }
   return;
+}
+
+/// FIXME
+TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
+  TempExpr *NewExpr = new TempExpr(Lhs);
+  if (NewExpr->getTempType() == TempExpr::TempExprType::TEMP_RES) {
+    NewExpr->setExprStr("tempUnroll" + std::to_string(Rhs));
+  } else {
+    NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs));
+  }
+  return NewExpr;
+}
+
+// Static version of unrolling
+TAC *TAC::unroll(TAC *Tac, int UnrollFactor) {
+  TAC *UnrolledTac =
+      new TAC((*(Tac->getA()) + UnrollFactor), (*(Tac->getB()) + UnrollFactor),
+              (*(Tac->getC()) + UnrollFactor), Tac->getOP());
+  return UnrolledTac;
+}
+
+// Object version of unrolling
+TAC *TAC::unroll(int UnrollFactor) {
+  TAC *UnrolledTac = new TAC((*(this->getA()) + UnrollFactor),
+                             (*(this->getB()) + UnrollFactor),
+                             (*(this->getC()) + UnrollFactor), this->getOP());
+  return UnrolledTac;
+}
+
+void TAC::unrollTacList(std::list<TAC> *TacList, int UnrollFactor,
+                        int UpperBound) {
+  std::list<TAC> TacListOrg = *TacList;
+  int steps = UpperBound / UnrollFactor;
+  for (int s = 1; s < steps; ++s) {
+    for (TAC Tac : TacListOrg) {
+      TacList->push_back(*Tac.unroll(UnrollFactor * s));
+    }
+  }
+}
+
+std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
+                                  int UpperBound) {
+  std::list<TAC> TacListOrg = TacList;
+  int steps = UpperBound / UnrollFactor;
+  for (int s = 1; s < steps; ++s) {
+    for (TAC Tac : TacList) {
+      TacListOrg.push_back(*(TAC::unroll(&Tac, UnrollFactor * s)));
+    }
+  }
+  return TacListOrg;
 }

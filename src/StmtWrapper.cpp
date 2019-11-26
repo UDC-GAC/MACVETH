@@ -1,8 +1,8 @@
 /**
- * File              : TempExpr.cpp
+ * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Mar 26 Nov 2019 10:00:04 MST
+ * Date              : Lun 25 Nov 2019 13:48:24 MST
+ * Last Modified Date: Mar 26 Nov 2019 13:59:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,8 +26,25 @@
  * SOFTWARE.
  */
 
-#include "include/TempExpr.h"
-#include <string>
+#include "include/StmtWrapper.h"
+#include "clang/AST/Expr.h"
 
 using namespace clang;
 using namespace macveth;
+
+StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
+  return StmtWrapper::StmtType::VECTORIZABLE;
+}
+
+void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
+  if (this->getStmtType() == StmtWrapper::StmtType::VECTORIZABLE) {
+    this->setTacList(
+        TAC::unrollTacList(this->getTacList(), UnrollFactor, UpperBound));
+  } else if (this->getStmtType() == StmtWrapper::StmtType::REDUCTION) {
+  } else {
+    std::cout << "STMT not supported yet!!!" << std::endl;
+  }
+  for (TAC Tac : this->getTacList()) {
+    Tac.printTAC();
+  }
+}
