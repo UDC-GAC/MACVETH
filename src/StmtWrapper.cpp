@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Mar 26 Nov 2019 13:59:26 MST
+ * Last Modified Date: Ven 29 Nov 2019 21:17:24 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,13 +27,18 @@
  */
 
 #include "include/StmtWrapper.h"
+#include "TAC.h"
 #include "clang/AST/Expr.h"
+#include <string>
 
 using namespace clang;
 using namespace macveth;
 
+/// FIXME
 StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
-  return StmtWrapper::StmtType::VECTORIZABLE;
+  std::cout << S->getLHS()->getType().getAsString() << std::endl;
+  std::cout << S->getRHS()->getType().getAsString() << std::endl;
+  return StmtWrapper::StmtType::REDUCTION;
 }
 
 void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
@@ -41,10 +46,50 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     this->setTacList(
         TAC::unrollTacList(this->getTacList(), UnrollFactor, UpperBound));
   } else if (this->getStmtType() == StmtWrapper::StmtType::REDUCTION) {
+    /// Get the last element, which is the final reduction
+    // std::cout << "=================================" << std::endl;
+    // for (TAC Tac : this->getTacList()) {
+    //  Tac.printTAC();
+    //}
+    // std::cout << "=================================" << std::endl;
+    TAC RedTac = this->getTacList().back();
+    /// Making a copy of the TAC list
+    std::list<TAC> TempTacList = this->getTacList();
+    /// Remove the last element, the final reduction
+    TempTacList.pop_back();
+    TAC AddTac = TempTacList.back();
+    TempTacList.pop_back();
+    /// Get the name of the last operand which holds basically the result of the
+    /// reduction. Thus, create a new TAC which basically will be the core for
+    /// unrolling.
+    std::string LastTempReg = TempTacList.back().getA()->getExprStr();
+    TAC *TempTac =
+        new TAC(new TempExpr("unroll4"), new TempExpr("unroll4"),
+                new TempExpr("unroll", TempExpr::TempExprType::TEMP_RES),
+                AddTac.getOP());
+    TempTacList.push_back(*TempTac);
+    std::cout << "=================================" << std::endl;
+    for (TAC Tac : TempTacList) {
+      Tac.printTAC();
+    }
+    std::cout << "=================================" << std::endl;
+    /// Unroll TempTacList (which is the original without the last statement)
+    TempTacList = TAC::unrollTacList(TempTacList, UnrollFactor, UpperBound);
+    /// Now we are going to attach to the front of the list a new TAC which is
+    /// basically the "base case"
+    TAC TempInit = TempTacList.front();
+    TempInit.setA(new TempExpr("unroll"));
+    TempTacList.pop_front();
+    TempTacList.pop_front();
+    TempTacList.push_front(TempInit);
+    /// Setting thiw new TAC list for this statement
+    this->setTacList(TempTacList);
+    std::cout << "=================================" << std::endl;
+    for (TAC Tac : TempTacList) {
+      Tac.printTAC();
+    }
+    std::cout << "=================================" << std::endl;
   } else {
     std::cout << "STMT not supported yet!!!" << std::endl;
-  }
-  for (TAC Tac : this->getTacList()) {
-    Tac.printTAC();
   }
 }

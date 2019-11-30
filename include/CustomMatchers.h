@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Lun 25 Nov 2019 13:20:05 MST
+ * Last Modified Date: Mar 26 Nov 2019 15:10:10 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -25,8 +25,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef CUSTOM_MATCHERS_H
-#define CUSTOM_MATCHERS_H
+#ifndef MACVETH_CUSTOM_MATCHERS_H
+#define MACVETH_CUSTOM_MATCHERS_H
 
 #include "include/Intrinsics/IntrinsicsGenerator.h"
 #include "include/StmtWrapper.h"
@@ -82,6 +82,8 @@ private:
 };
 
 // Matcher related functions for simplifying
+StatementMatcher reductionStmt(std::string Name, std::string Lhs,
+                               std::string Rhs);
 StatementMatcher assignArrayBinOp(std::string Name, std::string Lhs,
                                   std::string Rhs);
 StatementMatcher forLoopMatcher(std::string Name, StatementMatcher InnerStmt);

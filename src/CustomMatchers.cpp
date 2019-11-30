@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 25 Nov 2019 22:45:48 MST
+ * Last Modified Date: Ven 29 Nov 2019 19:37:16 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,20 +27,19 @@
  */
 #include "include/CustomMatchers.h"
 #include "include/StmtWrapper.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
 #include <iostream>
 #include <string>
 
 using namespace macveth;
 
-/// FIXME
-/// Perform rewriting in original code
 void matchers_utils::IterationHandler::run(
     const MatchFinder::MatchResult &Result) {
   std::list<const DeclRefExpr *> IncVarList;
   const BinaryOperator *TacBinOp =
       Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
   StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
-  SWrap->unroll(4);
+  SWrap->unroll(4, 16);
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
   int UnrollFactor = 4;
@@ -69,16 +68,33 @@ void matchers_utils::IterationHandler::run(
   Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
 }
 
+/// Possible RHS
+/// var[][]..[]
+/// var
+StatementMatcher possibleRhs(std::string BindName) {
+  return anyOf(implicitCastExpr().bind(BindName),
+               binaryOperator().bind(BindName));
+}
+
 /// Function wrapper for matching expressions such as:
 /// var      = expr op expr
-/// vat[idx] = expr op expr
+StatementMatcher matchers_utils::reductionStmt(std::string Name,
+                                               std::string Lhs,
+                                               std::string Rhs) {
+  return binaryOperator(anyOf(hasOperatorName("="), hasOperatorName("+=")),
+                        hasLHS(declRefExpr().bind(Lhs)),
+                        hasRHS(possibleRhs(Rhs)))
+      .bind(Name);
+}
+
+/// Function wrapper for matching expressions such as:
+/// var[idx] = expr op expr
 StatementMatcher matchers_utils::assignArrayBinOp(std::string Name,
                                                   std::string Lhs,
                                                   std::string Rhs) {
   return binaryOperator(hasOperatorName("="),
-                        hasLHS(anyOf(declRefExpr().bind(Lhs),
-                                     arraySubscriptExpr().bind(Lhs))),
-                        hasRHS(binaryOperator().bind(Rhs)))
+                        hasLHS(arraySubscriptExpr().bind(Lhs)),
+                        hasRHS(possibleRhs(Rhs)))
       .bind(Name);
 }
 

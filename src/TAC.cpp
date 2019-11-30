@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Mar 26 Nov 2019 10:29:29 MST
+ * Last Modified Date: Ven 29 Nov 2019 21:41:00 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -81,16 +81,24 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
 /// FIXME
 TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
   TempExpr *NewExpr = new TempExpr(Lhs);
-  if (NewExpr->getTempType() == TempExpr::TempExprType::TEMP_RES) {
-    NewExpr->setExprStr("tempUnroll" + std::to_string(Rhs));
-  } else {
+  TempExpr::TempExprType TE = NewExpr->getTempType();
+  switch (TE) {
+  case TempExpr::TempExprType::TEMP_RES:
+    NewExpr->setExprStr("unroll" + std::to_string(Rhs));
+    break;
+  case TempExpr::TempExprType::TEMP_VAL:
+    // NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs));
+    break;
+  default:
     NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs));
+    break;
   }
+
   return NewExpr;
 }
 
 // Static version of unrolling
-TAC *TAC::unroll(TAC *Tac, int UnrollFactor) {
+TAC *TAC::unroll(TAC *Tac, int UnrollFactor, unsigned char mask) {
   TAC *UnrolledTac =
       new TAC((*(Tac->getA()) + UnrollFactor), (*(Tac->getB()) + UnrollFactor),
               (*(Tac->getC()) + UnrollFactor), Tac->getOP());
@@ -98,7 +106,7 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor) {
 }
 
 // Object version of unrolling
-TAC *TAC::unroll(int UnrollFactor) {
+TAC *TAC::unroll(int UnrollFactor, unsigned char mask) {
   TAC *UnrolledTac = new TAC((*(this->getA()) + UnrollFactor),
                              (*(this->getB()) + UnrollFactor),
                              (*(this->getC()) + UnrollFactor), this->getOP());
@@ -111,7 +119,7 @@ void TAC::unrollTacList(std::list<TAC> *TacList, int UnrollFactor,
   int steps = UpperBound / UnrollFactor;
   for (int s = 1; s < steps; ++s) {
     for (TAC Tac : TacListOrg) {
-      TacList->push_back(*Tac.unroll(UnrollFactor * s));
+      TacList->push_back(*Tac.unroll(UnrollFactor * s, 0x00));
     }
   }
 }
@@ -122,7 +130,7 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
   int steps = UpperBound / UnrollFactor;
   for (int s = 1; s < steps; ++s) {
     for (TAC Tac : TacList) {
-      TacListOrg.push_back(*(TAC::unroll(&Tac, UnrollFactor * s)));
+      TacListOrg.push_back(*(TAC::unroll(&Tac, UnrollFactor * s, 0x00)));
     }
   }
   return TacListOrg;

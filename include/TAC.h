@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Lun 25 Nov 2019 17:44:21 MST
+ * Last Modified Date: Ven 29 Nov 2019 21:40:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -54,8 +54,11 @@ public:
       : A(A), B(B), C(C), OP(OP) {}
 
   TempExpr *getA() { return this->A; };
+  void setA(TempExpr *A) { this->A = A; };
   TempExpr *getB() { return this->B; };
+  void setB(TempExpr *B) { this->B = B; };
   TempExpr *getC() { return this->C; };
+  void setC(TempExpr *C) { this->C = C; };
   clang::BinaryOperator::Opcode getOP() { return this->OP; };
 
   // Just for debugging purposes
@@ -77,8 +80,8 @@ public:
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
                                       int UpperBound);
-  static TAC *unroll(TAC *Tac, int UnrollFactor);
-  TAC *unroll(int UnrollFactor);
+  static TAC *unroll(TAC *Tac, int UnrollFactor, unsigned char mask);
+  TAC *unroll(int UnrollFactor, unsigned char mask);
 
 private:
   TempExpr *A;

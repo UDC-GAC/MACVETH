@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Mar 26 Nov 2019 10:09:30 MST
+ * Last Modified Date: Ven 29 Nov 2019 10:05:27 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -127,6 +127,7 @@ IntrinsicsInsGen::genIntrinsicsIns(std::list<macveth::TAC> TacList) {
   return InsList;
 }
 
+/// Generates either FMAdd or FMSub
 std::string IntrinsicsInsGen::generateFMA(macveth::TAC *PrevTAC,
                                           macveth::TAC *ActualTAC) {
   std::string FuncName = getFuncFromOpCode(ActualTAC->getOP());

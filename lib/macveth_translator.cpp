@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Lun 25 Nov 2019 13:22:20 MST
+ * Last Modified Date: Ven 29 Nov 2019 19:35:14 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -80,8 +80,8 @@ public:
   MACVETHConsumer(Rewriter &R, ASTContext *C)
       : HandlerIteration(R), Context(C) {
     StatementMatcher ForLoopNestedMatcher = matchers_utils::forLoopMatcher(
-        "1",
-        matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
+        "1", matchers_utils::reductionStmt("assignArrayBinOp", "lhs", "rhs"));
+    // matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
     Matcher.addMatcher(ForLoopNestedMatcher, &HandlerIteration);
   }
 

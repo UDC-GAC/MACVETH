@@ -2,7 +2,7 @@
  * File              : TempExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mar 26 Nov 2019 10:25:50 MST
+ * Last Modified Date: Ven 29 Nov 2019 21:07:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -42,7 +42,7 @@ namespace macveth {
 // transformations
 class TempExpr {
 public:
-  enum TempExprType { ARRAY, TEMP_RES, LITERAL, VARIABLE, POINTER };
+  enum TempExprType { ARRAY, TEMP_RES, TEMP_VAL, LITERAL, VARIABLE, POINTER };
 
   /// Constructors
   TempExpr(){};
@@ -53,6 +53,7 @@ public:
     this->setTempType(TE->getTempType());
   }
   TempExpr(std::string E) : ExprStr(E) { this->TempType = TEMP_RES; }
+  TempExpr(std::string E, TempExprType TE) : ExprStr(E), TempType(TE) {}
   TempExpr(Expr *E) : ClangExpr(E) {
     this->ExprStr = Utils::getStringFromExpr(E);
     this->setTypeStr(this->getClangExpr()->getType().getAsString());
@@ -77,7 +78,7 @@ public:
 
   /// Get name of TempReg given a value
   static std::string getNameTempReg(int Val) {
-    return "t" + std::to_string(Val);
+    return "temp" + std::to_string(Val);
   }
 
 private:
