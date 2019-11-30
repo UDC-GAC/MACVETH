@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Ven 29 Nov 2019 10:05:27 MST
+ * Last Modified Date: Sáb 30 Nov 2019 14:37:30 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,6 +29,17 @@
 #include "include/Intrinsics/IntrinsicsGenerator.h"
 
 using namespace macveth;
+
+/// Assuming Op is already loaded, the main idea is to perform 2 permutations
+/// and two additions
+InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
+  InstListType T;
+  T.push_back(getGenericFunction("permute", InOp, nullptr, nullptr));
+  T.push_back(getGenericFunction("add", InOp, nullptr, nullptr));
+  T.push_back(getGenericFunction("permute", InOp, nullptr, nullptr));
+  T.push_back(getGenericFunction("add", InOp, nullptr, nullptr));
+  return T;
+}
 
 std::string IntrinsicsInsGen::getAvailableReg(TempExpr *Op) {
   int RegNo = RegDeclared.size();
@@ -139,7 +150,7 @@ std::string IntrinsicsInsGen::generateFMA(macveth::TAC *PrevTAC,
   TempExpr *OpB = MulTAC->getC();
   TempExpr *OpC =
       !OtherTAC->getB()->isNotClang() ? OtherTAC->getB() : OtherTAC->getC();
-
+  /// FIXME
   int BitWidth = 256;
   std::string DataType = "pd";
   std::string LhsStr = getRegister(OtherTAC->getA());

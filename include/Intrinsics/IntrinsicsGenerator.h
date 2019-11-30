@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Ven 29 Nov 2019 09:20:53 MST
+ * Last Modified Date: Sáb 30 Nov 2019 15:42:35 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -38,6 +38,37 @@
 #include <memory>
 #include <string>
 
+/// FIXME: this class is meant for AVX2. What should be done is a refactoring in
+///        in order to have subclasses which implement the proper declarations
+///        depending on the different ISA used.
+
+///
+/// Data types in AVX
+/// __m128	128-bit vector containing 4 floats
+/// __m128d	128-bit vector containing 2 doubles
+/// __m128i	128-bit vector containing   integers
+/// __m256	256-bit vector containing 8 floats
+/// __m256d	256-bit vector containing 4 doubles
+/// __m256i	256-bit vector containing   integers
+///
+/// Function naming convention:
+///
+/// _mm<width>_<name>_<datatype>
+///
+/// width: [256], for 128 bits empty
+/// name: function name
+/// datatype:
+///     * ps: floats
+///     * pd: doubles
+///     * epi8/epi16/epi32/epi64: vectors contain 8-bit/16-bit/32-bit/64-bit
+///     signed integers
+///     * epu8/epu16/epu32/epu64: vectors contain 8-bit/16-bit/32-bit/64-bit
+///     unsigned integer
+///     * si128/si256: unspecified 128-bit vector or 256-bit vector
+///     * m128/m128i/m128d/m256/m256i/m256d: identifies input vector types when
+///     they're different than the type of the returned vector
+///
+
 namespace macveth {
 
 // to avoid long declarations
@@ -61,6 +92,12 @@ private:
   inline static std::map<std::string, std::string> TypeToDataType;
   inline static std::map<BinaryOperator::Opcode, std::string> BOtoIntrinsic;
 
+  /// Generate instructions for reduction given a input data; results will be
+  /// stored in the OutOp operand. The algorithm is based on [1], by Clay B.
+  /// [1] https://software.intel.com/en-us/blogs/2016/04/12/\
+  /// can-you-write-a-vectorized-reduction-operation
+  static InstListType reduceVector(TempExpr *InOp, TempExpr *OutOp);
+
   /// Get a register given the operand, to check whether it is already mapped or
   /// if it needs a new declaration
   static std::string getRegister(TempExpr *Op);
@@ -81,7 +118,7 @@ private:
   }
 
   /// FIXME
-  /// Generates the body of the AVX2 instruction, e.g. __mm256_add_pd,
+  /// Generates the body of the AVX2 instruction, e.g. _mm256_add_pd,
   /// without any arguments. It is an auxiliary function
   static std::string genAVX2Ins(int BitWidth, std::string Name,
                                 std::string DataType) {

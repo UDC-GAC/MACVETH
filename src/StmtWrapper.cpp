@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Ven 29 Nov 2019 21:17:24 MST
+ * Last Modified Date: Sáb 30 Nov 2019 12:43:13 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -41,17 +41,13 @@ StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
   return StmtWrapper::StmtType::REDUCTION;
 }
 
+/// FIXME
 void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
   if (this->getStmtType() == StmtWrapper::StmtType::VECTORIZABLE) {
     this->setTacList(
         TAC::unrollTacList(this->getTacList(), UnrollFactor, UpperBound));
   } else if (this->getStmtType() == StmtWrapper::StmtType::REDUCTION) {
     /// Get the last element, which is the final reduction
-    // std::cout << "=================================" << std::endl;
-    // for (TAC Tac : this->getTacList()) {
-    //  Tac.printTAC();
-    //}
-    // std::cout << "=================================" << std::endl;
     TAC RedTac = this->getTacList().back();
     /// Making a copy of the TAC list
     std::list<TAC> TempTacList = this->getTacList();
@@ -64,8 +60,8 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     /// unrolling.
     std::string LastTempReg = TempTacList.back().getA()->getExprStr();
     TAC *TempTac =
-        new TAC(new TempExpr("unroll4"), new TempExpr("unroll4"),
-                new TempExpr("unroll", TempExpr::TempExprType::TEMP_RES),
+        new TAC(new TempExpr("unroll0"), new TempExpr("unroll0"),
+                new TempExpr("temp1", TempExpr::TempExprType::TEMP_RES),
                 AddTac.getOP());
     TempTacList.push_back(*TempTac);
     std::cout << "=================================" << std::endl;
@@ -74,11 +70,13 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     }
     std::cout << "=================================" << std::endl;
     /// Unroll TempTacList (which is the original without the last statement)
-    TempTacList = TAC::unrollTacList(TempTacList, UnrollFactor, UpperBound);
+    unsigned int MaskList[] = {0x010101, 0x010100};
+    TempTacList =
+        TAC::unrollTacList(TempTacList, UnrollFactor, UpperBound, MaskList);
     /// Now we are going to attach to the front of the list a new TAC which is
     /// basically the "base case"
     TAC TempInit = TempTacList.front();
-    TempInit.setA(new TempExpr("unroll"));
+    TempInit.setA(new TempExpr("unroll0"));
     TempTacList.pop_front();
     TempTacList.pop_front();
     TempTacList.push_front(TempInit);

@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Ven 29 Nov 2019 21:40:37 MST
+ * Last Modified Date: Sáb 30 Nov 2019 12:45:11 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -40,15 +40,20 @@ using namespace clang;
 using namespace macveth;
 
 namespace macveth {
-// Class TAC: three-address-code
-// This class is no more than a wrapper for holding three Expr and a Opcode, in
-// a way that:
+/// Class TAC: three-address-code
 class TAC {
-  // This class is meant to hold structures such as:
-  //                  a = b op c
-  // Where a, b and c are Expr and op is an Opcode
-  // Consturctor
+private:
+  constexpr static unsigned int MASK_OP_A = {0xFF0000};
+  constexpr static unsigned int BITS_OP_A = 16;
+  constexpr static unsigned int MASK_OP_B = {0x00FF00};
+  constexpr static unsigned int BITS_OP_B = 8;
+  constexpr static unsigned int MASK_OP_C = {0x0000FF};
+  constexpr static unsigned int BITS_OP_C = 0;
+  /// This class is meant to hold structures such as:
+  ///                  a = b op c
+  /// Where a, b and c are Expr and op is an Opcode
 public:
+  // Consturctor
   TAC(){}; // empty constructor
   TAC(TempExpr *A, TempExpr *B, TempExpr *C, clang::BinaryOperator::Opcode OP)
       : A(A), B(B), C(C), OP(OP) {}
@@ -76,12 +81,21 @@ public:
   /// Modifies given list adding at the end the unrolled TACs
   static void unrollTacList(std::list<TAC> *Tac, int UnrollFactor,
                             int UpperBound);
+  static void unrollTacList(std::list<TAC> *Tac, int UnrollFactor,
+                            int UpperBound, unsigned int Mask);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
                                       int UpperBound);
-  static TAC *unroll(TAC *Tac, int UnrollFactor, unsigned char mask);
-  TAC *unroll(int UnrollFactor, unsigned char mask);
+  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
+                                      int UpperBound, unsigned int Mask);
+  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
+                                      int UpperBound, unsigned int MaskList[]);
+  /// Unroll each TAC
+  static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask);
+  static TAC *unroll(TAC *Tac, int UnrollFactor, unsigned int mask);
+  TAC *unroll(int UnrollFactor, int S, unsigned int mask);
+  TAC *unroll(int UnrollFactor, unsigned int mask);
 
 private:
   TempExpr *A;
