@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Sáb 30 Nov 2019 15:42:35 MST
+ * Last Modified Date: Sáb 30 Nov 2019 16:28:52 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -67,6 +67,11 @@
 ///     * si128/si256: unspecified 128-bit vector or 256-bit vector
 ///     * m128/m128i/m128d/m256/m256i/m256d: identifies input vector types when
 ///     they're different than the type of the returned vector
+///
+/// Something important to remember:
+/// * Vector variables are not related with the register variables that the
+///   compiler uses, therefore it is not needed to use ymmX, xmmX nor zmmX when
+///   writing code.
 ///
 
 namespace macveth {
@@ -156,9 +161,11 @@ private:
   /// Maps a register allocation for an operator
   static std::string getAvailableReg(TempExpr *Op);
 
-  /// Retrieves the source code for a function
-  static std::string getGenericFunction(std::string FuncName, TempExpr *Res,
-                                        TempExpr *Op1, TempExpr *Op2);
+  /// Retrieves the source code for a function given its name and the list of
+  /// operands present in the function. First operand/expression will be the
+  /// result operand, so it will be the LHS
+  static std::string getGenericFunction(std::string FuncName,
+                                        std::list<TempExpr> ExprList);
 
   /// Given the name of the function and a list of operands, creates the source
   /// code for it
@@ -169,7 +176,7 @@ private:
   static std::string genLoad(TempExpr *Op);
 
   /// Generates the store instruction
-  static std::string genStore(TempExpr *St, std::string Rhs);
+  static std::string genStore(TempExpr *St, TempExpr *Val);
 
   /// Generates the assignment code given LHS and RHS
   static std::string genAssignment(std::string Lhs, std::string Rhs) {

@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Sáb 30 Nov 2019 12:43:13 MST
+ * Last Modified Date: Sáb 30 Nov 2019 16:40:42 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -35,6 +35,8 @@ using namespace clang;
 using namespace macveth;
 
 /// FIXME
+/// Given a statement, it is able to determine wherever it is or not a
+/// reduction
 StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
   std::cout << S->getLHS()->getType().getAsString() << std::endl;
   std::cout << S->getRHS()->getType().getAsString() << std::endl;
@@ -64,7 +66,7 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
                 new TempExpr("temp1", TempExpr::TempExprType::TEMP_RES),
                 AddTac.getOP());
     TempTacList.push_back(*TempTac);
-    std::cout << "=================================" << std::endl;
+    std::cout << "========BEFORE UNROLLING=========" << std::endl;
     for (TAC Tac : TempTacList) {
       Tac.printTAC();
     }
@@ -82,7 +84,7 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     TempTacList.push_front(TempInit);
     /// Setting thiw new TAC list for this statement
     this->setTacList(TempTacList);
-    std::cout << "=================================" << std::endl;
+    std::cout << "=========AFTER UNROLLING=========" << std::endl;
     for (TAC Tac : TempTacList) {
       Tac.printTAC();
     }

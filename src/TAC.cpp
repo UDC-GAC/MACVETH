@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Sáb 30 Nov 2019 12:44:54 MST
+ * Last Modified Date: Sáb 30 Nov 2019 16:36:49 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -79,6 +79,8 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
 }
 
 /// FIXME
+/// This should not be in this class, this should be in TempExpr
+/// class/declaration, since it belongs to objects of this class...
 TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
   TempExpr *NewExpr = new TempExpr(Lhs);
   TempExpr::TempExprType TE = NewExpr->getTempType();

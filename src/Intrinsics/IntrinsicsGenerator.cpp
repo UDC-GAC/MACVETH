@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Sáb 30 Nov 2019 14:37:30 MST
+ * Last Modified Date: Sáb 30 Nov 2019 16:31:00 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -34,10 +34,25 @@ using namespace macveth;
 /// and two additions
 InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
   InstListType T;
-  T.push_back(getGenericFunction("permute", InOp, nullptr, nullptr));
-  T.push_back(getGenericFunction("add", InOp, nullptr, nullptr));
-  T.push_back(getGenericFunction("permute", InOp, nullptr, nullptr));
-  T.push_back(getGenericFunction("add", InOp, nullptr, nullptr));
+  TempExpr *ymm0 = new TempExpr("ymm0", TempExpr::TempExprType::TEMP_RES);
+  TempExpr *ymm1 = new TempExpr("ymm1", TempExpr::TempExprType::TEMP_RES);
+  TempExpr *ymm2 = new TempExpr("ymm2", TempExpr::TempExprType::TEMP_RES);
+  TempExpr *ymm3 = new TempExpr("ymm3", TempExpr::TempExprType::TEMP_RES);
+  TempExpr *Out = new TempExpr("output", TempExpr::TempExprType::TEMP_RES);
+
+  /// Sequence of instructions for the vectorized reduction algorithm
+  T.push_back(getGenericFunction(
+      "permute",
+      {ymm0, InOp, new TempExpr("0x05", TempExpr::TempExprType::LITERAL)}));
+  T.push_back(getGenericFunction("add", {ymm1, InOp, ymm0}));
+  T.push_back(getGenericFunction(
+      "permute2f128", {ymm2, ymm1, ymm1,
+                       new TempExpr("0x01", TempExpr::TempExprType::LITERAL)}));
+  T.push_back(getGenericFunction("add", {ymm3, ymm1, ymm2}));
+  /// Generate store operation, this will load the result in a vector
+  T.push_back(genStore(OutOp, ymm3));
+  /// This generates an instruction for assignment
+  T.push_back(genAssignment(OutOp->getExprStr(), Out->getExprStr()));
   return T;
 }
 
@@ -52,16 +67,18 @@ std::string IntrinsicsInsGen::getAvailableReg(TempExpr *Op) {
 }
 
 std::string IntrinsicsInsGen::getGenericFunction(std::string FuncName,
-                                                 TempExpr *Res, TempExpr *Op1,
-                                                 TempExpr *Op2) {
-  // int BitWidth = getBitWidthFromType(St->getClangExpr()->getType());
+                                                 std::list<TempExpr> ExprList) {
   // FIXME
   int BitWidth = 256;
   std::string DataType = "pd";
-  std::string LhsStr = getRegister(Res);
+  std::string LhsStr = getRegister(&ExprList.front());
+  ExprList.pop_front();
+  std::list<std::string> Operands;
+  for (TempExpr T : ExprList) {
+    Operands.push_back(T.getExprStr());
+  }
   std::string RhsStr =
-      genVarArgsFunc(genAVX2Ins(BitWidth, FuncName, DataType),
-                     {RegMap[Op1->getExprStr()], RegMap[Op2->getExprStr()]});
+      genVarArgsFunc(genAVX2Ins(BitWidth, FuncName, DataType), Operands);
   std::string FullInstruction = genAssignment(LhsStr, RhsStr);
   return FullInstruction;
 }
@@ -96,14 +113,15 @@ std::string IntrinsicsInsGen::genLoad(TempExpr *Op) {
   return AssignmentStr;
 }
 
-std::string IntrinsicsInsGen::genStore(TempExpr *St, std::string Rhs) {
+std::string IntrinsicsInsGen::genStore(TempExpr *St, TempExpr *Val) {
   int BitWidth = getBitWidthFromType(St->getClangExpr()->getType());
   std::string Name = "store";
   std::string DataType = getDataTypeFromType(St->getClangExpr()->getType());
   // std::cout << St->getClangExpr()->getType().getAsString() <<
   // std::endl;
-  std::string AssignmentStr = genVarArgsFunc(
-      genAVX2Ins(BitWidth, Name, DataType), {St->getExprStr(), Rhs});
+  std::string AssignmentStr =
+      genVarArgsFunc(genAVX2Ins(BitWidth, Name, DataType),
+                     {St->getExprStr(), Val->getExprStr()});
   // std::cout << AssignmentStr << std::endl;
   return AssignmentStr;
 }
@@ -132,7 +150,7 @@ IntrinsicsInsGen::genIntrinsicsIns(std::list<macveth::TAC> TacList) {
       InsList.push_back(NewInst);
       continue;
     }
-    InsList.push_back(getGenericFunction(FuncName, Res, Op1, Op2));
+    InsList.push_back(getGenericFunction(FuncName, {Res, Op1, Op2}));
     PrevTAC = Tac;
   }
   return InsList;
@@ -193,7 +211,7 @@ std::list<InstListType> IntrinsicsInsGen::translateTAC(std::list<TAC> TacList) {
     TempExpr *Op2 = Tac.getC();
     if (!Res->isNotClang()) {
       /// Store in memory address given
-      StoreList.push_back(genStore(Op1, Op2->getExprStr()));
+      StoreList.push_back(genStore(Op1, Op2));
     }
   }
   InstList.push_back(StoreList);
