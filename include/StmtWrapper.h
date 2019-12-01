@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Sáb 30 Nov 2019 17:05:44 MST
+ * Last Modified Date: Sáb 30 Nov 2019 22:59:39 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -63,8 +63,12 @@ public:
   /// Translator
   void translateTacToIntrinsics() {
     this->InstList = IntrinsicsInsGen::translateTAC(this->getTacList());
+    /// FIXME
+    /// Horrible code, horrible hack...
     if (this->getStmtType() == StmtType::REDUCTION) {
       TacListType T;
+      /// Create an unaltered TacList again in order to get the original
+      /// operands
       TAC::binaryOperator2TAC((BinaryOperator *)this->getStmt(), &T, -1);
       TempExpr In = this->getTacList().back().getA();
       T.reverse();
@@ -87,10 +91,16 @@ public:
   void setTacList(TacListType TacList) { this->TacList = TacList; };
 
 private:
+  /// Statement holded
   Stmt *S;
+  /// Type of statement; we only address those which are of our interest
   StmtType ST;
+  /// TAC list with regard to the Statement S
   TacListType TacList;
+  /// List of instructions generated depending on the type of statement and the
+  /// TAC list generated. Generated when translateTacToInstrinsics called,
+  /// nullptr otherwise
   std::list<InstListType> InstList;
-}; // namespace macveth
+};
 } // namespace macveth
 #endif // MACVETH_STMTWRAPPER_H

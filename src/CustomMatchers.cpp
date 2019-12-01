@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Sáb 30 Nov 2019 22:45:30 MST
+ * Last Modified Date: Sáb 30 Nov 2019 23:01:09 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -33,6 +33,8 @@
 
 using namespace macveth;
 
+/// FIXME please, need to pass arguments to the Matcher, in order to determine
+///       the 1) unrolling factor and 2) the stride
 void matchers_utils::IterationHandler::run(
     const MatchFinder::MatchResult &Result) {
   std::list<const DeclRefExpr *> IncVarList;
@@ -124,7 +126,6 @@ StatementMatcher matchers_utils::forLoopMatcher(std::string Name,
                                       Name))))),
                      hasRHS(expr(hasType(isInteger()))))),
                  hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt)))))
-      // hasBody(has(compoundStmt(hasDescendant(InnerStmt)))))
       .bind("forLoop" + Name);
 }
 

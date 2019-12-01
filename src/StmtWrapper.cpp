@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Sáb 30 Nov 2019 22:43:05 MST
+ * Last Modified Date: Sáb 30 Nov 2019 23:00:09 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -44,10 +44,22 @@ StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
   return StmtWrapper::StmtType::VECTORIZABLE;
 }
 
-/// FIXME
+void printDebug(std::string Name, TacListType TempTacList) {
+  std::cout << "========" + Name + " UNROLLING=========" << std::endl;
+  for (TAC Tac : TempTacList) {
+    Tac.printTAC();
+  }
+  std::cout << "=================================" << std::endl;
+}
+
+/// Limitations:
+/// * Type of statements: VECTORIZABLE | REDUCTION
+/// * Regarding reductions:
+///    - Works for reduction statements such as:
+///            sum = sum + [whatever]
+/// * Code is not beautiful, I know
 void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
   if (this->getStmtType() == StmtWrapper::StmtType::VECTORIZABLE) {
-    std::cout << "llego" << std::endl;
     this->setTacList(
         TAC::unrollTacList(this->getTacList(), UnrollFactor, UpperBound));
   } else if (this->getStmtType() == StmtWrapper::StmtType::REDUCTION) {
@@ -55,12 +67,8 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     TAC RedTac = this->getTacList().back();
     /// Making a copy of the TAC list
     std::list<TAC> TempTacList = this->getTacList();
-    std::cout << "========BEFORE UNROLLING=========" << std::endl;
-    for (TAC Tac : TempTacList) {
-      Tac.printTAC();
-    }
-    std::cout << "=================================" << std::endl;
     /// Remove the last element, the final reduction
+    // printDebug("BEFORE", TempTacList);
     TempTacList.pop_back();
     TAC AddTac = TempTacList.back();
     TempTacList.pop_back();
@@ -86,11 +94,7 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     TempTacList.push_front(TempInit);
     /// Setting thiw new TAC list for this statement
     this->setTacList(TempTacList);
-    std::cout << "=========AFTER UNROLLING=========" << std::endl;
-    for (TAC Tac : TempTacList) {
-      Tac.printTAC();
-    }
-    std::cout << "=================================" << std::endl;
+    // printDebug("AFTER", TempTacList);
   } else {
     std::cout << "STMT not supported yet!!!" << std::endl;
   }
