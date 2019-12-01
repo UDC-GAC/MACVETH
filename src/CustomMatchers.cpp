@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Sáb 30 Nov 2019 23:01:09 MST
+ * Last Modified Date: Dom 01 Dec 2019 16:33:21 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -25,13 +25,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 #include "include/CustomMatchers.h"
 #include "include/StmtWrapper.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include <iostream>
 #include <string>
 
-using namespace macveth;
+// using namespace macveth;
+typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 
 /// FIXME please, need to pass arguments to the Matcher, in order to determine
 ///       the 1) unrolling factor and 2) the stride
@@ -49,7 +51,7 @@ void matchers_utils::IterationHandler::run(
   int NLevel = 1;
   int UnrollFactor = 4;
 
-  // Unroll factor applied to the for header
+  /// Unroll factor applied to the for header
   for (int Inc = NLevel; Inc > 0; --Inc) {
     const UnaryOperator *IncVarPos =
         Result.Nodes.getNodeAs<clang::UnaryOperator>(
@@ -103,29 +105,44 @@ StatementMatcher matchers_utils::assignArrayBinOp(std::string Name,
       .bind(Name);
 }
 
+MatcherForStmt customLoopInit(std::string Name) {
+  return hasLoopInit(declStmt(
+      hasSingleDecl(varDecl(hasInitializer(integerLiteral(equals(0))))
+                        .bind(matchers_utils::varnames::NameVarInit + Name))));
+}
+
+MatcherForStmt customIncrement(std::string Name) {
+  return hasIncrement(
+      unaryOperator(hasOperatorName("++"),
+                    hasUnaryOperand(
+                        declRefExpr(to(varDecl(hasType(isInteger()))))
+                            .bind(matchers_utils::varnames::NameVarInc + Name)))
+          .bind(matchers_utils::varnames::NameVarIncPos + Name));
+}
+
+MatcherForStmt customCondition(std::string Name) {
+  return hasCondition(binaryOperator(
+      hasOperatorName("<"),
+      hasLHS(ignoringParenImpCasts(declRefExpr(
+          to(varDecl(hasType(isInteger()))
+                 .bind(matchers_utils::varnames::NameVarCond + Name))))),
+      hasRHS(expr(hasType(isInteger()))
+                 .bind(matchers_utils::varnames::UpperBound + Name))));
+}
+
+/// Body of the loops we are looking for. In this case could be something like:
+/// * for() { InnerStmt; }
+/// * for() { [Stmt]* [InnerStmt]+ [InnerStmt|Stmt]*}
+MatcherForStmt customBody(StatementMatcher InnerStmt) {
+  return hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt))));
+}
+
 /// Function wrapper for matching expressions such as:
 /// for (int var = 0; var < upper_bound; [++]var[++])
 StatementMatcher matchers_utils::forLoopMatcher(std::string Name,
                                                 StatementMatcher InnerStmt) {
-  return forStmt(hasLoopInit(declStmt(hasSingleDecl(
-                     varDecl(hasInitializer(integerLiteral(equals(0))))
-                         .bind(matchers_utils::varnames::NameVarInit + Name)))),
-                 hasIncrement(
-                     unaryOperator(
-                         hasOperatorName("++"),
-                         hasUnaryOperand(
-                             declRefExpr(to(varDecl(hasType(isInteger()))))
-                                 .bind(matchers_utils::varnames::NameVarInc +
-                                       Name)))
-                         .bind(matchers_utils::varnames::NameVarIncPos + Name)),
-                 hasCondition(binaryOperator(
-                     hasOperatorName("<"),
-                     hasLHS(ignoringParenImpCasts(declRefExpr(
-                         to(varDecl(hasType(isInteger()))
-                                .bind(matchers_utils::varnames::NameVarCond +
-                                      Name))))),
-                     hasRHS(expr(hasType(isInteger()))))),
-                 hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt)))))
+  return forStmt(customLoopInit(Name), customIncrement(Name),
+                 customCondition(Name), customBody(InnerStmt))
       .bind("forLoop" + Name);
 }
 

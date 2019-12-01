@@ -2,7 +2,7 @@
  * File              : LoopTracker.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 01 Dec 2019 00:03:04 MST
- * Last Modified Date: Dom 01 Dec 2019 00:26:33 MST
+ * Last Modified Date: Dom 01 Dec 2019 13:07:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -32,13 +32,21 @@
 
 namespace macveth {
 
+class Loop;
+class LoopTracker;
+
+typedef std::list<Loop> LoopListType;
+typedef std::list<LoopListType> LoopHierType;
+
 class Loop {
 public:
   Loop(std::string V, std::string M, std::string I)
       : VarName(V), MaxVal(M), Incr(I){};
 
   /// Getters and setters
-  std::string getVarName() { return this->VarName; }
+  std::string getVarName() const { return this->VarName; }
+  std::string getMaxVal() const { return this->MaxVal; }
+  std::string getIncr() const { return this->Incr; }
 
   void addStmt(StmtWrapper S) { this->StmtList.push_back(S); }
   bool hasStmt(StmtWrapper S) {
@@ -57,38 +65,49 @@ private:
   std::list<StmtWrapper> StmtList;
 };
 
+/// Comparing Loops
+bool operator==(const Loop &a, const Loop &b) {
+  return (!a.getVarName().compare(b.getVarName())) &
+         (!a.getMaxVal().compare(b.getMaxVal())) &
+         (!a.getIncr().compare(b.getIncr()));
+}
+
 class LoopTracker {
-  typedef std::list<Loop> LoopListType;
 
 public:
-  void addLoop(std::string FuncName, std::string VarName, std::string MaxVal,
-               std::string Incr) {
-    LoopListType LoopList = MapFuncLoops[FuncName];
-    LoopList.push_back(*(new Loop(VarName, MaxVal, Incr)));
-  }
+  /// Add a Loop object to the map according to its parent. If it has no Loop
+  ///  parent, we will just add it to the List of Lists
+  static void addLoop(std::string FuncName, Loop *Parent, std::string VarName,
+                      std::string MaxVal, std::string Incr);
 
+  /// Return the loop for a given statement and function
   Loop *findLoopByStmt(std::string FuncName, StmtWrapper S) {
-    LoopListType LoopList = MapFuncLoops[FuncName];
-    for (Loop L : LoopList) {
-      if (L.hasStmt(S)) {
-        return &L;
+    LoopHierType LoopHier = MapFuncLoops[FuncName];
+    for (LoopListType LList : LoopHier) {
+      for (Loop L : LList) {
+        if (L.hasStmt(S)) {
+          return &L;
+        }
       }
     }
     return nullptr;
   }
 
+  /// Return the loop for a given the and function
   Loop *findLoopByVar(std::string FuncName, std::string Name) {
-    LoopListType LoopList = MapFuncLoops[FuncName];
-    for (Loop L : LoopList) {
-      if (Name.compare(L.getVarName())) {
-        return &L;
+    LoopHierType LoopHier = MapFuncLoops[FuncName];
+    for (LoopListType LList : LoopHier) {
+      for (Loop L : LList) {
+        if (Name.compare(L.getVarName())) {
+          return &L;
+        }
       }
     }
     return nullptr;
   }
 
 private:
-  static std::map<std::string, LoopListType> MapFuncLoops;
+  static std::map<std::string, LoopHierType> MapFuncLoops;
 
 private:
   static LoopTracker *Singleton;

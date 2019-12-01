@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Sáb 30 Nov 2019 22:22:32 MST
+ * Last Modified Date: Dom 01 Dec 2019 10:39:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -65,6 +65,8 @@ const std::string NameVarInc = "incVar";
 const std::string NameVarIncPos = "incVarPos";
 const std::string NameVarInit = "initVar";
 const std::string NameVarCond = "condVar";
+
+const std::string UpperBound = "upperBound";
 } // namespace varnames
 
 // IteartionHandler is called every time we find an assignment like:

@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Sáb 30 Nov 2019 22:18:54 MST
+ * Last Modified Date: Dom 01 Dec 2019 16:04:56 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -26,6 +26,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 #include <iostream>
 #include <list>
 #include <memory>
@@ -79,12 +80,15 @@ class MACVETHConsumer : public ASTConsumer {
 public:
   MACVETHConsumer(Rewriter &R, ASTContext *C)
       : HandlerReduction(R), HandlerVector(R), Context(C) {
+    /// For reduction statements
     StatementMatcher ForLoopNestedMatcherRed = matchers_utils::forLoopMatcher(
         "1", matchers_utils::reductionStmt("reduction", "lhs", "rhs"));
+    Matcher.addMatcher(ForLoopNestedMatcherRed, &HandlerReduction);
+
+    /// For vectorizable statements
     StatementMatcher ForLoopNestedMatcherVec = matchers_utils::forLoopMatcher(
         "1",
         matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
-    Matcher.addMatcher(ForLoopNestedMatcherRed, &HandlerReduction);
     Matcher.addMatcher(ForLoopNestedMatcherVec, &HandlerVector);
   }
 
@@ -148,6 +152,7 @@ private:
 static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
 
+/// Main program
 int main(int argc, const char **argv) {
   llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
 
