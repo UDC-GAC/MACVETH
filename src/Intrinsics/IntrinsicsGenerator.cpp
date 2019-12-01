@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Sáb 30 Nov 2019 16:31:00 MST
+ * Last Modified Date: Sáb 30 Nov 2019 17:06:44 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -50,7 +50,7 @@ InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
                        new TempExpr("0x01", TempExpr::TempExprType::LITERAL)}));
   T.push_back(getGenericFunction("add", {ymm3, ymm1, ymm2}));
   /// Generate store operation, this will load the result in a vector
-  T.push_back(genStore(OutOp, ymm3));
+  T.push_back(genStore(Out, ymm3));
   /// This generates an instruction for assignment
   T.push_back(genAssignment(OutOp->getExprStr(), Out->getExprStr()));
   return T;
@@ -114,9 +114,11 @@ std::string IntrinsicsInsGen::genLoad(TempExpr *Op) {
 }
 
 std::string IntrinsicsInsGen::genStore(TempExpr *St, TempExpr *Val) {
-  int BitWidth = getBitWidthFromType(St->getClangExpr()->getType());
+  // int BitWidth = getBitWidthFromType(St->getType());
+  int BitWidth = 256;
   std::string Name = "store";
-  std::string DataType = getDataTypeFromType(St->getClangExpr()->getType());
+  std::string DataType = "pd";
+  // std::string DataType = getDataTypeFromType(St->getClangExpr()->getType());
   // std::cout << St->getClangExpr()->getType().getAsString() <<
   // std::endl;
   std::string AssignmentStr =

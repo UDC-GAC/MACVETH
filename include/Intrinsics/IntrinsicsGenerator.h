@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Sáb 30 Nov 2019 16:28:52 MST
+ * Last Modified Date: Sáb 30 Nov 2019 16:48:55 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -87,6 +87,11 @@ public:
   // 2.- Looks for arithmetic operations
   // 3.- Generates memory stores
   static std::list<InstListType> translateTAC(std::list<macveth::TAC> TacList);
+  /// Generate instructions for reduction given a input data; results will be
+  /// stored in the OutOp operand. The algorithm is based on [1], by Clay B.
+  /// [1] https://software.intel.com/en-us/blogs/2016/04/12/\
+  /// can-you-write-a-vectorized-reduction-operation
+  static InstListType reduceVector(TempExpr *InOp, TempExpr *OutOp);
 
 private:
   inline static std::list<std::string> RegDeclared;
@@ -96,12 +101,6 @@ private:
   inline static std::map<std::string, int> TypeToWidth;
   inline static std::map<std::string, std::string> TypeToDataType;
   inline static std::map<BinaryOperator::Opcode, std::string> BOtoIntrinsic;
-
-  /// Generate instructions for reduction given a input data; results will be
-  /// stored in the OutOp operand. The algorithm is based on [1], by Clay B.
-  /// [1] https://software.intel.com/en-us/blogs/2016/04/12/\
-  /// can-you-write-a-vectorized-reduction-operation
-  static InstListType reduceVector(TempExpr *InOp, TempExpr *OutOp);
 
   /// Get a register given the operand, to check whether it is already mapped or
   /// if it needs a new declaration

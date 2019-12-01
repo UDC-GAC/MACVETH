@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Sáb 30 Nov 2019 16:40:42 MST
+ * Last Modified Date: Sáb 30 Nov 2019 17:03:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -53,6 +53,11 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     TAC RedTac = this->getTacList().back();
     /// Making a copy of the TAC list
     std::list<TAC> TempTacList = this->getTacList();
+    std::cout << "========BEFORE UNROLLING=========" << std::endl;
+    for (TAC Tac : TempTacList) {
+      Tac.printTAC();
+    }
+    std::cout << "=================================" << std::endl;
     /// Remove the last element, the final reduction
     TempTacList.pop_back();
     TAC AddTac = TempTacList.back();
@@ -66,11 +71,6 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
                 new TempExpr("temp1", TempExpr::TempExprType::TEMP_RES),
                 AddTac.getOP());
     TempTacList.push_back(*TempTac);
-    std::cout << "========BEFORE UNROLLING=========" << std::endl;
-    for (TAC Tac : TempTacList) {
-      Tac.printTAC();
-    }
-    std::cout << "=================================" << std::endl;
     /// Unroll TempTacList (which is the original without the last statement)
     unsigned int MaskList[] = {0x010101, 0x010100};
     TempTacList =

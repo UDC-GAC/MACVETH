@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Mar 26 Nov 2019 18:48:14 MST
+ * Last Modified Date: Sáb 30 Nov 2019 17:05:44 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -32,6 +32,7 @@
 #include "include/TAC.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
+#include "clang/AST/Expr.h"
 
 using namespace clang;
 using namespace macveth;
@@ -48,14 +49,13 @@ public:
   /// Constructors
   StmtWrapper(){};
   StmtWrapper(const BinaryOperator *S) {
+    this->S = (Stmt *)S;
     this->setStmtType(StmtWrapper::getStmtType(S));
     TAC::binaryOperator2TAC(S, &this->TacList, -1);
     this->TacList.reverse();
-    for (TAC Tac : TacList) {
-      Tac.printTAC();
-    }
   };
 
+  /// Getters and setters
   static StmtType getStmtType(const BinaryOperator *S);
   StmtType getStmtType() { return this->ST; }
   void setStmtType(StmtType ST) { this->ST = ST; }
@@ -63,6 +63,14 @@ public:
   /// Translator
   void translateTacToIntrinsics() {
     this->InstList = IntrinsicsInsGen::translateTAC(this->getTacList());
+    if (this->getStmtType() == StmtType::REDUCTION) {
+      TacListType T;
+      TAC::binaryOperator2TAC((BinaryOperator *)this->getStmt(), &T, -1);
+      TempExpr In = this->getTacList().back().getA();
+      T.reverse();
+      TempExpr Out = T.back().getA();
+      this->InstList.push_back(IntrinsicsInsGen::reduceVector(&In, &Out));
+    }
   }
 
   /// Unroll
