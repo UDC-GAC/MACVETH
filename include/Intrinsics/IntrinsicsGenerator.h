@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Sáb 30 Nov 2019 16:48:55 MST
+ * Last Modified Date: Sáb 30 Nov 2019 20:46:11 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -70,7 +70,7 @@
 ///
 /// Something important to remember:
 /// * Vector variables are not related with the register variables that the
-///   compiler uses, therefore it is not needed to use ymmX, xmmX nor zmmX when
+///   compiler uses, therefore it is not needed to use xmmX, ymmX nor zmmX when
 ///   writing code.
 ///
 
@@ -121,20 +121,21 @@ private:
     return IntrinsicsInsGen::TypeToDataType[ExprType.getAsString()];
   }
 
-  /// FIXME
-  /// Generates the body of the AVX2 instruction, e.g. _mm256_add_pd,
+  /// Generates the body of the AVX instruction, e.g. _mm256_add_pd,
   /// without any arguments. It is an auxiliary function
-  static std::string genAVX2Ins(int BitWidth, std::string Name,
-                                std::string DataType) {
-    std::string IntrinsicsIns =
-        "_mm" + std::to_string(BitWidth) + "_" + Name + "_" + DataType;
+  static std::string genAVXIns(int BitWidth, std::string Name,
+                               std::string DataType) {
+    std::string Width = (BitWidth >= 256) ? std::to_string(BitWidth) : "";
+
+    std::string IntrinsicsIns = "_mm" + Width + "_" + Name + "_" + DataType;
     return IntrinsicsIns;
   }
 
   /// FIXME
   /// Generate AVX declarations
   static std::string genRegDecl(std::string Name, int Width) {
-    std::string RegDecl = "__m" + std::to_string(Width) + " " + Name;
+    std::string DataType = "d"; // FIXME double
+    std::string RegDecl = "__m" + std::to_string(Width) + DataType + " " + Name;
     return RegDecl;
   }
 
@@ -183,7 +184,6 @@ private:
     return AssignmentStr;
   }
 
-  /// FIXME
   /// This is a fucking awful hack
   /// TempExpr are used as wrappers of Expr and new Nodes. This class has
   /// been created for the ease of TAC handling. So, if a TAC does not

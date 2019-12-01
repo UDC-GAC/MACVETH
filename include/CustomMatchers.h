@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Mar 26 Nov 2019 15:10:10 MST
+ * Last Modified Date: Sáb 30 Nov 2019 22:22:32 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -72,8 +72,6 @@ const std::string NameVarCond = "condVar";
 class IterationHandler : public MatchFinder::MatchCallback {
 public:
   IterationHandler(Rewriter &R) : Rewrite(R) {}
-
-  std::list<TAC> wrapperStmt2TAC(const clang::BinaryOperator *S);
 
   virtual void run(const MatchFinder::MatchResult &Result);
 

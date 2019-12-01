@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Sáb 30 Nov 2019 16:32:37 MST
+ * Last Modified Date: Sáb 30 Nov 2019 22:45:30 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -37,9 +37,12 @@ void matchers_utils::IterationHandler::run(
     const MatchFinder::MatchResult &Result) {
   std::list<const DeclRefExpr *> IncVarList;
   const BinaryOperator *TacBinOp =
-      Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
+      Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp") ==
+              nullptr
+          ? Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction")
+          : Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
   StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
-  SWrap->unroll(4, 16);
+  SWrap->unroll(4, 4);
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
   int UnrollFactor = 4;

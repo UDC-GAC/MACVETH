@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Sáb 30 Nov 2019 17:06:44 MST
+ * Last Modified Date: Sáb 30 Nov 2019 20:45:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -78,7 +78,7 @@ std::string IntrinsicsInsGen::getGenericFunction(std::string FuncName,
     Operands.push_back(T.getExprStr());
   }
   std::string RhsStr =
-      genVarArgsFunc(genAVX2Ins(BitWidth, FuncName, DataType), Operands);
+      genVarArgsFunc(genAVXIns(BitWidth, FuncName, DataType), Operands);
   std::string FullInstruction = genAssignment(LhsStr, RhsStr);
   return FullInstruction;
 }
@@ -107,7 +107,7 @@ std::string IntrinsicsInsGen::genLoad(TempExpr *Op) {
   // std::cout << Op->getClangExpr()->getType().getAsString() <<
   // std::endl;
   std::string RhsStr =
-      genVarArgsFunc(genAVX2Ins(BitWidth, Name, DataType), {Op->getExprStr()});
+      genVarArgsFunc(genAVXIns(BitWidth, Name, DataType), {Op->getExprStr()});
   std::string AssignmentStr = genAssignment(RegRes, RhsStr);
   // std::cout << AssignmentStr << std::endl;
   return AssignmentStr;
@@ -115,6 +115,7 @@ std::string IntrinsicsInsGen::genLoad(TempExpr *Op) {
 
 std::string IntrinsicsInsGen::genStore(TempExpr *St, TempExpr *Val) {
   // int BitWidth = getBitWidthFromType(St->getType());
+  /// FIXME
   int BitWidth = 256;
   std::string Name = "store";
   std::string DataType = "pd";
@@ -122,7 +123,7 @@ std::string IntrinsicsInsGen::genStore(TempExpr *St, TempExpr *Val) {
   // std::cout << St->getClangExpr()->getType().getAsString() <<
   // std::endl;
   std::string AssignmentStr =
-      genVarArgsFunc(genAVX2Ins(BitWidth, Name, DataType),
+      genVarArgsFunc(genAVXIns(BitWidth, Name, DataType),
                      {St->getExprStr(), Val->getExprStr()});
   // std::cout << AssignmentStr << std::endl;
   return AssignmentStr;
@@ -142,16 +143,17 @@ IntrinsicsInsGen::genIntrinsicsIns(std::list<macveth::TAC> TacList) {
     if (!FuncName.compare("store")) {
       continue;
     }
-    TempExpr *Res = Tac.getA();
-    TempExpr *Op1 = Tac.getB();
-    TempExpr *Op2 = Tac.getC();
-    // check whether you can fuse a mul and add/sub
+    /// check whether you can fuse a mul and add/sub
     if (potentialFMA(&PrevTAC, &Tac)) {
+      TempRegDeclared.pop_back();
       InsList.pop_back();
       std::string NewInst = generateFMA(&PrevTAC, &Tac);
       InsList.push_back(NewInst);
       continue;
     }
+    TempExpr *Res = Tac.getA();
+    TempExpr *Op1 = Tac.getB();
+    TempExpr *Op2 = Tac.getC();
     InsList.push_back(getGenericFunction(FuncName, {Res, Op1, Op2}));
     PrevTAC = Tac;
   }
@@ -175,7 +177,7 @@ std::string IntrinsicsInsGen::generateFMA(macveth::TAC *PrevTAC,
   std::string DataType = "pd";
   std::string LhsStr = getRegister(OtherTAC->getA());
   std::string RhsStr =
-      genVarArgsFunc(genAVX2Ins(BitWidth, FuncName, DataType),
+      genVarArgsFunc(genAVXIns(BitWidth, FuncName, DataType),
                      {RegMap[OpA->getExprStr()], RegMap[OpB->getExprStr()],
                       RegMap[OpC->getExprStr()]});
   std::string FullInstruction = genAssignment(LhsStr, RhsStr);

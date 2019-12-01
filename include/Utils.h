@@ -2,7 +2,7 @@
  * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Sáb 23 Nov 2019 11:51:25 MST
+ * Last Modified Date: Sáb 30 Nov 2019 20:22:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -38,38 +38,37 @@ using namespace clang;
 namespace macveth {
 
 class Utils {
-   public:
-    // some definitions to avoid repetition
-    typedef std::list<std::string> StrList;
+public:
+  // some definitions to avoid repetition
+  typedef std::list<std::string> StrList;
 
-    // when declaring static members of class, when assigning them you need
-    // to redeclare them or since C++17 you can just put inline
-    inline static clang::SourceManager* SourceMgr;
-    inline static clang::LangOptions* LangOpts;
+  // when declaring static members of class, when assigning them you need
+  // to redeclare them or since C++17 you can just put inline
+  inline static clang::SourceManager *SourceMgr;
+  inline static clang::LangOptions *LangOpts;
 
-    // some auxiliary functions
-    template <typename T>
-    static bool contains(std::list<T>& listOfElements, const T& element);
+  // some auxiliary functions
+  template <typename T>
+  static bool contains(std::list<T> &listOfElements, const T &element);
 
-    // converting expressions to strings
-    static std::string getStringFromExpr(Expr* E);
+  // converting expressions to strings
+  static std::string getStringFromExpr(Expr *E);
 
-    // managing resources
-    static clang::SourceManager* getSourceMgr();
-    static clang::LangOptions* getLangOpts();
-    static void setOpts(SourceManager* SO, LangOptions* LO);
+  // managing resources
+  static clang::SourceManager *getSourceMgr();
+  static clang::LangOptions *getLangOpts();
+  static void setOpts(SourceManager *SO, LangOptions *LO);
 };
 
 //-------------------------------------------------------------
 template <typename T>
-bool Utils::contains(std::list<T>& listOfElements, const T& element) {
-    // Find the iterator if element in list
-    auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
-    // return if iterator points to end or not. It points to end then it
-    // means element does not exists in list
-    return it != listOfElements.end();
+bool Utils::contains(std::list<T> &listOfElements, const T &element) {
+  // Find the iterator if element in list
+  auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
+  // return if iterator points to end or not. It points to end then it
+  // means element does not exists in list
+  return it != listOfElements.end();
 }
 
-}  // namespace macveth
-//}  // namespace macveth
+} // namespace macveth
 #endif

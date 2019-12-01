@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Sáb 30 Nov 2019 17:03:37 MST
+ * Last Modified Date: Sáb 30 Nov 2019 22:43:05 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -38,14 +38,16 @@ using namespace macveth;
 /// Given a statement, it is able to determine wherever it is or not a
 /// reduction
 StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
-  std::cout << S->getLHS()->getType().getAsString() << std::endl;
-  std::cout << S->getRHS()->getType().getAsString() << std::endl;
-  return StmtWrapper::StmtType::REDUCTION;
+  if (!isa<ArraySubscriptExpr>(S->getLHS())) {
+    return StmtWrapper::StmtType::REDUCTION;
+  }
+  return StmtWrapper::StmtType::VECTORIZABLE;
 }
 
 /// FIXME
 void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
   if (this->getStmtType() == StmtWrapper::StmtType::VECTORIZABLE) {
+    std::cout << "llego" << std::endl;
     this->setTacList(
         TAC::unrollTacList(this->getTacList(), UnrollFactor, UpperBound));
   } else if (this->getStmtType() == StmtWrapper::StmtType::REDUCTION) {
