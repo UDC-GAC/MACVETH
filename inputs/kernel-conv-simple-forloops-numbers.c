@@ -1,10 +1,10 @@
 //#include <immintrin.h>
 
 /**
- * File              : kernel-conv-simple.c
+ * File              : kernel-conv-simple-forloops-numbers.c
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 15:38:07 MST
- * Last Modified Date: Sáb 30 Nov 2019 22:44:16 MST
+ * Last Modified Date: Sáb 30 Nov 2019 23:02:49 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 inline void convolution4(int N, const double bottom[N][N][N], int stride,
@@ -40,7 +40,7 @@ inline void convolution4(int N, const double bottom[N][N][N], int stride,
     // int LUT = LUT_HW_4;
     // int FF = FF_HW_4;
     for (int h = 0; h < hout; ++h)
-      for (int w = 0; w < wout; ++w) {
+      for (int w = 0; w < 1024; ++w) {
         int h_start = h * stride;
         int h_end = h_start + kernel_size;
         int w_start = w * stride;
@@ -48,7 +48,7 @@ inline void convolution4(int N, const double bottom[N][N][N], int stride,
         double sum;
         for (int i = h_start, m = 0; i < h_end; ++i, ++m)
           for (int j = w_start, n = 0; j < w_end; ++j, ++n)
-            for (int ci = 0; ci < cout; ++ci) {
+            for (int ci = 0; ci < 1024; ++ci) {
               sum = sum + weights[co][ci][m][n] * bottom[ci][i][j];
             }
         top[co][h][w] = sum + bias[co];

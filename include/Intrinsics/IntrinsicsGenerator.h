@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Sáb 30 Nov 2019 20:46:11 MST
+ * Last Modified Date: Dom 01 Dec 2019 00:35:00 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -193,7 +193,6 @@ private:
         IntrinsicsInsGen::RegMap.end()) {
       return false;
     }
-    // std::cout << "checking if it is not Clang" << std::endl;
     return !Op->isNotClang();
   }
 
