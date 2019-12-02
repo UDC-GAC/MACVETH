@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Dom 01 Dec 2019 16:04:56 MST
+ * Last Modified Date: Dom 01 Dec 2019 20:58:49 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -78,30 +78,33 @@ using namespace macveth;
 /// the AST.
 class MACVETHConsumer : public ASTConsumer {
 public:
-  MACVETHConsumer(Rewriter &R, ASTContext *C)
-      : HandlerReduction(R), HandlerVector(R), Context(C) {
+  MACVETHConsumer(Rewriter &R, ASTContext *C) : Handler(R), Context(C) {}
+
+  void HandleTranslationUnit(ASTContext &Context) override {
+    /// Generate loop information
+    // MatcherLoop.matchAST(Context);
+
     /// For reduction statements
     StatementMatcher ForLoopNestedMatcherRed = matchers_utils::forLoopMatcher(
         "1", matchers_utils::reductionStmt("reduction", "lhs", "rhs"));
-    Matcher.addMatcher(ForLoopNestedMatcherRed, &HandlerReduction);
+    MatcherRed.addMatcher(ForLoopNestedMatcherRed, &Handler);
+    MatcherRed.matchAST(Context);
 
     /// For vectorizable statements
     StatementMatcher ForLoopNestedMatcherVec = matchers_utils::forLoopMatcher(
         "1",
         matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
-    Matcher.addMatcher(ForLoopNestedMatcherVec, &HandlerVector);
-  }
-
-  void HandleTranslationUnit(ASTContext &Context) override {
+    MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
     /// Run the matchers when we have the whole TU parsed.
-    Matcher.matchAST(Context);
+    MatcherVec.matchAST(Context);
   }
 
 private:
   ASTContext *Context;
-  matchers_utils::IterationHandler HandlerReduction;
-  matchers_utils::IterationHandler HandlerVector;
-  MatchFinder Matcher;
+  matchers_utils::IterationHandler Handler;
+  MatchFinder MatcherRed;
+  MatchFinder MatcherVec;
+  MatchFinder MatcherLoop;
 };
 
 /// SECOND STEP

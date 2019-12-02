@@ -4,7 +4,7 @@
  * File              : kernel-conv-simple.c
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 15:38:07 MST
- * Last Modified Date: Sáb 30 Nov 2019 22:44:16 MST
+ * Last Modified Date: Dom 01 Dec 2019 16:36:00 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 inline void convolution4(int N, const double bottom[N][N][N], int stride,
@@ -46,7 +46,7 @@ inline void convolution4(int N, const double bottom[N][N][N], int stride,
         int w_start = w * stride;
         int w_end = w_start + kernel_size;
         double sum;
-        for (int i = h_start, m = 0; i < h_end; ++i, ++m)
+        for (int i = h_start, m = 0; i < h_end, m < h_end; ++i, ++m)
           for (int j = w_start, n = 0; j < w_end; ++j, ++n)
             for (int ci = 0; ci < cout; ++ci) {
               sum = sum + weights[co][ci][m][n] * bottom[ci][i][j];

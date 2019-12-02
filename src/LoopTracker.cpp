@@ -2,7 +2,7 @@
  * File              : LoopTracker.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 01 Dec 2019 10:15:58 MST
- * Last Modified Date: Dom 01 Dec 2019 13:07:35 MST
+ * Last Modified Date: Dom 01 Dec 2019 20:46:32 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,6 +29,7 @@
 #include "include/LoopTracker.h"
 
 using namespace macveth;
+std::map<std::string, LoopHierType> LoopTracker::MapFuncLoops;
 
 void LoopTracker::addLoop(std::string FuncName, Loop *Parent,
                           std::string VarName, std::string MaxVal,
