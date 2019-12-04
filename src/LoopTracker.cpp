@@ -2,7 +2,7 @@
  * File              : LoopTracker.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 01 Dec 2019 10:15:58 MST
- * Last Modified Date: Dom 01 Dec 2019 20:46:32 MST
+ * Last Modified Date: Mar 03 Dec 2019 13:58:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -36,13 +36,13 @@ void LoopTracker::addLoop(std::string FuncName, Loop *Parent,
                           std::string Incr) {
   LoopHierType LoopHier = LoopTracker::MapFuncLoops[FuncName];
   if (Parent == nullptr) {
-    LoopHier.back().push_back(*(new Loop(VarName, MaxVal, Incr)));
+    LoopHier.back().push_back((new Loop(VarName, MaxVal, Incr)));
     return;
   }
   for (LoopListType LList : LoopHier) {
-    for (Loop L : LList) {
-      if (L == *(Parent)) {
-        LList.push_back(*(new Loop(VarName, MaxVal, Incr)));
+    for (Loop *L : LList) {
+      if (L == Parent) {
+        LList.push_back((new Loop(VarName, MaxVal, Incr)));
       }
     }
   }

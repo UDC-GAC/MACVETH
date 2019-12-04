@@ -2,7 +2,7 @@
  * File              : LoopTracker.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 01 Dec 2019 00:03:04 MST
- * Last Modified Date: Dom 01 Dec 2019 13:07:37 MST
+ * Last Modified Date: Mar 03 Dec 2019 13:57:24 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -35,7 +35,7 @@ namespace macveth {
 class Loop;
 class LoopTracker;
 
-typedef std::list<Loop> LoopListType;
+typedef std::list<Loop *> LoopListType;
 typedef std::list<LoopListType> LoopHierType;
 
 class Loop {
@@ -84,9 +84,9 @@ public:
   Loop *findLoopByStmt(std::string FuncName, StmtWrapper S) {
     LoopHierType LoopHier = MapFuncLoops[FuncName];
     for (LoopListType LList : LoopHier) {
-      for (Loop L : LList) {
-        if (L.hasStmt(S)) {
-          return &L;
+      for (Loop *L : LList) {
+        if (L->hasStmt(S)) {
+          return L;
         }
       }
     }
@@ -97,9 +97,9 @@ public:
   Loop *findLoopByVar(std::string FuncName, std::string Name) {
     LoopHierType LoopHier = MapFuncLoops[FuncName];
     for (LoopListType LList : LoopHier) {
-      for (Loop L : LList) {
-        if (Name.compare(L.getVarName())) {
-          return &L;
+      for (Loop *L : LList) {
+        if (Name.compare(L->getVarName())) {
+          return L;
         }
       }
     }

@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Dom 01 Dec 2019 10:39:53 MST
+ * Last Modified Date: Mér 04 Dec 2019 11:22:12 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -45,8 +45,9 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Rewrite/Core/Rewriter.h"
-#include "clang/Tooling/CommonOptionsParser.h"
+//#include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
+#include "clang/Tooling/Transformer/Transformer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <string>
 

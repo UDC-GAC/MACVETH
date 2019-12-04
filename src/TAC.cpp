@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Sáb 30 Nov 2019 16:36:49 MST
+ * Last Modified Date: Mér 04 Dec 2019 11:22:51 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -46,25 +46,25 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
   if (Val == -1) {
     TmpA = new TempExpr(Lhs);
   } else {
-    TmpA = new TempExpr(TempExpr::getNameTempReg(Val));
+    TmpA = new TempExpr(Utils::getNameTempReg(Val));
   }
   // recursive part, to delve deeper into BinaryOperators
   if (LhsTypeBin && RhsTypeBin) {
     // both true
-    TempExpr *TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
-    TempExpr *TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 2));
+    TempExpr *TmpB = new TempExpr(Utils::getNameTempReg(Val + 1));
+    TempExpr *TmpC = new TempExpr(Utils::getNameTempReg(Val + 2));
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
     TacList->push_back(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
     binaryOperator2TAC(LhsBin, TacList, Val + 2);
   } else if (!LhsTypeBin && RhsTypeBin) {
     TempExpr *TmpB = new TempExpr(Lhs);
-    TempExpr *TmpC = new TempExpr(TempExpr::getNameTempReg(Val + 1));
+    TempExpr *TmpC = new TempExpr(Utils::getNameTempReg(Val + 1));
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
     TacList->push_back(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
   } else if (LhsTypeBin && !RhsTypeBin) {
-    TempExpr *TmpB = new TempExpr(TempExpr::getNameTempReg(Val + 1));
+    TempExpr *TmpB = new TempExpr(Utils::getNameTempReg(Val + 1));
     TempExpr *TmpC = new TempExpr(Rhs);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
     TacList->push_back(NewTac);
@@ -76,27 +76,6 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
     TacList->push_back(NewTac);
   }
   return;
-}
-
-/// FIXME
-/// This should not be in this class, this should be in TempExpr
-/// class/declaration, since it belongs to objects of this class...
-TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
-  TempExpr *NewExpr = new TempExpr(Lhs);
-  TempExpr::TempExprType TE = NewExpr->getTempType();
-  switch (TE) {
-  case TempExpr::TempExprType::TEMP_RES:
-    NewExpr->setExprStr("unroll" + std::to_string(Rhs));
-    break;
-  case TempExpr::TempExprType::TEMP_VAL:
-    // NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs));
-    break;
-  default:
-    NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs));
-    break;
-  }
-
-  return NewExpr;
 }
 
 // Static version of unrolling

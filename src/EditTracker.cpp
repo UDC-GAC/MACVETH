@@ -2,7 +2,7 @@
  * File              : EditTracker.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 26 Nov 2019 14:36:07 MST
- * Last Modified Date: Mar 26 Nov 2019 14:36:47 MST
+ * Last Modified Date: Mar 03 Dec 2019 10:09:07 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 // Copyright 2016 The Chromium Authors. All rights reserved.
@@ -27,7 +27,7 @@ const char *GetTag(RenameCategory category) {
   case RenameCategory::kVariable:
     return "var";
   }
-}
+};
 } // namespace
 EditTracker::EditTracker(RenameCategory category) : category_(category) {}
 void EditTracker::Add(const clang::SourceManager &source_manager,

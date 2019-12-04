@@ -2,7 +2,7 @@
  * File              : TempExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Ven 29 Nov 2019 21:07:53 MST
+ * Last Modified Date: Mér 04 Dec 2019 13:22:31 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -37,12 +37,18 @@
 using namespace clang;
 
 namespace macveth {
-// This class holds a double identity for expressions: a string name (for
-// debugging purposes and for clarity) and the actual Clang Expr, for
-// transformations
+/// This class holds a double identity for expressions: a string name (for
+/// debugging purposes and for clarity) and the actual Clang Expr, for
+/// transformations. Besides, it also "simplifies" the typing of the expression
+/// to some defined types (TempExprType). This will help to calculate offsets
+/// and to simplify the Clang AST typing.
 class TempExpr {
 public:
-  enum TempExprType { ARRAY, TEMP_RES, TEMP_VAL, LITERAL, VARIABLE, POINTER };
+  /// Types available:
+  /// * ARRAY, e.g. a[i], b[i][j]
+  /// * TEMP_RES, for those temporal auxiliary
+  enum TempExprType { ARRAY, LITERAL, VARIABLE, POINTER };
+  enum TempExprInfo { EXPR_CLANG, TAC_EXPR, TMP_RES, TMP_VAL };
 
   /// Constructors
   TempExpr(){};
@@ -52,9 +58,14 @@ public:
     this->setTypeStr(TE->getTypeStr());
     this->setTempType(TE->getTempType());
   }
-  TempExpr(std::string E) : ExprStr(E) { this->TempType = TEMP_RES; }
+
+  TempExpr(std::string E) : ExprStr(E) { this->TempInfo = TAC_EXPR; }
+  TempExpr(std::string E, TempExprInfo TI) : ExprStr(E), TempInfo(TI) {}
   TempExpr(std::string E, TempExprType TE) : ExprStr(E), TempType(TE) {}
+  TempExpr(std::string E, TempExprType TE, TempExprInfo TI)
+      : ExprStr(E), TempType(TE), TempInfo(TI) {}
   TempExpr(Expr *E) : ClangExpr(E) {
+    this->TempInfo = TempExprInfo::EXPR_CLANG;
     this->ExprStr = Utils::getStringFromExpr(E);
     this->setTypeStr(this->getClangExpr()->getType().getAsString());
   }
@@ -62,6 +73,9 @@ public:
   /// Getters and setters
   void setTempType(TempExprType TempType) { this->TempType = TempType; }
   TempExprType getTempType() { return this->TempType; }
+
+  void setTempInfo(TempExprInfo TempInfo) { this->TempInfo = TempInfo; }
+  TempExprInfo getTempInfo() { return this->TempInfo; }
 
   void setClangExpr(clang::Expr *ClangExpr) { this->ClangExpr = ClangExpr; }
   clang::Expr *getClangExpr() { return this->ClangExpr; }
@@ -72,21 +86,22 @@ public:
   void setExprStr(std::string ExprStr) { this->ExprStr = ExprStr; }
   std::string getExprStr() { return this->ExprStr; }
 
+  /// FIXME
+  /// THIS SHOULD BE REMOVED AT SOME POINT...
   /// This method allows to check whether the expression belongs or not to the
   /// original AST created by Clang
-  bool isNotClang() { return (this->ClangExpr == NULL); }
-
-  /// Get name of TempReg given a value
-  static std::string getNameTempReg(int Val) {
-    return "temp" + std::to_string(Val);
-  }
+  bool isNotClang() { return (this->getTempInfo() != EXPR_CLANG); }
 
 private:
+  TempExprInfo TempInfo = TMP_VAL;
   TempExprType TempType = POINTER;
   std::string TypeStr = "double";
-  std::string ExprStr;
+  std::string ExprStr = "";
   clang::Expr *ClangExpr = NULL;
 };
+
+/// Operators
+TempExpr *operator+(const TempExpr &Lhs, int Rhs);
 
 } // namespace macveth
 #endif

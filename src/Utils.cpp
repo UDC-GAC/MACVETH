@@ -2,7 +2,7 @@
  * File              : Utils.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 10:51:03 MST
- * Last Modified Date: Xov 28 Nov 2019 16:04:31 MST
+ * Last Modified Date: Mér 04 Dec 2019 11:13:43 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -20,6 +20,11 @@ LangOptions *Utils::getLangOpts() { return Utils::LangOpts; }
 void Utils::setOpts(SourceManager *SO, LangOptions *LO) {
   Utils::SourceMgr = SO;
   Utils::LangOpts = LO;
+}
+
+//-------------------------------------------------------------
+std::string Utils::getNameTempReg(int Val) {
+  return "temp" + std::to_string(Val);
 }
 
 //-------------------------------------------------------------

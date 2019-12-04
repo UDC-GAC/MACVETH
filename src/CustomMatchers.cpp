@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Dom 01 Dec 2019 16:33:21 MST
+ * Last Modified Date: Dom 01 Dec 2019 21:13:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -46,10 +46,10 @@ void matchers_utils::IterationHandler::run(
           ? Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction")
           : Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
   StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
-  SWrap->unroll(4, 4);
+  SWrap->unroll(4, 16);
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
-  int UnrollFactor = 4;
+  int UnrollFactor = 16;
 
   /// Unroll factor applied to the for header
   for (int Inc = NLevel; Inc > 0; --Inc) {
@@ -120,6 +120,8 @@ MatcherForStmt customIncrement(std::string Name) {
           .bind(matchers_utils::varnames::NameVarIncPos + Name));
 }
 
+/// This condition allows for loops such as:
+/// * (int)var < (int)val
 MatcherForStmt customCondition(std::string Name) {
   return hasCondition(binaryOperator(
       hasOperatorName("<"),

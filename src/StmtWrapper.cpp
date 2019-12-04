@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Sáb 30 Nov 2019 23:00:09 MST
+ * Last Modified Date: Mér 04 Dec 2019 11:18:23 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -76,10 +76,9 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     /// reduction. Thus, create a new TAC which basically will be the core for
     /// unrolling.
     std::string LastTempReg = TempTacList.back().getA()->getExprStr();
-    TAC *TempTac =
-        new TAC(new TempExpr("unroll0"), new TempExpr("unroll0"),
-                new TempExpr("temp1", TempExpr::TempExprType::TEMP_RES),
-                AddTac.getOP());
+    TAC *TempTac = new TAC(
+        new TempExpr("unroll0"), new TempExpr("unroll0"),
+        new TempExpr("temp1", TempExpr::TempExprInfo::TMP_RES), AddTac.getOP());
     TempTacList.push_back(*TempTac);
     /// Unroll TempTacList (which is the original without the last statement)
     unsigned int MaskList[] = {0x010101, 0x010100};

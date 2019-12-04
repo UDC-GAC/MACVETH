@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Sáb 30 Nov 2019 20:45:26 MST
+ * Last Modified Date: Mér 04 Dec 2019 11:17:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -34,11 +34,11 @@ using namespace macveth;
 /// and two additions
 InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
   InstListType T;
-  TempExpr *ymm0 = new TempExpr("ymm0", TempExpr::TempExprType::TEMP_RES);
-  TempExpr *ymm1 = new TempExpr("ymm1", TempExpr::TempExprType::TEMP_RES);
-  TempExpr *ymm2 = new TempExpr("ymm2", TempExpr::TempExprType::TEMP_RES);
-  TempExpr *ymm3 = new TempExpr("ymm3", TempExpr::TempExprType::TEMP_RES);
-  TempExpr *Out = new TempExpr("output", TempExpr::TempExprType::TEMP_RES);
+  TempExpr *ymm0 = new TempExpr("ymm0", TempExpr::TempExprInfo::TMP_RES);
+  TempExpr *ymm1 = new TempExpr("ymm1", TempExpr::TempExprInfo::TMP_RES);
+  TempExpr *ymm2 = new TempExpr("ymm2", TempExpr::TempExprInfo::TMP_RES);
+  TempExpr *ymm3 = new TempExpr("ymm3", TempExpr::TempExprInfo::TMP_RES);
+  TempExpr *Out = new TempExpr("output", TempExpr::TempExprInfo::TMP_RES);
 
   /// Sequence of instructions for the vectorized reduction algorithm
   T.push_back(getGenericFunction(

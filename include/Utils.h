@@ -2,7 +2,7 @@
  * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Sáb 30 Nov 2019 20:22:04 MST
+ * Last Modified Date: Mér 04 Dec 2019 11:13:27 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -53,6 +53,7 @@ public:
 
   // converting expressions to strings
   static std::string getStringFromExpr(Expr *E);
+  static std::string getNameTempReg(int Val);
 
   // managing resources
   static clang::SourceManager *getSourceMgr();
