@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mér 04 Dec 2019 18:29:33 MST
+ * Last Modified Date: Mér 04 Dec 2019 20:41:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -58,7 +58,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #ifndef LLVM_VERSION
-#define LLVM_VERSION 9
+#define LLVM_VERSION 10
 #endif
 
 /// Do not use namespace std

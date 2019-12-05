@@ -10,7 +10,7 @@ set(PROJECT_NAME MACVETH)
 project(${PROJECT_NAME} VERSION 0.1)
 
 # LLVM version
-set(LLVM_VER llvm-9)
+set(LLVM_VER llvm-10)
 message("-- Using LIBRARY ${LLVM_VER}")
 
 # Setting some paths, for comodity
