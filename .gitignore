@@ -1,3 +1,9 @@
+# Documentation
+*.aux
+*.log
+*.synctex.gz
+*.pdf
+
 *.swp
 *.swo
 # Some folders
