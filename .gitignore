@@ -16,6 +16,7 @@ Makefile
 *CMakeFiles*
 *.cmake
 compile_options.json
+compile_commands.json
 
 # Prerequisites
 *.d

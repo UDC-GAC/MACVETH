@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Dom 01 Dec 2019 20:58:49 MST
+ * Last Modified Date: Mér 04 Dec 2019 18:29:33 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -56,6 +56,10 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/raw_ostream.h"
+
+#ifndef LLVM_VERSION
+#define LLVM_VERSION 9
+#endif
 
 /// Do not use namespace std
 /// using namespace std;
@@ -130,7 +134,11 @@ public:
     Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts());
     /// std::make_unique is C++14, while LLVM is written in C++11, this
     /// is the reason of this custom implementation
+#if LLVM_VERSION > 9
+    return std::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext());
+#else
     return llvm::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext());
+#endif
   }
 
   /// this is called only following a successful call to
