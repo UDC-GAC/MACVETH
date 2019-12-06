@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mér 04 Dec 2019 20:41:50 MST
+ * Last Modified Date: Ven 06 Dec 2019 16:48:34 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -70,17 +70,16 @@ using namespace clang::tooling;
 using namespace llvm;
 using namespace macveth;
 
-/// SOME NOTES:
-/// * Stmt - statements, could be a for loop, while, a single statement
-/// * Decl - declarations (or defenitions) of variables, typedef, function...
-/// * Type - types, CanonicalType, Builtin-type
-/// * Expr - expressions, they inherit from Stmt tho; this is quite weird for
-/// me...
-
 /// Implementation of the ASTConsumer interface for reading an AST produced
 /// by the Clang parser. It registers a couple of matchers and runs them on
 /// the AST.
 class MACVETHConsumer : public ASTConsumer {
+  /// SOME NOTES:
+  /// * Stmt - statements, could be a for loop, while, a single statement
+  /// * Decl - declarations (or defenitions) of variables, typedef, function...
+  /// * Type - types, CanonicalType, Builtin-type
+  /// * Expr - expressions, they inherit from Stmt tho; this is quite weird for
+  /// me...
 public:
   MACVETHConsumer(Rewriter &R, ASTContext *C) : Handler(R), Context(C) {}
 
@@ -159,9 +158,18 @@ private:
   Rewriter TheRewriter;
 };
 
+/// FIXME
 /// Set up the command line options
 static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
+/// Custom cmd options
+static llvm::cl::opt<std::string> UnrollFactor(
+    "u", llvm::cl::desc(
+             "Unroll factor used when unrolling loops. Valid values are any "
+             "integer number greater than zero, 'full' or 'fulljam'. "));
+static llvm::cl::opt<std::string>
+    OutputFile("o", llvm::cl::desc("Output file to write the code, otherwise "
+                                   "it will just print int std outputt"));
 
 /// Main program
 int main(int argc, const char **argv) {

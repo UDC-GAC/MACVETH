@@ -2,7 +2,7 @@
  * File              : LoopTracker.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 01 Dec 2019 00:03:04 MST
- * Last Modified Date: Mar 03 Dec 2019 13:57:24 MST
+ * Last Modified Date: Ven 06 Dec 2019 11:09:01 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,6 +26,9 @@
  * SOFTWARE.
  */
 
+#ifndef MACVETH_LOOP_TRACKER
+#define MACVETH_LOOP_TRACKER
+
 #include "include/StmtWrapper.h"
 #include <list>
 #include <string>
@@ -48,24 +51,25 @@ public:
   std::string getMaxVal() const { return this->MaxVal; }
   std::string getIncr() const { return this->Incr; }
 
+  /// Just adding statement to the list
   void addStmt(StmtWrapper S) { this->StmtList.push_back(S); }
-  bool hasStmt(StmtWrapper S) {
-    for (StmtWrapper SW : this->StmtList) {
-      if (SW.getStmt() == S.getStmt()) {
-        return true;
-      }
-    }
-    return false;
-  }
+
+  /// Checking whether the loop has or not a given statement
+  bool hasStmt(StmtWrapper S);
 
 private:
+  /// Variable name
   std::string VarName;
+  /// As the MaxVal can be a number or a predefined variable, for commodity we
+  /// will just type it as string
   std::string MaxVal;
+  /// Same reasoning as with MaxVal: can be numeric or a value
   std::string Incr;
+  /// List of statements within loop
   std::list<StmtWrapper> StmtList;
 };
 
-/// Comparing Loops
+/// Loop comparator
 bool operator==(const Loop &a, const Loop &b) {
   return (!a.getVarName().compare(b.getVarName())) &
          (!a.getMaxVal().compare(b.getMaxVal())) &
@@ -107,6 +111,7 @@ public:
   }
 
 private:
+  /// This map is meant to keep track of the loops of each function
   static std::map<std::string, LoopHierType> MapFuncLoops;
 
 private:
@@ -114,7 +119,10 @@ private:
   LoopTracker(){};
 
 public:
+  /// Singleton pattern implemented
   static LoopTracker *getInstance();
 };
 
 } // namespace macveth
+
+#endif

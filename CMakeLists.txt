@@ -76,7 +76,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # configuration file, for macros for instance
-configure_file(macveth_translator.h.in src/macveth_translator.h)
+set(LLVM_VERSION 10)
+configure_file(macveth_translator.h.in lib/macveth_translator.h)
 
 # add a subdirectory to the buildd
 add_subdirectory(src)

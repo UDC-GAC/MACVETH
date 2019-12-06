@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Dom 01 Dec 2019 21:13:40 MST
+ * Last Modified Date: Ven 06 Dec 2019 15:57:12 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -40,13 +40,17 @@ typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 void matchers_utils::IterationHandler::run(
     const MatchFinder::MatchResult &Result) {
   std::list<const DeclRefExpr *> IncVarList;
+
+  /// FIXME
+  /// This is a hack of bad taste, really
   const BinaryOperator *TacBinOp =
       Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp") ==
               nullptr
           ? Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction")
           : Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
   StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
-  SWrap->unroll(4, 16);
+  /// FIXME: please you can not do this not even in 101
+  SWrap->unroll(4, 4);
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
   int UnrollFactor = 16;

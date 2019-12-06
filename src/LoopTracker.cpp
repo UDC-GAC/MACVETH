@@ -2,7 +2,7 @@
  * File              : LoopTracker.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 01 Dec 2019 10:15:58 MST
- * Last Modified Date: Mar 03 Dec 2019 13:58:22 MST
+ * Last Modified Date: Ven 06 Dec 2019 11:09:34 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -30,6 +30,15 @@
 
 using namespace macveth;
 std::map<std::string, LoopHierType> LoopTracker::MapFuncLoops;
+
+bool Loop::hasStmt(StmtWrapper S) {
+  for (StmtWrapper SW : this->StmtList) {
+    if (SW.getStmt() == S.getStmt()) {
+      return true;
+    }
+  }
+  return false;
+}
 
 void LoopTracker::addLoop(std::string FuncName, Loop *Parent,
                           std::string VarName, std::string MaxVal,
