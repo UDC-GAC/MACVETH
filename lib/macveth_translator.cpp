@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Ven 06 Dec 2019 16:48:34 MST
+ * Last Modified Date: Lun 09 Dec 2019 10:14:07 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -81,7 +81,7 @@ class MACVETHConsumer : public ASTConsumer {
   /// * Expr - expressions, they inherit from Stmt tho; this is quite weird for
   /// me...
 public:
-  MACVETHConsumer(Rewriter &R, ASTContext *C) : Handler(R), Context(C) {}
+  MACVETHConsumer(Rewriter &R, ASTContext *C) : Handler(R, C), Context(C) {}
 
   void HandleTranslationUnit(ASTContext &Context) override {
     /// Generate loop information
@@ -130,8 +130,9 @@ public:
     /// of objects.
     /// * LangOptions: controls the dialect of C/C++ accepted
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-    Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts());
-    /// std::make_unique is C++14, while LLVM is written in C++11, this
+    Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
+                   &CI.getASTContext());
+    /// std::make_unique is C++14, while LLVM 9 is written in C++11, this
     /// is the reason of this custom implementation
 #if LLVM_VERSION > 9
     return std::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext());

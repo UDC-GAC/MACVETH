@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Dom 08 Dec 2019 18:44:36 MST
+ * Last Modified Date: Lun 09 Dec 2019 13:11:16 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -34,7 +34,6 @@
 using namespace clang;
 using namespace macveth;
 
-/// FIXME
 /// Given a statement, it is able to determine wherever it is or not a
 /// reduction
 StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
@@ -52,13 +51,14 @@ void printDebug(std::string Name, TacListType TempTacList) {
   std::cout << "=================================" << std::endl;
 }
 
-/// Limitations:
-/// * Type of statements: VECTORIZABLE | REDUCTION
-/// * Regarding reductions:
-///    - Works for reduction statements such as:
-///            sum = sum + [whatever]
-/// * Code is not beautiful, I know
+/// Perform unrolling for a given statement given its unroll factor and the
+/// upperbound of the loop
 void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
+  /// Limitations:
+  /// * Type of statements: VECTORIZABLE | REDUCTION
+  /// * Regarding reductions:
+  ///    - Works for reduction statements such as:
+  ///            sum = sum + [whatever]
   if (this->getStmtType() == StmtWrapper::StmtType::VECTORIZABLE) {
     this->setTacList(
         TAC::unrollTacList(this->getTacList(), UnrollFactor, UpperBound));
@@ -68,34 +68,49 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     /// Making a copy of the TAC list
     std::list<TAC> TempTacList = this->getTacList();
     /// Remove the last element, the final reduction
-    printDebug("BEFORE", TempTacList);
     TempTacList.pop_back();
     TAC AddTac = TempTacList.back();
     TempTacList.pop_back();
-    printDebug("BEFORE", TempTacList);
-    /// Get the name of the last operand which holds basically the result of the
-    /// reduction. Thus, create a new TAC which basically will be the core for
-    /// unrolling.
-    std::string LastTempReg = TempTacList.back().getA()->getExprStr();
-    TAC *TempTac = new TAC(
-        new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
-        new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
-        new TempExpr("temp1", TempExpr::TempExprInfo::TMP_RES), AddTac.getOP());
-    TempTacList.push_back(*TempTac);
-    /// Unroll TempTacList (which is the original without the last statement)
     unsigned int MaskList[] = {0x010101, 0x010100};
-    TempTacList =
-        TAC::unrollTacList(TempTacList, UnrollFactor, UpperBound, MaskList);
-    /// Now we are going to attach to the front of the list a new TAC which is
-    /// basically the "base case"
-    TAC TempInit = TempTacList.front();
-    TempInit.setA(new TempExpr("unroll0"));
-    TempTacList.pop_front();
-    TempTacList.pop_front();
-    TempTacList.push_front(TempInit);
+
+    /// We can here distinguish two cases:
+    /// 1.- sum += atomic_expr
+    /// 2.- sum += complex_expr
+    /// In the first case, TAC list is empty at this stage, so the way we
+    /// perform unrolling is different: we provide a base case to the algorithm
+    if (TempTacList.empty()) {
+      TAC *TempTac = new TAC(
+          new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
+          new TempExpr(AddTac.getC()),
+          new TempExpr(*(AddTac.getC()) + UnrollFactor), AddTac.getOP());
+      TempTacList.push_back(*TempTac);
+      UnrollFactor *= 2;
+      TempTacList =
+          TAC::unrollTacList(TempTacList, UnrollFactor, UpperBound, MaskList);
+    } else {
+      /// Get the name of the last operand which holds basically the result of
+      /// the reduction. Thus, create a new TAC which basically will be the core
+      /// for unrolling.
+      TAC *TempTac =
+          new TAC(new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
+                  new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
+                  new TempExpr("temp0", TempExpr::TempExprInfo::TMP_RES),
+                  AddTac.getOP());
+      TempTacList.push_back(*TempTac);
+      /// Unroll TempTacList (which is the original without the last statement)
+      TempTacList =
+          TAC::unrollTacList(TempTacList, UnrollFactor, UpperBound, MaskList);
+      /// Now we are going to attach to the front of the list a new TAC which is
+      /// basically the "base case"
+      TAC TempInit = TempTacList.front();
+      TempInit.setA(new TempExpr("unroll0"));
+      TempTacList.pop_front();
+      TempTacList.pop_front();
+      TempTacList.push_front(TempInit);
+    }
     /// Setting thiw new TAC list for this statement
     this->setTacList(TempTacList);
-    printDebug("AFTER", TempTacList);
+    // printDebug("AFTER", TempTacList);
   } else {
     std::cout << "STMT not supported yet!!!" << std::endl;
   }

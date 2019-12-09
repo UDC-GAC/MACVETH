@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Dom 08 Dec 2019 18:19:33 MST
+ * Last Modified Date: Lun 09 Dec 2019 11:27:51 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -35,6 +35,16 @@
 // using namespace macveth;
 typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 
+int64_t getIntFromExpr(const Expr *E, const ASTContext *C) {
+  clang::Expr::EvalResult R;
+  if (E->EvaluateAsInt(R, *C)) {
+    std::cout << "Upper bound value: "
+              << std::to_string(R.Val.getInt().getExtValue()) << std::endl;
+    return R.Val.getInt().getExtValue();
+  }
+  return -1;
+}
+
 /// FIXME please, need to pass arguments to the Matcher, in order to determine
 ///       the 1) unrolling factor and 2) the stride
 void matchers_utils::IterationHandler::run(
@@ -48,25 +58,36 @@ void matchers_utils::IterationHandler::run(
               nullptr
           ? Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction")
           : Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
+
+  /// FIXME
+  if (Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction") == nullptr)
+    return;
+
   StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
+
   /// FIXME: please you can not do this not even in 101
   int UnrollFactor = 4;
-  int UpperBound = 16;
+  const Expr *UpperBoundExpr =
+      Result.Nodes.getNodeAs<clang::Expr>(varnames::UpperBound + "1");
+  int UpperBound = 32;
+  if (UpperBoundExpr != nullptr) {
+    int res = getIntFromExpr(UpperBoundExpr, this->getCtx());
+    UpperBound = res == -1 ? UpperBound : res;
+  }
   SWrap->unroll(UnrollFactor, UpperBound);
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
-
   /// Unroll factor applied to the for header
   for (int Inc = NLevel; Inc > 0; --Inc) {
     const UnaryOperator *IncVarPos =
-        Result.Nodes.getNodeAs<clang::UnaryOperator>(
-            matchers_utils::varnames::NameVarIncPos + std::to_string(Inc));
+        Result.Nodes.getNodeAs<clang::UnaryOperator>(varnames::NameVarIncPos +
+                                                     std::to_string(Inc));
     const DeclRefExpr *IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
-        matchers_utils::varnames::NameVarInc + std::to_string(Inc));
+        varnames::NameVarInc + std::to_string(Inc));
     clang::CharSourceRange charRange = clang::CharSourceRange::getTokenRange(
         IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
     Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
-                                       "+=" + std::to_string(UnrollFactor));
+                                       "+=" + std::to_string(UpperBound));
   }
 
   clang::CharSourceRange CharRangeStr =
@@ -84,8 +105,9 @@ void matchers_utils::IterationHandler::run(
 /// var[][]..[]
 /// var
 StatementMatcher possibleRhs(std::string BindName) {
-  return anyOf(implicitCastExpr().bind(BindName),
-               binaryOperator().bind(BindName));
+  // return anyOf(implicitCastExpr().bind(BindName),
+  //             binaryOperator().bind(BindName));
+  return (binaryOperator().bind(BindName));
 }
 
 /// Function wrapper for matching expressions such as:
@@ -95,7 +117,8 @@ StatementMatcher matchers_utils::reductionStmt(std::string Name,
                                                std::string Rhs) {
   return binaryOperator(anyOf(hasOperatorName("="), hasOperatorName("+=")),
                         hasLHS(declRefExpr().bind(Lhs)),
-                        hasRHS(possibleRhs(Rhs)))
+                        hasRHS(ignoringImpCasts(possibleRhs(Rhs))))
+      // hasRHS(possibleRhs(Rhs)))
       .bind(Name);
 }
 

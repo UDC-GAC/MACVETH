@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Dom 08 Dec 2019 18:50:10 MST
+ * Last Modified Date: Lun 09 Dec 2019 11:06:13 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -36,10 +36,14 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
                              std::list<TAC> *TacList, int Val) {
   Expr *Lhs = S->getLHS();
   Expr *Rhs = S->getRHS();
+  // std::cout << Utils::getStringFromExpr(Lhs) << std::endl;
+  // std::cout << Utils::getStringFromExpr(Rhs) << std::endl;
   clang::BinaryOperator *LhsBin = NULL;
   clang::BinaryOperator *RhsBin = NULL;
-  bool LhsTypeBin = (LhsBin = dyn_cast<clang::BinaryOperator>(Lhs));
-  bool RhsTypeBin = (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs));
+  bool LhsTypeBin =
+      (LhsBin = dyn_cast<clang::BinaryOperator>(Lhs->IgnoreImpCasts()));
+  bool RhsTypeBin =
+      (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs->IgnoreImpCasts()));
 
   /// Since this is a recursive function, we have to test the first case
   TempExpr *TmpA = NULL;
@@ -57,6 +61,7 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
     TempExpr *TmpC = new TempExpr(Utils::getNameTempReg(Val + 2),
                                   TempExpr::TempExprInfo::TMP_VAL);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+
     TacList->push_back(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
     binaryOperator2TAC(LhsBin, TacList, Val + 2);

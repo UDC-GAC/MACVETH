@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Sáb 30 Nov 2019 22:59:39 MST
+ * Last Modified Date: Lun 09 Dec 2019 10:26:34 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -53,6 +53,9 @@ public:
     this->setStmtType(StmtWrapper::getStmtType(S));
     TAC::binaryOperator2TAC(S, &this->TacList, -1);
     this->TacList.reverse();
+    for (TAC t : this->getTacList()) {
+      t.printTAC();
+    }
   };
 
   /// Getters and setters

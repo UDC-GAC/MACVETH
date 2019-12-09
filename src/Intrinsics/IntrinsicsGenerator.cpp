@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Mér 04 Dec 2019 11:17:40 MST
+ * Last Modified Date: Lun 09 Dec 2019 13:15:23 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -34,11 +34,12 @@ using namespace macveth;
 /// and two additions
 InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
   InstListType T;
+  std::string OutputArr = "output";
   TempExpr *ymm0 = new TempExpr("ymm0", TempExpr::TempExprInfo::TMP_RES);
   TempExpr *ymm1 = new TempExpr("ymm1", TempExpr::TempExprInfo::TMP_RES);
   TempExpr *ymm2 = new TempExpr("ymm2", TempExpr::TempExprInfo::TMP_RES);
   TempExpr *ymm3 = new TempExpr("ymm3", TempExpr::TempExprInfo::TMP_RES);
-  TempExpr *Out = new TempExpr("output", TempExpr::TempExprInfo::TMP_RES);
+  TempExpr *Out = new TempExpr(OutputArr, TempExpr::TempExprInfo::TMP_RES);
 
   /// Sequence of instructions for the vectorized reduction algorithm
   T.push_back(getGenericFunction(
@@ -52,7 +53,11 @@ InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
   /// Generate store operation, this will load the result in a vector
   T.push_back(genStore(Out, ymm3));
   /// This generates an instruction for assignment
-  T.push_back(genAssignment(OutOp->getExprStr(), Out->getExprStr()));
+  T.push_back(
+      genAssignment("double " + OutputArr + "[4]", "{0.0,0.0,0.0,0.0}"));
+  T.push_back(
+      genAssignment(OutOp->getExprStr(),
+                    OutOp->getExprStr() + " + " + Out->getExprStr() + "[0]"));
   return T;
 }
 
@@ -75,7 +80,11 @@ std::string IntrinsicsInsGen::getGenericFunction(std::string FuncName,
   ExprList.pop_front();
   std::list<std::string> Operands;
   for (TempExpr T : ExprList) {
-    Operands.push_back(T.getExprStr());
+    if (!RegMap[T.getExprStr()].compare("")) {
+      Operands.push_back(T.getExprStr());
+    } else {
+      Operands.push_back(RegMap[T.getExprStr()]);
+    }
   }
   std::string RhsStr =
       genVarArgsFunc(genAVXIns(BitWidth, FuncName, DataType), Operands);
@@ -102,12 +111,11 @@ std::string IntrinsicsInsGen::genVarArgsFunc(std::string NameFunc,
 std::string IntrinsicsInsGen::genLoad(TempExpr *Op) {
   std::string RegRes = getAvailableReg(Op);
   int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
-  std::string Name = "load";
+  std::string Name = "loadu";
   std::string DataType = getDataTypeFromType(Op->getClangExpr()->getType());
-  // std::cout << Op->getClangExpr()->getType().getAsString() <<
-  // std::endl;
-  std::string RhsStr =
-      genVarArgsFunc(genAVXIns(BitWidth, Name, DataType), {Op->getExprStr()});
+  /// FIXME
+  std::string RhsStr = genVarArgsFunc(genAVXIns(BitWidth, Name, DataType),
+                                      {"&" + Op->getExprStr()});
   std::string AssignmentStr = genAssignment(RegRes, RhsStr);
   // std::cout << AssignmentStr << std::endl;
   return AssignmentStr;
@@ -117,7 +125,7 @@ std::string IntrinsicsInsGen::genStore(TempExpr *St, TempExpr *Val) {
   // int BitWidth = getBitWidthFromType(St->getType());
   /// FIXME
   int BitWidth = 256;
-  std::string Name = "store";
+  std::string Name = "storeu";
   std::string DataType = "pd";
   // std::string DataType = getDataTypeFromType(St->getClangExpr()->getType());
   // std::cout << St->getClangExpr()->getType().getAsString() <<
