@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Mér 04 Dec 2019 11:18:23 MST
+ * Last Modified Date: Dom 08 Dec 2019 18:44:36 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -68,16 +68,18 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     /// Making a copy of the TAC list
     std::list<TAC> TempTacList = this->getTacList();
     /// Remove the last element, the final reduction
-    // printDebug("BEFORE", TempTacList);
+    printDebug("BEFORE", TempTacList);
     TempTacList.pop_back();
     TAC AddTac = TempTacList.back();
     TempTacList.pop_back();
+    printDebug("BEFORE", TempTacList);
     /// Get the name of the last operand which holds basically the result of the
     /// reduction. Thus, create a new TAC which basically will be the core for
     /// unrolling.
     std::string LastTempReg = TempTacList.back().getA()->getExprStr();
     TAC *TempTac = new TAC(
-        new TempExpr("unroll0"), new TempExpr("unroll0"),
+        new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
+        new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
         new TempExpr("temp1", TempExpr::TempExprInfo::TMP_RES), AddTac.getOP());
     TempTacList.push_back(*TempTac);
     /// Unroll TempTacList (which is the original without the last statement)
@@ -93,7 +95,7 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     TempTacList.push_front(TempInit);
     /// Setting thiw new TAC list for this statement
     this->setTacList(TempTacList);
-    // printDebug("AFTER", TempTacList);
+    printDebug("AFTER", TempTacList);
   } else {
     std::cout << "STMT not supported yet!!!" << std::endl;
   }

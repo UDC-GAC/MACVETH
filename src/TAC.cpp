@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Mér 04 Dec 2019 11:22:51 MST
+ * Last Modified Date: Dom 08 Dec 2019 18:50:10 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -46,25 +46,30 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
   if (Val == -1) {
     TmpA = new TempExpr(Lhs);
   } else {
-    TmpA = new TempExpr(Utils::getNameTempReg(Val));
+    TmpA = new TempExpr(Utils::getNameTempReg(Val),
+                        TempExpr::TempExprInfo::TMP_RES);
   }
   // recursive part, to delve deeper into BinaryOperators
   if (LhsTypeBin && RhsTypeBin) {
     // both true
-    TempExpr *TmpB = new TempExpr(Utils::getNameTempReg(Val + 1));
-    TempExpr *TmpC = new TempExpr(Utils::getNameTempReg(Val + 2));
+    TempExpr *TmpB = new TempExpr(Utils::getNameTempReg(Val + 1),
+                                  TempExpr::TempExprInfo::TMP_VAL);
+    TempExpr *TmpC = new TempExpr(Utils::getNameTempReg(Val + 2),
+                                  TempExpr::TempExprInfo::TMP_VAL);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
     TacList->push_back(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
     binaryOperator2TAC(LhsBin, TacList, Val + 2);
   } else if (!LhsTypeBin && RhsTypeBin) {
     TempExpr *TmpB = new TempExpr(Lhs);
-    TempExpr *TmpC = new TempExpr(Utils::getNameTempReg(Val + 1));
+    TempExpr *TmpC = new TempExpr(Utils::getNameTempReg(Val + 1),
+                                  TempExpr::TempExprInfo::TMP_VAL);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
     TacList->push_back(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
   } else if (LhsTypeBin && !RhsTypeBin) {
-    TempExpr *TmpB = new TempExpr(Utils::getNameTempReg(Val + 1));
+    TempExpr *TmpB = new TempExpr(Utils::getNameTempReg(Val + 1),
+                                  TempExpr::TempExprInfo::TMP_VAL);
     TempExpr *TmpC = new TempExpr(Rhs);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
     TacList->push_back(NewTac);

@@ -2,7 +2,7 @@
  * File              : TempExpr.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Mér 04 Dec 2019 13:28:23 MST
+ * Last Modified Date: Dom 08 Dec 2019 18:52:35 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -36,14 +36,14 @@ namespace macveth {
 
 TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
   TempExpr *NewExpr = new TempExpr(Lhs);
-  TempExpr::TempExprType TE = NewExpr->getTempType();
-  switch (TE) {
+  TempExpr::TempExprInfo TI = NewExpr->getTempInfo();
+  switch (TI) {
   case TempExpr::TempExprInfo::TMP_RES:
+  case TempExpr::TempExprInfo::TMP_VAL:
     NewExpr->setExprStr("unroll" + std::to_string(Rhs));
     break;
-  case TempExpr::TempExprInfo::TMP_VAL:
-    // NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs));
-    break;
+  case TempExpr::TempExprInfo::EXPR_CLANG:
+  case TempExpr::TempExprInfo::TAC_EXPR:
   default:
     NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs));
     break;

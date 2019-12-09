@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Ven 06 Dec 2019 15:57:12 MST
+ * Last Modified Date: Dom 08 Dec 2019 18:19:33 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -50,10 +50,11 @@ void matchers_utils::IterationHandler::run(
           : Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
   StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
   /// FIXME: please you can not do this not even in 101
-  SWrap->unroll(4, 4);
+  int UnrollFactor = 4;
+  int UpperBound = 16;
+  SWrap->unroll(UnrollFactor, UpperBound);
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
-  int UnrollFactor = 16;
 
   /// Unroll factor applied to the for header
   for (int Inc = NLevel; Inc > 0; --Inc) {

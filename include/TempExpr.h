@@ -2,7 +2,7 @@
  * File              : TempExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 04 Dec 2019 13:22:31 MST
+ * Last Modified Date: Dom 08 Dec 2019 18:39:33 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -57,6 +57,7 @@ public:
     this->setClangExpr(TE->getClangExpr());
     this->setTypeStr(TE->getTypeStr());
     this->setTempType(TE->getTempType());
+    this->setTempInfo(TE->getTempInfo());
   }
 
   TempExpr(std::string E) : ExprStr(E) { this->TempInfo = TAC_EXPR; }
