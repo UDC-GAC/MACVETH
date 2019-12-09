@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Mér 04 Dec 2019 11:22:12 MST
+ * Last Modified Date: Dom 08 Dec 2019 20:45:28 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -75,11 +75,15 @@ const std::string UpperBound = "upperBound";
 class IterationHandler : public MatchFinder::MatchCallback {
 public:
   IterationHandler(Rewriter &R) : Rewrite(R) {}
+  IterationHandler(Rewriter &R, ASTContext *C) : Rewrite(R), Ctx(C) {}
 
   virtual void run(const MatchFinder::MatchResult &Result);
 
+  const ASTContext *getCtx() { return Ctx; }
+
 private:
   Rewriter &Rewrite;
+  const ASTContext *Ctx;
 };
 
 // Matcher related functions for simplifying

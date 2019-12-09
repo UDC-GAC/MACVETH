@@ -2,7 +2,7 @@
  * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Mér 04 Dec 2019 11:13:27 MST
+ * Last Modified Date: Dom 08 Dec 2019 20:34:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -46,6 +46,7 @@ public:
   // to redeclare them or since C++17 you can just put inline
   inline static clang::SourceManager *SourceMgr;
   inline static clang::LangOptions *LangOpts;
+  inline static const clang::ASTContext *Ctx;
 
   // some auxiliary functions
   template <typename T>
@@ -58,7 +59,8 @@ public:
   // managing resources
   static clang::SourceManager *getSourceMgr();
   static clang::LangOptions *getLangOpts();
-  static void setOpts(SourceManager *SO, LangOptions *LO);
+  static const clang::ASTContext *getCtx();
+  static void setOpts(SourceManager *SO, LangOptions *LO, ASTContext *C);
 };
 
 //-------------------------------------------------------------
