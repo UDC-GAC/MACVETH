@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Lun 09 Dec 2019 13:15:23 MST
+ * Last Modified Date: Lun 09 Dec 2019 16:30:14 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -51,10 +51,10 @@ InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
                        new TempExpr("0x01", TempExpr::TempExprType::LITERAL)}));
   T.push_back(getGenericFunction("add", {ymm3, ymm1, ymm2}));
   /// Generate store operation, this will load the result in a vector
-  T.push_back(genStore(Out, ymm3));
-  /// This generates an instruction for assignment
   T.push_back(
       genAssignment("double " + OutputArr + "[4]", "{0.0,0.0,0.0,0.0}"));
+  T.push_back(genStore(Out, ymm3));
+  /// This generates an instruction for assignment
   T.push_back(
       genAssignment(OutOp->getExprStr(),
                     OutOp->getExprStr() + " + " + Out->getExprStr() + "[0]"));
@@ -63,7 +63,8 @@ InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
 
 std::string IntrinsicsInsGen::getAvailableReg(TempExpr *Op) {
   int RegNo = RegDeclared.size();
-  int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
+  // int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
+  int BitWidth = 256;
   std::string RegName = loadRegToStr(RegNo);
   std::string RegDecl = genRegDecl(RegName, BitWidth);
   RegDeclared.push_back(Op->getExprStr());
@@ -110,9 +111,11 @@ std::string IntrinsicsInsGen::genVarArgsFunc(std::string NameFunc,
 
 std::string IntrinsicsInsGen::genLoad(TempExpr *Op) {
   std::string RegRes = getAvailableReg(Op);
-  int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
+  // int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
+  int BitWidth = 256;
   std::string Name = "loadu";
-  std::string DataType = getDataTypeFromType(Op->getClangExpr()->getType());
+  std::string DataType = "pd";
+  // std::string DataType = getDataTypeFromType(Op->getClangExpr()->getType());
   /// FIXME
   std::string RhsStr = genVarArgsFunc(genAVXIns(BitWidth, Name, DataType),
                                       {"&" + Op->getExprStr()});
@@ -228,6 +231,10 @@ std::list<InstListType> IntrinsicsInsGen::translateTAC(std::list<TAC> TacList) {
   }
   InstList.push_back(StoreList);
   printInstList(InstList);
+  /// Clearing mappings...
+  RegMap.clear();
+  TempRegDeclared.clear();
+  RegDeclared.clear();
   return InstList;
 }
 

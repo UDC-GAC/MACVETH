@@ -2,7 +2,7 @@
  * File              : TempExpr.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Dom 08 Dec 2019 18:52:35 MST
+ * Last Modified Date: Lun 09 Dec 2019 17:14:47 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -45,7 +45,9 @@ TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
   case TempExpr::TempExprInfo::EXPR_CLANG:
   case TempExpr::TempExprInfo::TAC_EXPR:
   default:
-    NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs));
+    /// FIXME
+    NewExpr->setExprStr(NewExpr->getExprStr() + " + " +
+                        std::to_string(Rhs * 8) + " + offset");
     break;
   }
 

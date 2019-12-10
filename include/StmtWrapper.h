@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 09 Dec 2019 10:26:34 MST
+ * Last Modified Date: Lun 09 Dec 2019 15:49:33 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -65,6 +65,7 @@ public:
 
   /// Translator
   void translateTacToIntrinsics() {
+    IntrinsicsInsGen::clearMappings();
     this->InstList = IntrinsicsInsGen::translateTAC(this->getTacList());
     /// FIXME
     /// Horrible code, horrible hack...

@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 09 Dec 2019 11:27:51 MST
+ * Last Modified Date: Lun 09 Dec 2019 16:50:13 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -133,10 +133,13 @@ StatementMatcher matchers_utils::assignArrayBinOp(std::string Name,
       .bind(Name);
 }
 
+/// This matches either int i = 0 or int i = val
 MatcherForStmt customLoopInit(std::string Name) {
-  return hasLoopInit(declStmt(
-      hasSingleDecl(varDecl(hasInitializer(integerLiteral(equals(0))))
-                        .bind(matchers_utils::varnames::NameVarInit + Name))));
+  return hasLoopInit(declStmt(hasSingleDecl(
+      varDecl(hasInitializer(
+                  anyOf(integerLiteral(equals(0)),
+                        ignoringImpCasts(declRefExpr(hasType(isInteger()))))))
+          .bind(matchers_utils::varnames::NameVarInit + Name))));
 }
 
 MatcherForStmt customIncrement(std::string Name) {
