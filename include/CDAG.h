@@ -2,7 +2,7 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Mér 11 Dec 2019 14:53:41 MST
+ * Last Modified Date: Mér 11 Dec 2019 15:37:39 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_CDAG_H
@@ -35,7 +35,8 @@ class Node {
   };
 
 public:
-  typedef std::list<Node> NodeList;
+  /// Definition of NodeListTypeType
+  typedef std::list<Node> NodeListType;
   enum NodeType { NODE_EXPR, NODE_OP, UNDEF };
 
 private:
@@ -53,7 +54,7 @@ public:
       {"add", {1, 1, 1}},       {"div", {1, 1, 1}},  {"mul", {1, 1, 1}}};
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
-  /// CDAG.
+  /// CDAG, so each TAC corresponds to a = b op c
   Node(TAC T) {
     this->T = NODE_OP;
     this->Value = BOtoValue[T.getOP()];
@@ -68,33 +69,44 @@ public:
   void connectOutput(Node *N);
 
   /// Get the output Node
-  NodeList getOuput() { return this->Out; }
+  NodeListType getOuput() { return this->Out; }
   /// Get the number of inputs in this Node
   int getInputNum() { return this->In.size(); }
   /// Get the list of node inputs in this Node
-  NodeList getInputs() { return this->In; }
+  NodeListType getInputs() { return this->In; }
 
+  /// Checks if output list is zero
   bool hasOut();
+  /// Checks if input list is zero
   bool hasInputs();
+  /// Checks if output list is not zero
   bool isTerminal();
+  /// Checks if given node is in the output list
   bool hasOutNode(Node *N);
+  /// Checks if given node is in the input list
   bool hasInNode(Node *N);
 
-  /// Replace input
   void mergeIfFound(Node NIn);
   int replaceInputWithNode(Node *NewIn);
 
+  /// Returns the string value of the node
   std::string getValue() const { return this->Value; }
 
-  /// Two nodes are equal if and only if they have the same value
+  /// Two nodes are equal if and only if they have the same value. Seems pretty
+  /// straigthforward but it must be defined someway.
   bool operator==(const Node &N) { return !getValue().compare(N.getValue()); }
 
 private:
+  /// Holds information regarding the scheduling
   SchedInfo SI;
+  /// Value that identifies this node
   std::string Value = "";
+  /// Type of node
   NodeType T = UNDEF;
-  NodeList In;
-  NodeList Out;
+  /// List of inputs for this node
+  NodeListType In;
+  /// List of outputs for this node
+  NodeListType Out;
 };
 
 class CDAG {
@@ -104,13 +116,13 @@ public:
 
   static int costModel(CDAG *C);
 
-  Node::NodeList getNodeList() { return this->NL; }
+  Node::NodeListType getNodeList() { return this->NL; }
   void addNodeToList(Node N) { this->NL.push_back(N); }
 
 private:
   Node insertTac(TAC T);
   bool connectNode(Node N);
-  Node::NodeList NL;
+  Node::NodeListType NL;
 };
 
 } // namespace macveth

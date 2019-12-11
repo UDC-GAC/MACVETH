@@ -2,7 +2,7 @@
  * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Mar 10 Dec 2019 13:19:04 MST
+ * Last Modified Date: Mér 11 Dec 2019 15:34:47 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -55,6 +55,12 @@ public:
   // converting expressions to strings
   static std::string getStringFromExpr(const Expr *E);
   static std::string getNameTempReg(int Val);
+
+  /// Given an Expr, get its integer value
+  static int64_t getIntFromExpr(const Expr *E, const ASTContext *C);
+
+  /// Check whether expression is or not numeric
+  static bool isNumericValue(Expr *E);
 
   // managing resources
   static clang::SourceManager *getSourceMgr();

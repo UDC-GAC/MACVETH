@@ -2,7 +2,7 @@
  * File              : TempExpr.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Mér 11 Dec 2019 11:07:28 MST
+ * Last Modified Date: Mér 11 Dec 2019 15:08:42 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -87,23 +87,23 @@ TempExpr *TempExpr::unrollTemp(const TempExpr &TE, int UF, std::string LL) {
 
 /// \deprecated
 /// New definition of operator+ in order to ease the unrolling
-TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
-  TempExpr *NewExpr = new TempExpr(Lhs);
-  TempExpr::TempExprInfo TI = NewExpr->getTempInfo();
-  switch (TI) {
-  case TempExpr::TempExprInfo::TMP_RES:
-  case TempExpr::TempExprInfo::TMP_VAL:
-    NewExpr->setExprStr("unroll" + std::to_string(Rhs));
-    break;
-  case TempExpr::TempExprInfo::EXPR_CLANG:
-  case TempExpr::TempExprInfo::TAC_EXPR:
-  default:
-    /// FIXME
-    NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs) +
-                        " + offset");
-    break;
-  }
-
-  return NewExpr;
-}
+// TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
+//  TempExpr *NewExpr = new TempExpr(Lhs);
+//  TempExpr::TempExprInfo TI = NewExpr->getTempInfo();
+//  switch (TI) {
+//  case TempExpr::TempExprInfo::TMP_RES:
+//  case TempExpr::TempExprInfo::TMP_VAL:
+//    NewExpr->setExprStr("unroll" + std::to_string(Rhs));
+//    break;
+//  case TempExpr::TempExprInfo::EXPR_CLANG:
+//  case TempExpr::TempExprInfo::TAC_EXPR:
+//  default:
+//    /// FIXME
+//    NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs) +
+//                        " + offset");
+//    break;
+//  }
+//
+//  return NewExpr;
+//}
 } // namespace macveth

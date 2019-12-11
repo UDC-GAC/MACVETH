@@ -2,7 +2,7 @@
  * File              : TempExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 11 Dec 2019 10:18:33 MST
+ * Last Modified Date: Mér 11 Dec 2019 15:09:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -104,6 +104,7 @@ public:
   void setExprStr(std::string ExprStr) { this->ExprStr = ExprStr; }
   std::string getExprStr() { return this->ExprStr; }
 
+  /// Given a TempExpr it will return its unrolled version
   static TempExpr *unrollTemp(const TempExpr &TE, int UF, std::string LL);
 
   /// FIXME
