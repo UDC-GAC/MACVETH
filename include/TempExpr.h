@@ -2,7 +2,7 @@
  * File              : TempExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Dom 08 Dec 2019 18:39:33 MST
+ * Last Modified Date: Mér 11 Dec 2019 10:18:33 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -31,12 +31,16 @@
 
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
+#include "clang/AST/Expr.h"
 #include <iostream>
 #include <string>
 
 using namespace clang;
 
 namespace macveth {
+
+typedef std::list<std::string> IdxVector;
+
 /// This class holds a double identity for expressions: a string name (for
 /// debugging purposes and for clarity) and the actual Clang Expr, for
 /// transformations. Besides, it also "simplifies" the typing of the expression
@@ -47,8 +51,17 @@ public:
   /// Types available:
   /// * ARRAY, e.g. a[i], b[i][j]
   /// * TEMP_RES, for those temporal auxiliary
-  enum TempExprType { ARRAY, LITERAL, VARIABLE, POINTER };
+  enum TempExprType { ARRAY, LITERAL, VARIABLE, POINTER, TBD };
   enum TempExprInfo { EXPR_CLANG, TAC_EXPR, TMP_RES, TMP_VAL };
+
+  /// This only holds information in case of the expression being of ARRAY type
+  struct ArrayInfo {
+    std::string BaseName = "";
+    IdxVector Idx;
+  };
+  void updateIndex(int UF, std::string LL);
+  const Expr *getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
+                                      IdxVector &Idxs);
 
   /// Constructors
   TempExpr(){};
@@ -66,10 +79,14 @@ public:
   TempExpr(std::string E, TempExprType TE, TempExprInfo TI)
       : ExprStr(E), TempType(TE), TempInfo(TI) {}
   TempExpr(Expr *E) : ClangExpr(E) {
+    this->TempType = getTempTypeFromExpr(E);
     this->TempInfo = TempExprInfo::EXPR_CLANG;
     this->ExprStr = Utils::getStringFromExpr(E);
     this->setTypeStr(this->getClangExpr()->getType().getAsString());
   }
+
+  /// Given a Clang expression we get back our custom interpretation
+  TempExprType getTempTypeFromExpr(Expr *E);
 
   /// Getters and setters
   void setTempType(TempExprType TempType) { this->TempType = TempType; }
@@ -87,6 +104,8 @@ public:
   void setExprStr(std::string ExprStr) { this->ExprStr = ExprStr; }
   std::string getExprStr() { return this->ExprStr; }
 
+  static TempExpr *unrollTemp(const TempExpr &TE, int UF, std::string LL);
+
   /// FIXME
   /// THIS SHOULD BE REMOVED AT SOME POINT...
   /// This method allows to check whether the expression belongs or not to the
@@ -94,6 +113,7 @@ public:
   bool isNotClang() { return (this->getTempInfo() != EXPR_CLANG); }
 
 private:
+  ArrayInfo ArrInfo;
   TempExprInfo TempInfo = TMP_VAL;
   TempExprType TempType = POINTER;
   std::string TypeStr = "double";

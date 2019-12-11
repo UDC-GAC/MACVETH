@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Lun 09 Dec 2019 15:53:38 MST
+ * Last Modified Date: Mér 11 Dec 2019 14:55:08 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -92,18 +92,13 @@ public:
   /// [1] https://software.intel.com/en-us/blogs/2016/04/12/\
   /// can-you-write-a-vectorized-reduction-operation
   static InstListType reduceVector(TempExpr *InOp, TempExpr *OutOp);
-  /// Clear mappings
-  static void clearMappings() {
-    std::cout << "CLEARING MAPPINGS!!!!!!!" << std::endl;
-    TempRegDeclared.clear();
-    RegMap.clear();
-    RegDeclared.clear();
-  }
 
 private:
   inline static std::list<std::string> RegDeclared;
   inline static std::list<std::string> TempRegDeclared;
   inline static std::map<std::string, std::string> RegMap;
+
+  static void clearMappings();
 
   inline static std::map<std::string, int> TypeToWidth;
   inline static std::map<std::string, std::string> TypeToDataType;

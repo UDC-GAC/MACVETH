@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Sáb 30 Nov 2019 12:45:11 MST
+ * Last Modified Date: Mér 11 Dec 2019 10:01:43 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -78,12 +78,6 @@ public:
   static void binaryOperator2TAC(const clang::BinaryOperator *S,
                                  std::list<TAC> *TacList, int Val);
 
-  /// Modifies given list adding at the end the unrolled TACs
-  static void unrollTacList(std::list<TAC> *Tac, int UnrollFactor,
-                            int UpperBound);
-  static void unrollTacList(std::list<TAC> *Tac, int UnrollFactor,
-                            int UpperBound, unsigned int Mask);
-
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
                                       int UpperBound);
@@ -91,11 +85,14 @@ public:
                                       int UpperBound, unsigned int Mask);
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
                                       int UpperBound, unsigned int MaskList[]);
+  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
+                                      int UpperBound, unsigned int MaskList[],
+                                      std::string LoopLevel);
   /// Unroll each TAC
+  static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
+                     std::string LoopLevel);
   static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask);
   static TAC *unroll(TAC *Tac, int UnrollFactor, unsigned int mask);
-  TAC *unroll(int UnrollFactor, int S, unsigned int mask);
-  TAC *unroll(int UnrollFactor, unsigned int mask);
 
 private:
   TempExpr *A;

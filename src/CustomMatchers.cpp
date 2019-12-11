@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 09 Dec 2019 16:50:13 MST
+ * Last Modified Date: Mér 11 Dec 2019 14:52:20 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,7 +27,9 @@
  */
 
 #include "include/CustomMatchers.h"
+#include "include/CDAG.h"
 #include "include/StmtWrapper.h"
+#include "clang/AST/Decl.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include <iostream>
 #include <string>
@@ -66,7 +68,6 @@ void matchers_utils::IterationHandler::run(
   StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
 
   /// FIXME: please you can not do this not even in 101
-  int UnrollFactor = 4;
   const Expr *UpperBoundExpr =
       Result.Nodes.getNodeAs<clang::Expr>(varnames::UpperBound + "1");
   int UpperBound = 32;
@@ -74,7 +75,17 @@ void matchers_utils::IterationHandler::run(
     int res = getIntFromExpr(UpperBoundExpr, this->getCtx());
     UpperBound = res == -1 ? UpperBound : res;
   }
-  SWrap->unroll(UnrollFactor, UpperBound);
+  int UnrollFactor = 1;
+  const VarDecl *V = Result.Nodes.getNodeAs<clang::VarDecl>(
+      matchers_utils::varnames::NameVarInit + std::to_string(1));
+
+  std::cout << "Loop nest = " + V->getNameAsString() << std::endl;
+  // SWrap->unroll(UnrollFactor, UpperBound, V->getNameAsString());
+  SWrap->unroll(UnrollFactor, 4, V->getNameAsString());
+  for (TAC t : SWrap->getTacList())
+    t.printTAC();
+  std::cout << "Unrolling alright!" << std::endl;
+  CDAG::createCDAGfromTAC(SWrap->getTacList());
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
   /// Unroll factor applied to the for header

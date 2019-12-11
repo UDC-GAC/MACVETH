@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Lun 09 Dec 2019 16:30:14 MST
+ * Last Modified Date: Mér 11 Dec 2019 14:55:19 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -196,6 +196,13 @@ std::string IntrinsicsInsGen::generateFMA(macveth::TAC *PrevTAC,
   return FullInstruction;
 }
 
+/// Clear mappings
+void IntrinsicsInsGen::clearMappings() {
+  TempRegDeclared.clear();
+  RegMap.clear();
+  RegDeclared.clear();
+}
+
 std::list<InstListType> IntrinsicsInsGen::translateTAC(std::list<TAC> TacList) {
   /// Need to know which was the previous TAC to decide whether to use or not
   /// a FMA instruction
@@ -232,9 +239,7 @@ std::list<InstListType> IntrinsicsInsGen::translateTAC(std::list<TAC> TacList) {
   InstList.push_back(StoreList);
   printInstList(InstList);
   /// Clearing mappings...
-  RegMap.clear();
-  TempRegDeclared.clear();
-  RegDeclared.clear();
+  clearMappings();
   return InstList;
 }
 

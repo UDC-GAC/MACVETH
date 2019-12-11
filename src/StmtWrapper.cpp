@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Lun 09 Dec 2019 13:11:16 MST
+ * Last Modified Date: Mér 11 Dec 2019 11:10:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -49,6 +49,15 @@ void printDebug(std::string Name, TacListType TempTacList) {
     Tac.printTAC();
   }
   std::cout << "=================================" << std::endl;
+}
+
+void StmtWrapper::unroll(int UnrollFactor, int UpperBound,
+                         std::string LoopLevel) {
+  unsigned int MaskList[] = {0x000000, 0x000000, 0x000000, 0x000000, 0x000000};
+  printf("StmtWrapper::unroll loop level");
+  TacListType T = TAC::unrollTacList(this->getTacList(), UnrollFactor,
+                                     UpperBound, MaskList, LoopLevel);
+  this->setTacList(T);
 }
 
 /// Perform unrolling for a given statement given its unroll factor and the

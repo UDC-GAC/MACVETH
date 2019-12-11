@@ -2,7 +2,7 @@
  * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Dom 08 Dec 2019 20:34:50 MST
+ * Last Modified Date: Mar 10 Dec 2019 13:19:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -46,20 +46,20 @@ public:
   // to redeclare them or since C++17 you can just put inline
   inline static clang::SourceManager *SourceMgr;
   inline static clang::LangOptions *LangOpts;
-  inline static const clang::ASTContext *Ctx;
+  inline static clang::ASTContext *Ctx;
 
   // some auxiliary functions
   template <typename T>
   static bool contains(std::list<T> &listOfElements, const T &element);
 
   // converting expressions to strings
-  static std::string getStringFromExpr(Expr *E);
+  static std::string getStringFromExpr(const Expr *E);
   static std::string getNameTempReg(int Val);
 
   // managing resources
   static clang::SourceManager *getSourceMgr();
   static clang::LangOptions *getLangOpts();
-  static const clang::ASTContext *getCtx();
+  static clang::ASTContext *getCtx();
   static void setOpts(SourceManager *SO, LangOptions *LO, ASTContext *C);
 };
 
