@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Mér 11 Dec 2019 15:06:46 MST
+ * Last Modified Date: Mér 11 Dec 2019 15:40:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -72,8 +72,6 @@ Node CDAG::insertTac(TAC T) {
 // ---------------------------------------------
 bool CDAG::connectNode(Node NewNode) {
   for (Node PN : this->getNodeList()) {
-    if (!PN.hasOut())
-      continue;
     for (Node OutN : PN.getOuput()) {
       NewNode.mergeIfFound(OutN);
     }

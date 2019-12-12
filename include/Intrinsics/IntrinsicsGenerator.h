@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 19 Nov 2019 09:49:18 MST
- * Last Modified Date: Mér 11 Dec 2019 14:55:08 MST
+ * Last Modified Date: Mér 11 Dec 2019 17:37:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,8 +29,8 @@
 #ifndef MACVETH_INTRINSICS_H
 #define MACVETH_INTRINSICS_H
 
+#include "include/MVExpr/MVExpr.h"
 #include "include/TAC.h"
-#include "include/TempExpr.h"
 #include "include/Utils.h"
 #include <cstdarg>
 #include <iostream>
@@ -91,7 +91,7 @@ public:
   /// stored in the OutOp operand. The algorithm is based on [1], by Clay B.
   /// [1] https://software.intel.com/en-us/blogs/2016/04/12/\
   /// can-you-write-a-vectorized-reduction-operation
-  static InstListType reduceVector(TempExpr *InOp, TempExpr *OutOp);
+  static InstListType reduceVector(MVExpr *InOp, MVExpr *OutOp);
 
 private:
   inline static std::list<std::string> RegDeclared;
@@ -106,7 +106,7 @@ private:
 
   /// Get a register given the operand, to check whether it is already mapped or
   /// if it needs a new declaration
-  static std::string getRegister(TempExpr *Op);
+  static std::string getRegister(MVExpr *Op);
 
   /// Retrieves mapping from OpCode to string
   static std::string getFuncFromOpCode(BinaryOperator::Opcode Op) {
@@ -161,13 +161,13 @@ private:
   }
 
   /// Maps a register allocation for an operator
-  static std::string getAvailableReg(TempExpr *Op);
+  static std::string getAvailableReg(MVExpr *Op);
 
   /// Retrieves the source code for a function given its name and the list of
   /// operands present in the function. First operand/expression will be the
   /// result operand, so it will be the LHS
   static std::string getGenericFunction(std::string FuncName,
-                                        std::list<TempExpr> ExprList);
+                                        std::list<MVExpr> ExprList);
 
   /// Given the name of the function and a list of operands, creates the source
   /// code for it
@@ -175,10 +175,10 @@ private:
                                     std::list<std::string> Operands);
 
   /// Generate load instruction from operand
-  static std::string genLoad(TempExpr *Op);
+  static std::string genLoad(MVExpr *Op);
 
   /// Generates the store instruction
-  static std::string genStore(TempExpr *St, TempExpr *Val);
+  static std::string genStore(MVExpr *St, MVExpr *Val);
 
   /// Generates the assignment code given LHS and RHS
   static std::string genAssignment(std::string Lhs, std::string Rhs) {
@@ -187,10 +187,10 @@ private:
   }
 
   /// This is a fucking awful hack
-  /// TempExpr are used as wrappers of Expr and new Nodes. This class has
+  /// MVExpr are used as wrappers of Expr and new Nodes. This class has
   /// been created for the ease of TAC handling. So, if a TAC does not
   /// belong to Expr class.
-  static bool needLoad(macveth::TempExpr *Op) {
+  static bool needLoad(macveth::MVExpr *Op) {
     if (IntrinsicsInsGen::RegMap.find(Op->getExprStr()) !=
         IntrinsicsInsGen::RegMap.end()) {
       return false;

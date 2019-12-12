@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Mér 11 Dec 2019 11:10:53 MST
+ * Last Modified Date: Mér 11 Dec 2019 17:35:30 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,7 +27,7 @@
  */
 
 #include "include/StmtWrapper.h"
-#include "TAC.h"
+#include "include/TAC.h"
 #include "clang/AST/Expr.h"
 #include <string>
 
@@ -88,10 +88,10 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     /// In the first case, TAC list is empty at this stage, so the way we
     /// perform unrolling is different: we provide a base case to the algorithm
     if (TempTacList.empty()) {
-      TAC *TempTac = new TAC(
-          new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
-          new TempExpr(AddTac.getC()),
-          new TempExpr(*(AddTac.getC()) + UnrollFactor), AddTac.getOP());
+      TAC *TempTac =
+          new TAC(new MVExpr("unroll0", MVExpr::MVExprInfo::TMP_RES),
+                  new MVExpr(AddTac.getC()),
+                  new MVExpr(*(AddTac.getC()) + UnrollFactor), AddTac.getOP());
       TempTacList.push_back(*TempTac);
       UnrollFactor *= 2;
       TempTacList =
@@ -100,11 +100,10 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
       /// Get the name of the last operand which holds basically the result of
       /// the reduction. Thus, create a new TAC which basically will be the core
       /// for unrolling.
-      TAC *TempTac =
-          new TAC(new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
-                  new TempExpr("unroll0", TempExpr::TempExprInfo::TMP_RES),
-                  new TempExpr("temp0", TempExpr::TempExprInfo::TMP_RES),
-                  AddTac.getOP());
+      TAC *TempTac = new TAC(new MVExpr("unroll0", MVExpr::MVExprInfo::TMP_RES),
+                             new MVExpr("unroll0", MVExpr::MVExprInfo::TMP_RES),
+                             new MVExpr("temp0", MVExpr::MVExprInfo::TMP_RES),
+                             AddTac.getOP());
       TempTacList.push_back(*TempTac);
       /// Unroll TempTacList (which is the original without the last statement)
       TempTacList =
@@ -112,7 +111,7 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
       /// Now we are going to attach to the front of the list a new TAC which is
       /// basically the "base case"
       TAC TempInit = TempTacList.front();
-      TempInit.setA(new TempExpr("unroll0"));
+      TempInit.setA(new MVExpr("unroll0"));
       TempTacList.pop_front();
       TempTacList.pop_front();
       TempTacList.push_front(TempInit);

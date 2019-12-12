@@ -2,7 +2,7 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Mér 11 Dec 2019 15:37:39 MST
+ * Last Modified Date: Mér 11 Dec 2019 17:25:45 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_CDAG_H
@@ -10,7 +10,8 @@
 #include <list>
 #include <stdio.h>
 
-#include "StmtWrapper.h"
+#include "include/MVExpr/MVExpr.h"
+#include "include/StmtWrapper.h"
 #include "include/TAC.h"
 
 using namespace macveth;
@@ -29,25 +30,17 @@ inline static std::map<BinaryOperator::Opcode, std::string> BOtoValue = {
 /// the type of operation as well as its Edges (or links to another Nodes).
 /// Nodes also hold information regarding the scheduling.
 class Node {
+public:
+  /// Holds information regarding the scheduling for this Node
   struct SchedInfo {
     int Plcmnt;
     int Sched;
   };
 
-public:
-  /// Definition of NodeListTypeType
+  /// Definition of NodeListType
   typedef std::list<Node> NodeListType;
+  /// Available types of nodes
   enum NodeType { NODE_EXPR, NODE_OP, UNDEF };
-
-private:
-  /// When creating a Node from a TempExpr, the connections will be created by
-  /// the TAC which creates this Node
-  Node(TempExpr *TE) {
-    this->T = NODE_EXPR;
-    this->Value = TE->getExprStr();
-  }
-
-public:
   /// FIXME
   inline static std::map<std::string, std::list<int>> CostsMap = {
       {"reduction", {1, 1, 1}}, {"load", {1, 1, 1}}, {"sub", {1, 1, 1}},
@@ -63,6 +56,7 @@ public:
     connectInput(new Node(T.getC()));
   }
 
+  /// TODO
   void setSchedInfo();
 
   void connectInput(Node *N);
@@ -107,6 +101,13 @@ private:
   NodeListType In;
   /// List of outputs for this node
   NodeListType Out;
+
+  /// When creating a Node from a TempExpr, the connections will be created by
+  /// the TAC which creates this Node
+  Node(MVExpr *TE) {
+    this->T = NODE_EXPR;
+    this->Value = TE->getExprStr();
+  }
 };
 
 class CDAG {

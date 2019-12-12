@@ -2,7 +2,7 @@
  * File              : IntrinsicsGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 11:34:15 MST
- * Last Modified Date: Mér 11 Dec 2019 14:55:19 MST
+ * Last Modified Date: Mér 11 Dec 2019 18:03:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -32,23 +32,20 @@ using namespace macveth;
 
 /// Assuming Op is already loaded, the main idea is to perform 2 permutations
 /// and two additions
-InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
+InstListType IntrinsicsInsGen::reduceVector(MVExpr *InOp, MVExpr *OutOp) {
   InstListType T;
   std::string OutputArr = "output";
-  TempExpr *ymm0 = new TempExpr("ymm0", TempExpr::TempExprInfo::TMP_RES);
-  TempExpr *ymm1 = new TempExpr("ymm1", TempExpr::TempExprInfo::TMP_RES);
-  TempExpr *ymm2 = new TempExpr("ymm2", TempExpr::TempExprInfo::TMP_RES);
-  TempExpr *ymm3 = new TempExpr("ymm3", TempExpr::TempExprInfo::TMP_RES);
-  TempExpr *Out = new TempExpr(OutputArr, TempExpr::TempExprInfo::TMP_RES);
+  MVExpr *ymm0 = new MVExpr("ymm0", MVExpr::MVExprInfo::TMP_RES);
+  MVExpr *ymm1 = new MVExpr("ymm1", MVExpr::MVExprInfo::TMP_RES);
+  MVExpr *ymm2 = new MVExpr("ymm2", MVExpr::MVExprInfo::TMP_RES);
+  MVExpr *ymm3 = new MVExpr("ymm3", MVExpr::MVExprInfo::TMP_RES);
+  MVExpr *Out = new MVExpr(OutputArr, MVExpr::MVExprInfo::TMP_RES);
 
   /// Sequence of instructions for the vectorized reduction algorithm
-  T.push_back(getGenericFunction(
-      "permute",
-      {ymm0, InOp, new TempExpr("0x05", TempExpr::TempExprType::LITERAL)}));
+  T.push_back(getGenericFunction("permute", {ymm0, InOp, new MVExpr("0x05")}));
   T.push_back(getGenericFunction("add", {ymm1, InOp, ymm0}));
-  T.push_back(getGenericFunction(
-      "permute2f128", {ymm2, ymm1, ymm1,
-                       new TempExpr("0x01", TempExpr::TempExprType::LITERAL)}));
+  T.push_back(getGenericFunction("permute2f128",
+                                 {ymm2, ymm1, ymm1, new MVExpr("0x01")}));
   T.push_back(getGenericFunction("add", {ymm3, ymm1, ymm2}));
   /// Generate store operation, this will load the result in a vector
   T.push_back(
@@ -61,7 +58,7 @@ InstListType IntrinsicsInsGen::reduceVector(TempExpr *InOp, TempExpr *OutOp) {
   return T;
 }
 
-std::string IntrinsicsInsGen::getAvailableReg(TempExpr *Op) {
+std::string IntrinsicsInsGen::getAvailableReg(MVExpr *Op) {
   int RegNo = RegDeclared.size();
   // int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
   int BitWidth = 256;
@@ -73,14 +70,14 @@ std::string IntrinsicsInsGen::getAvailableReg(TempExpr *Op) {
 }
 
 std::string IntrinsicsInsGen::getGenericFunction(std::string FuncName,
-                                                 std::list<TempExpr> ExprList) {
+                                                 std::list<MVExpr> ExprList) {
   // FIXME
   int BitWidth = 256;
   std::string DataType = "pd";
   std::string LhsStr = getRegister(&ExprList.front());
   ExprList.pop_front();
   std::list<std::string> Operands;
-  for (TempExpr T : ExprList) {
+  for (MVExpr T : ExprList) {
     if (!RegMap[T.getExprStr()].compare("")) {
       Operands.push_back(T.getExprStr());
     } else {
@@ -109,7 +106,7 @@ std::string IntrinsicsInsGen::genVarArgsFunc(std::string NameFunc,
   return FullFunc;
 }
 
-std::string IntrinsicsInsGen::genLoad(TempExpr *Op) {
+std::string IntrinsicsInsGen::genLoad(MVExpr *Op) {
   std::string RegRes = getAvailableReg(Op);
   // int BitWidth = getBitWidthFromType(Op->getClangExpr()->getType());
   int BitWidth = 256;
@@ -124,7 +121,7 @@ std::string IntrinsicsInsGen::genLoad(TempExpr *Op) {
   return AssignmentStr;
 }
 
-std::string IntrinsicsInsGen::genStore(TempExpr *St, TempExpr *Val) {
+std::string IntrinsicsInsGen::genStore(MVExpr *St, MVExpr *Val) {
   // int BitWidth = getBitWidthFromType(St->getType());
   /// FIXME
   int BitWidth = 256;
@@ -162,9 +159,9 @@ IntrinsicsInsGen::genIntrinsicsIns(std::list<macveth::TAC> TacList) {
       InsList.push_back(NewInst);
       continue;
     }
-    TempExpr *Res = Tac.getA();
-    TempExpr *Op1 = Tac.getB();
-    TempExpr *Op2 = Tac.getC();
+    MVExpr *Res = Tac.getA();
+    MVExpr *Op1 = Tac.getB();
+    MVExpr *Op2 = Tac.getC();
     InsList.push_back(getGenericFunction(FuncName, {Res, Op1, Op2}));
     PrevTAC = Tac;
   }
@@ -179,9 +176,9 @@ std::string IntrinsicsInsGen::generateFMA(macveth::TAC *PrevTAC,
   macveth::TAC *OtherTAC = (FuncName.compare("mul")) ? ActualTAC : PrevTAC;
 
   FuncName = "fm" + getFuncFromOpCode(OtherTAC->getOP());
-  TempExpr *OpA = MulTAC->getB();
-  TempExpr *OpB = MulTAC->getC();
-  TempExpr *OpC =
+  MVExpr *OpA = MulTAC->getB();
+  MVExpr *OpB = MulTAC->getC();
+  MVExpr *OpC =
       !OtherTAC->getB()->isNotClang() ? OtherTAC->getB() : OtherTAC->getC();
   /// FIXME
   int BitWidth = 256;
@@ -212,8 +209,8 @@ std::list<InstListType> IntrinsicsInsGen::translateTAC(std::list<TAC> TacList) {
   InstListType StoreList;
   /// Generate load operations if needed
   for (macveth::TAC Tac : TacList) {
-    TempExpr *Op1 = Tac.getB();
-    TempExpr *Op2 = Tac.getC();
+    MVExpr *Op1 = Tac.getB();
+    MVExpr *Op2 = Tac.getC();
     if (needLoad(Op1)) {
       LoadList.push_back(genLoad(Op1));
     }
@@ -228,9 +225,9 @@ std::list<InstListType> IntrinsicsInsGen::translateTAC(std::list<TAC> TacList) {
 
   /// Generate store operations
   for (TAC Tac : TacList) {
-    TempExpr *Res = Tac.getA();
-    TempExpr *Op1 = Tac.getB();
-    TempExpr *Op2 = Tac.getC();
+    MVExpr *Res = Tac.getA();
+    MVExpr *Op1 = Tac.getB();
+    MVExpr *Op2 = Tac.getC();
     if (!Res->isNotClang()) {
       /// Store in memory address given
       StoreList.push_back(genStore(Op1, Op2));
@@ -261,7 +258,7 @@ bool IntrinsicsInsGen::potentialFMA(macveth::TAC *PrevTAC, macveth::TAC *Tac) {
   return false;
 }
 
-std::string IntrinsicsInsGen::getRegister(TempExpr *Op) {
+std::string IntrinsicsInsGen::getRegister(MVExpr *Op) {
   std::string RegName = Op->getExprStr();
   if (!Utils::contains(TempRegDeclared, RegName)) {
     TempRegDeclared.push_back(RegName);

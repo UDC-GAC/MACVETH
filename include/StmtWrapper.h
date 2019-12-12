@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Mér 11 Dec 2019 14:55:47 MST
+ * Last Modified Date: Mér 11 Dec 2019 17:36:07 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,6 +29,7 @@
 #define MACVETH_STMTWRAPPER_H
 
 #include "include/Intrinsics/IntrinsicsGenerator.h"
+#include "include/MVExpr/MVExpr.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
@@ -73,9 +74,9 @@ public:
       /// Create an unaltered TacList again in order to get the original
       /// operands
       TAC::binaryOperator2TAC((BinaryOperator *)this->getStmt(), &T, -1);
-      TempExpr In = this->getTacList().back().getA();
+      MVExpr In = this->getTacList().back().getA();
       T.reverse();
-      TempExpr Out = T.back().getA();
+      MVExpr Out = T.back().getA();
       this->InstList.push_back(IntrinsicsInsGen::reduceVector(&In, &Out));
     }
   }

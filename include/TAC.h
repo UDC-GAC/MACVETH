@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 11 Dec 2019 10:01:43 MST
+ * Last Modified Date: Mér 11 Dec 2019 17:26:56 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,7 +29,8 @@
 #ifndef MACVETH_TAC_H
 #define MACVETH_TAC_H
 
-#include "include/TempExpr.h"
+//#include "include/MVExpr.h"
+#include "include/MVExpr/MVExpr.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include <iostream>
@@ -55,15 +56,15 @@ private:
 public:
   // Consturctor
   TAC(){}; // empty constructor
-  TAC(TempExpr *A, TempExpr *B, TempExpr *C, clang::BinaryOperator::Opcode OP)
+  TAC(MVExpr *A, MVExpr *B, MVExpr *C, clang::BinaryOperator::Opcode OP)
       : A(A), B(B), C(C), OP(OP) {}
 
-  TempExpr *getA() { return this->A; };
-  void setA(TempExpr *A) { this->A = A; };
-  TempExpr *getB() { return this->B; };
-  void setB(TempExpr *B) { this->B = B; };
-  TempExpr *getC() { return this->C; };
-  void setC(TempExpr *C) { this->C = C; };
+  MVExpr *getA() { return this->A; };
+  void setA(MVExpr *A) { this->A = A; };
+  MVExpr *getB() { return this->B; };
+  void setB(MVExpr *B) { this->B = B; };
+  MVExpr *getC() { return this->C; };
+  void setC(MVExpr *C) { this->C = C; };
   clang::BinaryOperator::Opcode getOP() { return this->OP; };
 
   // Just for debugging purposes
@@ -95,9 +96,9 @@ public:
   static TAC *unroll(TAC *Tac, int UnrollFactor, unsigned int mask);
 
 private:
-  TempExpr *A;
-  TempExpr *B;
-  TempExpr *C;
+  MVExpr *A;
+  MVExpr *B;
+  MVExpr *C;
   clang::BinaryOperator::Opcode OP;
 };
 
