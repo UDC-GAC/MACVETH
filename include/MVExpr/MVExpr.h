@@ -2,7 +2,7 @@
  * File              : MVExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 11 Dec 2019 18:30:24 MST
+ * Last Modified Date: Xov 12 Dec 2019 10:12:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -94,90 +94,6 @@ private:
   std::string TypeStr = "double";
   std::string ExprStr = "";
   clang::Expr *ClangExpr = NULL;
-};
-
-/// Abstraction of variables for simplicity
-class MVExprLiteral : public MVExpr {
-public:
-  virtual ~MVExprLiteral(){};
-  MVExprLiteral(MVExprLiteral *E) : MVExpr(E->getClangExpr()){};
-  MVExprLiteral(Expr *E) : MVExpr(E) {}
-  virtual MVExpr *unrollExpr(int UF, std::string LL);
-};
-
-/// Abstraction of variables for simplicity
-class MVExprVar : public MVExpr {
-public:
-  virtual ~MVExprVar(){};
-  MVExprVar(MVExprVar *E) : MVExpr(E->getClangExpr()){};
-  MVExprVar(Expr *E) : MVExpr(E) {}
-  virtual MVExpr *unrollExpr(int UF, std::string LL);
-};
-
-/// Abstraction of arrays for simplicity
-class MVExprArray : public MVExpr {
-public:
-  virtual ~MVExprArray(){};
-  MVExprArray(Expr *E) : MVExpr(E) {
-    if (ArraySubscriptExpr *ASE =
-            dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
-      const Expr *TmpExpr = getArrayBaseExprAndIdxs(ASE, this->Idx);
-      this->BaseName = Utils::getStringFromExpr(TmpExpr);
-    }
-  }
-  MVExprArray(MVExprArray *E) : MVExpr(E->getClangExpr()) {
-    this->BaseName = E->BaseName;
-    this->Idx = E->Idx;
-  }
-
-  virtual MVExpr *unrollExpr(int UF, std::string LL);
-
-private:
-  void updateIndex(int UF, std::string LL);
-  /// Get base name and indexes given a ArraySubscriptExpr
-  const Expr *getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
-                                      IdxVector &Idxs);
-
-private:
-  std::string BaseName;
-  IdxVector Idx;
-};
-
-class MVExprFactory {
-public:
-  /// Types available:
-  /// * ARRAY, e.g. a[i], b[i][j]
-  /// * LITERAL, e.g. 5.0, 42
-  /// * VARIABLE, otherwise
-  enum MVExprType { ARRAY, LITERAL, VARIABLE };
-
-  static MVExprType getTempTypeFromExpr(Expr *E) {
-    if (E == NULL)
-      return MVExprType::VARIABLE;
-    if (ArraySubscriptExpr *ASE =
-            dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
-      return MVExprType::ARRAY;
-    }
-
-    if (Utils::isNumericValue(E)) {
-      return MVExprType::LITERAL;
-    }
-
-    return MVExprType::VARIABLE;
-  }
-
-  static MVExpr *createMVExpr(Expr *E) {
-    MVExprType T = MVExprFactory::getTempTypeFromExpr(E);
-    switch (T) {
-    case ARRAY:
-      return new MVExprArray(E);
-    case LITERAL:
-      return new MVExprLiteral(E);
-    case VARIABLE:
-    default:
-      return new MVExprVar(E);
-    }
-  }
 };
 
 /// Operators
