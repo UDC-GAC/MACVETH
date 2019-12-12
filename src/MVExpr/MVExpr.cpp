@@ -1,8 +1,8 @@
 /**
- * File              : TempExpr.cpp
+ * File              : MVExpr.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Mér 11 Dec 2019 15:08:42 MST
+ * Last Modified Date: Mér 11 Dec 2019 18:20:09 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -26,7 +26,7 @@
  * SOFTWARE.
  */
 
-#include "include/TempExpr.h"
+#include "include/MVExpr/MVExpr.h"
 #include <string>
 
 using namespace clang;
@@ -34,21 +34,10 @@ using namespace macveth;
 
 namespace macveth {
 
-TempExpr::TempExprType TempExpr::getTempTypeFromExpr(Expr *E) {
-  if (ArraySubscriptExpr *ASE =
-          dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
-    const Expr *TmpExpr = getArrayBaseExprAndIdxs(ASE, this->ArrInfo.Idx);
-    this->ArrInfo.BaseName = Utils::getStringFromExpr(TmpExpr);
-    return TempExprType::ARRAY;
-  }
-
-  return TBD;
-}
-
 /// Given a ArraySubscriptExpr, recursively gets the base name and the indexes
 /// from the outermost to the innermost
-const Expr *TempExpr::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
-                                              IdxVector &Idxs) {
+const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
+                                                 IdxVector &Idxs) {
   const Expr *BaseE = NULL;
   while (ASE) {
     const Expr *IdxE = ASE->getIdx();
@@ -62,48 +51,56 @@ const Expr *TempExpr::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
   return BaseE;
 }
 
-void TempExpr::updateIndex(int UF, std::string LL) {
-  if (this->getTempType() == TempExpr::TempExprType::ARRAY) {
-    auto it = find(this->ArrInfo.Idx.begin(), this->ArrInfo.Idx.end(), LL);
-    if (it != this->ArrInfo.Idx.end()) {
-      std::string &S(*it);
-      S = S + " + " + std::to_string(UF);
-    }
-    std::string NewStrExpr = this->ArrInfo.BaseName;
-    for (std::string I : this->ArrInfo.Idx) {
-      NewStrExpr += "[" + I + "]";
-    }
-    this->setExprStr(NewStrExpr);
+void MVExprArray::updateIndex(int UF, std::string LL) {
+  auto it = find(this->Idx.begin(), this->Idx.end(), LL);
+  if (it != this->Idx.end()) {
+    std::string &S(*it);
+    S = S + " + " + std::to_string(UF);
   }
+  std::string NewStrExpr = this->BaseName;
+  for (std::string I : this->Idx) {
+    NewStrExpr += "[" + I + "]";
+  }
+  this->setExprStr(NewStrExpr);
 }
 
-TempExpr *TempExpr::unrollTemp(const TempExpr &TE, int UF, std::string LL) {
-  TempExpr *NewExpr = new TempExpr(TE);
-  if (NewExpr->getTempType() == TempExpr::TempExprType::ARRAY) {
-    NewExpr->updateIndex(UF, LL);
-  }
+//------------------------------------------------
+//------------------------------------------------
+MVExpr *MVExprLiteral::unrollExpr(int UF, std::string LL) {
+  MVExprLiteral *NewExpr = new MVExprLiteral(this);
+  return NewExpr;
+}
+//------------------------------------------------
+MVExpr *MVExprVar::unrollExpr(int UF, std::string LL) {
+  MVExprVar *NewExpr = new MVExprVar(this);
+  return NewExpr;
+}
+//------------------------------------------------
+MVExpr *MVExprArray::unrollExpr(int UF, std::string LL) {
+  MVExprArray *NewExpr = new MVExprArray(this);
+  NewExpr->updateIndex(UF, LL);
   return NewExpr;
 }
 
 /// \deprecated
 /// New definition of operator+ in order to ease the unrolling
-// TempExpr *operator+(const TempExpr &Lhs, int Rhs) {
-//  TempExpr *NewExpr = new TempExpr(Lhs);
-//  TempExpr::TempExprInfo TI = NewExpr->getTempInfo();
-//  switch (TI) {
-//  case TempExpr::TempExprInfo::TMP_RES:
-//  case TempExpr::TempExprInfo::TMP_VAL:
-//    NewExpr->setExprStr("unroll" + std::to_string(Rhs));
-//    break;
-//  case TempExpr::TempExprInfo::EXPR_CLANG:
-//  case TempExpr::TempExprInfo::TAC_EXPR:
-//  default:
-//    /// FIXME
-//    NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs) +
-//                        " + offset");
-//    break;
-//  }
-//
-//  return NewExpr;
-//}
+MVExpr *operator+(const MVExpr &Lhs, int Rhs) {
+  MVExpr *NewExpr = new MVExpr(Lhs);
+  MVExpr::MVExprInfo TI = NewExpr->getTempInfo();
+  switch (TI) {
+  case MVExpr::MVExprInfo::TMP_RES:
+  case MVExpr::MVExprInfo::TMP_VAL:
+    NewExpr->setExprStr("unroll" + std::to_string(Rhs));
+    break;
+  case MVExpr::MVExprInfo::EXPR_CLANG:
+  case MVExpr::MVExprInfo::TAC_EXPR:
+  default:
+    /// FIXME
+    NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs) +
+                        " + offset");
+    break;
+  }
+
+  return NewExpr;
+}
 } // namespace macveth
