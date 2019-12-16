@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Xov 12 Dec 2019 10:51:12 MST
+ * Last Modified Date: Xov 12 Dec 2019 12:58:15 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -33,6 +33,7 @@
 using namespace clang;
 using namespace macveth;
 
+/// Converting a binary operator to our custom TAC representation
 void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
                              std::list<TAC> *TacList, int Val) {
   Expr *Lhs = S->getLHS();
@@ -45,14 +46,10 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
       (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs->IgnoreImpCasts()));
 
   /// Since this is a recursive function, we have to test the first case
-  MVExpr *TmpA = NULL;
-  if (Val == -1) {
-    TmpA = MVExprFactory::createMVExpr(Lhs);
-  } else {
-    TmpA = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val));
-    // TmpA = new MVExpr(Utils::getNameTempReg(Val),
-    // MVExpr::MVExprInfo::TMP_RES);
-  }
+  MVExpr *TmpA = (Val == -1)
+                     ? MVExprFactory::createMVExpr(Lhs)
+                     : MVExprFactory::createMVExpr(Utils::getNameTempReg(Val));
+
   // recursive part, to delve deeper into BinaryOperators
   if (LhsTypeBin && RhsTypeBin) {
     // both true

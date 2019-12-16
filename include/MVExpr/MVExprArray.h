@@ -2,7 +2,7 @@
  * File              : MVExprArray.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Xov 12 Dec 2019 10:03:14 MST
- * Last Modified Date: Xov 12 Dec 2019 10:14:32 MST
+ * Last Modified Date: Xov 12 Dec 2019 14:00:31 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_MVEXPRARRAY_H
@@ -29,11 +29,16 @@ public:
     this->Idx = E->Idx;
   }
 
+  /// Implementation of unrolling for arrays. In this case we will need to
+  /// create a new MVExpr
   virtual MVExpr *unrollExpr(int UF, std::string LL);
 
 private:
+  /// Given a dimension LL and a unrolling factor UF, regenerates the expression
+  /// with the indexes updated
   void updateIndex(int UF, std::string LL);
-  /// Get base name and indexes given a ArraySubscriptExpr
+  /// Given a ArraySubscriptExpr, recursively gets the base name and the indexes
+  /// from the outermost to the innermost
   const Expr *getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
                                       IdxVector &Idxs);
 

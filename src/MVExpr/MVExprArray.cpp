@@ -2,7 +2,7 @@
  * File              : MVExprArray.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Xov 12 Dec 2019 10:26:12 MST
- * Last Modified Date: Xov 12 Dec 2019 10:27:27 MST
+ * Last Modified Date: Xov 12 Dec 2019 13:47:16 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/MVExpr/MVExprArray.h"
@@ -14,8 +14,7 @@ MVExpr *MVExprArray::unrollExpr(int UF, std::string LL) {
   return NewExpr;
 }
 
-/// Given a ArraySubscriptExpr, recursively gets the base name and the indexes
-/// from the outermost to the innermost
+//------------------------------------------------
 const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
                                                  IdxVector &Idxs) {
   const Expr *BaseE = NULL;
@@ -26,11 +25,13 @@ const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
     ASE = dyn_cast<ArraySubscriptExpr>(BaseE);
     Idxs.push_back(Idx);
   }
+  /// FIXME: is this really needed?
   /// To sort from outermost to innermost
   Idxs.reverse();
   return BaseE;
 }
 
+//------------------------------------------------
 void MVExprArray::updateIndex(int UF, std::string LL) {
   auto it = find(this->Idx.begin(), this->Idx.end(), LL);
   if (it != this->Idx.end()) {

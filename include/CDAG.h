@@ -2,7 +2,7 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Mér 11 Dec 2019 17:25:45 MST
+ * Last Modified Date: Xov 12 Dec 2019 15:13:27 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_CDAG_H
@@ -57,11 +57,17 @@ public:
   }
 
   /// TODO
+  /// Schedule info is needed for the algorithms to perform permutations in
+  /// nodes
   void setSchedInfo();
 
+  /// Connect a Node as input
   void connectInput(Node *N);
+  /// Connect a Node as output
   void connectOutput(Node *N);
 
+  /// Get the number of inputs in this Node
+  int getOutputNum() { return this->Out.size(); }
   /// Get the output Node
   NodeListType getOuput() { return this->Out; }
   /// Get the number of inputs in this Node
@@ -80,6 +86,7 @@ public:
   /// Checks if given node is in the input list
   bool hasInNode(Node *N);
 
+  /// Merge node
   void mergeIfFound(Node NIn);
   int replaceInputWithNode(Node *NewIn);
 
@@ -89,6 +96,9 @@ public:
   /// Two nodes are equal if and only if they have the same value. Seems pretty
   /// straigthforward but it must be defined someway.
   bool operator==(const Node &N) { return !getValue().compare(N.getValue()); }
+  /// Two nodes are not equal if and only if they have the same value. Seems
+  /// pretty straigthforward but it must be defined someway.
+  bool operator!=(const Node &N) { return !operator==(N); }
 
 private:
   /// Holds information regarding the scheduling
@@ -115,13 +125,17 @@ public:
   /// Given a list of TACs, create its correspondent CDAG
   static CDAG *createCDAGfromTAC(TacListType TL);
 
+  /// TODO
+  /// Compute cost model
   static int costModel(CDAG *C);
 
+  /// Get the node of list registered for this CDAG
   Node::NodeListType getNodeList() { return this->NL; }
-  void addNodeToList(Node N) { this->NL.push_back(N); }
 
 private:
+  /// Insert TAC instruction to the CDAG
   Node insertTac(TAC T);
+  /// Connect nodes
   bool connectNode(Node N);
   Node::NodeListType NL;
 };

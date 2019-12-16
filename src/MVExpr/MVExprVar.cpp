@@ -10,6 +10,7 @@
 
 //------------------------------------------------
 MVExpr *MVExprVar::unrollExpr(int UF, std::string LL) {
-  MVExprVar *NewExpr = new MVExprVar(this);
-  return NewExpr;
+  //  MVExprVar *NewExpr = new MVExprVar(this);
+  //  return NewExpr;
+  return this;
 }

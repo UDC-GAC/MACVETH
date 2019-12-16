@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Mér 11 Dec 2019 15:31:23 MST
+ * Last Modified Date: Xov 12 Dec 2019 15:09:47 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,8 +29,6 @@
 #include "include/CustomMatchers.h"
 #include "include/CDAG.h"
 #include "include/StmtWrapper.h"
-#include "clang/AST/Decl.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
 #include <iostream>
 #include <string>
 
@@ -68,13 +66,9 @@ void matchers_utils::IterationHandler::run(
   int UnrollFactor = 1;
   const VarDecl *V = Result.Nodes.getNodeAs<clang::VarDecl>(
       matchers_utils::varnames::NameVarInit + std::to_string(1));
-
-  std::cout << "Loop nest = " + V->getNameAsString() << std::endl;
-  // SWrap->unroll(UnrollFactor, UpperBound, V->getNameAsString());
-  SWrap->unroll(UnrollFactor, 4, V->getNameAsString());
+  SWrap->unroll(UnrollFactor, 2, V->getNameAsString());
   for (TAC t : SWrap->getTacList())
     t.printTAC();
-  std::cout << "Unrolling alright!" << std::endl;
   CDAG::createCDAGfromTAC(SWrap->getTacList());
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;

@@ -2,7 +2,7 @@
  * File              : MVExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Xov 12 Dec 2019 10:12:04 MST
+ * Last Modified Date: Xov 12 Dec 2019 16:24:45 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -80,7 +80,7 @@ public:
   std::string getTypeStr() { return this->TypeStr; }
 
   void setExprStr(std::string ExprStr) { this->ExprStr = ExprStr; }
-  std::string getExprStr() { return this->ExprStr; }
+  std::string getExprStr() const { return this->ExprStr; }
 
   /// This method allows to check whether the expression belongs or not to the
   /// original AST created by Clang
@@ -88,6 +88,15 @@ public:
 
   /// Given a MVExpr it will return its unrolled version
   virtual MVExpr *unrollExpr(int UF, std::string LL) { return this; }
+
+  /// Two expressions are equal if and only if their name or original code
+  /// expression is equal, regardless where they appear in code.
+  bool operator==(const MVExpr &MVE) {
+    return !getExprStr().compare(MVE.getExprStr());
+  }
+  /// Two expressions are not equal if and only if their name or original code
+  /// expression is not equal.
+  bool operator!=(const MVExpr &MVE) { return !operator==(MVE); }
 
 private:
   MVExprInfo TempInfo = TMP_VAL;

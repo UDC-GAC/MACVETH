@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Mér 11 Dec 2019 17:36:07 MST
+ * Last Modified Date: Xov 12 Dec 2019 15:17:08 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -57,6 +57,7 @@ public:
     for (TAC t : this->getTacList()) {
       t.printTAC();
     }
+    std::cout << "--------------------\n" << std::flush;
   };
 
   /// Getters and setters

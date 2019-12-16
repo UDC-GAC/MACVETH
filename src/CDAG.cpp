@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Mér 11 Dec 2019 15:40:22 MST
+ * Last Modified Date: Xov 12 Dec 2019 15:15:38 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -24,7 +24,11 @@ void Node::connectOutput(Node *N) {
 
 // ---------------------------------------------
 bool Node::hasOut() { return !(this->Out.size() == 0); }
+
+// ---------------------------------------------
 bool Node::hasInputs() { return !(this->In.size() == 0); }
+
+// ---------------------------------------------
 bool Node::isTerminal() { return !this->hasOut(); }
 
 // ---------------------------------------------
@@ -54,9 +58,9 @@ void Node::mergeIfFound(Node NIn) {
   }
   for (Node C : this->getInputs()) {
     if (C == NIn) {
-      std::cout << "Merging node " + C.getValue() + " with " + NIn.getValue()
-                << std::endl;
-      C = NIn;
+      std::cout << "Merging node " + C.getValue() << "\n" << std::flush;
+      this->getInputs().remove(C);
+      this->getInputs().push_back(C);
       return;
     }
   }
@@ -65,17 +69,19 @@ void Node::mergeIfFound(Node NIn) {
 // ---------------------------------------------
 Node CDAG::insertTac(TAC T) {
   Node NewNode(T);
-  this->addNodeToList(NewNode);
+  // this->NL.push_back(NewNode);
   return NewNode;
 }
 
 // ---------------------------------------------
 bool CDAG::connectNode(Node NewNode) {
+  std::cout << "Connecting node " + NewNode.getValue() << "\n" << std::flush;
   for (Node PN : this->getNodeList()) {
     for (Node OutN : PN.getOuput()) {
       NewNode.mergeIfFound(OutN);
     }
   }
+  this->NL.push_back(NewNode);
   return true;
 }
 
@@ -83,7 +89,6 @@ bool CDAG::connectNode(Node NewNode) {
 CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
   CDAG *G = new CDAG();
   for (TAC T : TL) {
-    T.printTAC();
     /// TACs are of the form a = b op c, so if we create a Node for each TAC we
     /// are basically creating NODE_OP Nodes. This way, when we connect this new
     /// node to the rest of the CDAG, we are basically looking for connections
@@ -91,7 +96,6 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
     /// of already connected Nodes that match the input of this new NODE_OP.
     /// Looking for inputs
     Node ActualNode = G->insertTac(T);
-    printf("connecting node\n");
     G->connectNode(ActualNode);
   }
   return G;
