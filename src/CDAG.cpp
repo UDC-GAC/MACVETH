@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Lun 16 Dec 2019 16:21:12 MST
+ * Last Modified Date: Mar 17 Dec 2019 14:22:51 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -78,13 +78,62 @@ int computeMaxDepth(Node *N) {
 
 // ---------------------------------------------
 int CDAG::computeCostModel(CDAG *G) {
-  int Class = 0;
   int VL = 4;
-  std::string VLoad[VL];
-  std::string VOps[VL];
+  Node *VLoad[VL][2];
+  Node *VOps[VL];
+  int VLoadSched[VL][2];
+  int VOpsSched[VL];
   int Cursor = 0;
-  for (Node *N : G->getNodeListOps()) {
+  int TotalCost = -1;
+
+  /// Working with a copy
+  Node::NodeListType NL(G->getNodeListOps());
+  /// The sorting of the list is done by comparing the FreeSched value and the
+  /// StmtID, which is sequential when creating each node. This way we have a
+  /// chronological order of the nodes.
+  NL.sort();
+
+  /// Until the list is over
+repeat:
+  while (!NL.empty()) {
+    VOps[Cursor] = NL.front();
+    VOpsSched[Cursor++] = NL.front()->getSchedInfo().FreeSched;
+    NL.pop_front();
+    if (Cursor == VL) {
+      break;
+    }
   }
+  bool IsPartial = (Cursor < VL);
+
+  /// Compute memory operands for the operations fetched above
+  int i = 0;
+  while (VOps[i] != nullptr) {
+    Node::NodeListType Aux = VOps[i]->getInputs();
+    for (int j = 0; j < 2; ++j) {
+      VLoad[i][j] = Aux.front();
+      VLoadSched[i][j] = Aux.front()->getSchedInfo().FreeSched;
+      Aux.pop_front();
+    }
+    i++;
+  }
+
+  /// Compute the cost
+
+  /// Repeat process...
+  if (!IsPartial) {
+    Cursor = 0;
+    for (int i = 0; i < VL; ++i) {
+      VOps[i] = nullptr;
+      VOpsSched[i] = 0;
+      for (int j = 0; j < 2; ++j) {
+        VLoad[i][j] = nullptr;
+        VLoadSched[i][j] = 0;
+      }
+    }
+    goto repeat;
+  }
+
+  return TotalCost;
 }
 
 // ---------------------------------------------
@@ -110,12 +159,12 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
 CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
   CDAG *G = new CDAG();
   for (TAC T : TL) {
-    /// TACs are of the form a = b op c, so if we create a Node for each TAC we
-    /// are basically creating NODE_OP Nodes. This way, when we connect this new
-    /// node to the rest of the CDAG, we are basically looking for connections
-    /// between the inputs and outputs. Actually we are looking for outputs of
-    /// of already connected Nodes that match the input of this new NODE_OP.
-    /// Looking for inputs
+    /// TACs are of the form a = b op c, so if we create a Node for each TAC
+    /// we are basically creating NODE_OP Nodes. This way, when we connect
+    /// this new node to the rest of the CDAG, we are basically looking for
+    /// connections between the inputs and outputs. Actually we are looking
+    /// for outputs of of already connected Nodes that match the input of this
+    /// new NODE_OP. Looking for inputs
     Node *ActualNode = G->insertTac(T, G->getNodeListOps());
   }
   return G;

@@ -2,7 +2,7 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Lun 16 Dec 2019 15:18:21 MST
+ * Last Modified Date: Mar 17 Dec 2019 14:34:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_CDAG_H
@@ -35,12 +35,18 @@ inline static std::map<std::string, std::list<int>> CostsMap = {
 /// Nodes also hold information regarding the scheduling.
 class Node {
 public:
+  /// Simply universal identifier for each instance node. We have to be cautious
+  /// with this value: it **does not** identify the object itself. Thus,
+  /// whenever this object is cloned, this value is also cloned to the new
+  /// object
+  static inline int uuid = 0;
   /// Definition of NodeListType
   typedef std::list<Node *> NodeListType;
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_OP, UNDEF };
   /// Holds information regarding the scheduling for this Node
   struct SchedInfo {
+    int StmtID = -1;
     int FreeSched = 0;
     int Plcmnt = 0;
     int Sched = 0;
@@ -50,15 +56,27 @@ public:
     std::string OutName = "";
   };
 
+  /// Copy constructor for cloning
+  Node(const Node &rhs) {
+    this->I = rhs.I;
+    this->O = rhs.O;
+    this->OutNodes = rhs.OutNodes;
+    this->SI = rhs.SI;
+    this->T = rhs.T;
+    this->Value = rhs.Value;
+  }
+
   /// FIXME
   /// This is the unique constructor for nodes, as we will creating Nodes from
   /// CDAG, so each TAC corresponds to a = b op c
   Node(TAC T) {
     this->T = NODE_OP;
+    this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
     this->O.OutName = T.getA()->getExprStr();
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
+    this->SI.StmtID = Node::uuid++;
   }
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
@@ -71,6 +89,7 @@ public:
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);
     connectInput(NC == NULL ? new Node(T.getC()) : NC);
+    this->SI.StmtID = Node::uuid++;
   }
 
   /// Schedule info is needed for the algorithms to perform permutations in
@@ -95,6 +114,8 @@ public:
   int getInputNum() { return this->I.size(); }
   /// Get the list of node inputs in this Node
   NodeListType getInputs() { return this->I; }
+  /// Get info regarding its scheduling
+  SchedInfo getSchedInfo() { return this->SI; }
 
   /// Checks if output list is zero
   bool hasOutNodes();
@@ -118,19 +139,28 @@ public:
   /// pretty straigthforward but it must be defined someway.
   bool operator!=(const Node &N) { return !operator==(N); }
   bool operator!=(const Node *N) { return !operator==(N); }
+  /// For sorting lists of nodes
+  bool operator<(const Node &N) {
+    return ((this->SI.StmtID <= N.SI.StmtID) &&
+            (this->SI.FreeSched <= N.SI.FreeSched));
+  }
+  bool operator<(const Node *N) { return operator<(*N); }
 
 private:
+  /// MVExpr info
+  MVExpr *MV;
   /// Holds information regarding the scheduling
   SchedInfo SI;
   /// Value that identifies this node
   std::string Value = "";
-  /// Type of node
+  /// Type of node: MEMORY or OPERATION
   NodeType T = UNDEF;
-  /// List of inputs for this node
+  /// List of input nodes for this node
   NodeListType I;
-  /// Info regarding the output register/node
+  /// Info regarding the output register/node. This field only makes sense if we
+  /// are dealing with an operation node
   OutputInfo O;
-  /// List of output Nodes for this node
+  /// List of output nodes for this node
   NodeListType OutNodes;
 
   /// When creating a Node from a TempExpr, the connections will be created by
@@ -138,6 +168,8 @@ private:
   Node(MVExpr *TE) {
     this->T = NODE_MEM;
     this->Value = TE->getExprStr();
+    this->MV = TE;
+    this->SI.StmtID = Node::uuid++;
   }
 };
 
