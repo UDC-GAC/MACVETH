@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 11 Dec 2019 17:26:56 MST
+ * Last Modified Date: Mér 18 Dec 2019 13:57:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -54,7 +54,7 @@ private:
   ///                  a = b op c
   /// Where a, b and c are Expr and op is an Opcode
 public:
-  // Consturctor
+  /// Constructor
   TAC(){}; // empty constructor
   TAC(MVExpr *A, MVExpr *B, MVExpr *C, clang::BinaryOperator::Opcode OP)
       : A(A), B(B), C(C), OP(OP) {}
@@ -75,7 +75,7 @@ public:
               << this->getC()->getExprStr() << ", " << Op << std::endl;
   }
 
-  // Return list of 3AC from a starting Binary Operator
+  /// Return list of 3AC from a starting Binary Operator
   static void binaryOperator2TAC(const clang::BinaryOperator *S,
                                  std::list<TAC> *TacList, int Val);
 
@@ -84,21 +84,32 @@ public:
                                       int UpperBound);
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
                                       int UpperBound, unsigned int Mask);
+  /// Unroll TAC list and returning it. It also uses a MaskList[] for each
+  /// instruction present in the list. This helps to unroll independenly each
+  /// operand in the TAC
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
                                       int UpperBound, unsigned int MaskList[]);
+  /// Unroll TAC list and returning it. It also uses a MaskList[] for each
+  /// instruction present in the list. This helps to unroll independenly each
+  /// operand in the TAC
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
                                       int UpperBound, unsigned int MaskList[],
                                       std::string LoopLevel);
-  /// Unroll each TAC
+  /// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and the S
+  /// value which holds the iteration of the unrolling basically
   static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                      std::string LoopLevel);
   static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask);
   static TAC *unroll(TAC *Tac, int UnrollFactor, unsigned int mask);
 
 private:
+  /// TAC result
   MVExpr *A;
+  /// First operand of TAC
   MVExpr *B;
+  /// Second operand of TAC
   MVExpr *C;
+  /// Operation of the TAC
   clang::BinaryOperator::Opcode OP;
 };
 

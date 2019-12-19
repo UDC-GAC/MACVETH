@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Xov 12 Dec 2019 15:09:47 MST
+ * Last Modified Date: Mér 18 Dec 2019 15:29:30 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -66,10 +66,14 @@ void matchers_utils::IterationHandler::run(
   int UnrollFactor = 1;
   const VarDecl *V = Result.Nodes.getNodeAs<clang::VarDecl>(
       matchers_utils::varnames::NameVarInit + std::to_string(1));
-  SWrap->unroll(UnrollFactor, 2, V->getNameAsString());
+  SWrap->unroll(UnrollFactor, 6, V->getNameAsString());
   for (TAC t : SWrap->getTacList())
     t.printTAC();
-  CDAG::createCDAGfromTAC(SWrap->getTacList());
+  std::cout << "Creating CDAG" << std::endl;
+  CDAG *G = CDAG::createCDAGfromTAC(SWrap->getTacList());
+  std::cout << "CDAG done" << std::endl;
+  CDAG::computeFreeSchedule(G);
+  CDAG::computeCostModel(G);
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
   /// Unroll factor applied to the for header

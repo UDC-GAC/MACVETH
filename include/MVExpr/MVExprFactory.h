@@ -2,7 +2,7 @@
  * File              : MVExprFactory.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Xov 12 Dec 2019 10:11:49 MST
- * Last Modified Date: Xov 12 Dec 2019 10:39:42 MST
+ * Last Modified Date: Mér 18 Dec 2019 12:00:01 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_MVEXPRFACTORY_H
@@ -28,6 +28,7 @@ public:
 
   static MVExpr *createMVExpr(Expr *E);
   static MVExpr *createMVExpr(std::string E);
+  static MVExpr *createMVExpr(std::string E, bool Temp);
 };
 } // namespace macveth
 #endif

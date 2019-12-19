@@ -2,7 +2,7 @@
  * File              : MVExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Xov 12 Dec 2019 16:24:45 MST
+ * Last Modified Date: Mér 18 Dec 2019 14:22:29 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -40,6 +40,7 @@ using namespace clang;
 
 namespace macveth {
 
+/// This type defines the IdxVector for MVExprArrays
 typedef std::list<std::string> IdxVector;
 
 /// This class holds a double identity for expressions: a string name (for
@@ -49,12 +50,19 @@ typedef std::list<std::string> IdxVector;
 /// and to simplify the Clang AST typing.
 class MVExpr {
 public:
-  /// FIXME: I do not see the use of this
-  enum MVExprInfo { EXPR_CLANG, TAC_EXPR, TMP_RES, TMP_VAL };
+  /// A MVExpr can be created from a clang::Expr or from a string, it can be an
+  /// array a literal or even a variable, but when it comes to unroll, it is not
+  /// the same if it is a temporal expression created ad-hoc (e.g. tempX
+  /// register which holds a temporal value in the TAC representation). This
+  /// way, we can distinguish those cases.
+  enum MVExprInfo { EXPR_CLANG, TAC_EXPR, TMP_RES };
+
+  /// Destructor
   virtual ~MVExpr(){};
 
-  /// Constructors
+  /// Empty constructor
   MVExpr(){};
+  /// Clone constructor
   MVExpr(MVExpr *TE) {
     this->setExprStr(TE->getExprStr());
     this->setClangExpr(TE->getClangExpr());
@@ -62,24 +70,37 @@ public:
     this->setTempInfo(TE->getTempInfo());
   }
 
+  /// Create MVExpr from string. In this case we will assume we are treating
+  /// with a TAC_EXPR
   MVExpr(std::string E) : ExprStr(E) { this->TempInfo = TAC_EXPR; }
+  /// Create MVExpr from string and set ad-hoc MVExprInfo
   MVExpr(std::string E, MVExprInfo TI) : ExprStr(E), TempInfo(TI) {}
+  /// Create MVExpr from clang::Expr, which sets its inner type/info to
+  /// EXPR_CLANG
   MVExpr(Expr *E) : ClangExpr(E) {
     this->TempInfo = MVExprInfo::EXPR_CLANG;
     this->ExprStr = Utils::getStringFromExpr(E);
     this->setTypeStr(this->getClangExpr()->getType().getAsString());
   }
 
+  /// Set info
   void setTempInfo(MVExprInfo TempInfo) { this->TempInfo = TempInfo; }
+  /// Get MVExpr info
   MVExprInfo getTempInfo() { return this->TempInfo; }
 
+  /// Set clang::Expr attribute
   void setClangExpr(clang::Expr *ClangExpr) { this->ClangExpr = ClangExpr; }
+  /// Get clang::Expr attribute
   clang::Expr *getClangExpr() { return this->ClangExpr; }
 
+  /// Set type as a string
   void setTypeStr(std::string TypeStr) { this->TypeStr = TypeStr; }
+  /// Get type as a string
   std::string getTypeStr() { return this->TypeStr; }
 
+  /// Set expression as an string
   void setExprStr(std::string ExprStr) { this->ExprStr = ExprStr; }
+  /// Get expression as an string
   std::string getExprStr() const { return this->ExprStr; }
 
   /// This method allows to check whether the expression belongs or not to the
@@ -88,6 +109,11 @@ public:
 
   /// Given a MVExpr it will return its unrolled version
   virtual MVExpr *unrollExpr(int UF, std::string LL) { return this; }
+  /// Given a MVExpr and the map of unrolled,loop_level, it will return the
+  /// unrolled version
+  virtual MVExpr *unrollExpr(std::unordered_map<int, std::string> LList) {
+    return this;
+  }
 
   /// Two expressions are equal if and only if their name or original code
   /// expression is equal, regardless where they appear in code.
@@ -99,7 +125,7 @@ public:
   bool operator!=(const MVExpr &MVE) { return !operator==(MVE); }
 
 private:
-  MVExprInfo TempInfo = TMP_VAL;
+  MVExprInfo TempInfo = TMP_RES;
   std::string TypeStr = "double";
   std::string ExprStr = "";
   clang::Expr *ClangExpr = NULL;

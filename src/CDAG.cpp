@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Mar 17 Dec 2019 14:22:51 MST
+ * Last Modified Date: Mér 18 Dec 2019 17:16:36 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -11,60 +11,9 @@
 namespace macveth {
 
 // ---------------------------------------------
-void Node::connectInput(Node *N) {
-  this->I.push_back(N);
-  N->OutNodes.push_back(this);
-}
-
-// ---------------------------------------------
-void Node::connectOutput(Node *N) {}
-
-// ---------------------------------------------
-bool Node::hasOutNodes() { return (this->OutNodes.size() == 0); }
-
-// ---------------------------------------------
-bool Node::hasInputs() { return !(this->I.size() == 0); }
-
-// ---------------------------------------------
-bool Node::isTerminal() { return !(this->hasOutNodes()); }
-
-// ---------------------------------------------
-Node *Node::findOutputNode(std::string NodeName, NodeListType L) {
-  for (Node *NL : L) {
-    if (NodeName.compare(NL->getOuputInfo().OutName)) {
-      return NL;
-    }
-  }
-  return NULL;
-}
-
-// ---------------------------------------------
-bool Node::hasOutNode(Node *N) {
-  for (Node *C : this->OutNodes) {
-    if (C == N) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// ---------------------------------------------
-bool Node::hasInNode(Node *N) {
-  for (Node *C : this->I) {
-    if (C == N) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// ---------------------------------------------
-void Node::setFreeSchedInfo(int Value) { this->SI.FreeSched = Value; }
-
-// ---------------------------------------------
 int computeMaxDepth(Node *N) {
-  /// This algorithm is not efficient if the CDAG is big... At some point more
-  /// intelligent strategies should be used instead
+  /// This algorithm is not efficient if the CDAG is big. At some point more
+  /// intelligent strategies should be used instead.
   if (N->getInputNum() == 0) {
     return 0;
   } else {
@@ -74,6 +23,30 @@ int computeMaxDepth(Node *N) {
     }
     return 1 + max;
   }
+}
+
+// ---------------------------------------------
+bool opsAreSequential(int VL, Node *VOps[], int VOpsSched[]) {
+  for (int i = 1; i < VL; ++i) {
+    if (VOps[i - 1]->getSchedInfo().FreeSched <
+        VOps[i]->getSchedInfo().FreeSched)
+      return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------
+void printDebug(std::string S) {
+  std::cout << "[CDAG DEBUG] " << S << std::endl;
+}
+
+// ---------------------------------------------
+void Node::printNode() {
+  std::cout << "----------------------------------------" << std::endl;
+  std::cout << "[NODE] name\t\t= " << this->getValue() << std::endl;
+  std::cout << "\tFreeSched\t= " << this->getSchedInfo().FreeSched << std::endl;
+  std::cout << "\tStmtID\t\t= " << this->getSchedInfo().StmtID << std::endl;
+  std::cout << "----------------------------------------" << std::endl;
 }
 
 // ---------------------------------------------
@@ -91,25 +64,41 @@ int CDAG::computeCostModel(CDAG *G) {
   /// The sorting of the list is done by comparing the FreeSched value and the
   /// StmtID, which is sequential when creating each node. This way we have a
   /// chronological order of the nodes.
-  NL.sort();
+  NL.sort([](Node *lhs, Node *rhs) { return *lhs < *rhs; });
+
+  for (Node *N : NL) {
+    N->printNode();
+  }
+
+  printDebug("Entering loop");
 
   /// Until the list is over
 repeat:
   while (!NL.empty()) {
     VOps[Cursor] = NL.front();
-    VOpsSched[Cursor++] = NL.front()->getSchedInfo().FreeSched;
+    VOpsSched[Cursor] = NL.front()->getSchedInfo().FreeSched;
+    if ((Cursor > 0) &&
+        (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
+      printDebug("Full OPS of same type = " + VOps[Cursor - 1]->getValue());
+      break;
+    }
     NL.pop_front();
-    if (Cursor == VL) {
+    if (++Cursor == VL) {
+      printDebug("VL OPS achieved");
       break;
     }
   }
   bool IsPartial = (Cursor < VL);
-
+  VL = IsPartial ? Cursor : 4;
+  if (IsPartial) {
+    printDebug("isPartial: " + std::to_string(VL));
+  }
   /// Compute memory operands for the operations fetched above
   int i = 0;
-  while (VOps[i] != nullptr) {
+  while ((i < VL) && (VOps[i] != nullptr)) {
     Node::NodeListType Aux = VOps[i]->getInputs();
     for (int j = 0; j < 2; ++j) {
+      printDebug(" i " + std::to_string(i) + ", j " + std::to_string(j));
       VLoad[i][j] = Aux.front();
       VLoadSched[i][j] = Aux.front()->getSchedInfo().FreeSched;
       Aux.pop_front();
@@ -117,11 +106,25 @@ repeat:
     i++;
   }
 
+  /// Premises of our algorithm
+  if (bool Seq = opsAreSequential(VL, VOps, VOpsSched)) {
+    printDebug("Ops are sequential");
+  }
+  bool RAW;
+  bool Atomicity;
+
   /// Compute the cost
+  /// Loads
+  // int LoadCost = loadCost(VL, VLoad, VLoadSched);
+  /// Computations
+  // int OpsCost = opsCost(VL, VOps, VOpsSched);
+  /// Stores
+  // int StoreCost = loadCost(VLoad, VLoadSched);
 
   /// Repeat process...
-  if (!IsPartial) {
+  if (!NL.empty()) {
     Cursor = 0;
+    VL = 4;
     for (int i = 0; i < VL; ++i) {
       VOps[i] = nullptr;
       VOpsSched[i] = 0;

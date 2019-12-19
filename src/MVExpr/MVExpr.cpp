@@ -2,7 +2,7 @@
  * File              : MVExpr.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Xov 12 Dec 2019 10:28:14 MST
+ * Last Modified Date: Mér 18 Dec 2019 12:03:05 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -41,7 +41,6 @@ MVExpr *operator+(const MVExpr &Lhs, int Rhs) {
   MVExpr::MVExprInfo TI = NewExpr->getTempInfo();
   switch (TI) {
   case MVExpr::MVExprInfo::TMP_RES:
-  case MVExpr::MVExprInfo::TMP_VAL:
     NewExpr->setExprStr("unroll" + std::to_string(Rhs));
     break;
   case MVExpr::MVExprInfo::EXPR_CLANG:

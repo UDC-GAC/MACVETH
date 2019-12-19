@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Xov 12 Dec 2019 12:58:15 MST
+ * Last Modified Date: Mér 18 Dec 2019 13:32:46 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,13 +27,14 @@
  */
 
 #include "include/TAC.h"
+#include "CDAG.h"
 #include "include/MVExpr/MVExprFactory.h"
 #include "clang/Lex/Lexer.h"
 
 using namespace clang;
 using namespace macveth;
 
-/// Converting a binary operator to our custom TAC representation
+// ---------------------------------------------
 void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
                              std::list<TAC> *TacList, int Val) {
   Expr *Lhs = S->getLHS();
@@ -46,14 +47,16 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
       (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs->IgnoreImpCasts()));
 
   /// Since this is a recursive function, we have to test the first case
-  MVExpr *TmpA = (Val == -1)
-                     ? MVExprFactory::createMVExpr(Lhs)
-                     : MVExprFactory::createMVExpr(Utils::getNameTempReg(Val));
+  MVExpr *TmpA =
+      (Val == -1)
+          ? MVExprFactory::createMVExpr(Lhs)
+          : MVExprFactory::createMVExpr(Utils::getNameTempReg(Val), true);
 
   // recursive part, to delve deeper into BinaryOperators
   if (LhsTypeBin && RhsTypeBin) {
     // both true
-    MVExpr *TmpB = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1));
+    MVExpr *TmpB =
+        MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 2));
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
 
@@ -62,12 +65,14 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
     binaryOperator2TAC(LhsBin, TacList, Val + 2);
   } else if (!LhsTypeBin && RhsTypeBin) {
     MVExpr *TmpB = MVExprFactory::createMVExpr(Lhs);
-    MVExpr *TmpC = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1));
+    MVExpr *TmpC =
+        MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
     TacList->push_back(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
   } else if (LhsTypeBin && !RhsTypeBin) {
-    MVExpr *TmpB = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1));
+    MVExpr *TmpB =
+        MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Rhs);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
     TacList->push_back(NewTac);
@@ -81,7 +86,7 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
   return;
 }
 
-// Static version of unrolling
+// ---------------------------------------------
 TAC *TAC::unroll(TAC *Tac, int UnrollFactor, unsigned int mask) {
   int UnrollA =
       UnrollFactor + UnrollFactor * ((mask & TAC::MASK_OP_A) >> TAC::BITS_OP_A);
@@ -95,6 +100,7 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, unsigned int mask) {
   return UnrolledTac;
 }
 
+// ---------------------------------------------
 TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask) {
   int UnrollA = S * UnrollFactor +
                 UnrollFactor * ((mask & TAC::MASK_OP_A) >> TAC::BITS_OP_A);
@@ -108,8 +114,7 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask) {
   return UnrolledTac;
 }
 
-/// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and the S
-/// value which holds the iteration of the unrolling basically
+// ---------------------------------------------
 TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                  std::string LoopLevel) {
   int UnrollA = S * UnrollFactor +
@@ -120,22 +125,24 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                 UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
   TAC *UnrolledTac =
       new TAC(Tac->getA()->unrollExpr(UnrollA, LoopLevel),
-              Tac->getB()->unrollExpr(UnrollA, LoopLevel),
-              Tac->getC()->unrollExpr(UnrollA, LoopLevel), Tac->getOP());
+              Tac->getB()->unrollExpr(UnrollB, LoopLevel),
+              Tac->getC()->unrollExpr(UnrollC, LoopLevel), Tac->getOP());
   return UnrolledTac;
 }
 
-/// Unroll TAC list and returning it. It also uses a MaskList[] for each
-/// instruction present in the list. This helps to unroll independenly each
-/// operand in the TAC
+// ---------------------------------------------
 std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
                                   int UpperBound, unsigned int MaskList[],
                                   std::string LoopLevel) {
   std::list<TAC> TacListOrg;
   int steps = UpperBound / UnrollFactor;
   for (int s = 0; s < steps; ++s) {
+    // FIXME
     int Mask = 0;
     for (TAC Tac : TacList) {
+      // Skip stores until the end
+      if ((!BOtoValue[Tac.getOP()].compare("store")) && (s < steps - 1))
+        continue;
       TacListOrg.push_back(
           *(TAC::unroll(&Tac, UnrollFactor, s, MaskList[Mask++], LoopLevel)));
     }
@@ -143,9 +150,7 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
   return TacListOrg;
 }
 
-/// Unroll TAC list and returning it. It also uses a MaskList[] for each
-/// instruction present in the list. This helps to unroll independenly each
-/// operand in the TAC
+// ---------------------------------------------
 std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
                                   int UpperBound, unsigned int MaskList[]) {
   std::list<TAC> TacListOrg = TacList;
@@ -160,8 +165,7 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
   return TacListOrg;
 }
 
-/// Unroll TAC list and returning it. It also uses a Mask for unrolling
-/// with certains offsets all instructions
+// ---------------------------------------------
 std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
                                   int UpperBound, unsigned int Mask) {
   std::list<TAC> TacListOrg = TacList;
@@ -174,7 +178,7 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
   return TacListOrg;
 }
 
-/// Same as before but without mask
+// ---------------------------------------------
 std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
                                   int UpperBound) {
   return TAC::unrollTacList(TacList, UnrollFactor, UpperBound,
