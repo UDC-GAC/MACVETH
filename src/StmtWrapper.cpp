@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Xov 12 Dec 2019 13:07:08 MST
+ * Last Modified Date: Ven 20 Dec 2019 14:23:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -43,13 +43,13 @@ StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
   return StmtWrapper::StmtType::VECTORIZABLE;
 }
 
-void printDebug(std::string Name, TacListType TempTacList) {
-  std::cout << "========" + Name + " UNROLLING=========" << std::endl;
-  for (TAC Tac : TempTacList) {
-    Tac.printTAC();
-  }
-  std::cout << "=================================" << std::endl;
-}
+// void printDebug(std::string Name, TacListType TempTacList) {
+//  std::cout << "========" + Name + " UNROLLING=========" << std::endl;
+//  for (TAC Tac : TempTacList) {
+//    Tac.printTAC();
+//  }
+//  std::cout << "=================================" << std::endl;
+//}
 
 void StmtWrapper::unroll(int UnrollFactor, int UpperBound,
                          std::string LoopLevel) {

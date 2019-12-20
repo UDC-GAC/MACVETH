@@ -2,12 +2,11 @@
  * File              : Utils.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 10:51:03 MST
- * Last Modified Date: Mér 11 Dec 2019 15:37:20 MST
+ * Last Modified Date: Ven 20 Dec 2019 14:29:28 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Utils.h"
-#include <llvm-10/llvm/ADT/APFloat.h>
 
 using namespace macveth;
 

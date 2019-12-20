@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Mér 18 Dec 2019 17:06:24 MST
+ * Last Modified Date: Ven 20 Dec 2019 15:07:02 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -108,9 +108,11 @@ public:
   /// Get the number of inputs in this Node
   int getOutputNum() { return this->OutNodes.size(); }
   /// Get the output Nodes
-  NodeListType getOuput() { return this->OutNodes; }
+  NodeListType getOuputNodes() { return this->OutNodes; }
   /// Get the output information
   OutputInfo getOuputInfo() { return this->O; }
+  /// Get the output information
+  std::string getOuputInfoValue() { return this->O.Name; }
   /// Get the number of inputs in this Node
   int getInputNum() { return this->I.size(); }
   /// Get the list of node inputs in this Node
@@ -131,12 +133,19 @@ public:
 
   /// Returns the string value of the node
   std::string getValue() const { return this->Value; }
+  /// Returns the variable/register value
+  std::string getRegisterValue() const {
+    if (this->T == NodeType::NODE_MEM) {
+      return this->O.Name;
+    }
+    return this->getValue();
+  }
 
   /// Print node: debugging purposes
   void printNode();
 
-  /// Two nodes are equal if and only if they have the same value. Seems pretty
-  /// straigthforward but it must be defined someway.
+  /// Two nodes are equal if and only if they have the same value. Seems
+  /// pretty straigthforward but it must be defined someway.
   bool operator==(const Node &N) { return !getValue().compare(N.getValue()); }
   bool operator==(const Node *N) { return !getValue().compare(N->getValue()); }
   /// Two nodes are not equal if and only if they have the same value. Seems
@@ -164,8 +173,8 @@ private:
   NodeType T = UNDEF;
   /// List of input nodes for this node
   NodeListType I;
-  /// Info regarding the output register/node. This field only makes sense if we
-  /// are dealing with an operation node
+  /// Info regarding the output register/node. This field only makes sense if
+  /// we are dealing with an operation node
   OutputInfo O;
   /// List of output nodes for this node
   NodeListType OutNodes;

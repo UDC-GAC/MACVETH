@@ -2,15 +2,18 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Mér 18 Dec 2019 17:06:28 MST
+ * Last Modified Date: Ven 20 Dec 2019 14:26:05 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
+
 #ifndef MACVETH_CDAG_H
 #define MACVETH_CDAG_H
 #include <list>
 #include <stdio.h>
 
 #include "include/Node.h"
+#include "include/Utils.h"
+#include "include/Vectorization/VectorAPI.h"
 
 using namespace macveth;
 
@@ -23,10 +26,13 @@ public:
   static CDAG *createCDAGfromTAC(TacListType TL);
   /// Compute cost model
   static int computeCostModel(CDAG *C);
+  /// Compute cost model for a set of Nodes
   static int computeCostModel(Node::NodeListType NL);
 
   /// Computer the free schedule, basically the topology order
   static void computeFreeSchedule(CDAG *C);
+  /// Computer the free schedule, basically the topology order for a list or set
+  /// of Nodes
   static void computeFreeSchedule(Node::NodeListType NL);
 
   /// Generate intrinsics

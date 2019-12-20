@@ -2,7 +2,7 @@
  * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Mér 11 Dec 2019 15:34:47 MST
+ * Last Modified Date: Ven 20 Dec 2019 14:37:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,10 +28,13 @@
 #ifndef MACVETH_UTILS_H
 #define MACVETH_UTILS_H
 
+#include <iostream>
+
 #include "clang/AST/AST.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
+#include <llvm-10/llvm/ADT/APFloat.h>
 
 using namespace clang;
 
@@ -39,21 +42,23 @@ namespace macveth {
 
 class Utils {
 public:
-  // some definitions to avoid repetition
+  /// Type of string list
   typedef std::list<std::string> StrList;
 
-  // when declaring static members of class, when assigning them you need
-  // to redeclare them or since C++17 you can just put inline
+  // When declaring static members of class, when assigning them you need
+  // to redeclare them or since C++17 you can just put in
+
   inline static clang::SourceManager *SourceMgr;
   inline static clang::LangOptions *LangOpts;
   inline static clang::ASTContext *Ctx;
 
-  // some auxiliary functions
+  /// Check if list contains an element given
   template <typename T>
   static bool contains(std::list<T> &listOfElements, const T &element);
 
-  // converting expressions to strings
+  /// Converting clang expressions to strings
   static std::string getStringFromExpr(const Expr *E);
+  /// Dummy function to get the name of a temp register given a value
   static std::string getNameTempReg(int Val);
 
   /// Given an Expr, get its integer value
@@ -62,12 +67,22 @@ public:
   /// Check whether expression is or not numeric
   static bool isNumericValue(Expr *E);
 
-  // managing resources
+  /// Get clang SourceManager
   static clang::SourceManager *getSourceMgr();
+  /// Get clang LangOptions
   static clang::LangOptions *getLangOpts();
+  /// Get clang ASTContext
   static clang::ASTContext *getCtx();
+  /// Set some clang resources
   static void setOpts(SourceManager *SO, LangOptions *LO, ASTContext *C);
+  /// Print function for debugging purposes
+  // static void printDebug(std::string M, std::string S);
 };
+
+//// ---------------------------------------------
+// void Utils::printDebug(std::string M, std::string S) {
+//  std::cout << "[" << M << " DEBUG] " << S << std::endl;
+//}
 
 //-------------------------------------------------------------
 template <typename T>
