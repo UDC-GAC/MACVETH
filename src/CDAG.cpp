@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Ven 20 Dec 2019 15:28:38 MST
+ * Last Modified Date: Mar 24 Dec 2019 15:05:24 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -32,13 +32,13 @@ int computeMaxDepth(Node *N) {
 
 // ---------------------------------------------
 int CDAG::computeCostModel(CDAG *G) {
-  int VL = 4;
+  int VL = VectorIR::VL;
   Node *VLoadA[VL];
   Node *VLoadB[VL];
   Node *VOps[VL];
-  int VLoadSchedA[VL];
-  int VLoadSchedB[VL];
-  int VOpsSched[VL];
+  // int VLoadSchedA[VL];
+  // int VLoadSchedB[VL];
+  // int VOpsSched[VL];
   int Cursor = 0;
   int TotalCost = -1;
 
@@ -59,7 +59,6 @@ int CDAG::computeCostModel(CDAG *G) {
 repeat:
   while (!NL.empty()) {
     VOps[Cursor] = NL.front();
-    VOpsSched[Cursor] = NL.front()->getSchedInfo().FreeSched;
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
       printDebug("CDAG",
@@ -73,7 +72,7 @@ repeat:
     }
   }
   bool IsPartial = (Cursor < VL);
-  VL = IsPartial ? Cursor : 4;
+  VL = IsPartial ? Cursor : VectorIR::VL;
   if (IsPartial) {
     printDebug("CDAG", "isPartial: " + std::to_string(VL));
   }
@@ -82,25 +81,24 @@ repeat:
   while ((i < VL) && (VOps[i] != nullptr)) {
     Node::NodeListType Aux = VOps[i]->getInputs();
     VLoadA[i] = Aux.front();
-    VLoadSchedA[i] = Aux.front()->getSchedInfo().FreeSched;
     Aux.pop_front();
     VLoadB[i] = Aux.front();
-    VLoadSchedB[i] = Aux.front()->getSchedInfo().FreeSched;
     Aux.pop_front();
     i++;
   }
 
   // Compute the vector cost
-  int CostVectorOperation = VectorAPI::computeCostVectorOp(
-      VL, VOps, VOpsSched, VLoadA, VLoadSchedA, VLoadB, VLoadSchedB);
+  int CostVectorOperation =
+      VectorIR::computeCostVectorOp(VL, VOps, VLoadA, VLoadB);
+  // VL, VOps, VOpsSched, VLoadA, VLoadSchedA, VLoadB, VLoadSchedB);
 
   // Repeat process if list not empty
   if (!NL.empty()) {
     Cursor = 0;
-    VL = 4;
+    VL = VectorIR::VL;
     for (int i = 0; i < VL; ++i) {
       VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
-      VOpsSched[i] = VLoadSchedA[i] = VLoadSchedB[i] = 0;
+      // VOpsSched[i] = VLoadSchedA[i] = VLoadSchedB[i] = 0;
     }
     goto repeat;
   }

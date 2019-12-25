@@ -1,12 +1,11 @@
 /**
- * File              : VectorAPI.cpp
+ * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 20 Dec 2019 13:18:13 MST
- * Last Modified Date: Lun 23 Dec 2019 12:20:07 MST
+ * Date              : Mar 24 Dec 2019 16:41:08 MST
+ * Last Modified Date: Mar 24 Dec 2019 16:42:25 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
-
-#include "include/Vectorization/VectorAPI.h"
+#include "include/Vectorization/VectorIR.h"
 
 #define MOD_DEB "VectorAPI"
 
@@ -16,7 +15,7 @@ void printDebug(std::string M, std::string S) {
 }
 
 // ---------------------------------------------
-bool opsAreSequential(int VL, Node *VOps[], int VOpsSched[]) {
+bool opsAreSequential(int VL, Node *VOps[]) {
   for (int i = 1; i < VL; ++i) {
     if (VOps[i - 1]->getSchedInfo().FreeSched <
         VOps[i]->getSchedInfo().FreeSched)
@@ -49,12 +48,11 @@ bool isAtomic(int VL, Node *VOps[], Node *VLoad[]) {
 }
 
 // ---------------------------------------------
-int VectorAPI::computeCostVectorOp(int VL, Node *VOps[], int VOpsSched[],
-                                   Node *VLoadA[], int VLoadSchedA[],
-                                   Node *VLoadB[], int VLoadSchedB[]) {
+int VectorIR::computeCostVectorOp(int VL, Node *VOps[], Node *VLoadA[],
+                                  Node *VLoadB[]) {
   // Premises of our algorithm
   // 1.- Check wheter operations are sequential
-  bool Seq = opsAreSequential(VL, VOps, VOpsSched);
+  bool Seq = opsAreSequential(VL, VOps);
   if (Seq) {
     printDebug(MOD_DEB, "Ops are sequential");
   }

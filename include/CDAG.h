@@ -2,7 +2,7 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Ven 20 Dec 2019 14:26:05 MST
+ * Last Modified Date: Mar 24 Dec 2019 14:43:55 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -13,7 +13,7 @@
 
 #include "include/Node.h"
 #include "include/Utils.h"
-#include "include/Vectorization/VectorAPI.h"
+#include "include/Vectorization/VectorIR.h"
 
 using namespace macveth;
 

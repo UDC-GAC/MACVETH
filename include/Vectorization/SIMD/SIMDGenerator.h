@@ -2,12 +2,12 @@
  * File              : IntrinsicsGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Ven 20 Dec 2019 16:26:17 MST
+ * Last Modified Date: Dom 22 Dec 2019 20:42:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
-#ifndef MACVETH_INTRINSICSGENERATOR_H
-#define MACVETH_INTRINSICSGENERATOR_H
+#ifndef MACVETH_SIMDGENERATOR_H
+#define MACVETH_SIMDGENERATOR_H
 
 #include <list>
 #include <map>
@@ -20,27 +20,27 @@ typedef std::list<std::string> InstListType;
 /// Abstract class implemented by each architecture (AVX, AVX2, AVX512, etc.) to
 /// generate specific intrinsics and calculate the associated cost for the
 /// operations provided by the VectorAPI
-class IntrinsicsGenerator {
+class SIMDGenerator {
 
   /// Return value when generating new code
-  struct IntrinsicsInfo {
-    InstListType IntrinsicsList;
+  struct SIMDInfo {
+    InstListType SIMDList;
     int Cost;
   };
 
 public:
   /// Computers a broadcast operation
-  virtual IntrinsicsInfo vbroadcast();
+  virtual SIMDInfo vbroadcast();
   /// Computers a load operation
-  virtual IntrinsicsInfo vload();
+  virtual SIMDInfo vload();
   /// Computers a store operation
-  virtual IntrinsicsInfo vstore();
+  virtual SIMDInfo vstore();
   /// Generates a FMADD
-  virtual IntrinsicsInfo vfmadd();
+  virtual SIMDInfo vfmadd();
   /// Generates a FMSUB
-  virtual IntrinsicsInfo vfmsub();
+  virtual SIMDInfo vfmsub();
   /// Generates a reduction
-  virtual IntrinsicsInfo vreduction();
+  virtual SIMDInfo vreduction();
 
 private:
   /// List of registers declared
