@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Mar 24 Dec 2019 16:39:34 MST
+ * Last Modified Date: Mar 24 Dec 2019 19:19:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -22,10 +22,15 @@ namespace macveth {
 class VectorIR {
 public:
   static const int VL = 4;
+
+  /// Types of vector operations
   enum VOP { NOP, CONST, VREC, BINOP, BUILTIN, MEM };
 
+  /// Vector data types
+  enum VDataType { DOUBLE, FLOAT, INTEGER };
+
   /// Vector width possible types
-  enum VWidth { W64, W128, W256, W512 };
+  enum VWidth { W8, W16, W32, W64, W128, W256, W512 };
 
   /// Vector operand basically is a wrap of VL operands in the original Node
   struct VectorOperand {
@@ -47,38 +52,73 @@ public:
     unsigned int Shuffle = 0x0;
     /// Mask to avoid elements if necessary
     unsigned int Mask = 0x0;
-    bool IsResult = false;
-    bool IsTemp = false;
+    bool IsTmpResult = false;
     bool IsLoad = false;
     bool IsStore = false;
+
+    bool checkIfVectorAssigned(int VL, Node *V[]) {
+      for (int n = 0; n < VL; ++n) {
+        if (MapRegToVReg.find(V[n]->getRegisterValue()) == MapRegToVReg.end()) {
+          return false;
+        }
+      }
+      return true;
+      // return VectorOperand::MapRegToVReg[V[0]->getRegisterValue()];
+    }
     /// Basic Cosntructor
     VectorOperand(int VL, Node *V[]) {
-      this->Name = "VOP" + std::to_string(VectorOperand::VID++);
-      this->UOP = new Node *[VL];
+      this->UOP = (Node **)malloc(sizeof(Node *) * VL);
+      auto VecAssigned = checkIfVectorAssigned(VL, V);
+      this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
+                               : "VOP" + std::to_string(VID++);
+
       for (int n = 0; n < VL; ++n) {
         this->UOP[n] = V[n];
-        VectorOperand::MapRegToVReg[V[n]->getValue()] = this->Name;
+        if (!VecAssigned) {
+          MapRegToVReg[V[n]->getRegisterValue()] = this->Name;
+        }
       }
     };
 
     void printAsString() {
       std::cout << "-------------------------------------" << std::endl;
-      std::cout << "VectorOperand: " << std::endl;
+      std::cout << "VectorOperand: " << this->Name << std::endl;
       for (int i = 0; i < this->Size; ++i)
         std::cout << "\t" << this->UOP[i]->getValue() << std::endl;
       std::cout << "-------------------------------------" << std::endl;
     }
   };
 
-  /// Main component of the VectorIR which wraps the selected DAGs based on the
-  /// placement and/or free scheduling. Basically represents the following:
-  /// VectorOp -> <vector_result> = VOP(<list>OPS);
-  /// Where each OPS is a VectorOperand, which basically wraps a list of
-  /// UnitOperands
+  /// Main component of the VectorIR which wraps the selected DAGs based on
+  /// the placement and/or free scheduling. Basically represents the
+  /// following: VectorOP -> VectorOperand = VectorOP[VectorOperand,
+  /// VectorOperand]; Where each OPS is a VectorOperand, which basically wraps
+  /// a list of UnitOperands
   struct VectorOP {
-    VOP V;
-    VectorOperand Result;
-    std::list<VectorOperand> OPS;
+    /// Type of operation
+    VOP VT;
+    /// Name of the vector operation
+    std::string VN;
+    /// Vector Width of data used in this operation
+    VWidth VW;
+    /// Vector data type used
+    VDataType DT;
+    /// Vector result
+    VectorOperand R;
+    /// Vector operands
+    VectorOperand OpA;
+    VectorOperand OpB;
+
+    VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[])
+        : R(VL, VOps), OpA(VL, VLoadA), OpB(VL, VLoadB) {}
+  };
+
+  /// Wrapper for
+  struct VecInfo {
+    /// Vector operation associated
+    VectorOP V;
+    /// Cost of the operation
+    unsigned int C;
   };
 
   /// Given a set of operations from the CDAG it computes the vector cost
@@ -88,8 +128,6 @@ public:
   static bool isVectorizable(int VL, Node *VOps[], int VOpsSched[],
                              Node *VLoadA[], int VLoadSchedA[], Node *VLoadB[],
                              int VLoadSchedB[]);
-
-private:
 };
 
 } // namespace macveth

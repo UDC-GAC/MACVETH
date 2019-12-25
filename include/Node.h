@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Ven 20 Dec 2019 15:07:02 MST
+ * Last Modified Date: Mar 24 Dec 2019 18:07:02 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -130,6 +130,9 @@ public:
   bool hasOutNode(Node *N);
   /// Checks if given node is in the input list
   bool hasInNode(Node *N);
+
+  /// Is OP or MEM?
+  bool isMem() { return this->T == NodeType::NODE_MEM; }
 
   /// Returns the string value of the node
   std::string getValue() const { return this->Value; }

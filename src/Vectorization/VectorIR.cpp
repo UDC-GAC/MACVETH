@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Mar 24 Dec 2019 16:42:25 MST
+ * Last Modified Date: Mar 24 Dec 2019 18:32:31 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -67,5 +67,8 @@ int VectorIR::computeCostVectorOp(int VL, Node *VOps[], Node *VLoadA[],
   bool Reduction = (Seq) && ((RAW_A) || (RAW_B)) && (!(Atomic_A && Atomic_B));
   bool Parallel = (!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B;
   bool Sequential = !Reduction && !Parallel;
+
+  VectorOP V = VectorOP(VL, VOps, VLoadA, VLoadB);
+
   return 0;
 }
