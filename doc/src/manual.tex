@@ -1,19 +1,80 @@
+% File              : manual.tex
+% Author            : Marcos Horro <marcos.horro@udc.gal>
+% Date              : Mar 24 Dec 2019 19:31:10 MST
+% Last Modified Date: Mér 25 Dec 2019 18:33:20 MST
+% Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 \documentclass[a4paper,12pt]{memoir}
 % For TeXstudio users:
 % !TeX spellcheck = en_US
 
 % Title Page
-\title{MACVETH: Multi-dimensional Array C-compiler for VEctorization and Transformation in HPC applications}
+\title{\textbf{MACVETH}: \textbf{M}ulti-dimensional \textbf{A}rray
+    \textbf{C}-compiler for \textbf{VE}ctorization and
+    \textbf{T}ransformation in \textbf{H}PC applications}
 \author{Marcos Horro}
 \date{}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
+
 \maketitle
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-	This document presents the high-level picture of the MACVETH compiler. Details regarding implementation and design decision are explained in detail.
+    This document presents the high-level picture of the MACVETH tool. Details regarding implementation and design decision are explained in detail.
 \end{abstract}
 
-\end{document}          
+\chapter*{Description}
+MACVETH is a source-to-source compiler which targets the vectorization of C/C++
+codes. This means that the input of this compiler is a non vectorized C/C++ code
+and the output will be a not compiled SIMD-fashion C/C++ code.
+
+\chapter*{MACVETH IR}
+This compiler handles different abstraction levels or intermediate
+representations for each step. As MACVETH is based in Clang~\cite{bib:clang},
+the first abstraction layer lays on the Clang AST. This representation allows to
+identify the regions of interest for the translation.
+
+% Picture needed
+Clang AST -> Three-Address Code -> CDAG -> VectorIR -> SIMD C/C++ instructions
+
+\section{MACVETH Expressions: MVExpr}
+Clang expressions are a monster, in a good way. They provide many possibilities
+when it comes to parse exactly the code. Nonetheless, in our case we are
+interested in a small set of operations, so we created basically a wrap for this
+purpose. MVExpr is an abstract class that can be specialized for any type we
+want to represent from the Clang AST. Besides, the idea of this class is to
+provide a set of non-standard transformations for the expressions, e.g.
+unrolling.
+
+\section{Three-Address Code IR: TAC}
+The Three-Address Code (TAC) representation used translates any statement into a
+set of Single Stament Assignment using triples of the form $a = b \oplus c$,
+where $\oplus$ can be any operation.
+
+\section{Control Directered Acyclic Graph: CDAG}
+When it comes to schedule the different TACs in the ROI of our program, we need
+a representation which can handle the dependencies between the statements and
+some structures that store the information about the placement of them in the
+execution. For this purpose we use a CDAG. It basically represents the TACs as a
+set of interconnected nodes, where each node can be a memory operation (load,
+store) or any other type of operation (addition, multiplication, built-in
+function, etc.).
+
+\section{VectorIR}
+In order to approach the different architectures when generating instructions,
+we need a generic vector representation of the vector instructions we want to
+have in our program. For this purpose, MACVETH uses the VectorIR, that basically
+wraps a set of nodes from the CDAG onto a common structure which represent a vector operation.
+
+To wrap up: VectorIR is a generic way of representing vector operations for the different
+architectures. Because of this, at this stage there is no fusing operations or
+any other kind of target-specific optimizations. The concrete backend will be in
+charge of doing this.
+
+\chapter*{SIMD backend: instruction generation}
+For generating the SIMD instructions for each concrete architecture, MACVETH
+uses the VectorIR described above.
+
+\end{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
