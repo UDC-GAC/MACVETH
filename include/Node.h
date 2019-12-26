@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Mar 24 Dec 2019 18:07:02 MST
+ * Last Modified Date: Xov 26 Dec 2019 12:59:56 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -18,16 +18,8 @@ namespace macveth {
 
 /// FIXME this is garbage
 inline static std::map<BinaryOperator::Opcode, std::string> BOtoValue = {
-    {BO_Mul, "mul"},
-    {BO_Div, "div"},
-    {BO_Add, "add"},
-    {BO_Sub, "sub"},
-    {BO_Assign, "store"}};
-
-/// FIXME
-inline static std::map<std::string, std::list<int>> CostsMap = {
-    {"reduction", {1, 1, 1}}, {"load", {1, 1, 1}}, {"sub", {1, 1, 1}},
-    {"add", {1, 1, 1}},       {"div", {1, 1, 1}},  {"mul", {1, 1, 1}}};
+    {BO_Mul, "mul"}, {BO_Div, "div"},    {BO_Add, "add"},
+    {BO_Sub, "sub"}, {BO_Rem, "modulo"}, {BO_Assign, "store"}};
 
 /// All Nodes belong to a CDAG. Each node or vertex holds information regarding
 /// the type of operation as well as its Edges (or links to another Nodes).
@@ -55,6 +47,7 @@ public:
   struct OutputInfo {
     std::string Name = "";
     OutputType Type = MEM_STORE;
+    bool IsBinaryOp = false;
   };
 
   /// Copy constructor for cloning
@@ -67,7 +60,6 @@ public:
     this->Value = rhs.Value;
   }
 
-  /// FIXME
   /// This is the unique constructor for nodes, as we will creating Nodes from
   /// CDAG, so each TAC corresponds to a = b op c
   Node(TAC T) {

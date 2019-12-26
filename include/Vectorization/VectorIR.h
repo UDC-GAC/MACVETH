@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Mar 24 Dec 2019 19:19:18 MST
+ * Last Modified Date: Xov 26 Dec 2019 14:52:02 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -17,14 +17,26 @@
 using namespace macveth;
 
 namespace macveth {
+
 /// VectorIR is a facade for the CDAG to compute the cost of the vectorization,
 /// generate intrinsics and perform the optimizations.
 class VectorIR {
 public:
   static const int VL = 4;
 
-  /// Types of vector operations
-  enum VOP { NOP, CONST, VREC, BINOP, BUILTIN, MEM };
+  /// Types of vector operations we distinguish according their scheduling
+  enum VType {
+    /// No dependencies between operations, so it can be used a unique vector
+    /// operation
+    MAP,
+    /// Reductions imply that the operations are sequential. Nonetheless we
+    /// use this type in order to detect these special cases which can be
+    /// optimized
+    REDUCE,
+    /// In any other case, we just say that the vector operation must be
+    /// sequential
+    SEQ
+  };
 
   /// Vector data types
   enum VDataType { DOUBLE, FLOAT, INTEGER };
@@ -33,7 +45,7 @@ public:
   enum VWidth { W8, W16, W32, W64, W128, W256, W512 };
 
   /// Vector operand basically is a wrap of VL operands in the original Node
-  struct VectorOperand {
+  struct VOperand {
     /// Unique identifier for the operand
     static inline unsigned int VID = 0;
     /// Keeping track of the correspondence between the registers name and the
@@ -56,6 +68,7 @@ public:
     bool IsLoad = false;
     bool IsStore = false;
 
+    /// Check if there is a vector already assigned wraping the same values
     bool checkIfVectorAssigned(int VL, Node *V[]) {
       for (int n = 0; n < VL; ++n) {
         if (MapRegToVReg.find(V[n]->getRegisterValue()) == MapRegToVReg.end()) {
@@ -63,11 +76,13 @@ public:
         }
       }
       return true;
-      // return VectorOperand::MapRegToVReg[V[0]->getRegisterValue()];
     }
+
     /// Basic Cosntructor
-    VectorOperand(int VL, Node *V[]) {
+    VOperand(int VL, Node *V[]) {
+      // Init list of operands
       this->UOP = (Node **)malloc(sizeof(Node *) * VL);
+      // Check if there is a vector assigned for these operands
       auto VecAssigned = checkIfVectorAssigned(VL, V);
       this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
                                : "VOP" + std::to_string(VID++);
@@ -80,9 +95,10 @@ public:
       }
     };
 
+    /// Printing the vector operand
     void printAsString() {
       std::cout << "-------------------------------------" << std::endl;
-      std::cout << "VectorOperand: " << this->Name << std::endl;
+      std::cout << "VOperand: " << this->Name << std::endl;
       for (int i = 0; i < this->Size; ++i)
         std::cout << "\t" << this->UOP[i]->getValue() << std::endl;
       std::cout << "-------------------------------------" << std::endl;
@@ -91,12 +107,12 @@ public:
 
   /// Main component of the VectorIR which wraps the selected DAGs based on
   /// the placement and/or free scheduling. Basically represents the
-  /// following: VectorOP -> VectorOperand = VectorOP[VectorOperand,
-  /// VectorOperand]; Where each OPS is a VectorOperand, which basically wraps
+  /// following: VectorOP -> VOperand = VectorOP[VOperand,
+  /// VOperand]; Where each OPS is a VOperand, which basically wraps
   /// a list of UnitOperands
   struct VectorOP {
     /// Type of operation
-    VOP VT;
+    VType VT = VType::MAP;
     /// Name of the vector operation
     std::string VN;
     /// Vector Width of data used in this operation
@@ -104,30 +120,20 @@ public:
     /// Vector data type used
     VDataType DT;
     /// Vector result
-    VectorOperand R;
-    /// Vector operands
-    VectorOperand OpA;
-    VectorOperand OpB;
-
-    VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[])
-        : R(VL, VOps), OpA(VL, VLoadA), OpB(VL, VLoadB) {}
-  };
-
-  /// Wrapper for
-  struct VecInfo {
-    /// Vector operation associated
-    VectorOP V;
-    /// Cost of the operation
-    unsigned int C;
+    VOperand R;
+    /// Vector first operand
+    VOperand OpA;
+    /// Vector second operand
+    VOperand OpB;
+    /// Cost associated to this concrete VectorOP
+    unsigned int Cost = 0;
+    /// Constructor from the CDAG
+    VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[]);
   };
 
   /// Given a set of operations from the CDAG it computes the vector cost
   static int computeCostVectorOp(int VL, Node *VOps[], Node *VLoadA[],
                                  Node *VLoadB[]);
-
-  static bool isVectorizable(int VL, Node *VOps[], int VOpsSched[],
-                             Node *VLoadA[], int VLoadSchedA[], Node *VLoadB[],
-                             int VLoadSchedB[]);
 };
 
 } // namespace macveth

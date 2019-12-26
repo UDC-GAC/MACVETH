@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Mar 24 Dec 2019 18:32:31 MST
+ * Last Modified Date: Xov 26 Dec 2019 12:26:15 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -48,8 +48,9 @@ bool isAtomic(int VL, Node *VOps[], Node *VLoad[]) {
 }
 
 // ---------------------------------------------
-int VectorIR::computeCostVectorOp(int VL, Node *VOps[], Node *VLoadA[],
-                                  Node *VLoadB[]) {
+VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
+                             Node *VLoadB[])
+    : R(VL, VOps), OpA(VL, VLoadA), OpB(VL, VLoadB) {
   // Premises of our algorithm
   // 1.- Check wheter operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
@@ -64,11 +65,15 @@ int VectorIR::computeCostVectorOp(int VL, Node *VOps[], Node *VLoadA[],
   bool Atomic_A = isAtomic(VL, VOps, VLoadA);
   bool Atomic_B = isAtomic(VL, VOps, VLoadB);
 
-  bool Reduction = (Seq) && ((RAW_A) || (RAW_B)) && (!(Atomic_A && Atomic_B));
-  bool Parallel = (!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B;
-  bool Sequential = !Reduction && !Parallel;
-
-  VectorOP V = VectorOP(VL, VOps, VLoadA, VLoadB);
-
-  return 0;
+  // Type of VectorOP
+  if (bool Reduction =
+          (Seq) && ((RAW_A) || (RAW_B)) && (!(Atomic_A && Atomic_B))) {
+    this->VT = VType::REDUCE;
+  } else if (bool Map =
+                 (!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
+    this->VT = VType::MAP;
+  } else {
+    // bool Sequential = !Reduction && !Map;
+    this->VT = VType::SEQ;
+  }
 }

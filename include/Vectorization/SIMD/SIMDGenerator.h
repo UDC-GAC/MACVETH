@@ -1,8 +1,8 @@
 /**
- * File              : IntrinsicsGenerator.h
+ * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Dom 22 Dec 2019 20:42:40 MST
+ * Last Modified Date: Xov 26 Dec 2019 15:04:13 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -13,34 +13,44 @@
 #include <map>
 #include <string>
 
-namespace macveth {
+#include "include/Vectorization/VectorIR.h"
 
-typedef std::list<std::string> InstListType;
+using namespace macveth;
+
+namespace macveth {
 
 /// Abstract class implemented by each architecture (AVX, AVX2, AVX512, etc.) to
 /// generate specific intrinsics and calculate the associated cost for the
 /// operations provided by the VectorAPI
 class SIMDGenerator {
 
+  struct SIMDInst {
+    std::string Result;
+    std::string FuncName;
+    std::list<std::string> OPS;
+
+    std::string render() {
+      std::string OPSstr = "";
+      for (std::string OP : OPS) {
+        OPSstr += OP + ",";
+      }
+    }
+  };
+
+  typedef std::list<SIMDInst> SIMDInstListType;
+
   /// Return value when generating new code
   struct SIMDInfo {
-    InstListType SIMDList;
-    int Cost;
+    SIMDInstListType SIMDList;
+    unsigned int Cost;
   };
 
 public:
-  /// Computers a broadcast operation
-  virtual SIMDInfo vbroadcast();
-  /// Computers a load operation
-  virtual SIMDInfo vload();
-  /// Computers a store operation
-  virtual SIMDInfo vstore();
-  /// Generates a FMADD
-  virtual SIMDInfo vfmadd();
-  /// Generates a FMSUB
-  virtual SIMDInfo vfmsub();
-  /// Generates a reduction
-  virtual SIMDInfo vreduction();
+  /// Generating
+  virtual SIMDInfo generateIntrinsics(std::list<VectorIR::VectorOP> V);
+
+private:
+  SIMDInst genFullFunction(std::string Name, std::list<std::string> OPS);
 
 private:
   /// List of registers declared

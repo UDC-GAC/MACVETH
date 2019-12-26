@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Mar 24 Dec 2019 15:05:24 MST
+ * Last Modified Date: Xov 26 Dec 2019 16:00:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -36,9 +36,6 @@ int CDAG::computeCostModel(CDAG *G) {
   Node *VLoadA[VL];
   Node *VLoadB[VL];
   Node *VOps[VL];
-  // int VLoadSchedA[VL];
-  // int VLoadSchedB[VL];
-  // int VOpsSched[VL];
   int Cursor = 0;
   int TotalCost = -1;
 
@@ -49,6 +46,7 @@ int CDAG::computeCostModel(CDAG *G) {
   // chronological order of the nodes.
   NL.sort([](Node *lhs, Node *rhs) { return *lhs < *rhs; });
 
+  printDebug("CDAG", "Printing nodes");
   for (Node *N : NL) {
     N->printNode();
   }
@@ -90,7 +88,6 @@ repeat:
   // Compute the vector cost
   int CostVectorOperation =
       VectorIR::computeCostVectorOp(VL, VOps, VLoadA, VLoadB);
-  // VL, VOps, VOpsSched, VLoadA, VLoadSchedA, VLoadB, VLoadSchedB);
 
   // Repeat process if list not empty
   if (!NL.empty()) {
@@ -98,7 +95,6 @@ repeat:
     VL = VectorIR::VL;
     for (int i = 0; i < VL; ++i) {
       VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
-      // VOpsSched[i] = VLoadSchedA[i] = VLoadSchedB[i] = 0;
     }
     goto repeat;
   }
