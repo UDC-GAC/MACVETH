@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Ven 27 Dec 2019 11:21:26 MST
+ * Last Modified Date: Ven 27 Dec 2019 12:27:35 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -39,7 +39,33 @@ public:
   };
 
   /// Vector data types
-  enum VDataType { DOUBLE, FLOAT, INTEGER };
+  enum VDataType {
+    DOUBLE,
+    FLOAT,
+    UINT8,
+    UINT16,
+    UINT32,
+    UINT64,
+    INT8,
+    INT16,
+    INT32,
+    INT64,
+    UNDEF128,
+    UNDEF256,
+    IN_INT128,
+    IN_FLOAT128,
+    IN_DOUBLE128,
+    IN_INT256,
+    IN_FLOAT256,
+    IN_DOUBLE256
+  };
+
+  static inline std::map<std::string, VDataType> CTypeToVDataType = {
+      {"double", DOUBLE},   {"float", FLOAT},     {"uint8_t", UINT8},
+      {"uint16_t", UINT16}, {"uint32_t", UINT32}, {"uint64_t", UINT64},
+      {"int8_t", INT8},     {"int16_t", INT16},   {"int32_t", INT32},
+      {"int64_t", INT64},
+  };
 
   /// Vector width possible types
   enum VWidth { W8, W16, W32, W64, W128, W256, W512 };

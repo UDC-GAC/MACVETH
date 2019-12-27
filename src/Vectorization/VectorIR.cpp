@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Xov 26 Dec 2019 12:26:15 MST
+ * Last Modified Date: Ven 27 Dec 2019 12:29:38 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -76,4 +76,14 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
     // bool Sequential = !Reduction && !Map;
     this->VT = VType::SEQ;
   }
+
+  // Name: operation (assuming all operations have the same value, which is a
+  // valid assumption)
+  this->VN = VOps[0]->getValue();
+
+  // FIXME: Width
+  this->VW = VWidth::W256;
+
+  // Data type
+  this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];
 }

@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Xov 26 Dec 2019 12:59:56 MST
+ * Last Modified Date: Ven 27 Dec 2019 12:29:20 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -111,6 +111,9 @@ public:
   NodeListType getInputs() { return this->I; }
   /// Get info regarding its scheduling
   SchedInfo getSchedInfo() { return this->SI; }
+
+  /// Get data type of MVExpr as string
+  std::string getDataType() { return this->MV->getTypeStr(); }
 
   /// Checks if output list is zero
   bool hasOutNodes();

@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Ven 27 Dec 2019 11:23:08 MST
+ * Last Modified Date: Ven 27 Dec 2019 15:01:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -53,15 +53,21 @@ protected:
   /// Alias for list of SIMDInst structures
   typedef std::list<SIMDInst> SIMDInstListType;
 
+public:
+  /// Empty constructor
+  SIMDGenerator(){};
+
+  /// Destructor
+  virtual ~SIMDGenerator(){};
+
   /// Return value when generating new code
   struct SIMDInfo {
     SIMDInstListType SIMDList;
     unsigned int Cost;
   };
 
-public:
   /// Generating SIMD instructions from list of vector operations
-  virtual SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V);
+  virtual SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) = 0;
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
@@ -70,8 +76,6 @@ public:
 protected:
   /// Add register to declare
   static void addRegToDeclare(std::string Type, std::string Name);
-  /// Generate a full call to a function
-  SIMDInst genFullFunction(std::string Name, std::list<std::string> OPS);
 
 protected:
   /// List of registers declared

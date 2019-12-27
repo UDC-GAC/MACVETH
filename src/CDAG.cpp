@@ -2,11 +2,15 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Xov 26 Dec 2019 16:00:06 MST
+ * Last Modified Date: Ven 27 Dec 2019 16:00:29 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/CDAG.h"
+#include "Vectorization/SIMD/AVX2Gen.h"
+#include "Vectorization/SIMD/SIMDGenerator.h"
+#include "Vectorization/SIMD/SIMDGeneratorFactory.h"
+#include "Vectorization/VectorIR.h"
 
 namespace macveth {
 
@@ -33,6 +37,10 @@ int computeMaxDepth(Node *N) {
 // ---------------------------------------------
 int CDAG::computeCostModel(CDAG *G) {
   int VL = VectorIR::VL;
+  std::list<VectorIR::VectorOP> VList;
+  printDebug("CDAG", "Creating backend");
+  SIMDGenerator *AVX =
+      SIMDGeneratorFactory::getBackend(SIMDGeneratorFactory::Arch::AVX2);
   Node *VLoadA[VL];
   Node *VLoadB[VL];
   Node *VOps[VL];
@@ -86,8 +94,9 @@ repeat:
   }
 
   // Compute the vector cost
-  int CostVectorOperation =
-      VectorIR::computeCostVectorOp(VL, VOps, VLoadA, VLoadB);
+  // int CostVectorOperation =
+  //    VectorIR::computeCostVectorOp(VL, VOps, VLoadA, VLoadB);
+  VList.push_back(VectorIR::VectorOP(VL, VOps, VLoadA, VLoadB));
 
   // Repeat process if list not empty
   if (!NL.empty()) {
@@ -97,6 +106,12 @@ repeat:
       VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
     }
     goto repeat;
+  }
+
+  SIMDGenerator::SIMDInfo S = AVX->genSIMD(VList);
+
+  for (auto I : S.SIMDList) {
+    std::cout << I.render() << std::endl;
   }
 
   return TotalCost;

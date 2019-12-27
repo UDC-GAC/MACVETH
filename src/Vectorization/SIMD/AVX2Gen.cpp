@@ -2,14 +2,17 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Ven 27 Dec 2019 10:28:13 MST
+ * Last Modified Date: Ven 27 Dec 2019 15:59:03 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Vectorization/SIMD/AVX2Gen.h"
+#include "Vectorization/SIMD/SIMDGenerator.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 
 #include <regex>
+
+using namespace macveth;
 
 // ---------------------------------------------
 void AVX2Gen::populateTable() {
@@ -56,9 +59,10 @@ std::string replacePatterns(std::string Pattern, std::string W, std::string M,
 SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> V) {
   SIMDGenerator::SIMDInfo R;
 
-  // Fuse operations
-  // searchForFuseOperations();
-
+  // Once we have the VectorIR (in between a middle IR and a low-level IR),
+  // for generating the SIMD instructions, we first perform an instruction
+  // selection which basically performs a pattern matching between the
+  // operations an creates new SIMD instructions, AVX2 in this case
   for (auto X : V) {
     // Get width as string
     std::string WIDTH = MapWidth[X.VW];
@@ -71,6 +75,9 @@ SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> V) {
     SIMDInst I(X.R.getName(), AVXFunc, {X.OpA.getName(), X.OpB.getName()});
     R.SIMDList.push_back(I);
   }
+
+  // Then optimizations can be done, for instance, combine operatios such as
+  // addition + multiplication
 
   return R;
 }

@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Ven 27 Dec 2019 08:57:17 MST
+ * Last Modified Date: Ven 27 Dec 2019 11:48:29 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -34,7 +34,9 @@ std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInfo S) {
 
 // ---------------------------------------------
 void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name) {
-  SIMDGenerator::RegDeclared[Type].push_back(Name);
+  if (!Utils::contains(SIMDGenerator::RegDeclared[Type], Name)) {
+    SIMDGenerator::RegDeclared[Type].push_back(Name);
+  }
 }
 
 // ---------------------------------------------
