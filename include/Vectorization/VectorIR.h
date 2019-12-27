@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Xov 26 Dec 2019 14:52:02 MST
+ * Last Modified Date: Ven 27 Dec 2019 11:21:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -85,7 +85,7 @@ public:
       // Check if there is a vector assigned for these operands
       auto VecAssigned = checkIfVectorAssigned(VL, V);
       this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
-                               : "VOP" + std::to_string(VID++);
+                               : "vop" + std::to_string(VID++);
 
       for (int n = 0; n < VL; ++n) {
         this->UOP[n] = V[n];
@@ -94,6 +94,9 @@ public:
         }
       }
     };
+
+    /// Return name of VOperand
+    std::string getName() { return this->Name; }
 
     /// Printing the vector operand
     void printAsString() {

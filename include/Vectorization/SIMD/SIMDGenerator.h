@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Xov 26 Dec 2019 15:04:13 MST
+ * Last Modified Date: Ven 27 Dec 2019 11:23:08 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -23,20 +23,34 @@ namespace macveth {
 /// generate specific intrinsics and calculate the associated cost for the
 /// operations provided by the VectorAPI
 class SIMDGenerator {
-
+protected:
+  /// Wrap for representing the SIMDInst not just as single strings to print,
+  /// but as a set of fields
   struct SIMDInst {
     std::string Result;
     std::string FuncName;
     std::list<std::string> OPS;
 
+    /// Render instruction as a string
     std::string render() {
-      std::string OPSstr = "";
-      for (std::string OP : OPS) {
-        OPSstr += OP + ",";
+      std::string FullFunc = !Result.compare("")
+                                 ? FuncName + "("
+                                 : Result + " = " + FuncName + "(";
+      std::list<std::string>::iterator Op;
+      int i = 0;
+      for (Op = OPS.begin(); Op != OPS.end(); ++Op) {
+        FullFunc += (i++ == (OPS.size() - 1)) ? *Op : (*Op + ", ");
       }
+      FullFunc += ")";
+      return FullFunc;
     }
+
+    /// Constructor
+    SIMDInst(std::string R, std::string FN, std::list<std::string> OPS)
+        : Result(R), FuncName(FN), OPS(OPS) {}
   };
 
+  /// Alias for list of SIMDInst structures
   typedef std::list<SIMDInst> SIMDInstListType;
 
   /// Return value when generating new code
@@ -46,20 +60,23 @@ class SIMDGenerator {
   };
 
 public:
-  /// Generating
-  virtual SIMDInfo generateIntrinsics(std::list<VectorIR::VectorOP> V);
+  /// Generating SIMD instructions from list of vector operations
+  virtual SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V);
 
-private:
+  /// Render SIMD instructions as a list of strings, where each element
+  /// represents a new line
+  std::list<std::string> renderSIMDasString(SIMDInfo S);
+
+protected:
+  /// Add register to declare
+  static void addRegToDeclare(std::string Type, std::string Name);
+  /// Generate a full call to a function
   SIMDInst genFullFunction(std::string Name, std::list<std::string> OPS);
 
-private:
+protected:
   /// List of registers declared
-  inline static std::list<std::string> RegDeclared;
-  /// List of temporal registers declared
-  inline static std::list<std::string> TempRegDeclared;
-  /// Map of registers declared and its correspondant in Node terms
-  inline static std::map<std::string, std::string> RegMap;
-
+  inline static std::map<std::string, std::list<std::string>> RegDeclared;
+  /// Clean the list of registers declared
   static void clearMappings();
 };
 
