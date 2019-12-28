@@ -2,7 +2,7 @@
  * File              : SIMDGeneratorFactory.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 14:43:18 MST
- * Last Modified Date: Ven 27 Dec 2019 15:49:57 MST
+ * Last Modified Date: Ven 27 Dec 2019 16:42:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -16,6 +16,8 @@
 
 namespace macveth {
 
+/// Wrapper for avoiding low level details when creating the different
+/// backends
 class SIMDGeneratorFactory {
 public:
   /// Types of architectures we currently support

@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Ven 27 Dec 2019 16:00:29 MST
+ * Last Modified Date: Ven 27 Dec 2019 16:52:46 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -109,9 +109,9 @@ repeat:
   }
 
   SIMDGenerator::SIMDInfo S = AVX->genSIMD(VList);
-
-  for (auto I : S.SIMDList) {
-    std::cout << I.render() << std::endl;
+  std::list<std::string> Ins = AVX->renderSIMDasString(S);
+  for (auto I : Ins) {
+    std::cout << I << std::endl;
   }
 
   return TotalCost;

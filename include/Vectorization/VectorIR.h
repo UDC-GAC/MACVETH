@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Ven 27 Dec 2019 12:27:35 MST
+ * Last Modified Date: Ven 27 Dec 2019 20:08:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -68,7 +68,15 @@ public:
   };
 
   /// Vector width possible types
-  enum VWidth { W8, W16, W32, W64, W128, W256, W512 };
+  enum VWidth {
+    W8 = 8,
+    W16 = 16,
+    W32 = 32,
+    W64 = 64,
+    W128 = 128,
+    W256 = 256,
+    W512 = 512
+  };
 
   /// Vector operand basically is a wrap of VL operands in the original Node
   struct VOperand {

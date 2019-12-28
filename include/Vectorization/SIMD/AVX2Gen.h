@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Ven 27 Dec 2019 15:58:39 MST
+ * Last Modified Date: Ven 27 Dec 2019 20:04:41 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 

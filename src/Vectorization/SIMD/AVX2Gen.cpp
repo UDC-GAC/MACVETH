@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Ven 27 Dec 2019 15:59:03 MST
+ * Last Modified Date: Ven 27 Dec 2019 20:10:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -16,7 +16,7 @@ using namespace macveth;
 
 // ---------------------------------------------
 void AVX2Gen::populateTable() {
-  // In
+  // Typical operations
   CostTable::addRow(NArch, "mul", 3, "_mm#W_mul_#D");
   CostTable::addRow(NArch, "add", 1, "_mm#W_add_#D");
   CostTable::addRow(NArch, "sub", 1, "_mm#W_sub_#D");
@@ -28,6 +28,9 @@ void AVX2Gen::populateTable() {
   // Load operations
   CostTable::addRow(NArch, "load", 1, "_mm#W_#Mload_#D");
   CostTable::addRow(NArch, "gather", 1, "_mm#W_#M#TDgather_#D");
+  // Store operation
+  CostTable::addRow(NArch, "store", 1, "_mm#W_#PREFIXstore#SUFFIX_#D");
+  CostTable::addRow(NArch, "stream", 1, "_mm#W_#PREFIXstream#SUFFIX_#D");
 }
 
 // ---------------------------------------------
@@ -56,6 +59,20 @@ std::string replacePatterns(std::string Pattern, std::string W, std::string M,
 }
 
 // ---------------------------------------------
+/// FIXME
+std::string getRegisterType(VectorIR::VDataType DT, VectorIR::VWidth W) {
+  std::string Suffix = "";
+  if (DT == VectorIR::VDataType::DOUBLE) {
+    Suffix = "d";
+  } else if (DT == VectorIR::VDataType::FLOAT) {
+    Suffix = "";
+  } else {
+    Suffix = "i";
+  }
+  return "__m" + std::to_string(W) + Suffix;
+}
+
+// ---------------------------------------------
 SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> V) {
   SIMDGenerator::SIMDInfo R;
 
@@ -74,6 +91,11 @@ SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> V) {
     std::string AVXFunc = replacePatterns(Pattern, WIDTH, "", "", DATA_TYPE);
     SIMDInst I(X.R.getName(), AVXFunc, {X.OpA.getName(), X.OpB.getName()});
     R.SIMDList.push_back(I);
+    // Registers used
+    std::string RegType = getRegisterType(X.DT, X.VW);
+    SIMDGenerator::addRegToDeclare(RegType, X.R.getName());
+    SIMDGenerator::addRegToDeclare(RegType, X.OpA.getName());
+    SIMDGenerator::addRegToDeclare(RegType, X.OpB.getName());
   }
 
   // Then optimizations can be done, for instance, combine operatios such as

@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Ven 27 Dec 2019 11:48:29 MST
+ * Last Modified Date: Ven 27 Dec 2019 16:53:55 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -14,7 +14,8 @@ using namespace macveth;
 std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInfo S) {
   std::list<std::string> L;
   // Render register declarations
-  for (auto It = RegDeclared.begin(); It != RegDeclared.end(); ++It) {
+  for (auto It = SIMDGenerator::RegDeclared.begin();
+       It != SIMDGenerator::RegDeclared.end(); ++It) {
     std::string TypeRegDecl = It->first + " ";
     int i = 0;
     for (auto N = It->second.begin(); N != It->second.end(); ++N) {
