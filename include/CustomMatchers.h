@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Xov 12 Dec 2019 14:17:11 MST
+ * Last Modified Date: Dom 29 Dec 2019 10:20:16 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -63,24 +63,36 @@ const std::string UpperBound = "upperBound";
 // BinaryOperator(lhs, rhs, "=") inside a loop
 class IterationHandler : public MatchFinder::MatchCallback {
 public:
+  /// Basic constructor
   IterationHandler(Rewriter &R) : Rewrite(R) {}
+  /// Basic constructor with context
   IterationHandler(Rewriter &R, ASTContext *C) : Rewrite(R), Ctx(C) {}
 
+  /// Override run method from MatchFinder
   virtual void run(const MatchFinder::MatchResult &Result);
 
+  /// Get the ASTContext
   const ASTContext *getCtx() { return Ctx; }
 
 private:
+  /// For rewriting code in the output program
   Rewriter &Rewrite;
+  /// A copy of the ASTContext for rewriting purposes
   const ASTContext *Ctx;
 };
 
-// Matcher related functions for simplifying
+/// Matching any type of statement no matter the assignment operator or
+/// expression type
+StatementMatcher anyStmt(std::string Name, std::string Lhs, std::string Rhs);
+/// Matching reduction statements
 StatementMatcher reductionStmt(std::string Name, std::string Lhs,
                                std::string Rhs);
+/// Matching any type of binary operations
 StatementMatcher assignArrayBinOp(std::string Name, std::string Lhs,
                                   std::string Rhs);
+/// Matcher for any for loop
 StatementMatcher forLoopMatcher(std::string Name, StatementMatcher InnerStmt);
+/// Matcher for NumLevels nested for loops with InnerStmt type
 StatementMatcher forLoopNested(int NumLevels, StatementMatcher InnerStmt);
 } // namespace matchers_utils
 } // namespace macveth

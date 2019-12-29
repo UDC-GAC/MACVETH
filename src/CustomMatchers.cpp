@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Ven 27 Dec 2019 16:02:43 MST
+ * Last Modified Date: Dom 29 Dec 2019 10:16:55 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,6 +29,7 @@
 #include "include/CustomMatchers.h"
 #include "include/CDAG.h"
 #include "include/StmtWrapper.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
 #include <iostream>
 #include <string>
 
@@ -107,6 +108,18 @@ StatementMatcher possibleRhs(std::string BindName) {
   // return anyOf(implicitCastExpr().bind(BindName),
   //             binaryOperator().bind(BindName));
   return (binaryOperator().bind(BindName));
+}
+
+// Function wrapper for matching expressions such as:
+// var      = expr op expr
+StatementMatcher matchers_utils::anyStmt(std::string Name, std::string Lhs,
+                                         std::string Rhs) {
+  return binaryOperator(anyOf(hasOperatorName("="), hasOperatorName("+="),
+                              hasOperatorName("*="), hasOperatorName("-=")),
+                        hasLHS(ignoringImpCasts(expr().bind(Lhs))),
+                        hasRHS(ignoringImpCasts(expr().bind(Rhs))))
+      // hasRHS(possibleRhs(Rhs)))
+      .bind(Name);
 }
 
 /// Function wrapper for matching expressions such as:
