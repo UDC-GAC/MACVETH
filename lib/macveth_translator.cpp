@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Lun 09 Dec 2019 10:14:07 MST
+ * Last Modified Date: Dom 29 Dec 2019 13:06:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -87,19 +87,25 @@ public:
     /// Generate loop information
     // MatcherLoop.matchAST(Context);
 
-    /// For reduction statements
-    StatementMatcher ForLoopNestedMatcherRed = matchers_utils::forLoopMatcher(
-        "1", matchers_utils::reductionStmt("reduction", "lhs", "rhs"));
-    MatcherRed.addMatcher(ForLoopNestedMatcherRed, &Handler);
-    MatcherRed.matchAST(Context);
+    ///// For reduction statements
+    // StatementMatcher ForLoopNestedMatcherRed =
+    // matchers_utils::forLoopMatcher(
+    //    "1", matchers_utils::reductionStmt("reduction", "lhs", "rhs"));
+    // MatcherRed.addMatcher(ForLoopNestedMatcherRed, &Handler);
+    // MatcherRed.matchAST(Context);
 
-    /// For vectorizable statements
-    StatementMatcher ForLoopNestedMatcherVec = matchers_utils::forLoopMatcher(
-        "1",
-        matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
+    ///// For vectorizable statements
+    StatementMatcher ForLoopNestedMatcherVec = matchers_utils::ROI(
+        2, matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
     MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
     /// Run the matchers when we have the whole TU parsed.
     MatcherVec.matchAST(Context);
+
+    // MatcherLoop.addMatcher(
+    //    matchers_utils::forLoopMatcher(
+    //        "1", matchers_utils::assignArrayBinOp("Stmt", "lhs", "rhs")),
+    //    &Handler);
+    // MatcherLoop.matchAST(Context);
   }
 
 private:

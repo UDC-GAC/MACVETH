@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Dom 29 Dec 2019 10:16:55 MST
+ * Last Modified Date: Dom 29 Dec 2019 13:07:25 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -41,6 +41,8 @@ typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 void matchers_utils::IterationHandler::run(
     const MatchFinder::MatchResult &Result) {
   std::list<const DeclRefExpr *> IncVarList;
+
+  std::cout << "LLEGOOOOOOOOOO\n";
 
   /// FIXME
   /// This is a hack of bad taste, really
@@ -112,15 +114,15 @@ StatementMatcher possibleRhs(std::string BindName) {
 
 // Function wrapper for matching expressions such as:
 // var      = expr op expr
-StatementMatcher matchers_utils::anyStmt(std::string Name, std::string Lhs,
-                                         std::string Rhs) {
-  return binaryOperator(anyOf(hasOperatorName("="), hasOperatorName("+="),
-                              hasOperatorName("*="), hasOperatorName("-=")),
-                        hasLHS(ignoringImpCasts(expr().bind(Lhs))),
-                        hasRHS(ignoringImpCasts(expr().bind(Rhs))))
-      // hasRHS(possibleRhs(Rhs)))
-      .bind(Name);
-}
+// StatementMatcher matchers_utils::anyStmt(std::string Name, std::string Lhs,
+//                                         std::string Rhs) {
+//  return expr(anyOf(hasOperatorName("="), hasOperatorName("+="),
+//                    hasOperatorName("*="), hasOperatorName("-=")),
+//              hasLHS(implicitCastExpr().bind(Lhs)),
+//              hasRHS(implicitCastExpr().bind(Rhs)))
+//      // hasRHS(possibleRhs(Rhs)))
+//      .bind(Name);
+//}
 
 /// Function wrapper for matching expressions such as:
 /// var      = expr op expr
@@ -179,7 +181,8 @@ MatcherForStmt customCondition(std::string Name) {
 /// * for() { InnerStmt; }
 /// * for() { [Stmt]* [InnerStmt]+ [InnerStmt|Stmt]*}
 MatcherForStmt customBody(StatementMatcher InnerStmt) {
-  return hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt))));
+  return hasBody(has(InnerStmt));
+  // return hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt))));
 }
 
 /// Function wrapper for matching expressions such as:
@@ -200,4 +203,17 @@ StatementMatcher matchers_utils::forLoopNested(int NumLevels,
         matchers_utils::forLoopMatcher(std::to_string(N), NestedMatcher);
   }
   return NestedMatcher;
+}
+
+/// Function wrapper for loop nests with the forLoopMatcher form
+StatementMatcher matchers_utils::ROI(int NumLevels,
+                                     StatementMatcher InnerStmt) {
+  StatementMatcher NestedMatcher =
+      matchers_utils::forLoopNested(NumLevels, InnerStmt);
+  StatementMatcher Annot =
+      compoundStmt(has(declStmt(hasSingleDecl(
+                       varDecl(hasInitializer(integerLiteral(equals(42))),
+                               hasAnyName("begin_roi"))))),
+                   has(NestedMatcher));
+  return Annot;
 }

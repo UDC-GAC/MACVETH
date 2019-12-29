@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Dom 29 Dec 2019 10:20:16 MST
+ * Last Modified Date: Dom 29 Dec 2019 11:01:45 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -94,6 +94,8 @@ StatementMatcher assignArrayBinOp(std::string Name, std::string Lhs,
 StatementMatcher forLoopMatcher(std::string Name, StatementMatcher InnerStmt);
 /// Matcher for NumLevels nested for loops with InnerStmt type
 StatementMatcher forLoopNested(int NumLevels, StatementMatcher InnerStmt);
+/// Matcher for NumLevels nested for loops with InnerStmt type
+StatementMatcher ROI(int NumLevels, StatementMatcher InnerStmt);
 } // namespace matchers_utils
 } // namespace macveth
 #endif

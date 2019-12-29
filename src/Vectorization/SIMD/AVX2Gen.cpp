@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Ven 27 Dec 2019 20:10:26 MST
+ * Last Modified Date: Sáb 28 Dec 2019 10:06:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -59,7 +59,6 @@ std::string replacePatterns(std::string Pattern, std::string W, std::string M,
 }
 
 // ---------------------------------------------
-/// FIXME
 std::string getRegisterType(VectorIR::VDataType DT, VectorIR::VWidth W) {
   std::string Suffix = "";
   if (DT == VectorIR::VDataType::DOUBLE) {
@@ -98,6 +97,7 @@ SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> V) {
     SIMDGenerator::addRegToDeclare(RegType, X.OpB.getName());
   }
 
+  // Peephole optimizations:
   // Then optimizations can be done, for instance, combine operatios such as
   // addition + multiplication
 
