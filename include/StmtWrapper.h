@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 30 Dec 2019 11:48:06 MST
+ * Last Modified Date: Lun 30 Dec 2019 12:24:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -35,6 +35,7 @@
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/Stmt.h"
 #include <unordered_map>
 
 using namespace clang;
@@ -55,15 +56,15 @@ public:
     /// Name of dimension
     std::string Dim;
     /// Initial value (-1 if not known)
-    long InitVal;
+    long InitVal = 0;
     /// Upperbound value (-1 if not known)
-    long UpperBound;
+    long UpperBound = 0;
 
     static LoopList getLoopList(const MatchFinder::MatchResult &Result) {
       LoopList L;
       int n = 1;
-      const Expr *ForLoop =
-          Result.Nodes.getNodeAs<clang::Expr>("forLoop" + std::to_string(n));
+      const clang::ForStmt *ForLoop =
+          Result.Nodes.getNodeAs<clang::ForStmt>("forLoop" + std::to_string(n));
       while (ForLoop != nullptr) {
         LoopInfo Loop;
         // Get name of variable
@@ -71,10 +72,10 @@ public:
             varnames::NameVarInit + std::to_string(n));
         Loop.Dim = V->getNameAsString();
         // Get init val
-        const Expr *InitExpr = Result.Nodes.getNodeAs<clang::Expr>(
-            varnames::NameVarInit + std::to_string(n));
-        if (InitExpr != nullptr) {
-          Loop.InitVal = Utils::getIntFromExpr(InitExpr, Utils::getCtx());
+        const clang::Expr *initializerExpr = V->getInit();
+        clang::Expr::EvalResult R;
+        if (initializerExpr->EvaluateAsInt(R, *Utils::getCtx())) {
+          Loop.InitVal = (long)R.Val.getInt().getExtValue();
         }
 
         // Get UpperBound
@@ -86,8 +87,8 @@ public:
         }
         L.push_back(Loop);
         // Check if next loop
-        ForLoop = Result.Nodes.getNodeAs<clang::Expr>("forLoop" +
-                                                      std::to_string(++n));
+        ForLoop = Result.Nodes.getNodeAs<clang::ForStmt>("forLoop" +
+                                                         std::to_string(++n));
         Loop.print();
       }
       return L;
@@ -96,7 +97,7 @@ public:
     void print() {
       std::cout << "[LOOP] " << Dim
                 << "; init val = " << std::to_string(InitVal)
-                << ", upperboudn = " << std::to_string(UpperBound) << std::endl;
+                << ", upperbound = " << std::to_string(UpperBound) << std::endl;
     }
   };
 
@@ -115,6 +116,8 @@ public:
     if (BinOp == nullptr) {
       BinOp = Result.Nodes.getNodeAs<clang::BinaryOperator>("stmtROI");
     }
+
+    std::cout << "LLEGOOOOOOOOOOOOOOOOOOOOOO" << std::endl;
 
     /// Get loop information
     this->LoopL = LoopInfo::getLoopList(Result);
