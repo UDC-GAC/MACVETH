@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Ven 20 Dec 2019 14:23:53 MST
+ * Last Modified Date: Dom 29 Dec 2019 20:06:21 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -52,6 +52,13 @@ StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
 //}
 
 void StmtWrapper::unroll(int UnrollFactor, int UpperBound,
+                         std::list<std::string> LoopLevels) {
+  for (std::string L : LoopLevels) {
+    this->unroll(UnrollFactor, UpperBound, L);
+  }
+}
+
+void StmtWrapper::unroll(int UnrollFactor, int UpperBound,
                          std::string LoopLevel) {
   unsigned int MaskList[] = {0x000000, 0x000000, 0x000000, 0x000000, 0x000000};
   TacListType T = TAC::unrollTacList(this->getTacList(), UnrollFactor,
@@ -71,7 +78,7 @@ void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
     this->setTacList(
         TAC::unrollTacList(this->getTacList(), UnrollFactor, UpperBound));
   } else if (this->getStmtType() == StmtWrapper::StmtType::REDUCTION) {
-    /// Get the last element, which is the final reduction
+    /// Get the last element, which is the final reductionºº
     TAC RedTac = this->getTacList().back();
     /// Making a copy of the TAC list
     std::list<TAC> TempTacList = this->getTacList();

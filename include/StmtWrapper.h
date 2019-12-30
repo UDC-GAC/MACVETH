@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Xov 12 Dec 2019 15:17:08 MST
+ * Last Modified Date: Lun 30 Dec 2019 11:48:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,15 +28,18 @@
 #ifndef MACVETH_STMTWRAPPER_H
 #define MACVETH_STMTWRAPPER_H
 
+#include "include/CustomMatchers.h"
 #include "include/Intrinsics/IntrinsicsGenerator.h"
 #include "include/MVExpr/MVExpr.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/Expr.h"
+#include <unordered_map>
 
 using namespace clang;
 using namespace macveth;
+using namespace macveth::matchers_utils;
 
 namespace macveth {
 
@@ -46,9 +49,80 @@ typedef std::list<TAC> TacListType;
 /// and the desired intrinsic translation
 class StmtWrapper {
 public:
+  /// Helper structure to handle the loop information for this statement
+  struct LoopInfo {
+    typedef std::list<LoopInfo> LoopList;
+    /// Name of dimension
+    std::string Dim;
+    /// Initial value (-1 if not known)
+    long InitVal;
+    /// Upperbound value (-1 if not known)
+    long UpperBound;
+
+    static LoopList getLoopList(const MatchFinder::MatchResult &Result) {
+      LoopList L;
+      int n = 1;
+      const Expr *ForLoop =
+          Result.Nodes.getNodeAs<clang::Expr>("forLoop" + std::to_string(n));
+      while (ForLoop != nullptr) {
+        LoopInfo Loop;
+        // Get name of variable
+        const VarDecl *V = Result.Nodes.getNodeAs<clang::VarDecl>(
+            varnames::NameVarInit + std::to_string(n));
+        Loop.Dim = V->getNameAsString();
+        // Get init val
+        const Expr *InitExpr = Result.Nodes.getNodeAs<clang::Expr>(
+            varnames::NameVarInit + std::to_string(n));
+        if (InitExpr != nullptr) {
+          Loop.InitVal = Utils::getIntFromExpr(InitExpr, Utils::getCtx());
+        }
+
+        // Get UpperBound
+        const Expr *UpperBoundExpr = Result.Nodes.getNodeAs<clang::Expr>(
+            varnames::UpperBound + std::to_string(n));
+        if (UpperBoundExpr != nullptr) {
+          Loop.UpperBound =
+              Utils::getIntFromExpr(UpperBoundExpr, Utils::getCtx());
+        }
+        L.push_back(Loop);
+        // Check if next loop
+        ForLoop = Result.Nodes.getNodeAs<clang::Expr>("forLoop" +
+                                                      std::to_string(++n));
+        Loop.print();
+      }
+      return L;
+    }
+
+    void print() {
+      std::cout << "[LOOP] " << Dim
+                << "; init val = " << std::to_string(InitVal)
+                << ", upperboudn = " << std::to_string(UpperBound) << std::endl;
+    }
+  };
+
+  /// Types of statements we differentiate when creating them
   enum StmtType { REDUCTION, VECTORIZABLE };
-  /// Constructors
+  /// Empty constructor
   StmtWrapper(){};
+  /// Full constructor that parses the loop hierarchy
+  StmtWrapper(const MatchFinder::MatchResult &Result) {
+    const BinaryOperator *BinOp =
+        Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp") ==
+                nullptr
+            ? Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction")
+            : Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
+
+    if (BinOp == nullptr) {
+      BinOp = Result.Nodes.getNodeAs<clang::BinaryOperator>("stmtROI");
+    }
+
+    /// Get loop information
+    this->LoopL = LoopInfo::getLoopList(Result);
+    this->S = (Stmt *)BinOp;
+    this->setStmtType(StmtWrapper::getStmtType(BinOp));
+    TAC::binaryOperator2TAC(BinOp, &this->TacList, -1);
+    this->TacList.reverse();
+  }
   StmtWrapper(const BinaryOperator *S) {
     this->S = (Stmt *)S;
     this->setStmtType(StmtWrapper::getStmtType(S));
@@ -84,7 +158,9 @@ public:
 
   /// Unroll
   void unroll(int UnrollFactor, int UpperBound);
-  void unroll(int UnrollFactor, int UpperBound, std::string);
+  void unroll(int UnrollFactor, int UpperBound, std::string LoopLevel);
+  void unroll(int UnrollFactor, int UpperBound,
+              std::list<std::string> LoopLevels);
 
   /// Getters and setters
   std::list<InstListType> getInstList() { return this->InstList; };
@@ -99,12 +175,14 @@ public:
 private:
   /// Statement holded
   Stmt *S;
+  /// Loop list
+  LoopInfo::LoopList LoopL;
   /// Type of statement; we only address those which are of our interest
   StmtType ST;
   /// TAC list with regard to the Statement S
   TacListType TacList;
-  /// List of instructions generated depending on the type of statement and the
-  /// TAC list generated. Generated when translateTacToInstrinsics called,
+  /// List of instructions generated depending on the type of statement and
+  /// the TAC list generated. Generated when translateTacToInstrinsics called,
   /// nullptr otherwise
   std::list<InstListType> InstList;
 };

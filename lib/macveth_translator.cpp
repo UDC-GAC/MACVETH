@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Dom 29 Dec 2019 13:06:53 MST
+ * Last Modified Date: Dom 29 Dec 2019 16:39:01 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -95,9 +95,12 @@ public:
     // MatcherRed.matchAST(Context);
 
     ///// For vectorizable statements
-    StatementMatcher ForLoopNestedMatcherVec = matchers_utils::ROI(
-        2, matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
-    MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
+    for (int n = 0; n < 6; ++n) {
+      StatementMatcher ForLoopNestedMatcherVec = matchers_utils::ROI(
+          n,
+          matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
+      MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
+    }
     /// Run the matchers when we have the whole TU parsed.
     MatcherVec.matchAST(Context);
 

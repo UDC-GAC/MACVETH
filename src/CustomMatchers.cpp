@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Dom 29 Dec 2019 13:07:25 MST
+ * Last Modified Date: Lun 30 Dec 2019 10:34:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -36,40 +36,13 @@
 // using namespace macveth;
 typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 
-/// FIXME please, need to pass arguments to the Matcher, in order to determine
-///       the 1) unrolling factor and 2) the stride
 void matchers_utils::IterationHandler::run(
     const MatchFinder::MatchResult &Result) {
-  std::list<const DeclRefExpr *> IncVarList;
 
-  std::cout << "LLEGOOOOOOOOOO\n";
+  StmtWrapper *SWrap = new StmtWrapper(Result);
 
-  /// FIXME
-  /// This is a hack of bad taste, really
-  const BinaryOperator *TacBinOp =
-      Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp") ==
-              nullptr
-          ? Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction")
-          : Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
-
-  /// FIXME
-  if (Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction") == nullptr)
-    return;
-
-  StmtWrapper *SWrap = new StmtWrapper(TacBinOp);
-
-  /// FIXME: please you can not do this not even in 101
-  const Expr *UpperBoundExpr =
-      Result.Nodes.getNodeAs<clang::Expr>(varnames::UpperBound + "1");
-  int UpperBound = 32;
-  if (UpperBoundExpr != nullptr) {
-    int res = Utils::getIntFromExpr(UpperBoundExpr, this->getCtx());
-    UpperBound = res == -1 ? UpperBound : res;
-  }
   int UnrollFactor = 1;
-  const VarDecl *V = Result.Nodes.getNodeAs<clang::VarDecl>(
-      matchers_utils::varnames::NameVarInit + std::to_string(1));
-  SWrap->unroll(UnrollFactor, 6, V->getNameAsString());
+  // SWrap->unroll(UnrollFactor, 6, V->getNameAsString());
   for (TAC t : SWrap->getTacList())
     t.printTAC();
   std::cout << "Creating CDAG" << std::endl;
@@ -80,27 +53,27 @@ void matchers_utils::IterationHandler::run(
   SWrap->translateTacToIntrinsics();
   int NLevel = 1;
   /// Unroll factor applied to the for header
-  for (int Inc = NLevel; Inc > 0; --Inc) {
-    const UnaryOperator *IncVarPos =
-        Result.Nodes.getNodeAs<clang::UnaryOperator>(varnames::NameVarIncPos +
-                                                     std::to_string(Inc));
-    const DeclRefExpr *IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
-        varnames::NameVarInc + std::to_string(Inc));
-    clang::CharSourceRange charRange = clang::CharSourceRange::getTokenRange(
-        IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
-    Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
-                                       "+=" + std::to_string(UpperBound));
-  }
+  // for (int Inc = NLevel; Inc > 0; --Inc) {
+  //  const UnaryOperator *IncVarPos =
+  //      Result.Nodes.getNodeAs<clang::UnaryOperator>(varnames::NameVarIncPos +
+  //                                                   std::to_string(Inc));
+  //  const DeclRefExpr *IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
+  //      varnames::NameVarInc + std::to_string(Inc));
+  //  clang::CharSourceRange charRange = clang::CharSourceRange::getTokenRange(
+  //      IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
+  //  Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
+  //                                     "+=" + std::to_string(UpperBound));
+  //}
 
-  clang::CharSourceRange CharRangeStr =
-      clang::CharSourceRange::getTokenRange(TacBinOp->getSourceRange());
+  // clang::CharSourceRange CharRangeStr =
+  //    clang::CharSourceRange::getTokenRange(TacBinOp->getSourceRange());
 
-  for (InstListType IList : SWrap->getInstList()) {
-    for (std::string S : IList) {
-      Rewrite.InsertText(TacBinOp->getBeginLoc(), S + ";\n", true, true);
-    }
-  }
-  Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
+  // for (InstListType IList : SWrap->getInstList()) {
+  //  for (std::string S : IList) {
+  //    Rewrite.InsertText(TacBinOp->getBeginLoc(), S + ";\n", true, true);
+  //  }
+  //}
+  // Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
 }
 
 /// Possible RHS
@@ -113,16 +86,14 @@ StatementMatcher possibleRhs(std::string BindName) {
 }
 
 // Function wrapper for matching expressions such as:
-// var      = expr op expr
-// StatementMatcher matchers_utils::anyStmt(std::string Name, std::string Lhs,
-//                                         std::string Rhs) {
-//  return expr(anyOf(hasOperatorName("="), hasOperatorName("+="),
-//                    hasOperatorName("*="), hasOperatorName("-=")),
-//              hasLHS(implicitCastExpr().bind(Lhs)),
-//              hasRHS(implicitCastExpr().bind(Rhs)))
-//      // hasRHS(possibleRhs(Rhs)))
-//      .bind(Name);
-//}
+// expr = expr
+StatementMatcher matchers_utils::anyStmt(std::string Name, std::string Lhs,
+                                         std::string Rhs) {
+  return binaryOperator(anyOf(hasOperatorName("="), hasOperatorName("+="),
+                              hasOperatorName("*="), hasOperatorName("-=")),
+                        hasLHS(expr().bind(Lhs)), hasRHS(expr().bind(Rhs)))
+      .bind(Name);
+}
 
 /// Function wrapper for matching expressions such as:
 /// var      = expr op expr
@@ -181,8 +152,7 @@ MatcherForStmt customCondition(std::string Name) {
 /// * for() { InnerStmt; }
 /// * for() { [Stmt]* [InnerStmt]+ [InnerStmt|Stmt]*}
 MatcherForStmt customBody(StatementMatcher InnerStmt) {
-  return hasBody(has(InnerStmt));
-  // return hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt))));
+  return hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt))));
 }
 
 /// Function wrapper for matching expressions such as:
