@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 30 Dec 2019 12:24:04 MST
+ * Last Modified Date: Lun 30 Dec 2019 14:11:52 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -117,8 +117,6 @@ public:
       BinOp = Result.Nodes.getNodeAs<clang::BinaryOperator>("stmtROI");
     }
 
-    std::cout << "LLEGOOOOOOOOOOOOOOOOOOOOOO" << std::endl;
-
     /// Get loop information
     this->LoopL = LoopInfo::getLoopList(Result);
     this->S = (Stmt *)BinOp;
@@ -161,9 +159,8 @@ public:
 
   /// Unroll
   void unroll(int UnrollFactor, int UpperBound);
-  void unroll(int UnrollFactor, int UpperBound, std::string LoopLevel);
-  void unroll(int UnrollFactor, int UpperBound,
-              std::list<std::string> LoopLevels);
+  void unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
+  void unrollAndJam(long UnrollFactor, long UpperBoundFallback = 4);
 
   /// Getters and setters
   std::list<InstListType> getInstList() { return this->InstList; };

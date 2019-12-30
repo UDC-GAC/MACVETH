@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Dom 29 Dec 2019 20:06:21 MST
+ * Last Modified Date: Lun 30 Dec 2019 14:14:16 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -51,14 +51,15 @@ StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
 //  std::cout << "=================================" << std::endl;
 //}
 
-void StmtWrapper::unroll(int UnrollFactor, int UpperBound,
-                         std::list<std::string> LoopLevels) {
-  for (std::string L : LoopLevels) {
-    this->unroll(UnrollFactor, UpperBound, L);
+void StmtWrapper::unrollAndJam(long UnrollFactor, long UpperBoundFallback) {
+  this->LoopL.reverse();
+  for (LoopInfo L : this->LoopL) {
+    long UB = L.UpperBound == -1 ? UpperBoundFallback : L.UpperBound;
+    this->unroll(UnrollFactor, UB, L.Dim);
   }
 }
 
-void StmtWrapper::unroll(int UnrollFactor, int UpperBound,
+void StmtWrapper::unroll(long UnrollFactor, long UpperBound,
                          std::string LoopLevel) {
   unsigned int MaskList[] = {0x000000, 0x000000, 0x000000, 0x000000, 0x000000};
   TacListType T = TAC::unrollTacList(this->getTacList(), UnrollFactor,
