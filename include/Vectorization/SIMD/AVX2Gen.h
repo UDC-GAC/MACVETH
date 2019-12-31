@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Ven 27 Dec 2019 20:04:41 MST
+ * Last Modified Date: Mar 31 Dec 2019 16:46:19 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -20,8 +20,8 @@ namespace macveth {
 class AVX2Gen : public SIMDGenerator {
 public:
   /// Name of the architecture
-  static inline std::string NISA = "IntelX86";
-  static inline std::string NArch = "AVX2";
+  static inline std::string NArch = "IntelX86";
+  static inline std::string NISA = "AVX2";
 
   /// Method to generate an AVX instruction
   SIMDGenerator::SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) override;
@@ -38,8 +38,10 @@ private:
   static void populateTable();
   /// Max width
   static inline int MaxWidth = 256;
+  /// Mapping the width types with its name in AVX2
   static inline std::map<VectorIR::VWidth, std::string> MapWidth = {
       {VectorIR::VWidth::W128, ""}, {VectorIR::VWidth::W256, "256"}};
+  /// Map of VectorIR types and its translation in the AVX2 architecture
   static inline std::map<VectorIR::VDataType, std::string> MapType = {
       {VectorIR::VDataType::FLOAT, "ps"},
       {VectorIR::VDataType::DOUBLE, "pd"},

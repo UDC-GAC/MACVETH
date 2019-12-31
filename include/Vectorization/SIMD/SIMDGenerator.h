@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Ven 27 Dec 2019 15:01:50 MST
+ * Last Modified Date: Lun 30 Dec 2019 17:35:08 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -23,7 +23,7 @@ namespace macveth {
 /// generate specific intrinsics and calculate the associated cost for the
 /// operations provided by the VectorAPI
 class SIMDGenerator {
-protected:
+public:
   /// Wrap for representing the SIMDInst not just as single strings to print,
   /// but as a set of fields
   struct SIMDInst {
@@ -45,6 +45,9 @@ protected:
       return FullFunc;
     }
 
+    /// Empty constructor
+    SIMDInst(){};
+
     /// Constructor
     SIMDInst(std::string R, std::string FN, std::list<std::string> OPS)
         : Result(R), FuncName(FN), OPS(OPS) {}
@@ -53,7 +56,6 @@ protected:
   /// Alias for list of SIMDInst structures
   typedef std::list<SIMDInst> SIMDInstListType;
 
-public:
   /// Empty constructor
   SIMDGenerator(){};
 

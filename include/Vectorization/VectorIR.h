@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Ven 27 Dec 2019 20:08:04 MST
+ * Last Modified Date: Lun 30 Dec 2019 17:28:54 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -50,16 +50,25 @@ public:
     INT16,
     INT32,
     INT64,
+    /// 128 bits, undefined type
     UNDEF128,
+    /// 256 bits, undefined type
     UNDEF256,
+    /// Input vector is INT128, output is different
     IN_INT128,
+    /// Input vector is FLOAT128, output is different
     IN_FLOAT128,
+    /// Input vector is DOUBLE128, output is different
     IN_DOUBLE128,
+    /// Input vector is INT256, output is different
     IN_INT256,
+    /// Input vector is FLOAT256, output is different
     IN_FLOAT256,
+    /// Input vector is DOUBLE256, output is different
     IN_DOUBLE256
   };
 
+  /// Table of equivalences between C/C++ basic numeric types and VectorIR's
   static inline std::map<std::string, VDataType> CTypeToVDataType = {
       {"double", DOUBLE},   {"float", FLOAT},     {"uint8_t", UINT8},
       {"uint16_t", UINT16}, {"uint32_t", UINT32}, {"uint64_t", UINT64},
@@ -98,7 +107,10 @@ public:
     unsigned int Shuffle = 0x0;
     /// Mask to avoid elements if necessary
     unsigned int Mask = 0x0;
+    /// The vector operand is a temporal result if it has already been assigned
+    /// before
     bool IsTmpResult = false;
+    /// Vector operand is a lod if it is not a temporal result
     bool IsLoad = false;
     bool IsStore = false;
 
@@ -121,6 +133,8 @@ public:
       this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
                                : "vop" + std::to_string(VID++);
 
+      this->IsTmpResult = VecAssigned;
+      this->IsLoad = !VecAssigned;
       for (int n = 0; n < VL; ++n) {
         this->UOP[n] = V[n];
         if (!VecAssigned) {

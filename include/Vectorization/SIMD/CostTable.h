@@ -2,7 +2,7 @@
  * File              : CostTable.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Xov 26 Dec 2019 09:55:43 MST
- * Last Modified Date: Ven 27 Dec 2019 09:28:26 MST
+ * Last Modified Date: Mar 31 Dec 2019 16:58:42 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_COSTTABLE_H
@@ -27,6 +27,7 @@ private:
     /// Number of units available for executing this type of operation
     /// simultaneously
     unsigned int NUnits = 1;
+    /// Pattern of the instruction
     std::string Pattern = "";
   };
 
