@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Mar 31 Dec 2019 16:45:27 MST
+ * Last Modified Date: Mar 31 Dec 2019 18:07:19 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -41,10 +41,7 @@ void AVX2Gen::populateTable() {
 
 // ---------------------------------------------
 std::string replacePattern(std::string P, std::regex R, std::string Rep) {
-  if (Rep.compare("")) {
-    return std::regex_replace(P, R, Rep);
-  }
-  return P;
+  return std::regex_replace(P, R, Rep);
 }
 
 // ---------------------------------------------
@@ -78,15 +75,21 @@ std::string getRegisterType(VectorIR::VDataType DT, VectorIR::VWidth W) {
 }
 
 // ---------------------------------------------
-bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L) {
-  SIMDGenerator::SIMDInst I;
+bool AVX2Gen::genLoadInst(VectorIR::VOperand V,
+                          SIMDGenerator::SIMDInstListType *L) {
   if (!V.IsLoad) {
     // TODO maybe it would be OK to perform another action in this case
+    std::cout << "NOT LOAD " << V.Name << std::endl;
     return false;
-  } else {
-    I.Result = V.getName();
   }
+
+  // Get width as string
+  std::string WidthS = AVX2Gen::MapWidth[V.getWidth()];
+  // Get data type as string
+  std::string DataTypeS = AVX2Gen::MapType[V.getDataType()];
+  // TODO generate prefix
   std::string PrefS = "";
+  // TODO generate sufix
   std::string SuffS = "";
   // Mask
   PrefS += (V.Mask) ? "mask" : "";
@@ -101,6 +104,17 @@ bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
+  // Replace fills in pattern
+  std::string AVXFunc =
+      replacePatterns(Pattern, WidthS, DataTypeS, PrefS, SuffS);
+
+  /// TODO
+  std::list<std::string> OPS;
+
+  OPS.push_back(V.UOP[0]->getValue());
+
+  // Generate function
+  SIMDGenerator::SIMDInst I(V.getName(), AVXFunc, OPS);
   // Update the list
   L->push_back(I);
 
@@ -116,8 +130,6 @@ SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> VL) {
   // selection which basically performs a pattern matching between the
   // operations an creates new SIMD instructions, AVX2 in this case
   for (auto V : VL) {
-    VectorIR::VOperand VOpA = V.OpA;
-    VectorIR::VOperand VOpB = V.OpB;
     // Get width as string
     std::string WidthS = MapWidth[V.VW];
     // Get data type as string
@@ -132,15 +144,11 @@ SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> VL) {
     std::string AVXFunc =
         replacePatterns(Pattern, WidthS, DataTypeS, PrefS, SuffS);
 
+    VectorIR::VOperand VOpA = V.OpA;
+    VectorIR::VOperand VOpB = V.OpB;
     // Generate load instructions if needed
     genLoadInst(VOpA, &R.SIMDList);
     genLoadInst(VOpB, &R.SIMDList);
-
-    // SIMDInst *L;
-    // if ((L = genLoadInst(VOpA)) != nullptr)
-    //  R.SIMDList.push_back(*L);
-    // if ((L = genLoadInst(VOpB)) != nullptr)
-    //  R.SIMDList.push_back(*L);
 
     // Generate function
     SIMDInst I(V.R.getName(), AVXFunc, {VOpA.getName(), VOpB.getName()});

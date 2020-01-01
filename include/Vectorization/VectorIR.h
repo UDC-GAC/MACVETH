@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Lun 30 Dec 2019 17:28:54 MST
+ * Last Modified Date: Mar 31 Dec 2019 18:44:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -87,13 +87,17 @@ public:
     W512 = 512
   };
 
-  /// Vector operand basically is a wrap of VL operands in the original Node
+  /// Vector operand basically is a wrap of VL (vector lenght) operands in the
+  /// original Node
   struct VOperand {
     /// Unique identifier for the operand
     static inline unsigned int VID = 0;
     /// Keeping track of the correspondence between the registers name and the
     /// new naming
     static inline std::map<std::string, std::string> MapRegToVReg;
+    /// Keeping track of the correspondence between the registers name and the
+    /// new naming
+    static inline std::list<std::string> MapLoads;
     /// Name identifying the vector operand
     std::string Name;
     /// Number of Nodes
@@ -124,17 +128,29 @@ public:
       return true;
     }
 
-    /// Basic Cosntructor
+    VWidth getWidth() { return VWidth::W256; }
+
+    VDataType getDataType() {
+      return CTypeToVDataType[this->UOP[0]->getDataType()];
+    }
+
+    /// Basic constructor
     VOperand(int VL, Node *V[]) {
-      // Init list of operands
+      // Init list of unit operands
       this->UOP = (Node **)malloc(sizeof(Node *) * VL);
       // Check if there is a vector assigned for these operands
       auto VecAssigned = checkIfVectorAssigned(VL, V);
       this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
                                : "vop" + std::to_string(VID++);
 
+      std::cout << this->Name << ", " << V[0]->getValue();
+      std::cout << ", " << V[0]->getRegisterValue() << std::endl;
+
       this->IsTmpResult = VecAssigned;
-      this->IsLoad = !VecAssigned;
+      auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
+      if (!AlreadyLoaded)
+        MapLoads.push_back(this->getName());
+      this->IsLoad = !AlreadyLoaded;
       for (int n = 0; n < VL; ++n) {
         this->UOP[n] = V[n];
         if (!VecAssigned) {
@@ -160,7 +176,7 @@ public:
   /// the placement and/or free scheduling. Basically represents the
   /// following: VectorOP -> VOperand = VectorOP[VOperand,
   /// VOperand]; Where each OPS is a VOperand, which basically wraps
-  /// a list of UnitOperands
+  /// a list of UnitOperands or Nodes
   struct VectorOP {
     /// Type of operation
     VType VT = VType::MAP;

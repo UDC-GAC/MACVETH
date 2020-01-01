@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Mar 31 Dec 2019 16:46:19 MST
+ * Last Modified Date: Mar 31 Dec 2019 17:48:00 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -36,6 +36,8 @@ private:
   /// Populate the table only when creating the object, to avoid overloading the
   /// memory from the start
   static void populateTable();
+  /// Specific instruction for loading data according to the operand
+  bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
   /// Max width
   static inline int MaxWidth = 256;
   /// Mapping the width types with its name in AVX2

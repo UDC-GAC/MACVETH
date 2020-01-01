@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Ven 27 Dec 2019 16:52:46 MST
+ * Last Modified Date: Mar 31 Dec 2019 18:17:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -39,6 +39,9 @@ int CDAG::computeCostModel(CDAG *G) {
   int VL = VectorIR::VL;
   std::list<VectorIR::VectorOP> VList;
   printDebug("CDAG", "Creating backend");
+
+  /// FIXME at some point the compiler should be able to recognize the
+  /// architecture and ISA where it is compiling
   SIMDGenerator *AVX =
       SIMDGeneratorFactory::getBackend(SIMDGeneratorFactory::Arch::AVX2);
   Node *VLoadA[VL];
