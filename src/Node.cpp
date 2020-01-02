@@ -2,7 +2,7 @@
  * File              : Node.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:01:36 MST
- * Last Modified Date: Mar 31 Dec 2019 18:12:26 MST
+ * Last Modified Date: Xov 02 Xan 2020 08:26:14 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -27,9 +27,6 @@ void Node::connectInput(Node *N) {
   this->I.push_back(N);
   N->OutNodes.push_back(this);
 }
-
-// ---------------------------------------------
-void Node::connectOutput(Node *N) {}
 
 // ---------------------------------------------
 bool Node::hasOutNodes() { return (this->OutNodes.size() == 0); }

@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Mér 01 Xan 2020 16:12:06 MST
+ * Last Modified Date: Xov 02 Xan 2020 13:26:21 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -18,7 +18,7 @@ using namespace macveth;
 // ---------------------------------------------
 void AVX2Gen::populateTable() {
   // Sandy Bridge (Intel Q1 2011), Bulldozer (AMD Q3 2011)
-  // Typical operations
+  // Math operations
   CostTable::addRow(NArch, "mul", 3, "_mm#W_#Pmul#S_#D");
   CostTable::addRow(NArch, "add", 1, "_mm#W_#Padd#S_#D");
   CostTable::addRow(NArch, "sub", 1, "_mm#W_#Psub#S_#D");
@@ -27,6 +27,9 @@ void AVX2Gen::populateTable() {
   CostTable::addRow(NArch, "avg", 5, "_mm#W_avg_#D");
   CostTable::addRow(NArch, "min", 5, "_mm#W_min_#D");
   CostTable::addRow(NArch, "max", 5, "_mm#W_max_#D");
+  CostTable::addRow(NArch, "round", 10, "_mm#W_#Psvml_round#S_#D");
+  CostTable::addRow(NArch, "trunc", 10, "_mm#W_#Ptrunc#S_#D");
+  CostTable::addRow(NArch, "ceil", 10, "_mm#W_#Psvml_ceil#S_#D");
   // Load operations
   CostTable::addRow(NArch, "load", 1, "_mm#W_#Pload#S_#D");
   CostTable::addRow(NArch, "gather", 1, "_mm#W_#Pgather#S_#D");
@@ -34,9 +37,10 @@ void AVX2Gen::populateTable() {
   CostTable::addRow(NArch, "store", 1, "_mm#W_#Pstore#S_#D");
   CostTable::addRow(NArch, "stream", 1, "_mm#W_#Pstream#S_#D");
   // Trigonometry
-  // CostTable::addRow(NArch, "cosine", 10, "_mm#W_#PREFIXcos#SUFFIX_#D");
-  // CostTable::addRow(NArch, "sinus", 10, "_mm#W_#PREFIXsin#SUFFIX_#D");
-  // CostTable::addRow(NArch, "hyperbolic", 10, "_mm#W_#PREFIXatanh#SUFFIX_#D");
+  CostTable::addRow(NArch, "cos", 10, "_mm#W_#Pcos#S_#D");
+  CostTable::addRow(NArch, "sin", 10, "_mm#W_#Psin#S_#D");
+  CostTable::addRow(NArch, "tan", 10, "_mm#W_#Ptan#S_#D");
+  CostTable::addRow(NArch, "atanh", 10, "_mm#W_#Patanh#S_#D");
 }
 
 // ---------------------------------------------
@@ -95,7 +99,7 @@ bool AVX2Gen::genLoadInst(VectorIR::VOperand V,
   PrefS += (V.Mask) ? "mask" : "";
 
   // TODO
-  // Type of load: load, loadu, gather, set, broadcast
+  // Type of load: load/u, gather, set, broadcast
   // [1] software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
   // [2] https://stackoverflow.com/questions/36191748/difference-between-\
   // load1-and-broadcast-intrinsics
@@ -122,48 +126,48 @@ bool AVX2Gen::genLoadInst(VectorIR::VOperand V,
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> VL) {
-  SIMDGenerator::SIMDInfo R;
-
-  // Once we have the VectorIR (in between a middle IR and a low-level IR),
-  // for generating the SIMD instructions, we first perform an instruction
-  // selection which basically performs a pattern matching between the
-  // operations an creates new SIMD instructions, AVX2 in this case
-  for (auto V : VL) {
-    // Get width as string
-    std::string WidthS = MapWidth[V.VW];
-    // Get data type as string
-    std::string DataTypeS = MapType[V.DT];
-    // FIXME Is it needed prefix?
-    std::string PrefS = "";
-    // FIXME Is it needed suffix?
-    std::string SuffS = "";
-    // Get name of the function
-    std::string Pattern = CostTable::getPattern(NArch, V.VN);
-    // Replace fills in pattern
-    std::string AVXFunc =
-        replacePatterns(Pattern, WidthS, DataTypeS, PrefS, SuffS);
-
-    VectorIR::VOperand VOpA = V.OpA;
-    VectorIR::VOperand VOpB = V.OpB;
-    // Generate load instructions if needed
-    genLoadInst(VOpA, &R.SIMDList);
-    genLoadInst(VOpB, &R.SIMDList);
-
-    // Generate function
-    SIMDInst I(V.R.getName(), AVXFunc, {VOpA.getName(), VOpB.getName()});
-    R.SIMDList.push_back(I);
-
-    // Registers used
-    std::string RegType = getRegisterType(V.DT, V.VW);
-    SIMDGenerator::addRegToDeclare(RegType, V.R.getName());
-    SIMDGenerator::addRegToDeclare(RegType, VOpA.getName());
-    SIMDGenerator::addRegToDeclare(RegType, VOpB.getName());
-  }
-
-  // TODO Peephole optimizations:
-  // Then optimizations can be done, for instance, combine operatios such as
-  // addition + multiplication
-
-  return R;
-}
+// SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> VL) {
+//  SIMDGenerator::SIMDInfo R;
+//
+//  // Once we have the VectorIR (in between a middle IR and a low-level IR),
+//  // for generating the SIMD instructions, we first perform an instruction
+//  // selection which basically performs a pattern matching between the
+//  // operations an creates new SIMD instructions, AVX2 in this case
+//  for (auto V : VL) {
+//    // Get width as string
+//    std::string WidthS = MapWidth[V.VW];
+//    // Get data type as string
+//    std::string DataTypeS = MapType[V.DT];
+//    // FIXME Is it needed prefix?
+//    std::string PrefS = "";
+//    // FIXME Is it needed suffix?
+//    std::string SuffS = "";
+//    // Get name of the function
+//    std::string Pattern = CostTable::getPattern(NArch, V.VN);
+//    // Replace fills in pattern
+//    std::string AVXFunc =
+//        replacePatterns(Pattern, WidthS, DataTypeS, PrefS, SuffS);
+//
+//    VectorIR::VOperand VOpA = V.OpA;
+//    VectorIR::VOperand VOpB = V.OpB;
+//    // Generate load instructions if needed
+//    genLoadInst(VOpA, &R.SIMDList);
+//    genLoadInst(VOpB, &R.SIMDList);
+//
+//    // Generate function
+//    SIMDInst I(V.R.getName(), AVXFunc, {VOpA.getName(), VOpB.getName()});
+//    R.SIMDList.push_back(I);
+//
+//    // Registers used
+//    std::string RegType = getRegisterType(V.DT, V.VW);
+//    SIMDGenerator::addRegToDeclare(RegType, V.R.getName());
+//    SIMDGenerator::addRegToDeclare(RegType, VOpA.getName());
+//    SIMDGenerator::addRegToDeclare(RegType, VOpB.getName());
+//  }
+//
+//  // TODO Peephole optimizations:
+//  // Then optimizations can be done, for instance, combine operatios such as
+//  // addition + multiplication
+//
+//  return R;
+//}

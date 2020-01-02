@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Mér 01 Xan 2020 15:07:59 MST
+ * Last Modified Date: Xov 02 Xan 2020 15:04:57 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -32,18 +32,7 @@ public:
     std::list<std::string> OPS;
 
     /// Render instruction as a string
-    std::string render() {
-      std::string FullFunc = !Result.compare("")
-                                 ? FuncName + "("
-                                 : Result + " = " + FuncName + "(";
-      std::list<std::string>::iterator Op;
-      int i = 0;
-      for (Op = OPS.begin(); Op != OPS.end(); ++Op) {
-        FullFunc += (i++ == (OPS.size() - 1)) ? *Op : (*Op + ", ");
-      }
-      FullFunc += ")";
-      return FullFunc;
-    }
+    std::string render();
 
     /// Empty constructor
     SIMDInst(){};
@@ -69,14 +58,37 @@ public:
   virtual ~SIMDGenerator(){};
 
   /// Generating SIMD instructions from list of vector operations
-  virtual SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) = 0;
+  // virtual SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) = 0;
 
   /// Get max width
   virtual int getMaxWidth() = 0;
 
+  /// Generate pack instructions
+  virtual SIMDInfo vpack(VectorIR::VectorOP V) = 0;
+
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
   std::list<std::string> renderSIMDasString(SIMDInfo S);
+
+  /// Entry point: this method basically redirects to any of the operations
+  /// supported
+  SIMDInstListType getSIMDfromVectorOP(VectorIR::VectorOP V);
+
+  /// Basically calls its other overloaded function iterating over the input
+  /// list of VectorOP
+  SIMDInstListType getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList);
+
+  /// Get name of the concrete architecture
+  virtual std::string getNISA() = 0;
+
+  /// Get name of the concrete architecture
+  virtual std::string getNArch() = 0;
+
+  /// Map of VectorIR widths to the concrete architecture
+  virtual std::map<VectorIR::VWidth, std::string> getMapWidth() = 0;
+
+  /// Map of VectorIR types to the concrete architecture
+  virtual std::map<VectorIR::VDataType, std::string> getMapType() = 0;
 
   /// Map data types to their size in bytes
   inline static std::map<std::string, int> SizeOf = {

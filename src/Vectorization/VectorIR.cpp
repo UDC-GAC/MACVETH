@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Mér 01 Xan 2020 16:11:29 MST
+ * Last Modified Date: Xov 02 Xan 2020 12:58:56 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -122,8 +122,8 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // valid assumption)
   this->VN = VOps[0]->getValue();
 
-  // FIXME: Width
-  this->VW = VWidth::W256;
+  // The width of the operation is the result width
+  this->VW = this->R.getWidth();
 
   // Data type
   this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];

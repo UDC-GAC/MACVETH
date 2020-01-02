@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Mér 01 Xan 2020 14:46:50 MST
+ * Last Modified Date: Xov 02 Xan 2020 12:48:58 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -99,13 +99,15 @@ public:
   struct VOperand {
     /// Name identifying the vector operand
     std::string Name;
-    /// Number of Nodes
+    /// Total size of vector
+    unsigned int VSize;
+    /// Number non null Nodes
     unsigned int Size;
     /// Array of variable size (Size elements actually) initialized when
     /// creating the object
     Node **UOP = nullptr;
-    /// Width of this operand
-    // VWidth Width;
+    /// FIXME Width of this operand
+    VWidth Width = VWidth::W256;
     /// Mask for shuffling if necessary
     unsigned int Shuffle = 0x0;
     /// Mask to avoid elements if necessary
@@ -113,15 +115,16 @@ public:
     /// The vector operand is a temporal result if it has already been assigned
     /// before
     bool IsTmpResult = false;
-    /// Vector operand is a lod if it is not a temporal result
+    /// Vector operand could be a load if it is not a temporal result
     bool IsLoad = false;
+    /// Vector operand may be a store in memory operation
     bool IsStore = false;
 
     /// Check if there is a vector already assigned wraping the same values
     bool checkIfVectorAssigned(int VL, Node *V[]);
 
-    /// FIXME
-    VWidth getWidth() { return VWidth::W256; }
+    /// Get width
+    VWidth getWidth() { return Width; }
 
     /// Get data type of the operand: assumption that all elements are the same
     /// type
@@ -165,9 +168,6 @@ public:
     VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[]);
   };
 
-  /// Given a set of operations from the CDAG it computes the vector cost
-  static int computeCostVectorOp(int VL, Node *VOps[], Node *VLoadA[],
-                                 Node *VLoadB[]);
 }; // namespace macveth
 
 } // namespace macveth

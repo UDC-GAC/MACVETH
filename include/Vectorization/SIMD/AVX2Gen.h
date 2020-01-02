@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Mér 01 Xan 2020 15:53:17 MST
+ * Last Modified Date: Xov 02 Xan 2020 15:04:43 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -21,10 +21,27 @@ class AVX2Gen : public SIMDGenerator {
 public:
   /// Name of the architecture
   static inline std::string NArch = "IntelX86";
+  /// Name of the ISA
   static inline std::string NISA = "AVX2";
 
   /// Method to generate an AVX instruction
-  SIMDGenerator::SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) override;
+  // SIMDGenerator::SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) override;
+
+  /// Get name of AVX architecture
+  std::string getNArch() override { return AVX2Gen::NArch; }
+
+  /// Get name of AVX architecture
+  std::string getNISA() override { return AVX2Gen::NISA; }
+
+  /// Get the traslation between VectorIR data widths and AVX2's
+  std::map<VectorIR::VWidth, std::string> getMapWidth() override {
+    return MapWidth;
+  }
+
+  /// Get the traslation between VectorIR data types and AVX2's
+  std::map<VectorIR::VDataType, std::string> getMapType() override {
+    return MapType;
+  }
 
   /// Get max width
   int getMaxWidth() override { return AVX2Gen::MaxWidth; }

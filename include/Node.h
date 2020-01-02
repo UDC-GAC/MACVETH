@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Mér 01 Xan 2020 16:36:04 MST
+ * Last Modified Date: Xov 02 Xan 2020 08:26:12 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -11,6 +11,7 @@
 #include "include/MVExpr/MVExpr.h"
 #include "include/StmtWrapper.h"
 #include "include/TAC.h"
+#include "clang/AST/Expr.h"
 
 using namespace macveth;
 
@@ -31,11 +32,16 @@ public:
   /// whenever this object is cloned, this value is also cloned to the new
   /// object
   static inline int uuid = 0;
+
   /// Definition of NodeListType
   typedef std::list<Node *> NodeListType;
+
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_OP, UNDEF };
+
+  /// Types of stores for NODE_OP Node
   enum OutputType { TEMP_STORE, MEM_STORE };
+
   /// Holds information regarding the scheduling for this Node
   struct SchedInfo {
     int StmtID = -1;
@@ -43,12 +49,23 @@ public:
     int Plcmnt = 0;
     int Sched = 0;
   };
+
   /// If the node is NODE_OP type, then it will hold a result value
   struct OutputInfo {
     std::string Name = "";
     OutputType Type = MEM_STORE;
     bool IsBinaryOp = false;
   };
+
+  /// Get the output info given a TAC
+  OutputInfo getOutputInfo(TAC T) {
+    OutputInfo O;
+    O.Name = T.getA()->getExprStr();
+    O.Type =
+        T.getOP() == BinaryOperator::Opcode::BO_Assign ? MEM_STORE : TEMP_STORE;
+    O.IsBinaryOp = T.getC() == nullptr;
+    return O;
+  }
 
   /// When creating a Node from a TempExpr, the connections will be created by
   /// the TAC which creates this Node
@@ -75,7 +92,7 @@ public:
     this->T = NODE_OP;
     this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
-    this->O = getOutputInfo(T.getA());
+    this->O = getOutputInfo(T);
     this->SI.StmtID = Node::uuid++;
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
@@ -87,18 +104,12 @@ public:
     this->T = NODE_OP;
     this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
-    this->O = getOutputInfo(T.getOP(), T.getA());
+    this->O = getOutputInfo(T);
     this->SI.StmtID = Node::uuid++;
     Node *NB = findOutputNode(T.getB()->getExprStr(), L);
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);
     connectInput(NC == NULL ? new Node(T.getC()) : NC);
-  }
-
-  OutputInfo getOutputInfo(MVExpr *M) {
-    OutputInfo O;
-    O.Name = M->getExprStr();
-    return O;
   }
 
   /// Schedule info is needed for the algorithms to perform permutations in
@@ -110,8 +121,6 @@ public:
 
   /// Connect a Node as input
   void connectInput(Node *N);
-  /// Connect a Node as output
-  void connectOutput(Node *N);
 
   /// Get the number of inputs in this Node
   int getOutputNum() { return this->OutNodes.size(); }
