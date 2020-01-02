@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Ven 27 Dec 2019 12:29:20 MST
+ * Last Modified Date: Mér 01 Xan 2020 16:36:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -50,6 +50,15 @@ public:
     bool IsBinaryOp = false;
   };
 
+  /// When creating a Node from a TempExpr, the connections will be created by
+  /// the TAC which creates this Node
+  Node(MVExpr *TE) {
+    this->T = NODE_MEM;
+    this->Value = TE->getExprStr();
+    this->MV = TE;
+    this->SI.StmtID = Node::uuid++;
+  }
+
   /// Copy constructor for cloning
   Node(const Node &rhs) {
     this->I = rhs.I;
@@ -66,23 +75,30 @@ public:
     this->T = NODE_OP;
     this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
-    this->O.Name = T.getA()->getExprStr();
+    this->O = getOutputInfo(T.getA());
+    this->SI.StmtID = Node::uuid++;
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
-    this->SI.StmtID = Node::uuid++;
   }
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
   /// CDAG, so each TAC corresponds to a = b op c
   Node(TAC T, NodeListType L) {
     this->T = NODE_OP;
+    this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
-    this->O.Name = T.getA()->getExprStr();
+    this->O = getOutputInfo(T.getOP(), T.getA());
+    this->SI.StmtID = Node::uuid++;
     Node *NB = findOutputNode(T.getB()->getExprStr(), L);
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);
     connectInput(NC == NULL ? new Node(T.getC()) : NC);
-    this->SI.StmtID = Node::uuid++;
+  }
+
+  OutputInfo getOutputInfo(MVExpr *M) {
+    OutputInfo O;
+    O.Name = M->getExprStr();
+    return O;
   }
 
   /// Schedule info is needed for the algorithms to perform permutations in
@@ -133,7 +149,7 @@ public:
   std::string getValue() const { return this->Value; }
   /// Returns the variable/register value
   std::string getRegisterValue() const {
-    if (this->T == NodeType::NODE_MEM) {
+    if (this->T != NodeType::NODE_MEM) {
       return this->O.Name;
     }
     return this->getValue();
@@ -176,15 +192,6 @@ private:
   OutputInfo O;
   /// List of output nodes for this node
   NodeListType OutNodes;
-
-  /// When creating a Node from a TempExpr, the connections will be created by
-  /// the TAC which creates this Node
-  Node(MVExpr *TE) {
-    this->T = NODE_MEM;
-    this->Value = TE->getExprStr();
-    this->MV = TE;
-    this->SI.StmtID = Node::uuid++;
-  }
 };
 } // namespace macveth
 #endif

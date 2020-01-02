@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Mar 31 Dec 2019 18:44:06 MST
+ * Last Modified Date: Mér 01 Xan 2020 14:46:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -22,7 +22,14 @@ namespace macveth {
 /// generate intrinsics and perform the optimizations.
 class VectorIR {
 public:
-  static const int VL = 4;
+  /// Unique identifier for the operand
+  static inline unsigned int VID = 0;
+  /// Keeping track of the correspondence between the registers name and the
+  /// new naming
+  static inline std::map<std::string, std::string> MapRegToVReg;
+  /// Keeping track of the correspondence between the registers name and the
+  /// new naming
+  static inline std::list<std::string> MapLoads;
 
   /// Types of vector operations we distinguish according their scheduling
   enum VType {
@@ -90,14 +97,6 @@ public:
   /// Vector operand basically is a wrap of VL (vector lenght) operands in the
   /// original Node
   struct VOperand {
-    /// Unique identifier for the operand
-    static inline unsigned int VID = 0;
-    /// Keeping track of the correspondence between the registers name and the
-    /// new naming
-    static inline std::map<std::string, std::string> MapRegToVReg;
-    /// Keeping track of the correspondence between the registers name and the
-    /// new naming
-    static inline std::list<std::string> MapLoads;
     /// Name identifying the vector operand
     std::string Name;
     /// Number of Nodes
@@ -119,57 +118,25 @@ public:
     bool IsStore = false;
 
     /// Check if there is a vector already assigned wraping the same values
-    bool checkIfVectorAssigned(int VL, Node *V[]) {
-      for (int n = 0; n < VL; ++n) {
-        if (MapRegToVReg.find(V[n]->getRegisterValue()) == MapRegToVReg.end()) {
-          return false;
-        }
-      }
-      return true;
-    }
+    bool checkIfVectorAssigned(int VL, Node *V[]);
 
+    /// FIXME
     VWidth getWidth() { return VWidth::W256; }
 
+    /// Get data type of the operand: assumption that all elements are the same
+    /// type
     VDataType getDataType() {
       return CTypeToVDataType[this->UOP[0]->getDataType()];
     }
 
     /// Basic constructor
-    VOperand(int VL, Node *V[]) {
-      // Init list of unit operands
-      this->UOP = (Node **)malloc(sizeof(Node *) * VL);
-      // Check if there is a vector assigned for these operands
-      auto VecAssigned = checkIfVectorAssigned(VL, V);
-      this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
-                               : "vop" + std::to_string(VID++);
-
-      std::cout << this->Name << ", " << V[0]->getValue();
-      std::cout << ", " << V[0]->getRegisterValue() << std::endl;
-
-      this->IsTmpResult = VecAssigned;
-      auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
-      if (!AlreadyLoaded)
-        MapLoads.push_back(this->getName());
-      this->IsLoad = !AlreadyLoaded;
-      for (int n = 0; n < VL; ++n) {
-        this->UOP[n] = V[n];
-        if (!VecAssigned) {
-          MapRegToVReg[V[n]->getRegisterValue()] = this->Name;
-        }
-      }
-    };
+    VOperand(int VL, Node *V[]);
 
     /// Return name of VOperand
     std::string getName() { return this->Name; }
 
     /// Printing the vector operand
-    void printAsString() {
-      std::cout << "-------------------------------------" << std::endl;
-      std::cout << "VOperand: " << this->Name << std::endl;
-      for (int i = 0; i < this->Size; ++i)
-        std::cout << "\t" << this->UOP[i]->getValue() << std::endl;
-      std::cout << "-------------------------------------" << std::endl;
-    }
+    void printAsString();
   };
 
   /// Main component of the VectorIR which wraps the selected DAGs based on
@@ -201,7 +168,7 @@ public:
   /// Given a set of operations from the CDAG it computes the vector cost
   static int computeCostVectorOp(int VL, Node *VOps[], Node *VLoadA[],
                                  Node *VLoadB[]);
-};
+}; // namespace macveth
 
 } // namespace macveth
 #endif

@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Mar 31 Dec 2019 17:48:00 MST
+ * Last Modified Date: Mér 01 Xan 2020 15:53:17 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -25,6 +25,9 @@ public:
 
   /// Method to generate an AVX instruction
   SIMDGenerator::SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) override;
+
+  /// Get max width
+  int getMaxWidth() override { return AVX2Gen::MaxWidth; }
 
   /// Destructor
   virtual ~AVX2Gen(){};

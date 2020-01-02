@@ -2,13 +2,13 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Mar 31 Dec 2019 18:07:19 MST
+ * Last Modified Date: Mér 01 Xan 2020 16:12:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Vectorization/SIMD/AVX2Gen.h"
-#include "Vectorization/SIMD/SIMDGenerator.h"
 #include "include/Vectorization/SIMD/CostTable.h"
+#include "include/Vectorization/SIMD/SIMDGenerator.h"
 
 #include <llvm-10/llvm/Config/llvm-config.h>
 #include <regex>

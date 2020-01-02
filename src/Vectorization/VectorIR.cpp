@@ -2,12 +2,10 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Ven 27 Dec 2019 12:29:38 MST
+ * Last Modified Date: Mér 01 Xan 2020 16:11:29 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
-
-#define MOD_DEB "VectorAPI"
 
 // ---------------------------------------------
 void printDebug(std::string M, std::string S) {
@@ -48,6 +46,50 @@ bool isAtomic(int VL, Node *VOps[], Node *VLoad[]) {
 }
 
 // ---------------------------------------------
+bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node *V[]) {
+  for (int n = 0; n < VL; ++n) {
+    if (MapRegToVReg.find(V[n]->getRegisterValue()) == MapRegToVReg.end()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ---------------------------------------------
+void VectorIR::VOperand::printAsString() {
+  std::cout << "-------------------------------------" << std::endl;
+  std::cout << "VOperand: " << this->Name << std::endl;
+  for (int i = 0; i < this->Size; ++i)
+    std::cout << "\t" << this->UOP[i]->getValue() << std::endl;
+  std::cout << "-------------------------------------" << std::endl;
+}
+
+// ---------------------------------------------
+VectorIR::VOperand::VOperand(int VL, Node *V[]) {
+  // Init list of unit operands
+  this->UOP = (Node **)malloc(sizeof(Node *) * VL);
+  // Check if there is a vector assigned for these operands
+  auto VecAssigned = checkIfVectorAssigned(VL, V);
+  this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
+                           : "vop" + std::to_string(VID++);
+
+  std::cout << this->Name << ", " << V[0]->getValue();
+  std::cout << ", " << V[0]->getRegisterValue() << std::endl;
+
+  this->IsTmpResult = VecAssigned;
+  auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
+  if (!AlreadyLoaded)
+    MapLoads.push_back(this->getName());
+  this->IsLoad = !AlreadyLoaded;
+  for (int n = 0; n < VL; ++n) {
+    this->UOP[n] = V[n];
+    if (!VecAssigned) {
+      MapRegToVReg[V[n]->getRegisterValue()] = this->Name;
+    }
+  }
+};
+
+// ---------------------------------------------
 VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
                              Node *VLoadB[])
     : R(VL, VOps), OpA(VL, VLoadA), OpB(VL, VLoadB) {
@@ -55,7 +97,7 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // 1.- Check wheter operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
   if (Seq) {
-    printDebug(MOD_DEB, "Ops are sequential");
+    printDebug("CDAG", "Ops are sequential");
   }
   // 2.- Check if operands have RAW dependencies with output of the operations
   bool RAW_A = rawDependencies(VL, VOps, VLoadA);
@@ -73,7 +115,6 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
                  (!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
     this->VT = VType::MAP;
   } else {
-    // bool Sequential = !Reduction && !Map;
     this->VT = VType::SEQ;
   }
 

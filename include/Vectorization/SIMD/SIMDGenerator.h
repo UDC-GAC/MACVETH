@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Lun 30 Dec 2019 17:35:08 MST
+ * Last Modified Date: Mér 01 Xan 2020 15:07:59 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -56,24 +56,31 @@ public:
   /// Alias for list of SIMDInst structures
   typedef std::list<SIMDInst> SIMDInstListType;
 
-  /// Empty constructor
-  SIMDGenerator(){};
-
-  /// Destructor
-  virtual ~SIMDGenerator(){};
-
   /// Return value when generating new code
   struct SIMDInfo {
     SIMDInstListType SIMDList;
     unsigned int Cost;
   };
 
+  /// Empty constructor
+  SIMDGenerator(){};
+
+  /// Destructor
+  virtual ~SIMDGenerator(){};
+
   /// Generating SIMD instructions from list of vector operations
   virtual SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) = 0;
+
+  /// Get max width
+  virtual int getMaxWidth() = 0;
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
   std::list<std::string> renderSIMDasString(SIMDInfo S);
+
+  /// Map data types to their size in bytes
+  inline static std::map<std::string, int> SizeOf = {
+      {"double", 8}, {"float", 4}, {"char", 1}, {"unsigned int", 4}};
 
 protected:
   /// Add register to declare
