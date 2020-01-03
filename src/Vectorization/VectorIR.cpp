@@ -2,10 +2,12 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Xov 02 Xan 2020 12:58:56 MST
+ * Last Modified Date: Ven 03 Xan 2020 14:56:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
+#include <bits/stdint-uintn.h>
+#include <sys/types.h>
 
 // ---------------------------------------------
 void printDebug(std::string M, std::string S) {
@@ -65,6 +67,34 @@ void VectorIR::VOperand::printAsString() {
 }
 
 // ---------------------------------------------
+int64_t *getMemIdx(int VL, Node *V[]) {
+  int64_t *Idx = (int64_t *)malloc(sizeof(int64_t) * VL);
+  Idx[0] = 0;
+  if (VL <= 1)
+    return Idx;
+  for (int n = 0; n < VL; ++n) {
+    Idx[n + 1] = V[n + 1] - V[n];
+  }
+  return Idx;
+}
+
+// ---------------------------------------------
+unsigned int getShuffle(int VL, int Width, Node *V[]) {
+  unsigned int Shuffle = 0x0;
+  int Bits = Width / 4;
+  for (int n = 0; n < VL; ++n) {
+  }
+
+  return Shuffle;
+}
+
+// ---------------------------------------------
+unsigned int getMask(Node *V[]) {
+  unsigned int Mask = 0x0;
+  return Mask;
+}
+
+// ---------------------------------------------
 VectorIR::VOperand::VOperand(int VL, Node *V[]) {
   // Init list of unit operands
   this->UOP = (Node **)malloc(sizeof(Node *) * VL);
@@ -76,16 +106,37 @@ VectorIR::VOperand::VOperand(int VL, Node *V[]) {
   std::cout << this->Name << ", " << V[0]->getValue();
   std::cout << ", " << V[0]->getRegisterValue() << std::endl;
 
+  // It is a temporal result if it has already been assigned
   this->IsTmpResult = VecAssigned;
   auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
+  // So, if it has not been assigned yet, then we added to the list of loads (or
+  // register that we are going to pack somehow)
   if (!AlreadyLoaded)
     MapLoads.push_back(this->getName());
+  // So if it has not been packed/loaded yet, then we consider it a load
   this->IsLoad = !AlreadyLoaded;
+
+  // Checking if operands are all memory
+  bool IsMemOp = true;
+  // Tracking the operands
   for (int n = 0; n < VL; ++n) {
+    IsMemOp = (IsMemOp) && (V[n]->isMem());
     this->UOP[n] = V[n];
     if (!VecAssigned) {
       MapRegToVReg[V[n]->getRegisterValue()] = this->Name;
     }
+  }
+  this->MemOp = IsMemOp;
+
+  if (this->MemOp) {
+    // Get Memory index
+    this->Idx = getMemIdx(VL, V);
+
+    // Get shuffle index
+    this->Shuffle = getShuffle(VL, this->getWidth(), V);
+
+    // Get data mask
+    this->Mask = getMask(V);
   }
 };
 

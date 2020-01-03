@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Xov 02 Xan 2020 13:26:21 MST
+ * Last Modified Date: Ven 03 Xan 2020 16:10:54 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -14,6 +14,80 @@
 #include <regex>
 
 using namespace macveth;
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
+  SIMDGenerator::SIMDInstListType IL;
+  // Get width as string
+  std::string WidthS = getMapWidth()[V.getWidth()];
+  // Get data type as string
+  std::string DataTypeS = getMapType()[V.getDataType()];
+  // TODO generate prefix
+  std::string PrefS = "";
+  // TODO generate sufix
+  std::string SuffS = "";
+  // Mask
+  PrefS += (V.Mask) ? "mask" : "";
+
+  //// TODO
+  //// Type of load: load/u, gather, set, broadcast
+  //// [1] software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
+  //// [2] https://stackoverflow.com/questions/36191748/difference-between-\
+  //// load1-and-broadcast-intrinsics
+  // std::string Op = "load";
+
+  //// Get the function
+  // std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
+
+  //// Replace fills in pattern
+  // std::string AVXFunc =
+  //    replacePatterns(Pattern, WidthS, DataTypeS, PrefS, SuffS);
+
+  ///// TODO
+  // std::list<std::string> OPS;
+
+  // OPS.push_back(V.UOP[0]->getValue());
+
+  //// Generate function
+  // SIMDGenerator::SIMDInst I(V.getName(), AVXFunc, OPS);
+  return IL;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VOperand V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VOperand V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vadd(VectorIR::VectorOP V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vmul(VectorIR::VectorOP V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vsub(VectorIR::VectorOP V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vdiv(VectorIR::VectorOP V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vmod(VectorIR::VectorOP V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vseq(VectorIR::VectorOP V) {}
 
 // ---------------------------------------------
 void AVX2Gen::populateTable() {
@@ -66,7 +140,8 @@ std::string replacePatterns(std::string Pattern, std::string W, std::string D,
 }
 
 // ---------------------------------------------
-std::string getRegisterType(VectorIR::VDataType DT, VectorIR::VWidth W) {
+std::string AVX2Gen::getRegisterType(VectorIR::VDataType DT,
+                                     VectorIR::VWidth W) {
   std::string Suffix = "";
   if (DT == VectorIR::VDataType::DOUBLE) {
     Suffix = "d";
@@ -77,97 +152,3 @@ std::string getRegisterType(VectorIR::VDataType DT, VectorIR::VWidth W) {
   }
   return "__m" + std::to_string(W) + Suffix;
 }
-
-// ---------------------------------------------
-bool AVX2Gen::genLoadInst(VectorIR::VOperand V,
-                          SIMDGenerator::SIMDInstListType *L) {
-  if (!V.IsLoad) {
-    // TODO maybe it would be OK to perform another action in this case
-    std::cout << "NOT LOAD " << V.Name << std::endl;
-    return false;
-  }
-
-  // Get width as string
-  std::string WidthS = AVX2Gen::MapWidth[V.getWidth()];
-  // Get data type as string
-  std::string DataTypeS = AVX2Gen::MapType[V.getDataType()];
-  // TODO generate prefix
-  std::string PrefS = "";
-  // TODO generate sufix
-  std::string SuffS = "";
-  // Mask
-  PrefS += (V.Mask) ? "mask" : "";
-
-  // TODO
-  // Type of load: load/u, gather, set, broadcast
-  // [1] software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
-  // [2] https://stackoverflow.com/questions/36191748/difference-between-\
-  // load1-and-broadcast-intrinsics
-  std::string Op = "load";
-
-  // Get the function
-  std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
-
-  // Replace fills in pattern
-  std::string AVXFunc =
-      replacePatterns(Pattern, WidthS, DataTypeS, PrefS, SuffS);
-
-  /// TODO
-  std::list<std::string> OPS;
-
-  OPS.push_back(V.UOP[0]->getValue());
-
-  // Generate function
-  SIMDGenerator::SIMDInst I(V.getName(), AVXFunc, OPS);
-  // Update the list
-  L->push_back(I);
-
-  return true;
-}
-
-// ---------------------------------------------
-// SIMDGenerator::SIMDInfo AVX2Gen::genSIMD(std::list<VectorIR::VectorOP> VL) {
-//  SIMDGenerator::SIMDInfo R;
-//
-//  // Once we have the VectorIR (in between a middle IR and a low-level IR),
-//  // for generating the SIMD instructions, we first perform an instruction
-//  // selection which basically performs a pattern matching between the
-//  // operations an creates new SIMD instructions, AVX2 in this case
-//  for (auto V : VL) {
-//    // Get width as string
-//    std::string WidthS = MapWidth[V.VW];
-//    // Get data type as string
-//    std::string DataTypeS = MapType[V.DT];
-//    // FIXME Is it needed prefix?
-//    std::string PrefS = "";
-//    // FIXME Is it needed suffix?
-//    std::string SuffS = "";
-//    // Get name of the function
-//    std::string Pattern = CostTable::getPattern(NArch, V.VN);
-//    // Replace fills in pattern
-//    std::string AVXFunc =
-//        replacePatterns(Pattern, WidthS, DataTypeS, PrefS, SuffS);
-//
-//    VectorIR::VOperand VOpA = V.OpA;
-//    VectorIR::VOperand VOpB = V.OpB;
-//    // Generate load instructions if needed
-//    genLoadInst(VOpA, &R.SIMDList);
-//    genLoadInst(VOpB, &R.SIMDList);
-//
-//    // Generate function
-//    SIMDInst I(V.R.getName(), AVXFunc, {VOpA.getName(), VOpB.getName()});
-//    R.SIMDList.push_back(I);
-//
-//    // Registers used
-//    std::string RegType = getRegisterType(V.DT, V.VW);
-//    SIMDGenerator::addRegToDeclare(RegType, V.R.getName());
-//    SIMDGenerator::addRegToDeclare(RegType, VOpA.getName());
-//    SIMDGenerator::addRegToDeclare(RegType, VOpB.getName());
-//  }
-//
-//  // TODO Peephole optimizations:
-//  // Then optimizations can be done, for instance, combine operatios such as
-//  // addition + multiplication
-//
-//  return R;
-//}

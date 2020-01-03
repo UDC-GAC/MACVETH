@@ -2,7 +2,7 @@
  * File              : MVExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Ven 27 Dec 2019 13:21:17 MST
+ * Last Modified Date: Ven 03 Xan 2020 13:12:35 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -39,9 +39,6 @@
 using namespace clang;
 
 namespace macveth {
-
-/// This type defines the IdxVector for MVExprArrays
-typedef std::list<std::string> IdxVector;
 
 /// This class holds a double identity for expressions: a string name (for
 /// debugging purposes and for clarity) and the actual Clang Expr, for
@@ -91,7 +88,7 @@ public:
   /// Set clang::Expr attribute
   void setClangExpr(clang::Expr *ClangExpr) { this->ClangExpr = ClangExpr; }
   /// Get clang::Expr attribute
-  clang::Expr *getClangExpr() { return this->ClangExpr; }
+  clang::Expr *getClangExpr() const { return this->ClangExpr; }
 
   /// Set type as a string
   void setTypeStr(std::string TypeStr) { this->TypeStr = TypeStr; }

@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Xov 02 Xan 2020 12:48:58 MST
+ * Last Modified Date: Ven 03 Xan 2020 15:45:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -109,6 +109,8 @@ public:
     /// FIXME Width of this operand
     VWidth Width = VWidth::W256;
     /// Mask for shuffling if necessary
+    int64_t *Idx;
+    /// Mask for shuffling if necessary
     unsigned int Shuffle = 0x0;
     /// Mask to avoid elements if necessary
     unsigned int Mask = 0x0;
@@ -117,6 +119,8 @@ public:
     bool IsTmpResult = false;
     /// Vector operand could be a load if it is not a temporal result
     bool IsLoad = false;
+    /// Vector UOPs are memory addresses
+    bool MemOp = false;
     /// Vector operand may be a store in memory operation
     bool IsStore = false;
 
@@ -132,14 +136,14 @@ public:
       return CTypeToVDataType[this->UOP[0]->getDataType()];
     }
 
-    /// Basic constructor
-    VOperand(int VL, Node *V[]);
-
     /// Return name of VOperand
     std::string getName() { return this->Name; }
 
     /// Printing the vector operand
     void printAsString();
+
+    /// Basic constructor
+    VOperand(int VL, Node *V[]);
   };
 
   /// Main component of the VectorIR which wraps the selected DAGs based on

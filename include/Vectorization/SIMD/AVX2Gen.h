@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Xov 02 Xan 2020 15:04:43 MST
+ * Last Modified Date: Ven 03 Xan 2020 16:04:07 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -24,28 +24,65 @@ public:
   /// Name of the ISA
   static inline std::string NISA = "AVX2";
 
-  /// Method to generate an AVX instruction
-  // SIMDGenerator::SIMDInfo genSIMD(std::list<VectorIR::VectorOP> V) override;
+  // Operand operations
+
+  /// Pack memory operands
+  virtual SIMDInstListType vpack(VectorIR::VOperand V) override;
+  /// Broadcast values
+  virtual SIMDInstListType vbcast(VectorIR::VOperand V) override;
+  /// Gather data from memory
+  virtual SIMDInstListType vgather(VectorIR::VOperand V) override;
+  /// Set values to registers
+  virtual SIMDInstListType vset(VectorIR::VOperand V) override;
+  /// Store values in memory
+  virtual SIMDInstListType vstore(VectorIR::VOperand V) override;
+  /// Store values in memory using an index
+  virtual SIMDInstListType vscatter(VectorIR::VOperand V) override;
+
+  // Binary operations
+
+  /// Multiplication operation
+  virtual SIMDInstListType vmul(VectorIR::VectorOP V) override;
+  /// Substraction operation
+  virtual SIMDInstListType vsub(VectorIR::VectorOP V) override;
+  /// Add operation
+  virtual SIMDInstListType vadd(VectorIR::VectorOP V) override;
+  /// Division operation
+  virtual SIMDInstListType vdiv(VectorIR::VectorOP V) override;
+  /// Modulo operation
+  virtual SIMDInstListType vmod(VectorIR::VectorOP V) override;
+
+  // Reduction operations
+
+  virtual SIMDInstListType vreduce(VectorIR::VectorOP V) override;
+
+  // Sequential operation
+
+  virtual SIMDInstListType vseq(VectorIR::VectorOP V) override;
 
   /// Get name of AVX architecture
-  std::string getNArch() override { return AVX2Gen::NArch; }
+  virtual std::string getNArch() override { return AVX2Gen::NArch; }
 
   /// Get name of AVX architecture
-  std::string getNISA() override { return AVX2Gen::NISA; }
+  virtual std::string getNISA() override { return AVX2Gen::NISA; }
 
   /// Get the traslation between VectorIR data widths and AVX2's
-  std::map<VectorIR::VWidth, std::string> getMapWidth() override {
+  virtual std::map<VectorIR::VWidth, std::string> getMapWidth() override {
     return MapWidth;
   }
 
   /// Get the traslation between VectorIR data types and AVX2's
-  std::map<VectorIR::VDataType, std::string> getMapType() override {
+  virtual std::map<VectorIR::VDataType, std::string> getMapType() override {
     return MapType;
   }
 
   /// Get max width
-  int getMaxWidth() override { return AVX2Gen::MaxWidth; }
+  virtual int getMaxWidth() override { return AVX2Gen::MaxWidth; }
 
+  /// Get the type of register according to the VDataType and VWidth. This
+  /// method is abstract because each architecture may have different types.
+  virtual std::string getRegisterType(VectorIR::VDataType DT,
+                                      VectorIR::VWidth W) override;
   /// Destructor
   virtual ~AVX2Gen(){};
 
