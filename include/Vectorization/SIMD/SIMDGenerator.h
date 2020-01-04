@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Ven 03 Xan 2020 15:47:32 MST
+ * Last Modified Date: Sáb 04 Xan 2020 10:19:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -24,17 +24,51 @@ namespace macveth {
 /// operations provided by the VectorAPI
 class SIMDGenerator {
 public:
+  /// Types of SIMD instructions
+  enum SIMDType {
+    /// Load, pack memory addresses
+    VPACK,
+    /// Broadcast values
+    VBCAST,
+    /// Gather values from memory
+    VGATHER,
+    /// Set values
+    VSET,
+    /// Store values in contiguous memory
+    VSTORE,
+    /// Store values in a scattered fashion
+    VSCATTER,
+    /// Multiplication
+    VMUL,
+    /// Addition
+    VADD,
+    /// Substraction
+    VSUB,
+    /// Division
+    VDIV,
+    /// Modulo
+    VMOD,
+    /// Reduce operation
+    VREDUC,
+    /// Sequential operation
+    VSEQ
+  };
+
   /// Wrap for representing the SIMDInst not just as single strings to print,
   /// but as a set of fields
   struct SIMDInst {
     /// Result register name
     std::string Result;
-    /// Body of the function
+    /// Signature of the function
     std::string FuncName;
+    /// Type of the function
+    SIMDType SType;
     /// List of *sorted* arguments of the function
     std::list<std::string> OPS;
     /// TODO list of instructions needed?
     std::list<SIMDInst> DependsOn;
+    /// Cost of the instruction
+    int Cost = 0;
 
     /// Render instruction as a string
     std::string render();
@@ -117,7 +151,7 @@ public:
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
-  std::list<std::string> renderSIMDasString(SIMDInfo S);
+  std::list<std::string> renderSIMDasString(SIMDInstListType S);
 
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);

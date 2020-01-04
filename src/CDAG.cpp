@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Ven 03 Xan 2020 16:00:07 MST
+ * Last Modified Date: Sáb 04 Xan 2020 10:20:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -120,10 +120,10 @@ repeat:
   }
 
   SIMDGenerator::SIMDInstListType S = AVX->getSIMDfromVectorOP(VList);
-  // std::list<std::string> Ins = AVX->renderSIMDasString(S);
-  // for (auto I : Ins) {
-  //   std::cout << I << std::endl;
-  // }
+  std::list<std::string> Ins = AVX->renderSIMDasString(S);
+  for (auto I : Ins) {
+    std::cout << I << std::endl;
+  }
 
   return TotalCost;
 }

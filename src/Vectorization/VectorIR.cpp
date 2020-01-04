@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Ven 03 Xan 2020 14:56:53 MST
+ * Last Modified Date: Sáb 04 Xan 2020 10:06:46 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -89,7 +89,7 @@ unsigned int getShuffle(int VL, int Width, Node *V[]) {
 }
 
 // ---------------------------------------------
-unsigned int getMask(Node *V[]) {
+unsigned int getMask(int VL, Node *V[]) {
   unsigned int Mask = 0x0;
   return Mask;
 }
@@ -136,7 +136,7 @@ VectorIR::VOperand::VOperand(int VL, Node *V[]) {
     this->Shuffle = getShuffle(VL, this->getWidth(), V);
 
     // Get data mask
-    this->Mask = getMask(V);
+    this->Mask = getMask(VL, V);
   }
 };
 

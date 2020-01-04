@@ -2,12 +2,11 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Ven 03 Xan 2020 15:58:41 MST
+ * Last Modified Date: Sáb 04 Xan 2020 10:43:58 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
-#include "Vectorization/VectorIR.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 
 using namespace macveth;
@@ -19,14 +18,13 @@ std::string SIMDGenerator::SIMDInst::render() {
   std::list<std::string>::iterator Op;
   int i = 0;
   for (Op = OPS.begin(); Op != OPS.end(); ++Op) {
-    FullFunc += (i++ == (OPS.size() - 1)) ? *Op : (*Op + ", ");
+    FullFunc += (i++ == (OPS.size() - 1)) ? (*Op + ")") : (*Op + ", ");
   }
-  FullFunc += ")";
   return FullFunc;
 }
 
 // ---------------------------------------------
-std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInfo S) {
+std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
   std::list<std::string> L;
   // Render register declarations
   for (auto It = SIMDGenerator::RegDeclared.begin();
@@ -43,7 +41,7 @@ std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInfo S) {
   // actual instructions
   L.push_back("\n");
   // Render instructions
-  for (SIMDInst I : S.SIMDList) {
+  for (SIMDInst I : S) {
     L.push_back(I.render() + ";");
   }
   return L;
@@ -93,6 +91,7 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
 
   return true;
 }
+
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
@@ -109,7 +108,7 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   std::string WidthS = getMapWidth()[V.VW];
   // Get data type as string
   std::string DataTypeS = getMapType()[V.DT];
-  // FIXME Is it needed prefix?
+  // FIXME Is it needed preffix?
   std::string PrefS = "";
   // FIXME Is it needed suffix?
   std::string SuffS = "";

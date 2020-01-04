@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Ven 03 Xan 2020 15:45:37 MST
+ * Last Modified Date: Ven 03 Xan 2020 17:38:17 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -106,6 +106,8 @@ public:
     /// Array of variable size (Size elements actually) initialized when
     /// creating the object
     Node **UOP = nullptr;
+    /// FIXME Data type
+    VDataType Data = VDataType::DOUBLE;
     /// FIXME Width of this operand
     VWidth Width = VWidth::W256;
     /// Mask for shuffling if necessary
@@ -123,25 +125,19 @@ public:
     bool MemOp = false;
     /// Vector operand may be a store in memory operation
     bool IsStore = false;
-
     /// Check if there is a vector already assigned wraping the same values
     bool checkIfVectorAssigned(int VL, Node *V[]);
-
     /// Get width
     VWidth getWidth() { return Width; }
-
     /// Get data type of the operand: assumption that all elements are the same
     /// type
     VDataType getDataType() {
       return CTypeToVDataType[this->UOP[0]->getDataType()];
     }
-
     /// Return name of VOperand
     std::string getName() { return this->Name; }
-
     /// Printing the vector operand
     void printAsString();
-
     /// Basic constructor
     VOperand(int VL, Node *V[]);
   };

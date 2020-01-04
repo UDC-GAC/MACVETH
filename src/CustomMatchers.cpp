@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 30 Dec 2019 12:34:11 MST
+ * Last Modified Date: Sáb 04 Xan 2020 10:24:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -51,7 +51,7 @@ void matchers_utils::IterationHandler::run(
   std::cout << "CDAG done" << std::endl;
   CDAG::computeFreeSchedule(G);
   CDAG::computeCostModel(G);
-  SWrap->translateTacToIntrinsics();
+  // SWrap->translateTacToIntrinsics();
   int NLevel = 1;
   /// Unroll factor applied to the for header
   // for (int Inc = NLevel; Inc > 0; --Inc) {

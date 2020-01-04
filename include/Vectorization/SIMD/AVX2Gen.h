@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Ven 03 Xan 2020 16:04:07 MST
+ * Last Modified Date: Sáb 04 Xan 2020 09:48:11 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -90,6 +90,11 @@ public:
   AVX2Gen() : SIMDGenerator() { AVX2Gen::populateTable(); }
 
 private:
+  /// Auxiliar function for adding the SIMDInst to the list
+  void addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
+                   std::string SuffS, std::list<std::string> OPS,
+                   SIMDGenerator::SIMDType SType,
+                   SIMDGenerator::SIMDInstListType *IL);
   /// Populate the table only when creating the object, to avoid overloading the
   /// memory from the start
   static void populateTable();
