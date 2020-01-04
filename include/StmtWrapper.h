@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 30 Dec 2019 14:11:52 MST
+ * Last Modified Date: Sáb 04 Xan 2020 13:22:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -44,15 +44,12 @@ using namespace macveth::matchers_utils;
 
 namespace macveth {
 
-typedef std::list<TAC> TacListType;
-
 /// StmtWrapper, as its name suggests, wraps statements, its TAC representation
 /// and the desired intrinsic translation
 class StmtWrapper {
 public:
   /// Helper structure to handle the loop information for this statement
   struct LoopInfo {
-    typedef std::list<LoopInfo> LoopList;
     /// Name of dimension
     std::string Dim;
     /// Initial value (-1 if not known)
@@ -60,46 +57,19 @@ public:
     /// Upperbound value (-1 if not known)
     long UpperBound = 0;
 
-    static LoopList getLoopList(const MatchFinder::MatchResult &Result) {
-      LoopList L;
-      int n = 1;
-      const clang::ForStmt *ForLoop =
-          Result.Nodes.getNodeAs<clang::ForStmt>("forLoop" + std::to_string(n));
-      while (ForLoop != nullptr) {
-        LoopInfo Loop;
-        // Get name of variable
-        const VarDecl *V = Result.Nodes.getNodeAs<clang::VarDecl>(
-            varnames::NameVarInit + std::to_string(n));
-        Loop.Dim = V->getNameAsString();
-        // Get init val
-        const clang::Expr *initializerExpr = V->getInit();
-        clang::Expr::EvalResult R;
-        if (initializerExpr->EvaluateAsInt(R, *Utils::getCtx())) {
-          Loop.InitVal = (long)R.Val.getInt().getExtValue();
-        }
-
-        // Get UpperBound
-        const Expr *UpperBoundExpr = Result.Nodes.getNodeAs<clang::Expr>(
-            varnames::UpperBound + std::to_string(n));
-        if (UpperBoundExpr != nullptr) {
-          Loop.UpperBound =
-              Utils::getIntFromExpr(UpperBoundExpr, Utils::getCtx());
-        }
-        L.push_back(Loop);
-        // Check if next loop
-        ForLoop = Result.Nodes.getNodeAs<clang::ForStmt>("forLoop" +
-                                                         std::to_string(++n));
-        Loop.print();
-      }
-      return L;
-    }
-
+    /// For debugging purposes
     void print() {
       std::cout << "[LOOP] " << Dim
                 << "; init val = " << std::to_string(InitVal)
                 << ", upperbound = " << std::to_string(UpperBound) << std::endl;
     }
   };
+
+  /// LoopInfo list type
+  typedef std::list<LoopInfo> LoopList;
+
+  /// From the result of a matcher it gets the loop hierarchy
+  static LoopList getLoopList(const MatchFinder::MatchResult &Result);
 
   /// Types of statements we differentiate when creating them
   enum StmtType { REDUCTION, VECTORIZABLE };
@@ -118,12 +88,13 @@ public:
     }
 
     /// Get loop information
-    this->LoopL = LoopInfo::getLoopList(Result);
+    this->LoopL = getLoopList(Result);
     this->S = (Stmt *)BinOp;
     this->setStmtType(StmtWrapper::getStmtType(BinOp));
     TAC::binaryOperator2TAC(BinOp, &this->TacList, -1);
     this->TacList.reverse();
   }
+  /// Constructor from BinaryOperator
   StmtWrapper(const BinaryOperator *S) {
     this->S = (Stmt *)S;
     this->setStmtType(StmtWrapper::getStmtType(S));
@@ -135,48 +106,58 @@ public:
     std::cout << "--------------------\n" << std::flush;
   };
 
-  /// Getters and setters
+  /// Given a statement, it is able to determine wherever it is or not a
+  /// reduction
   static StmtType getStmtType(const BinaryOperator *S);
   StmtType getStmtType() { return this->ST; }
   void setStmtType(StmtType ST) { this->ST = ST; }
 
   /// Translator
-  void translateTacToIntrinsics() {
-    this->InstList = IntrinsicsInsGen::translateTAC(this->getTacList());
-    /// FIXME
-    /// Horrible code, horrible hack...
-    if (this->getStmtType() == StmtType::REDUCTION) {
-      TacListType T;
-      /// Create an unaltered TacList again in order to get the original
-      /// operands
-      TAC::binaryOperator2TAC((BinaryOperator *)this->getStmt(), &T, -1);
-      MVExpr In = this->getTacList().back().getA();
-      T.reverse();
-      MVExpr Out = T.back().getA();
-      this->InstList.push_back(IntrinsicsInsGen::reduceVector(&In, &Out));
-    }
-  }
+  // void translateTacToIntrinsics() {
+  //  this->InstList = IntrinsicsInsGen::translateTAC(this->getTacList());
+  //  /// FIXME
+  //  /// Horrible code, horrible hack...
+  //  if (this->getStmtType() == StmtType::REDUCTION) {
+  //    TacListType T;
+  //    /// Create an unaltered TacList again in order to get the original
+  //    /// operands
+  //    TAC::binaryOperator2TAC((BinaryOperator *)this->getStmt(), &T, -1);
+  //    MVExpr In = this->getTacList().back().getA();
+  //    T.reverse();
+  //    MVExpr Out = T.back().getA();
+  //    this->InstList.push_back(IntrinsicsInsGen::reduceVector(&In, &Out));
+  //  }
+  //}
 
-  /// Unroll
+  /// Perform unrolling for a given statement given its unroll factor and the
+  /// upperbound of the loop
   void unroll(int UnrollFactor, int UpperBound);
   void unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
   void unrollAndJam(long UnrollFactor, long UpperBoundFallback = 4);
 
-  /// Getters and setters
+  /// Get LoopInfo
+  LoopList getLoopInfo() { return this->LoopL; }
+
+  /// Get instruction list
   std::list<InstListType> getInstList() { return this->InstList; };
+  /// Set instruction list
   void setInstList(std::list<InstListType> InstList) {
     this->InstList = InstList;
   };
+  /// Get Clang Stmt
   Stmt *getStmt() { return this->S; };
+  /// Set Clang Stmt
   void setStmt(Stmt *S) { this->S = S; };
+  /// Get TAC list
   TacListType getTacList() { return this->TacList; };
+  /// Set TAC lsit
   void setTacList(TacListType TacList) { this->TacList = TacList; };
 
 private:
   /// Statement holded
   Stmt *S;
   /// Loop list
-  LoopInfo::LoopList LoopL;
+  LoopList LoopL;
   /// Type of statement; we only address those which are of our interest
   StmtType ST;
   /// TAC list with regard to the Statement S

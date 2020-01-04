@@ -2,12 +2,14 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Sáb 04 Xan 2020 10:43:58 MST
+ * Last Modified Date: Sáb 04 Xan 2020 11:34:21 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
 #include "include/Vectorization/SIMD/CostTable.h"
+
+#include <regex>
 
 using namespace macveth;
 
@@ -151,6 +153,29 @@ void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name) {
   if (!Utils::contains(SIMDGenerator::RegDeclared[Type], Name)) {
     SIMDGenerator::RegDeclared[Type].push_back(Name);
   }
+}
+
+// ---------------------------------------------
+std::string replacePattern(std::string P, std::regex R, std::string Rep) {
+  return std::regex_replace(P, R, Rep);
+}
+
+// ---------------------------------------------
+std::string SIMDGenerator::replacePatterns(std::string Pattern, std::string W,
+                                           std::string D, std::string P,
+                                           std::string S) {
+  std::regex WidthRegex("(#W)");
+  std::regex DataRegex("(#D)");
+  std::regex PreRegex("(#P)");
+  std::regex SuffRegex("(#S)");
+  std::string NewFunc = Pattern;
+
+  NewFunc = replacePattern(NewFunc, WidthRegex, W);
+  NewFunc = replacePattern(NewFunc, DataRegex, D);
+  NewFunc = replacePattern(NewFunc, PreRegex, P);
+  NewFunc = replacePattern(NewFunc, SuffRegex, S);
+
+  return NewFunc;
 }
 
 // ---------------------------------------------

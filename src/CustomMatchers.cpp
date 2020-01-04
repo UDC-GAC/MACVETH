@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Sáb 04 Xan 2020 10:24:37 MST
+ * Last Modified Date: Sáb 04 Xan 2020 12:00:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,7 +29,9 @@
 #include "include/CustomMatchers.h"
 #include "include/CDAG.h"
 #include "include/StmtWrapper.h"
+
 #include "clang/ASTMatchers/ASTMatchers.h"
+
 #include <iostream>
 #include <string>
 
@@ -39,20 +41,31 @@ typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 void matchers_utils::IterationHandler::run(
     const MatchFinder::MatchResult &Result) {
 
+  // In this stage, we create a StmtWrapper, which will hold all the
+  // information relative to the desired pattern found
   StmtWrapper *SWrap = new StmtWrapper(Result);
 
+  // FIXME
+  // Unroll stage: we need to set this paremeter other way, maybe using pragmas
+  // or using CLI
   int UnrollFactor = 1;
-  // SWrap->unroll(UnrollFactor, 6, V->getNameAsString());
   SWrap->unrollAndJam(UnrollFactor);
+
+  // Debugging
   for (TAC t : SWrap->getTacList())
     t.printTAC();
+
+  // Creating the CDAG
   std::cout << "Creating CDAG" << std::endl;
   CDAG *G = CDAG::createCDAGfromTAC(SWrap->getTacList());
   std::cout << "CDAG done" << std::endl;
+
+  // Computing the free schedule of the CDAG created
   CDAG::computeFreeSchedule(G);
+
+  // Computing the cost model of the CDAG created
   CDAG::computeCostModel(G);
-  // SWrap->translateTacToIntrinsics();
-  int NLevel = 1;
+
   /// Unroll factor applied to the for header
   // for (int Inc = NLevel; Inc > 0; --Inc) {
   //  const UnaryOperator *IncVarPos =

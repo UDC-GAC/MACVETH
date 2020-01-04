@@ -2,7 +2,7 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Mar 24 Dec 2019 14:43:55 MST
+ * Last Modified Date: Sáb 04 Xan 2020 13:21:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -12,6 +12,7 @@
 #include <stdio.h>
 
 #include "include/Node.h"
+#include "include/TAC.h"
 #include "include/Utils.h"
 #include "include/Vectorization/VectorIR.h"
 

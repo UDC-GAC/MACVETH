@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 18 Dec 2019 13:57:50 MST
+ * Last Modified Date: Sáb 04 Xan 2020 13:22:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -112,6 +112,9 @@ private:
   /// Operation of the TAC
   clang::BinaryOperator::Opcode OP;
 };
+
+/// List of TACs
+typedef std::list<TAC> TacListType;
 
 } // namespace macveth
 #endif

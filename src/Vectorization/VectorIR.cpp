@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Sáb 04 Xan 2020 10:06:46 MST
+ * Last Modified Date: Sáb 04 Xan 2020 11:27:46 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -68,6 +68,7 @@ void VectorIR::VOperand::printAsString() {
 
 // ---------------------------------------------
 int64_t *getMemIdx(int VL, Node *V[]) {
+  // FIXME
   int64_t *Idx = (int64_t *)malloc(sizeof(int64_t) * VL);
   Idx[0] = 0;
   if (VL <= 1)
@@ -80,6 +81,7 @@ int64_t *getMemIdx(int VL, Node *V[]) {
 
 // ---------------------------------------------
 unsigned int getShuffle(int VL, int Width, Node *V[]) {
+  // TODO
   unsigned int Shuffle = 0x0;
   int Bits = Width / 4;
   for (int n = 0; n < VL; ++n) {
@@ -90,6 +92,7 @@ unsigned int getShuffle(int VL, int Width, Node *V[]) {
 
 // ---------------------------------------------
 unsigned int getMask(int VL, Node *V[]) {
+  // TODO
   unsigned int Mask = 0x0;
   return Mask;
 }
@@ -101,10 +104,12 @@ VectorIR::VOperand::VOperand(int VL, Node *V[]) {
   // Check if there is a vector assigned for these operands
   auto VecAssigned = checkIfVectorAssigned(VL, V);
   this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
-                           : "vop" + std::to_string(VID++);
+                           : "VOp" + std::to_string(VID++);
 
-  std::cout << this->Name << ", " << V[0]->getValue();
-  std::cout << ", " << V[0]->getRegisterValue() << std::endl;
+  ///////////////////////////////////////////////////////////
+  // std::cout << this->Name << ", " << V[0]->getValue();
+  // std::cout << ", " << V[0]->getRegisterValue() << std::endl;
+  ///////////////////////////////////////////////////////////
 
   // It is a temporal result if it has already been assigned
   this->IsTmpResult = VecAssigned;
@@ -128,22 +133,23 @@ VectorIR::VOperand::VOperand(int VL, Node *V[]) {
   }
   this->MemOp = IsMemOp;
 
+  // Get data mask
+  this->Mask = getMask(VL, V);
+
+  // In case we have to access to memory we are also interested in how we do it:
+  // if we have to use an index for it, or if we have to shuffle data
   if (this->MemOp) {
     // Get Memory index
     this->Idx = getMemIdx(VL, V);
 
     // Get shuffle index
     this->Shuffle = getShuffle(VL, this->getWidth(), V);
-
-    // Get data mask
-    this->Mask = getMask(VL, V);
   }
 };
 
 // ---------------------------------------------
-VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
-                             Node *VLoadB[])
-    : R(VL, VOps), OpA(VL, VLoadA), OpB(VL, VLoadB) {
+VectorIR::VType getVectorType(int VL, Node *VOps[], Node *VLoadA[],
+                              Node *VLoadB[]) {
   // Premises of our algorithm
   // 1.- Check wheter operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
@@ -161,13 +167,21 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // Type of VectorOP
   if (bool Reduction =
           (Seq) && ((RAW_A) || (RAW_B)) && (!(Atomic_A && Atomic_B))) {
-    this->VT = VType::REDUCE;
+    return VectorIR::VType::REDUCE;
   } else if (bool Map =
                  (!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
-    this->VT = VType::MAP;
+    return VectorIR::VType::MAP;
   } else {
-    this->VT = VType::SEQ;
+    return VectorIR::VType::SEQ;
   }
+}
+
+// ---------------------------------------------
+VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
+                             Node *VLoadB[])
+    : R(VL, VOps), OpA(VL, VLoadA), OpB(VL, VLoadB) {
+
+  this->VT = getVectorType(VL, VOps, VLoadA, VLoadB);
 
   // Name: operation (assuming all operations have the same value, which is a
   // valid assumption)
