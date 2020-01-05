@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Sáb 04 Xan 2020 22:12:39 MST
+ * Last Modified Date: Dom 05 Xan 2020 10:23:10 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -59,6 +59,8 @@ public:
   struct OutputInfo {
     /// Name of the register or memory variable as output
     std::string Name = "";
+    /// MVExpr of output
+    MVExpr *E;
     /// If the target variable is in memory it will be a MEM_STORE; TEMP_STORE
     /// the other way
     OutputType Type = MEM_STORE;
@@ -71,6 +73,7 @@ public:
   /// Get the output info given a TAC
   OutputInfo getOutputInfo(TAC T) {
     OutputInfo O;
+    O.E = T.getA();
     O.Name = T.getA()->getExprStr();
     O.Type = (T.getOP() == BinaryOperator::Opcode::BO_Assign) ? MEM_STORE
                                                               : TEMP_STORE;
@@ -151,7 +154,9 @@ public:
   SchedInfo getSchedInfo() { return this->SI; }
 
   /// Get data type of MVExpr as string
-  std::string getDataType() { return this->MV->getTypeStr(); }
+  std::string getDataType() {
+    return (this->MV == nullptr) ? O.E->getTypeStr() : MV->getTypeStr();
+  }
 
   /// Checks if output list is zero
   bool hasOutNodes();

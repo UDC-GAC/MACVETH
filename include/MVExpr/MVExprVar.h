@@ -2,7 +2,7 @@
  * File              : MVExprVar.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Xov 12 Dec 2019 10:05:01 MST
- * Last Modified Date: Mér 18 Dec 2019 14:22:58 MST
+ * Last Modified Date: Dom 05 Xan 2020 13:20:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_MVEXPRVAR_H
@@ -29,7 +29,7 @@ public:
     }
   }
   virtual MVExpr *unrollExpr(int UF, std::string LL);
-  virtual MVExpr *unrollExpr(std::unordered_map<int, std::string> LList);
+  // virtual MVExpr *unrollExpr(std::unordered_map<int, std::string> LList);
 };
 
 } // namespace macveth

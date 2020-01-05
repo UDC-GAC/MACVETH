@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Sáb 04 Xan 2020 09:48:11 MST
+ * Last Modified Date: Dom 05 Xan 2020 09:59:34 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -67,13 +67,13 @@ public:
   virtual std::string getNISA() override { return AVX2Gen::NISA; }
 
   /// Get the traslation between VectorIR data widths and AVX2's
-  virtual std::map<VectorIR::VWidth, std::string> getMapWidth() override {
-    return MapWidth;
+  virtual std::string getMapWidth(VectorIR::VWidth V) override {
+    return MapWidth[V];
   }
 
   /// Get the traslation between VectorIR data types and AVX2's
-  virtual std::map<VectorIR::VDataType, std::string> getMapType() override {
-    return MapType;
+  virtual std::string getMapType(VectorIR::VDataType D) override {
+    return MapType[D];
   }
 
   /// Get max width

@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Sáb 04 Xan 2020 11:34:24 MST
+ * Last Modified Date: Dom 05 Xan 2020 12:59:47 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -11,6 +11,8 @@
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
 
 using namespace macveth;
+
+void printDebb(std::string S) { std::cout << "[AVX2] " << S << std::endl; }
 
 // ---------------------------------------------
 void AVX2Gen::populateTable() {
@@ -63,16 +65,27 @@ void AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op,
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
+  // printDebb(Pattern);
+  // printDebb(PrefS);
+  // printDebb(SuffS);
+  // printDebb(getMapWidth(V.getWidth()));
+  // printDebb(getMapType(V.getDataType()));
+
   // Replace fills in pattern
   std::string AVXFunc =
-      replacePatterns(Pattern, getMapWidth()[V.getWidth()],
-                      getMapType()[V.getDataType()], PrefS, SuffS);
+      replacePatterns(Pattern, getMapWidth(V.getWidth()),
+                      getMapType(V.getDataType()), PrefS, SuffS);
+
+  printDebb(AVXFunc);
+
   // Generate SIMD inst
   SIMDGenerator::SIMDInst I(V.getName(), AVXFunc, OPS);
 
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
   I.SType = SType;
+
+  printDebb(I.render());
 
   // Adding instruction to the list
   IL->push_back(I);
@@ -360,15 +373,23 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   std::string PrefS = "";
   // TODO generate suffix
   std::string SuffS = "";
+  // List of parameters
+  std::list<std::string> OPS;
   // Mask
   // PrefS += (V.Mask) ? "mask" : "";
 
   // TODO
-  std::string Op = "vreduce";
+  std::string Op = V.VN;
+  printDebb(Op);
+  /// Algorithm overview
+  /// ymm0 = _mm256_loadu_pd(indata);
+  /// ymm1 = _mm256_permute_pd(ymm0, 0x05);
+  /// ymm2 = _mm256_#OP#_pd(ymm0, ymm1);
+  /// ymm3 = _mm256_permute2f128_pd(ymm2, ymm2, 0x01);
+  /// ymm4 = _mm256_#OP#_pd(ymm2, ymm3);
+  /// [OPT] _mm256_storeu_pd(outdata, ymm4);
 
   // TODO check
-  // List of parameters
-  std::list<std::string> OPS;
   OPS.push_back(V.OpA.getName());
   OPS.push_back(V.OpB.getName());
 

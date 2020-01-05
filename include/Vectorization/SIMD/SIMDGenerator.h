@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Sáb 04 Xan 2020 21:57:46 MST
+ * Last Modified Date: Dom 05 Xan 2020 11:11:38 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -111,11 +111,19 @@ public:
 
   // Binary operations
 
+  /// Generate multiplication operations
   virtual SIMDInstListType vmul(VectorIR::VectorOP V) = 0;
+  /// Generate subtraction operations
   virtual SIMDInstListType vsub(VectorIR::VectorOP V) = 0;
+  /// Generate addition operations
   virtual SIMDInstListType vadd(VectorIR::VectorOP V) = 0;
+  /// Generate division operations
   virtual SIMDInstListType vdiv(VectorIR::VectorOP V) = 0;
+  /// Generate modulo operations
   virtual SIMDInstListType vmod(VectorIR::VectorOP V) = 0;
+
+  // TODO basic math functions
+  // TODO trigonometric functions
 
   // Reduction operations
 
@@ -144,10 +152,10 @@ public:
   virtual std::string getNArch() = 0;
 
   /// Map of VectorIR widths to the concrete architecture
-  virtual std::map<VectorIR::VWidth, std::string> getMapWidth() = 0;
+  virtual std::string getMapWidth(VectorIR::VWidth V) = 0;
 
   /// Map of VectorIR types to the concrete architecture
-  virtual std::map<VectorIR::VDataType, std::string> getMapType() = 0;
+  virtual std::string getMapType(VectorIR::VDataType D) = 0;
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line

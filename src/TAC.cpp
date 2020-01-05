@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Mér 18 Dec 2019 13:32:46 MST
+ * Last Modified Date: Dom 05 Xan 2020 13:40:33 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -33,6 +33,9 @@
 
 using namespace clang;
 using namespace macveth;
+
+// ---------------------------------------------
+void TAC::exprToTAC(const clang::Expr *S, std::list<TAC> *TacList, int Val) {}
 
 // ---------------------------------------------
 void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
@@ -87,34 +90,6 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
 }
 
 // ---------------------------------------------
-TAC *TAC::unroll(TAC *Tac, int UnrollFactor, unsigned int mask) {
-  int UnrollA =
-      UnrollFactor + UnrollFactor * ((mask & TAC::MASK_OP_A) >> TAC::BITS_OP_A);
-  int UnrollB =
-      UnrollFactor + UnrollFactor * ((mask & TAC::MASK_OP_B) >> TAC::BITS_OP_B);
-  int UnrollC =
-      UnrollFactor + UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
-  TAC *UnrolledTac =
-      new TAC((*(Tac->getA()) + UnrollA), (*(Tac->getB()) + UnrollB),
-              (*(Tac->getC()) + UnrollC), Tac->getOP());
-  return UnrolledTac;
-}
-
-// ---------------------------------------------
-TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask) {
-  int UnrollA = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_A) >> TAC::BITS_OP_A);
-  int UnrollB = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_B) >> TAC::BITS_OP_B);
-  int UnrollC = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
-  TAC *UnrolledTac =
-      new TAC((*(Tac->getA()) + UnrollA), (*(Tac->getB()) + UnrollB),
-              (*(Tac->getC()) + UnrollC), Tac->getOP());
-  return UnrolledTac;
-}
-
-// ---------------------------------------------
 TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                  std::string LoopLevel) {
   int UnrollA = S * UnrollFactor +
@@ -123,6 +98,9 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                 UnrollFactor * ((mask & TAC::MASK_OP_B) >> TAC::BITS_OP_B);
   int UnrollC = S * UnrollFactor +
                 UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
+  // std::cout << "A = " << std::to_string(UnrollA)
+  //          << "; B = " << std::to_string(UnrollB)
+  //          << "; C = " << std::to_string(UnrollC) << std::endl;
   TAC *UnrolledTac =
       new TAC(Tac->getA()->unrollExpr(UnrollA, LoopLevel),
               Tac->getB()->unrollExpr(UnrollB, LoopLevel),
@@ -135,52 +113,18 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
                                   int UpperBound, unsigned int MaskList[],
                                   std::string LoopLevel) {
   std::list<TAC> TacListOrg;
-  int steps = UpperBound / UnrollFactor;
-  for (int s = 0; s < steps; ++s) {
+  int Steps = UpperBound / UnrollFactor;
+  for (int S = 0; S < Steps; ++S) {
     // FIXME
     int Mask = 0;
     for (TAC Tac : TacList) {
-      // Skip stores until the end
-      if ((!BOtoValue[Tac.getOP()].compare("store")) && (s < steps - 1))
+      // FIXME Skip stores until the end
+      if ((BOtoValue[Tac.getOP()] == "store") && (S < Steps - 1))
         continue;
       TacListOrg.push_back(
-          *(TAC::unroll(&Tac, UnrollFactor, s, MaskList[Mask++], LoopLevel)));
+          *(TAC::unroll(&Tac, UnrollFactor, S, 0x000000, LoopLevel)));
+      //*(TAC::unroll(&Tac, UnrollFactor, S, MaskList[Mask++], LoopLevel)));
     }
   }
   return TacListOrg;
-}
-
-// ---------------------------------------------
-std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
-                                  int UpperBound, unsigned int MaskList[]) {
-  std::list<TAC> TacListOrg = TacList;
-  int steps = UpperBound / UnrollFactor;
-  for (int s = 0; s < steps - 1; ++s) {
-    int Mask = 0;
-    for (TAC Tac : TacList) {
-      TacListOrg.push_back(
-          *(TAC::unroll(&Tac, UnrollFactor, s, MaskList[Mask++])));
-    }
-  }
-  return TacListOrg;
-}
-
-// ---------------------------------------------
-std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
-                                  int UpperBound, unsigned int Mask) {
-  std::list<TAC> TacListOrg = TacList;
-  int steps = UpperBound / UnrollFactor;
-  for (int s = 0; s < steps - 1; ++s) {
-    for (TAC Tac : TacList) {
-      TacListOrg.push_back(*(TAC::unroll(&Tac, UnrollFactor * s, Mask)));
-    }
-  }
-  return TacListOrg;
-}
-
-// ---------------------------------------------
-std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
-                                  int UpperBound) {
-  return TAC::unrollTacList(TacList, UnrollFactor, UpperBound,
-                            (unsigned int)0x00);
 }

@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Sáb 04 Xan 2020 13:22:22 MST
+ * Last Modified Date: Dom 05 Xan 2020 13:32:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -131,7 +131,7 @@ public:
 
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
-  void unroll(int UnrollFactor, int UpperBound);
+  // void unroll(int UnrollFactor, int UpperBound);
   void unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
   void unrollAndJam(long UnrollFactor, long UpperBoundFallback = 4);
 

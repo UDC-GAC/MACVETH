@@ -2,13 +2,13 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Sáb 04 Xan 2020 22:14:38 MST
+ * Last Modified Date: Dom 05 Xan 2020 12:47:07 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
-#include "Vectorization/VectorIR.h"
 #include "include/Vectorization/SIMD/CostTable.h"
+#include "include/Vectorization/VectorIR.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Type.h"
 
@@ -16,7 +16,6 @@
 
 using namespace macveth;
 
-//
 void printDeb(std::string S) { std::cout << "[SIMDGEN] " << S << std::endl; }
 
 // ---------------------------------------------
@@ -105,10 +104,8 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType TIL;
-  printDeb("MapOperation");
 
   if (V.isBinOp()) {
-    printDeb("Will crash here?");
     /// We can filter it by
     switch (V.getBinOp()) {
     case clang::BO_Add:
@@ -127,9 +124,8 @@ SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
       TIL = vmod(V);
       break;
     }
-    printDeb("or crash here?");
   } else {
-    printDeb("or is just because of an empty fucking list");
+    // printDeb("or is just because of an empty fucking list");
   }
 
   return TIL;
@@ -145,6 +141,7 @@ bool SIMDGenerator::getSIMDVOperation(VectorIR::VectorOP V,
   switch (V.VT) {
   case VectorIR::VType::MAP:
     TIL = getMapOperation(V);
+    break;
   case VectorIR::VType::REDUCE:
     TIL = vreduce(V);
     break;

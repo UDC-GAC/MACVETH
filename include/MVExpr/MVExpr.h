@@ -2,7 +2,7 @@
  * File              : MVExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Ven 03 Xan 2020 13:12:35 MST
+ * Last Modified Date: Dom 05 Xan 2020 13:10:33 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -122,9 +122,13 @@ public:
   bool operator!=(const MVExpr &MVE) { return !operator==(MVE); }
 
 private:
+  /// Type of MVExpr
   MVExprInfo TempInfo = TMP_RES;
+  /// Type of data in string
   std::string TypeStr = "double";
+  /// Expression as string
   std::string ExprStr = "";
+  /// Expresion as Clang's
   clang::Expr *ClangExpr = NULL;
 };
 

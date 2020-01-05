@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Sáb 04 Xan 2020 13:22:37 MST
+ * Last Modified Date: Dom 05 Xan 2020 13:37:11 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,10 +29,12 @@
 #ifndef MACVETH_TAC_H
 #define MACVETH_TAC_H
 
-//#include "include/MVExpr.h"
 #include "include/MVExpr/MVExpr.h"
+#include "include/MVOps.h"
 #include "include/Utils.h"
+
 #include "clang/AST/AST.h"
+
 #include <iostream>
 #include <list>
 #include <string>
@@ -41,7 +43,8 @@ using namespace clang;
 using namespace macveth;
 
 namespace macveth {
-/// Class TAC: three-address-code
+/// Class TAC: three-address-code. This abstraction is a way of representing the
+/// Single-Statement Assignment (SSA)
 class TAC {
 private:
   constexpr static unsigned int MASK_OP_A = {0xFF0000};
@@ -54,20 +57,35 @@ private:
   ///                  a = b op c
   /// Where a, b and c are Expr and op is an Opcode
 public:
-  /// Constructor
+  /// Empty constructor
   TAC(){}; // empty constructor
+  /// Constructor using BinaryOperator::Opcode
   TAC(MVExpr *A, MVExpr *B, MVExpr *C, clang::BinaryOperator::Opcode OP)
       : A(A), B(B), C(C), OP(OP) {}
 
-  MVExpr *getA() { return this->A; };
-  void setA(MVExpr *A) { this->A = A; };
-  MVExpr *getB() { return this->B; };
-  void setB(MVExpr *B) { this->B = B; };
-  MVExpr *getC() { return this->C; };
-  void setC(MVExpr *C) { this->C = C; };
-  clang::BinaryOperator::Opcode getOP() { return this->OP; };
+  /// Constructor when using MVOp for the operator
+  TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP)
+      : A(A), B(B), C(C), MVOP(MVOP) {}
 
-  // Just for debugging purposes
+  /// Get first (result) operand of the TAC expression
+  MVExpr *getA() { return this->A; };
+  /// Set first (result) operand of the TAC expression
+  void setA(MVExpr *A) { this->A = A; };
+  /// Get second operand of the TAC expression
+  MVExpr *getB() { return this->B; };
+  /// Set second operand of the TAC expression
+  void setB(MVExpr *B) { this->B = B; };
+  /// Get third operand of the TAC expression
+  MVExpr *getC() { return this->C; };
+  /// Set third operand of the TAC expression
+  void setC(MVExpr *C) { this->C = C; };
+
+  /// Get operation
+  clang::BinaryOperator::Opcode getOP() { return this->OP; };
+  /// Get macveth operation type
+  MVOp getMVOP() { return this->MVOP; };
+
+  /// Just for debugging purposes
   void printTAC() {
     std::string Op = BinaryOperator::getOpcodeStr(this->getOP()).str();
     std::cout << "t: " << this->getA()->getExprStr() << ", "
@@ -79,28 +97,18 @@ public:
   static void binaryOperator2TAC(const clang::BinaryOperator *S,
                                  std::list<TAC> *TacList, int Val);
 
+  /// Inserts TACs in the input TacList
+  static void exprToTAC(const clang::Expr *S, std::list<TAC> *TacList, int Val);
+
   /// Unrolls TacList given onto a new list
-  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
-                                      int UpperBound);
-  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
-                                      int UpperBound, unsigned int Mask);
-  /// Unroll TAC list and returning it. It also uses a MaskList[] for each
-  /// instruction present in the list. This helps to unroll independenly each
-  /// operand in the TAC
-  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
-                                      int UpperBound, unsigned int MaskList[]);
-  /// Unroll TAC list and returning it. It also uses a MaskList[] for each
-  /// instruction present in the list. This helps to unroll independenly each
-  /// operand in the TAC
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
                                       int UpperBound, unsigned int MaskList[],
                                       std::string LoopLevel);
+
   /// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and the S
   /// value which holds the iteration of the unrolling basically
   static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                      std::string LoopLevel);
-  static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask);
-  static TAC *unroll(TAC *Tac, int UnrollFactor, unsigned int mask);
 
 private:
   /// TAC result
@@ -109,8 +117,11 @@ private:
   MVExpr *B;
   /// Second operand of TAC
   MVExpr *C;
+  /// TODO
   /// Operation of the TAC
   clang::BinaryOperator::Opcode OP;
+  /// Type of operation
+  MVOp MVOP;
 };
 
 /// List of TACs
