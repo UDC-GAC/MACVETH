@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Sáb 04 Xan 2020 11:32:30 MST
+ * Last Modified Date: Sáb 04 Xan 2020 21:57:46 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -156,6 +156,9 @@ public:
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);
 
+  /// Insert the SIMDInst in the list given an VOperand
+  bool getSIMDVOperation(VectorIR::VectorOP V, SIMDInstListType *IL);
+
   /// Auxiliary function for replacing patterns in a string
   std::string replacePatterns(std::string Pattern, std::string W, std::string D,
                               std::string P, std::string S);
@@ -177,6 +180,10 @@ public:
 
   /// Destructor
   virtual ~SIMDGenerator(){};
+
+private:
+  /// Auxiliary function to dispatch the VectorOP operation
+  SIMDGenerator::SIMDInstListType getMapOperation(VectorIR::VectorOP V);
 
 protected:
   /// Add register to declare

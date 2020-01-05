@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Ven 03 Xan 2020 17:38:17 MST
+ * Last Modified Date: Sáb 04 Xan 2020 21:54:42 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -45,7 +45,7 @@ public:
     SEQ
   };
 
-  /// Vector data types
+  /// Vector data types, Most of them are self exaplanatory
   enum VDataType {
     DOUBLE,
     FLOAT,
@@ -164,6 +164,10 @@ public:
     VOperand OpB;
     /// Cost associated to this concrete VectorOP
     unsigned int Cost = 0;
+    /// Check if it is a BinaryOperation
+    bool isBinOp();
+    /// Get the BinaryOperator::Opcode
+    BinaryOperator::Opcode getBinOp();
     /// Constructor from the CDAG
     VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[]);
   };

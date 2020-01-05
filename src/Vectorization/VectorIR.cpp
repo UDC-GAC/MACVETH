@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Sáb 04 Xan 2020 11:27:46 MST
+ * Last Modified Date: Sáb 04 Xan 2020 21:54:16 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -64,6 +64,16 @@ void VectorIR::VOperand::printAsString() {
   for (int i = 0; i < this->Size; ++i)
     std::cout << "\t" << this->UOP[i]->getValue() << std::endl;
   std::cout << "-------------------------------------" << std::endl;
+}
+
+// ---------------------------------------------
+bool VectorIR::VectorOP::isBinOp() {
+  return this->R.UOP[0]->getOuputInfo().IsBinaryOp;
+}
+
+// ---------------------------------------------
+BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
+  return this->R.UOP[0]->getOuputInfo().BOP;
 }
 
 // ---------------------------------------------

@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Ven 03 Xan 2020 13:02:15 MST
+ * Last Modified Date: Sáb 04 Xan 2020 22:12:39 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -31,7 +31,7 @@ public:
   /// with this value: it **does not** identify the object itself. Thus,
   /// whenever this object is cloned, this value is also cloned to the new
   /// object
-  static inline int uuid = 0;
+  static inline int UUID = 0;
 
   /// Definition of NodeListType
   typedef std::list<Node *> NodeListType;
@@ -44,16 +44,27 @@ public:
 
   /// Holds information regarding the scheduling for this Node
   struct SchedInfo {
+    /// Unique ID of the Statement/Node
     int StmtID = -1;
+    /// Topological order of this node
     int FreeSched = 0;
+    /// TODO this value should be calculated by an algorithm
     int Plcmnt = 0;
+    /// TODO this value stands for the scheduling order of this node; should
+    /// be also calculated when the placement
     int Sched = 0;
   };
 
   /// If the node is NODE_OP type, then it will hold a result value
   struct OutputInfo {
+    /// Name of the register or memory variable as output
     std::string Name = "";
+    /// If the target variable is in memory it will be a MEM_STORE; TEMP_STORE
+    /// the other way
     OutputType Type = MEM_STORE;
+    /// Opcode if binary
+    BinaryOperator::Opcode BOP;
+    /// Tell if it is binary or not
     bool IsBinaryOp = false;
   };
 
@@ -61,9 +72,11 @@ public:
   OutputInfo getOutputInfo(TAC T) {
     OutputInfo O;
     O.Name = T.getA()->getExprStr();
-    O.Type =
-        T.getOP() == BinaryOperator::Opcode::BO_Assign ? MEM_STORE : TEMP_STORE;
-    O.IsBinaryOp = T.getC() == nullptr;
+    O.Type = (T.getOP() == BinaryOperator::Opcode::BO_Assign) ? MEM_STORE
+                                                              : TEMP_STORE;
+    O.BOP = T.getOP();
+    // FIXME
+    O.IsBinaryOp = T.getC() != nullptr;
     return O;
   }
 
@@ -73,7 +86,7 @@ public:
     this->T = NODE_MEM;
     this->Value = TE->getExprStr();
     this->MV = TE;
-    this->SI.StmtID = Node::uuid++;
+    this->SI.StmtID = Node::UUID++;
   }
 
   /// Copy constructor for cloning
@@ -93,7 +106,7 @@ public:
     this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
     this->O = getOutputInfo(T);
-    this->SI.StmtID = Node::uuid++;
+    this->SI.StmtID = Node::UUID++;
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
   }
@@ -105,7 +118,7 @@ public:
     this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
     this->O = getOutputInfo(T);
-    this->SI.StmtID = Node::uuid++;
+    this->SI.StmtID = Node::UUID++;
     Node *NB = findOutputNode(T.getB()->getExprStr(), L);
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);

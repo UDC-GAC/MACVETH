@@ -2,16 +2,22 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Sáb 04 Xan 2020 11:34:21 MST
+ * Last Modified Date: Sáb 04 Xan 2020 22:14:38 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include "Vectorization/VectorIR.h"
 #include "include/Vectorization/SIMD/CostTable.h"
+#include "clang/AST/OperationKinds.h"
+#include "clang/AST/Type.h"
 
 #include <regex>
 
 using namespace macveth;
+
+//
+void printDeb(std::string S) { std::cout << "[SIMDGEN] " << S << std::endl; }
 
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
@@ -72,11 +78,12 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
   // vector operand
 
   SIMDGenerator::SIMDInstListType TIL;
+  bool EqualVal;
   bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
   bool ScatterMem = V.MemOp && !ContMem;
   bool ExpVal = !V.MemOp;
 
-  if (ContMem) {
+  if ((ContMem) && (!ScatterMem)) {
     TIL = vpack(V);
   } else if ((!ContMem) && (ScatterMem)) {
     TIL = vgather(V);
@@ -96,6 +103,65 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
+SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
+  SIMDGenerator::SIMDInstListType TIL;
+  printDeb("MapOperation");
+
+  if (V.isBinOp()) {
+    printDeb("Will crash here?");
+    /// We can filter it by
+    switch (V.getBinOp()) {
+    case clang::BO_Add:
+      TIL = vadd(V);
+      break;
+    case clang::BO_Sub:
+      TIL = vsub(V);
+      break;
+    case clang::BO_Mul:
+      TIL = vmul(V);
+      break;
+    case clang::BO_Div:
+      TIL = vdiv(V);
+      break;
+    case clang::BO_Rem:
+      TIL = vmod(V);
+      break;
+    }
+    printDeb("or crash here?");
+  } else {
+    printDeb("or is just because of an empty fucking list");
+  }
+
+  return TIL;
+}
+
+// ---------------------------------------------
+bool SIMDGenerator::getSIMDVOperation(VectorIR::VectorOP V,
+                                      SIMDGenerator::SIMDInstListType *IL) {
+  SIMDGenerator::SIMDInstListType TIL;
+
+  printDeb("SIMDVOperation");
+
+  switch (V.VT) {
+  case VectorIR::VType::MAP:
+    TIL = getMapOperation(V);
+  case VectorIR::VType::REDUCE:
+    TIL = vreduce(V);
+    break;
+  case VectorIR::VType::SEQ:
+    TIL = vseq(V);
+    break;
+  };
+
+  // Update the list
+  for (auto I : TIL) {
+    IL->push_back(I);
+  }
+  return true;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   SIMDInstListType IL;
 
@@ -106,23 +172,8 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   getSIMDVOperand(VOpA, &IL);
   getSIMDVOperand(VOpB, &IL);
 
-  // Get width as string
-  std::string WidthS = getMapWidth()[V.VW];
-  // Get data type as string
-  std::string DataTypeS = getMapType()[V.DT];
-  // FIXME Is it needed preffix?
-  std::string PrefS = "";
-  // FIXME Is it needed suffix?
-  std::string SuffS = "";
-  // Get name of the function
-  std::string Pattern = CostTable::getPattern(getNArch(), V.VN);
-  // Replace fills in pattern
-  // std::string AVXFunc =
-  //    replacePatterns(Pattern, WidthS, DataTypeS, PrefS, SuffS);
-
-  // Generate function
-  // SIMDInst Inst(V.R.getName(), AVXFunc, {VOpA.getName(), VOpB.getName()});
-  // IL.push_back(Inst);
+  // Arranging the operation
+  getSIMDVOperation(V, &IL);
 
   // Registers used
   std::string RegType = getRegisterType(V.DT, V.VW);
