@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Dom 05 Xan 2020 13:40:33 MST
+ * Last Modified Date: Dom 05 Xan 2020 14:46:10 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -119,8 +119,8 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
     int Mask = 0;
     for (TAC Tac : TacList) {
       // FIXME Skip stores until the end
-      if ((BOtoValue[Tac.getOP()] == "store") && (S < Steps - 1))
-        continue;
+      // if ((BOtoValue[Tac.getOP()] == "store") && (S < Steps - 1))
+      //  continue;
       TacListOrg.push_back(
           *(TAC::unroll(&Tac, UnrollFactor, S, 0x000000, LoopLevel)));
       //*(TAC::unroll(&Tac, UnrollFactor, S, MaskList[Mask++], LoopLevel)));

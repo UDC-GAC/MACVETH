@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Dom 05 Xan 2020 12:47:07 MST
+ * Last Modified Date: Dom 05 Xan 2020 13:51:23 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -143,6 +143,7 @@ bool SIMDGenerator::getSIMDVOperation(VectorIR::VectorOP V,
     TIL = getMapOperation(V);
     break;
   case VectorIR::VType::REDUCE:
+    std::cout << "THIS IS A REDUCTION MADAFAKA" << std::endl;
     TIL = vreduce(V);
     break;
   case VectorIR::VType::SEQ:

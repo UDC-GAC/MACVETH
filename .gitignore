@@ -2,6 +2,12 @@
 ubench
 benchmark
 
+# Intelij
+.idea/
+
+# Inputs
+inputs/
+
 # Documentation
 *.aux
 *.log

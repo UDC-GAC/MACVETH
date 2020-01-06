@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Dom 05 Xan 2020 10:23:10 MST
+ * Last Modified Date: Dom 05 Xan 2020 15:34:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -71,7 +71,7 @@ public:
   };
 
   /// Get the output info given a TAC
-  OutputInfo getOutputInfo(TAC T) {
+  OutputInfo setOutputInfo(TAC T) {
     OutputInfo O;
     O.E = T.getA();
     O.Name = T.getA()->getExprStr();
@@ -108,7 +108,7 @@ public:
     this->T = NODE_OP;
     this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
-    this->O = getOutputInfo(T);
+    this->O = setOutputInfo(T);
     this->SI.StmtID = Node::UUID++;
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
@@ -120,7 +120,7 @@ public:
     this->T = NODE_OP;
     this->MV = nullptr;
     this->Value = BOtoValue[T.getOP()];
-    this->O = getOutputInfo(T);
+    this->O = setOutputInfo(T);
     this->SI.StmtID = Node::UUID++;
     Node *NB = findOutputNode(T.getB()->getExprStr(), L);
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
@@ -143,9 +143,9 @@ public:
   /// Get the output Nodes
   NodeListType getOuputNodes() { return this->OutNodes; }
   /// Get the output information
-  OutputInfo getOuputInfo() { return this->O; }
+  OutputInfo getOutputInfo() { return this->O; }
   /// Get the output information
-  std::string getOuputInfoValue() { return this->O.Name; }
+  std::string getOutputInfoName() { return this->O.Name; }
   /// Get the number of inputs in this Node
   int getInputNum() { return this->I.size(); }
   /// Get the list of node inputs in this Node
@@ -181,6 +181,9 @@ public:
     }
     return this->getValue();
   }
+
+  /// Setting the name of the output value
+  void setOutputName(std::string S) { this->O.Name = S; }
 
   /// Print node: debugging purposes
   void printNode();

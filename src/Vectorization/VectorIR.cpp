@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Sáb 04 Xan 2020 21:54:16 MST
+ * Last Modified Date: Dom 05 Xan 2020 15:31:20 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -17,21 +17,25 @@ void printDebug(std::string M, std::string S) {
 // ---------------------------------------------
 bool opsAreSequential(int VL, Node *VOps[]) {
   for (int i = 1; i < VL; ++i) {
-    if (VOps[i - 1]->getSchedInfo().FreeSched <
-        VOps[i]->getSchedInfo().FreeSched)
+    if ((VOps[i - 1]->getSchedInfo().FreeSched <
+         VOps[i]->getSchedInfo().FreeSched)) {
+      std::cout << "YES; THEY ARE SEQUENTIAL" << std::endl;
       return true;
+    }
   }
+  std::cout << "NOPE; THEY ARE NOT SEQUENTIAL" << std::endl;
   return false;
 }
 
 // ---------------------------------------------
 bool rawDependencies(int VL, Node *VOps[], Node *VLoad[]) {
   for (int i = 0; i < VL - 1; ++i) {
-    if (!VOps[i]->getOuputInfoValue().compare(
-            VLoad[i + 1]->getRegisterValue())) {
+    if (VOps[i]->getOutputInfoName() == VLoad[i + 1]->getRegisterValue()) {
+      std::cout << "YES; THERE ARE RAWS" << std::endl;
       return true;
     }
   }
+  std::cout << "NOPE; THERE ARE NOT RAWS" << std::endl;
 
   return false;
 }
@@ -41,9 +45,11 @@ bool isAtomic(int VL, Node *VOps[], Node *VLoad[]) {
   for (int i = 0; i < VL; ++i) {
     if (VOps[i]->getSchedInfo().FreeSched <=
         VLoad[i]->getSchedInfo().FreeSched) {
+      std::cout << "NOPE; NOT ATOMICS BRO" << std::endl;
       return false;
     }
   }
+  std::cout << "YES; ATOMICS BRO" << std::endl;
   return true;
 }
 
@@ -68,12 +74,12 @@ void VectorIR::VOperand::printAsString() {
 
 // ---------------------------------------------
 bool VectorIR::VectorOP::isBinOp() {
-  return this->R.UOP[0]->getOuputInfo().IsBinaryOp;
+  return this->R.UOP[0]->getOutputInfo().IsBinaryOp;
 }
 
 // ---------------------------------------------
 BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
-  return this->R.UOP[0]->getOuputInfo().BOP;
+  return this->R.UOP[0]->getOutputInfo().BOP;
 }
 
 // ---------------------------------------------
@@ -176,7 +182,7 @@ VectorIR::VType getVectorType(int VL, Node *VOps[], Node *VLoadA[],
 
   // Type of VectorOP
   if (bool Reduction =
-          (Seq) && ((RAW_A) || (RAW_B)) && (!(Atomic_A && Atomic_B))) {
+          (Seq) && ((RAW_A) || (RAW_B)) && (!(Atomic_A || Atomic_B))) {
     return VectorIR::VType::REDUCE;
   } else if (bool Map =
                  (!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {

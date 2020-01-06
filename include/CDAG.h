@@ -2,7 +2,7 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Sáb 04 Xan 2020 13:21:53 MST
+ * Last Modified Date: Dom 05 Xan 2020 15:20:49 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -45,7 +45,7 @@ public:
 
 private:
   /// Insert TAC instruction to the CDAG
-  Node *insertTac(TAC T, Node::NodeListType L);
+  Node *insertTac(TAC T, Node *PrevNode, Node::NodeListType L);
   /// List of OP nodes
   Node::NodeListType NLOps;
   /// List of memory nodes

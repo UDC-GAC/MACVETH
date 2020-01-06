@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Sáb 04 Xan 2020 10:20:06 MST
+ * Last Modified Date: Dom 05 Xan 2020 15:37:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -11,6 +11,7 @@
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
 #include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
 #include "include/Vectorization/VectorIR.h"
+#include "clang/AST/Expr.h"
 
 namespace macveth {
 
@@ -141,7 +142,15 @@ void CDAG::computeFreeSchedule(CDAG *C) {
 }
 
 // ---------------------------------------------
-Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
+void replaceOutput(TAC T, Node *N) { N->setOutputName(T.getA()->getExprStr()); }
+
+// ---------------------------------------------
+Node *CDAG::insertTac(TAC T, Node *PrevNode, Node::NodeListType L) {
+  if ((T.getOP() == BinaryOperator::Opcode::BO_Assign) &&
+      (PrevNode != nullptr)) {
+    replaceOutput(T, PrevNode);
+    return nullptr;
+  }
   Node *NewNode = new Node(T, L);
   this->NLOps.push_back(NewNode);
   return NewNode;
@@ -150,6 +159,7 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
 // ---------------------------------------------
 CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
   CDAG *G = new CDAG();
+  Node *PrevNode = nullptr;
   for (TAC T : TL) {
     /// TACs are of the form a = b op c, so if we create a Node for each TAC
     /// we are basically creating NODE_OP Nodes. This way, when we connect
@@ -157,7 +167,7 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
     /// connections between the inputs and outputs. Actually we are looking
     /// for outputs of of already connected Nodes that match the input of this
     /// new NODE_OP. Looking for inputs
-    Node *ActualNode = G->insertTac(T, G->getNodeListOps());
+    PrevNode = G->insertTac(T, PrevNode, G->getNodeListOps());
   }
   return G;
 }
