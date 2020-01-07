@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Dom 05 Xan 2020 15:31:20 MST
+ * Last Modified Date: Dom 05 Xan 2020 17:49:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #include "include/Vectorization/VectorIR.h"
@@ -19,11 +19,11 @@ bool opsAreSequential(int VL, Node *VOps[]) {
   for (int i = 1; i < VL; ++i) {
     if ((VOps[i - 1]->getSchedInfo().FreeSched <
          VOps[i]->getSchedInfo().FreeSched)) {
-      std::cout << "YES; THEY ARE SEQUENTIAL" << std::endl;
+      // std::cout << "YES; THEY ARE SEQUENTIAL" << std::endl;
       return true;
     }
   }
-  std::cout << "NOPE; THEY ARE NOT SEQUENTIAL" << std::endl;
+  // std::cout << "NOPE; THEY ARE NOT SEQUENTIAL" << std::endl;
   return false;
 }
 
@@ -31,11 +31,11 @@ bool opsAreSequential(int VL, Node *VOps[]) {
 bool rawDependencies(int VL, Node *VOps[], Node *VLoad[]) {
   for (int i = 0; i < VL - 1; ++i) {
     if (VOps[i]->getOutputInfoName() == VLoad[i + 1]->getRegisterValue()) {
-      std::cout << "YES; THERE ARE RAWS" << std::endl;
+      // std::cout << "YES; THERE ARE RAWS" << std::endl;
       return true;
     }
   }
-  std::cout << "NOPE; THERE ARE NOT RAWS" << std::endl;
+  // std::cout << "NOPE; THERE ARE NOT RAWS" << std::endl;
 
   return false;
 }
@@ -45,11 +45,11 @@ bool isAtomic(int VL, Node *VOps[], Node *VLoad[]) {
   for (int i = 0; i < VL; ++i) {
     if (VOps[i]->getSchedInfo().FreeSched <=
         VLoad[i]->getSchedInfo().FreeSched) {
-      std::cout << "NOPE; NOT ATOMICS BRO" << std::endl;
+      // std::cout << "NOPE; NOT ATOMICS BRO" << std::endl;
       return false;
     }
   }
-  std::cout << "YES; ATOMICS BRO" << std::endl;
+  // std::cout << "YES; ATOMICS BRO" << std::endl;
   return true;
 }
 
@@ -181,13 +181,14 @@ VectorIR::VType getVectorType(int VL, Node *VOps[], Node *VLoadA[],
   bool Atomic_B = isAtomic(VL, VOps, VLoadB);
 
   // Type of VectorOP
-  if (bool Reduction =
-          (Seq) && ((RAW_A) || (RAW_B)) && (!(Atomic_A || Atomic_B))) {
+  if ((Seq) && ((RAW_A) || (RAW_B)) && Atomic_A && Atomic_B) {
+    printDebug("VectorIR", "reduction");
     return VectorIR::VType::REDUCE;
-  } else if (bool Map =
-                 (!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
+  } else if ((!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
+    printDebug("VectorIR", "map");
     return VectorIR::VType::MAP;
   } else {
+    printDebug("VectorIR", "sequential");
     return VectorIR::VType::SEQ;
   }
 }

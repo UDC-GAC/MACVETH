@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Dom 05 Xan 2020 13:02:06 MST
+ * Last Modified Date: Lun 06 Xan 2020 18:25:20 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -37,6 +37,7 @@
 #include "include/Intrinsics/IntrinsicsGenerator.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
+#include "lib/MVPragmaHandler.cpp"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -81,7 +82,8 @@ class MACVETHConsumer : public ASTConsumer {
   /// * Expr - expressions, they inherit from Stmt tho; this is quite weird for
   /// me...
 public:
-  MACVETHConsumer(Rewriter &R, ASTContext *C) : Handler(R, C), Context(C) {}
+  MACVETHConsumer(Rewriter &R, ASTContext *C, ScopLocList L)
+      : Handler(R, C), L(L), Context(C) {}
 
   void HandleTranslationUnit(ASTContext &Context) override {
     /// Generate loop information
@@ -100,7 +102,7 @@ public:
           n,
           // matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs",
           // "rhs"));
-          matchers_utils::reductionStmt("assignArrayBinOp", "lhs", "rhs"));
+          // matchers_utils::reductionStmt("assignArrayBinOp", "lhs", "rhs"));
       MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
     }
     /// Run the matchers when we have the whole TU parsed.
@@ -116,6 +118,7 @@ public:
 private:
   ASTContext *Context;
   matchers_utils::IterationHandler Handler;
+  ScopLocList L;
   MatchFinder MatcherRed;
   MatchFinder MatcherVec;
   MatchFinder MatcherLoop;
@@ -143,12 +146,18 @@ public:
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
     Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
                    &CI.getASTContext());
+    Preprocessor &PP = CI.getPreprocessor();
+    ScopLocList *scops = new ScopLocList();
+    PP.AddPragmaHandler(new PragmaScopHandler(*scops));
+    PP.AddPragmaHandler(new PragmaEndScopHandler(*scops));
     /// std::make_unique is C++14, while LLVM 9 is written in C++11, this
     /// is the reason of this custom implementation
 #if LLVM_VERSION > 9
-    return std::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext());
+    return std::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext(),
+                                             *scops);
 #else
-    return llvm::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext());
+    return llvm::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext(),
+                                              *scops);
 #endif
   }
 

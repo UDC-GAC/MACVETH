@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Dom 05 Xan 2020 13:51:23 MST
+ * Last Modified Date: Dom 05 Xan 2020 17:56:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -11,7 +11,6 @@
 #include "include/Vectorization/VectorIR.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Type.h"
-
 #include <regex>
 
 using namespace macveth;
@@ -21,7 +20,7 @@ void printDeb(std::string S) { std::cout << "[SIMDGEN] " << S << std::endl; }
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
   std::string FullFunc =
-      !Result.compare("") ? FuncName + "(" : Result + " = " + FuncName + "(";
+      Result == "" ? FuncName + "(" : Result + " = " + FuncName + "(";
   std::list<std::string>::iterator Op;
   int i = 0;
   for (Op = OPS.begin(); Op != OPS.end(); ++Op) {
@@ -143,7 +142,6 @@ bool SIMDGenerator::getSIMDVOperation(VectorIR::VectorOP V,
     TIL = getMapOperation(V);
     break;
   case VectorIR::VType::REDUCE:
-    std::cout << "THIS IS A REDUCTION MADAFAKA" << std::endl;
     TIL = vreduce(V);
     break;
   case VectorIR::VType::SEQ:
