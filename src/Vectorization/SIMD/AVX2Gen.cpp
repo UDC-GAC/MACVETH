@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Dom 05 Xan 2020 12:59:47 MST
+ * Last Modified Date: Xov 09 Xan 2020 18:56:43 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -32,6 +32,8 @@ void AVX2Gen::populateTable() {
   // Load operations
   CostTable::addRow(NArch, "load", 1, "_mm#W_#Pload#S_#D");
   CostTable::addRow(NArch, "gather", 1, "_mm#W_#Pgather#S_#D");
+  CostTable::addRow(NArch, "broadcast", 1, "_mm#W_#Pbroadcast#S_#D");
+  CostTable::addRow(NArch, "set", 1, "_mm#W_#Pset#S_#D");
   // Store operation
   CostTable::addRow(NArch, "store", 1, "_mm#W_#Pstore#S_#D");
   CostTable::addRow(NArch, "stream", 1, "_mm#W_#Pstream#S_#D");

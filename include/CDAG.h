@@ -2,19 +2,19 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Dom 05 Xan 2020 15:20:49 MST
+ * Last Modified Date: Mér 08 Xan 2020 17:37:37 CST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #ifndef MACVETH_CDAG_H
 #define MACVETH_CDAG_H
-#include <list>
-#include <stdio.h>
 
 #include "include/Node.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
 #include "include/Vectorization/VectorIR.h"
+#include <list>
+#include <stdio.h>
 
 using namespace macveth;
 

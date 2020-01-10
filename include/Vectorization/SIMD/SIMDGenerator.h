@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Dom 05 Xan 2020 11:11:38 MST
+ * Last Modified Date: Xov 09 Xan 2020 13:10:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -160,6 +160,9 @@ public:
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
   std::list<std::string> renderSIMDasString(SIMDInstListType S);
+
+  /// Just compute the cost of each SIMD inst
+  std::list<std::string> computeSIMDCost(SIMDInstListType S);
 
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);

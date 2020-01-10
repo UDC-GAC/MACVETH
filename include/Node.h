@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Dom 05 Xan 2020 15:34:50 MST
+ * Last Modified Date: Xov 09 Xan 2020 18:48:00 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -192,8 +192,8 @@ public:
   int operator-(const Node *N) { return MV - N->MV; }
   /// Two nodes are equal if and only if they have the same value. Seems
   /// pretty straigthforward but it must be defined someway.
-  bool operator==(const Node &N) { return !getValue().compare(N.getValue()); }
-  bool operator==(const Node *N) { return !getValue().compare(N->getValue()); }
+  bool operator==(const Node &N) { return (getValue() == N.getValue()); }
+  bool operator==(const Node *N) { return (getValue() == N->getValue()); }
   /// Two nodes are not equal if and only if they have the same value. Seems
   /// pretty straigthforward but it must be defined someway.
   bool operator!=(const Node &N) { return !operator==(N); }

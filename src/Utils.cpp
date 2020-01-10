@@ -2,7 +2,7 @@
  * File              : Utils.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 10:51:03 MST
- * Last Modified Date: Ven 20 Dec 2019 14:29:28 MST
+ * Last Modified Date: Xov 09 Xan 2020 20:29:45 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -48,9 +48,9 @@ bool Utils::isNumericValue(Expr *E) {
   if (E->EvaluateAsInt(R, *C)) {
     return true;
   }
-  llvm::APFloat *F;
+  llvm::APFloat F(0.0);
   /// Is numeric if it can be evaluated as a float
-  if (E->EvaluateAsFloat(*F, *C)) {
+  if (E->EvaluateAsFloat(F, *C)) {
     return true;
   }
 

@@ -2,9 +2,10 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Dom 05 Xan 2020 17:49:22 MST
+ * Last Modified Date: Xov 09 Xan 2020 18:58:08 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
+
 #include "include/Vectorization/VectorIR.h"
 #include <bits/stdint-uintn.h>
 #include <sys/types.h>
@@ -121,6 +122,9 @@ VectorIR::VOperand::VOperand(int VL, Node *V[]) {
   auto VecAssigned = checkIfVectorAssigned(VL, V);
   this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
                            : "VOp" + std::to_string(VID++);
+
+  // This is the number of elements in this Vector
+  this->VSize = VL;
 
   ///////////////////////////////////////////////////////////
   // std::cout << this->Name << ", " << V[0]->getValue();

@@ -2,17 +2,16 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Sáb 04 Xan 2020 21:54:42 MST
+ * Last Modified Date: Mér 08 Xan 2020 17:17:00 CST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
-#ifndef MACVETH_VECTORAPI_H
-#define MACVETH_VECTORAPI_H
-
-#include <string.h>
+#ifndef MACVETH_VECTORIR_H
+#define MACVETH_VECTORIR_H
 
 #include "include/Node.h"
 #include "include/Utils.h"
+#include <string.h>
 
 using namespace macveth;
 
@@ -45,7 +44,7 @@ public:
     SEQ
   };
 
-  /// Vector data types, Most of them are self exaplanatory
+  /// Vector data types: most of them are self exaplanatory
   enum VDataType {
     DOUBLE,
     FLOAT,
@@ -132,6 +131,7 @@ public:
     /// Get data type of the operand: assumption that all elements are the same
     /// type
     VDataType getDataType() {
+      // Be careful with this
       return CTypeToVDataType[this->UOP[0]->getDataType()];
     }
     /// Return name of VOperand
@@ -151,11 +151,11 @@ public:
     /// Type of operation
     VType VT = VType::MAP;
     /// Name of the vector operation
-    std::string VN;
+    std::string VN = "";
     /// Vector Width of data used in this operation
-    VWidth VW;
+    VWidth VW = VWidth::W256;
     /// Vector data type used
-    VDataType DT;
+    VDataType DT = VDataType::DOUBLE;
     /// Vector result
     VOperand R;
     /// Vector first operand

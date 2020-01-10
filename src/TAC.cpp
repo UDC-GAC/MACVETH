@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Dom 05 Xan 2020 14:46:10 MST
+ * Last Modified Date: Xov 09 Xan 2020 20:23:27 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,7 +27,7 @@
  */
 
 #include "include/TAC.h"
-#include "CDAG.h"
+#include "include/CDAG.h"
 #include "include/MVExpr/MVExprFactory.h"
 #include "clang/Lex/Lexer.h"
 
@@ -35,11 +35,19 @@ using namespace clang;
 using namespace macveth;
 
 // ---------------------------------------------
-void TAC::exprToTAC(const clang::Expr *S, std::list<TAC> *TacList, int Val) {}
+void TAC::exprToTAC(const clang::Expr *S, std::list<TAC> *TacList, int Val) {
+  const clang::BinaryOperator *SBin = NULL;
+  bool STypeBin = (SBin = dyn_cast<clang::BinaryOperator>(S->IgnoreImpCasts()));
+  if (STypeBin) {
+    binaryOperator2TAC(SBin, TacList, Val);
+  }
+}
 
 // ---------------------------------------------
 void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
                              std::list<TAC> *TacList, int Val) {
+  S->dumpPretty(*Utils::getCtx());
+  std::cout << std::endl;
   Expr *Lhs = S->getLHS();
   Expr *Rhs = S->getRHS();
   clang::BinaryOperator *LhsBin = NULL;
