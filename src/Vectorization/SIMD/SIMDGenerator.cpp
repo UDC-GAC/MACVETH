@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Xov 09 Xan 2020 22:51:51 MST
+ * Last Modified Date: Ven 10 Xan 2020 08:54:01 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -222,14 +222,16 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
   SIMDInstListType I;
+  // Get list of SIMD instructions
   for (VectorIR::VectorOP V : VList) {
     for (SIMDInst Inst : getSIMDfromVectorOP(V)) {
       I.push_back(Inst);
     }
   }
-  // TODO Peephole optimizations:
   // Then optimizations can be done, for instance, combine operatios such as
-  // addition + multiplication
+  // addition + multiplication. It will depend on the architecture/ISA
+  I = peepholeOptimizations(I);
+
   return I;
 }
 

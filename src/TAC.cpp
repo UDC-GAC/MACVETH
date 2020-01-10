@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Xov 09 Xan 2020 22:05:00 MST
+ * Last Modified Date: Ven 10 Xan 2020 11:27:20 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,6 +29,7 @@
 #include "include/TAC.h"
 #include "include/CDAG.h"
 #include "include/MVExpr/MVExprFactory.h"
+#include "clang/AST/Expr.h"
 #include "clang/Lex/Lexer.h"
 
 using namespace clang;
@@ -43,9 +44,25 @@ MVOp TAC::getMVOPfromExpr(MVExpr *E) {
 }
 
 // ---------------------------------------------
+clang::BinaryOperator *getBinOp(clang::Expr *E) {
+  clang::BinaryOperator *B =
+      dyn_cast<clang::BinaryOperator>(E->IgnoreImpCasts());
+  clang::ParenExpr *P = dyn_cast<clang::ParenExpr>(E->IgnoreImpCasts());
+  while ((P = dyn_cast<clang::ParenExpr>(E->IgnoreImpCasts()))) {
+    if ((B = dyn_cast<clang::BinaryOperator>(
+             P->getSubExpr()->IgnoreImpCasts()))) {
+      break;
+    }
+    P = dyn_cast<clang::ParenExpr>(P->getSubExpr()->IgnoreImpCasts());
+  }
+
+  return B;
+}
+
+// ---------------------------------------------
 void TAC::exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val) {
   clang::BinaryOperator *SBin = NULL;
-  bool STypeBin = (SBin = dyn_cast<clang::BinaryOperator>(S->IgnoreImpCasts()));
+  bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
   if (STypeBin) {
     binaryOperator2TAC(SBin, TacList, Val);
     return;
@@ -61,16 +78,14 @@ void TAC::exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val) {
 // ---------------------------------------------
 void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
                              std::list<TAC> *TacList, int Val) {
-  S->dumpPretty(*Utils::getCtx());
-  std::cout << std::endl;
   Expr *Lhs = S->getLHS();
   Expr *Rhs = S->getRHS();
   clang::BinaryOperator *LhsBin = NULL;
   clang::BinaryOperator *RhsBin = NULL;
-  bool LhsTypeBin =
-      (LhsBin = dyn_cast<clang::BinaryOperator>(Lhs->IgnoreImpCasts()));
-  bool RhsTypeBin =
-      (RhsBin = dyn_cast<clang::BinaryOperator>(Rhs->IgnoreImpCasts()));
+  bool LhsTypeBin = (LhsBin = getBinOp(Lhs->IgnoreImpCasts()));
+  //(LhsBin = dyn_cast<clang::BinaryOperator>(Lhs->IgnoreImpCasts()));
+  bool RhsTypeBin = (RhsBin = getBinOp(Rhs->IgnoreImpCasts()));
+  //(RhsBin = dyn_cast<clang::BinaryOperator>(Rhs->IgnoreImpCasts()));
 
   /// Since this is a recursive function, we have to test the first case
   MVExpr *TmpA =

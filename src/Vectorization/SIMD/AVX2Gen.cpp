@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Xov 09 Xan 2020 23:22:40 MST
+ * Last Modified Date: Ven 10 Xan 2020 10:53:54 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -11,8 +11,6 @@
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
 
 using namespace macveth;
-
-void printDebb(std::string S) { std::cout << "[AVX2] " << S << std::endl; }
 
 // ---------------------------------------------
 void AVX2Gen::populateTable() {
@@ -23,6 +21,7 @@ void AVX2Gen::populateTable() {
   CostTable::addRow(NArch, "sub", 1, "_mm#W_#Psub#S_#D");
   CostTable::addRow(NArch, "div", 5, "_mm#W_#Pdiv#S_#D");
   CostTable::addRow(NArch, "fmadd", 5, "_mm#W_#Pfmadd#S_#D");
+  CostTable::addRow(NArch, "fmsub", 5, "_mm#W_#Pfmsub#S_#D");
   CostTable::addRow(NArch, "avg", 5, "_mm#W_avg_#D");
   CostTable::addRow(NArch, "min", 5, "_mm#W_min_#D");
   CostTable::addRow(NArch, "max", 5, "_mm#W_max_#D");
@@ -45,6 +44,104 @@ void AVX2Gen::populateTable() {
 }
 
 // ---------------------------------------------
+SIMDGenerator::SIMDInst createSIMDInst(std::string Op, std::string Res,
+                                       std::string Width, std::string DataType,
+                                       std::string PrefS, std::string SuffS,
+                                       std::list<std::string> OPS,
+                                       SIMDGenerator::SIMDType SType) {
+  // Get the function
+  std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
+
+  // Replace fills in pattern
+  std::string AVXFunc =
+      SIMDGenerator::replacePatterns(Pattern, Width, DataType, PrefS, SuffS);
+
+  // Generate SIMD inst
+  SIMDGenerator::SIMDInst I(Res, AVXFunc, OPS);
+
+  // Retrieving cost of function
+  I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
+  I.SType = SType;
+
+  return I;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInst AVX2Gen::genMultAccOp(SIMDGenerator::SIMDInst Mul,
+                                              SIMDGenerator::SIMDInst Acc) {
+  SIMDGenerator::SIMDInst Fuse;
+
+  std::string Res = Acc.Result;
+  std::string Width = getMapWidth(Mul.W);
+  std::string DataType = getMapType(Mul.DT);
+  std::string PrefS = "";
+  std::string SuffS = "";
+  std::string Op = (Acc.SType == SIMDType::VADD) ? "fmadd" : "fmsub";
+  std::list<std::string> OPS;
+  for (auto OP : Acc.OPS) {
+    if (OP != Mul.Result) {
+      OPS.push_back(OP);
+    }
+  }
+  for (auto OP : Mul.OPS) {
+    OPS.push_back(OP);
+  }
+  // Adding SIMD inst to the list
+  Fuse = createSIMDInst(Op, Res, Width, DataType, PrefS, SuffS, OPS,
+                        SIMDGenerator::SIMDType::VOPT);
+
+  return Fuse;
+}
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
+AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
+  SIMDGenerator::SIMDInstListType IL;
+  SIMDGenerator::SIMDInst PotentialFuse;
+  SIMDGenerator::SIMDInstListType SkipList;
+  std::map<SIMDGenerator::SIMDInst, SIMDGenerator::SIMDInst> Fuses;
+  // Search replacements
+  for (auto Inst : I) {
+
+    if (Inst.SType == SIMDGenerator::SIMDType::VMUL) {
+      std::cout << "POTENTIAL FMADD\n";
+      PotentialFuse = Inst;
+    }
+    if ((Inst.SType == SIMDGenerator::SIMDType::VADD) ||
+        (Inst.SType == SIMDGenerator::SIMDType::VSUB)) {
+      for (auto OP : Inst.OPS) {
+        std::cout << PotentialFuse.Result + " is equal to " + OP + "?\n";
+        if (OP == PotentialFuse.Result) {
+          SIMDGenerator::SIMDInst NewFuse =
+              AVX2Gen::genMultAccOp(PotentialFuse, Inst);
+          // We will like to skip this function later
+          SkipList.push_back(PotentialFuse);
+          // We will want to replace the add/sub by this
+          Fuses[Inst] = NewFuse;
+        }
+      }
+    }
+  }
+  // Perform replacements if any
+  for (auto Inst : I) {
+    if (!Utils::contains(SkipList, Inst)) {
+      IL.push_back(Inst);
+    }
+  }
+  return IL;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
+AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
+  SIMDGenerator::SIMDInstListType IL;
+
+  // Fuse operations: find potential and applicable FMADD/FMSUB
+  IL = fuseAddSubMult(I);
+
+  return IL;
+}
+
+// ---------------------------------------------
 std::string AVX2Gen::getRegisterType(VectorIR::VDataType DT,
                                      VectorIR::VWidth W) {
   std::string Suffix = "";
@@ -59,26 +156,18 @@ std::string AVX2Gen::getRegisterType(VectorIR::VDataType DT,
 }
 
 // ---------------------------------------------
-void AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op,
-                          std::string PrefS, std::string SuffS,
-                          std::list<std::string> OPS,
-                          SIMDGenerator::SIMDType SType,
-                          SIMDGenerator::SIMDInstListType *IL) {
+SIMDGenerator::SIMDInst
+AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
+                     std::string SuffS, std::list<std::string> OPS,
+                     SIMDGenerator::SIMDType SType,
+                     SIMDGenerator::SIMDInstListType *IL) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
-
-  // printDebb(Pattern);
-  // printDebb(PrefS);
-  // printDebb(SuffS);
-  // printDebb(getMapWidth(V.getWidth()));
-  // printDebb(getMapType(V.getDataType()));
 
   // Replace fills in pattern
   std::string AVXFunc =
       replacePatterns(Pattern, getMapWidth(V.getWidth()),
                       getMapType(V.getDataType()), PrefS, SuffS);
-
-  // printDebb(AVXFunc);
 
   // Generate SIMD inst
   SIMDGenerator::SIMDInst I(V.getName(), AVXFunc, OPS);
@@ -87,10 +176,14 @@ void AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op,
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
   I.SType = SType;
 
-  printDebb(I.render());
+  // Data type and width
+  I.DT = V.getDataType();
+  I.W = V.getWidth();
 
   // Adding instruction to the list
-  IL->push_back(I);
+  if (IL != nullptr)
+    IL->push_back(I);
+  return I;
 }
 
 // ---------------------------------------------
@@ -382,7 +475,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
 
   // TODO
   std::string Op = V.VN;
-  printDebb(Op);
   /// Algorithm overview
   /// ymm0 = _mm256_loadu_pd(indata);
   /// ymm1 = _mm256_permute_pd(ymm0, 0x05);

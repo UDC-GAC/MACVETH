@@ -2,18 +2,17 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Xov 09 Xan 2020 13:10:40 MST
+ * Last Modified Date: Ven 10 Xan 2020 10:50:01 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #ifndef MACVETH_SIMDGENERATOR_H
 #define MACVETH_SIMDGENERATOR_H
 
+#include "include/Vectorization/VectorIR.h"
 #include <list>
 #include <map>
 #include <string>
-
-#include "include/Vectorization/VectorIR.h"
 
 using namespace macveth;
 
@@ -51,7 +50,10 @@ public:
     /// Reduce operation
     VREDUC,
     /// Sequential operation
-    VSEQ
+    VSEQ,
+    /// If the SIMD instruction is the result of an optimization (e.g. fuse
+    /// multiply-accumulation) we will call it VOPT
+    VOPT
   };
 
   /// Wrap for representing the SIMDInst not just as single strings to print,
@@ -69,9 +71,20 @@ public:
     std::list<SIMDInst> DependsOn;
     /// Cost of the instruction
     int Cost = 0;
+    /// Data type
+    VectorIR::VDataType DT;
+    /// Width
+    VectorIR::VWidth W;
 
     /// Render instruction as a string
     std::string render();
+
+    bool operator==(const SIMDInst &S) const {
+      return (S.Result == this->Result);
+    }
+    bool operator<(const SIMDInst &S) const {
+      return (S.Result == this->Result);
+    }
 
     /// Empty constructor
     SIMDInst(){};
@@ -171,8 +184,12 @@ public:
   bool getSIMDVOperation(VectorIR::VectorOP V, SIMDInstListType *IL);
 
   /// Auxiliary function for replacing patterns in a string
-  std::string replacePatterns(std::string Pattern, std::string W, std::string D,
-                              std::string P, std::string S);
+  static std::string replacePatterns(std::string Pattern, std::string W,
+                                     std::string D, std::string P,
+                                     std::string S);
+
+  /// Perform some peephole optimizations after generating SIMD instructions
+  virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) = 0;
 
   /// Entry point: this method basically redirects to any of the operations
   /// supported

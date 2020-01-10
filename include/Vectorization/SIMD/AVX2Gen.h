@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Dom 05 Xan 2020 09:59:34 MST
+ * Last Modified Date: Ven 10 Xan 2020 10:45:50 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -60,6 +60,15 @@ public:
 
   virtual SIMDInstListType vseq(VectorIR::VectorOP V) override;
 
+  /// Perform some peephole optimizations after generating SIMD instructions
+  virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) override;
+
+  /// One of the optimizations included in AVX2
+  SIMDGenerator::SIMDInstListType
+  fuseAddSubMult(SIMDGenerator::SIMDInstListType I);
+  SIMDGenerator::SIMDInst genMultAccOp(SIMDGenerator::SIMDInst Mul,
+                                       SIMDGenerator::SIMDInst Acc);
+
   /// Get name of AVX architecture
   virtual std::string getNArch() override { return AVX2Gen::NArch; }
 
@@ -91,10 +100,11 @@ public:
 
 private:
   /// Auxiliar function for adding the SIMDInst to the list
-  void addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
-                   std::string SuffS, std::list<std::string> OPS,
-                   SIMDGenerator::SIMDType SType,
-                   SIMDGenerator::SIMDInstListType *IL);
+  SIMDGenerator::SIMDInst addSIMDInst(VectorIR::VOperand V, std::string Op,
+                                      std::string PrefS, std::string SuffS,
+                                      std::list<std::string> OPS,
+                                      SIMDGenerator::SIMDType SType,
+                                      SIMDGenerator::SIMDInstListType *IL);
   /// Populate the table only when creating the object, to avoid overloading the
   /// memory from the start
   static void populateTable();
