@@ -2,7 +2,7 @@
  * File              : MVExprArray.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Xov 12 Dec 2019 10:03:14 MST
- * Last Modified Date: Ven 03 Xan 2020 14:56:25 MST
+ * Last Modified Date: Xov 09 Xan 2020 21:32:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_MVEXPRARRAY_H
@@ -25,14 +25,14 @@ public:
   typedef std::list<std::string> IdxVector;
 
   virtual ~MVExprArray(){};
-  MVExprArray(Expr *E) : MVExpr(E) {
+  MVExprArray(Expr *E) : MVExpr(MVK_Array, E) {
     if (ArraySubscriptExpr *ASE =
             dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
       const Expr *TmpExpr = getArrayBaseExprAndIdxs(ASE, this->Idx);
       this->BaseName = Utils::getStringFromExpr(TmpExpr);
     }
   }
-  MVExprArray(MVExprArray *E) : MVExpr(E->getClangExpr()) {
+  MVExprArray(MVExprArray *E) : MVExpr(MVK_Array, E->getClangExpr()) {
     this->BaseName = E->BaseName;
     this->Idx = E->Idx;
   }
@@ -55,6 +55,9 @@ public:
       return 0;
     }
   }
+
+  /// In order to be able to use RTTI
+  static bool classof(const MVExpr *S) { return S->getKind() == MVK_Array; }
 
 private:
   /// Given a dimension LL and a unrolling factor UF, regenerates the expression

@@ -2,7 +2,7 @@
  * File              : MVExprFunction.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 01 Xan 2020 16:56:22 MST
- * Last Modified Date: Mér 01 Xan 2020 18:10:35 MST
+ * Last Modified Date: Xov 09 Xan 2020 21:33:34 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -18,9 +18,9 @@ namespace macveth {
 class MVExprFunc : public MVExpr {
 public:
   virtual ~MVExprFunc(){};
-  MVExprFunc(Expr *E) : MVExpr(E) {}
+  MVExprFunc(Expr *E) : MVExpr(MVK_Function, E) {}
 
-  MVExprFunc(MVExprFunc *E) : MVExpr(E->getClangExpr()) {
+  MVExprFunc(MVExprFunc *E) : MVExpr(MVK_Function, E->getClangExpr()) {
     this->FuncName = E->FuncName;
     this->OPS = E->OPS;
   }
@@ -28,6 +28,9 @@ public:
   /// Implementation of unrolling for functions. In this case we will need to
   /// create a new MVExpr
   virtual MVExpr *unrollExpr(int UF, std::string LL);
+
+  /// In order to be able to use RTTI
+  static bool classof(const MVExpr *S) { return S->getKind() == MVK_Function; }
 
 private:
   /// Name of the function

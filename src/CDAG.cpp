@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Xov 09 Xan 2020 13:11:06 MST
+ * Last Modified Date: Xov 09 Xan 2020 21:05:59 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -147,8 +147,7 @@ void replaceOutput(TAC T, Node *N) { N->setOutputName(T.getA()->getExprStr()); }
 
 // ---------------------------------------------
 Node *CDAG::insertTac(TAC T, Node *PrevNode, Node::NodeListType L) {
-  if ((T.getOP() == BinaryOperator::Opcode::BO_Assign) &&
-      (PrevNode != nullptr)) {
+  if ((T.getMVOP().isAssignment()) && (PrevNode != nullptr)) {
     replaceOutput(T, PrevNode);
     return nullptr;
   }

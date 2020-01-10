@@ -2,7 +2,7 @@
  * File              : MVExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Dom 05 Xan 2020 13:10:33 MST
+ * Last Modified Date: Xov 09 Xan 2020 21:31:09 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -32,6 +32,7 @@
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/Expr.h"
+#include "llvm/Support/Casting.h"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -47,6 +48,18 @@ namespace macveth {
 /// and to simplify the Clang AST typing.
 class MVExpr {
 public:
+  /// Types of MVExpr
+  enum MVExprKind {
+    /// Defined in MVExprArray
+    MVK_Array,
+    /// Defined in MVExprLiteral
+    MVK_Literal,
+    /// Defined in MVExprFunc
+    MVK_Function,
+    /// Defined in MVExprVar
+    MVK_Var
+  };
+
   /// A MVExpr can be created from a clang::Expr or from a string, it can be an
   /// array a literal or even a variable, but when it comes to unroll, it is not
   /// the same if it is a temporal expression created ad-hoc (e.g. tempX
@@ -59,22 +72,26 @@ public:
 
   /// Empty constructor
   MVExpr(){};
+  MVExpr(MVExprKind MK) : MK(MK){};
   /// Clone constructor
   MVExpr(MVExpr *TE) {
     this->setExprStr(TE->getExprStr());
     this->setClangExpr(TE->getClangExpr());
     this->setTypeStr(TE->getTypeStr());
     this->setTempInfo(TE->getTempInfo());
+    this->setKind(TE->getKind());
   }
 
   /// Create MVExpr from string. In this case we will assume we are treating
   /// with a TAC_EXPR
-  MVExpr(std::string E) : ExprStr(E) { this->TempInfo = TAC_EXPR; }
+  MVExpr(MVExprKind K, std::string E) : MK(K), ExprStr(E) {
+    this->TempInfo = TAC_EXPR;
+  }
   /// Create MVExpr from string and set ad-hoc MVExprInfo
   MVExpr(std::string E, MVExprInfo TI) : ExprStr(E), TempInfo(TI) {}
   /// Create MVExpr from clang::Expr, which sets its inner type/info to
   /// EXPR_CLANG
-  MVExpr(Expr *E) : ClangExpr(E) {
+  MVExpr(MVExprKind K, Expr *E) : MK(K), ClangExpr(E) {
     this->TempInfo = MVExprInfo::EXPR_CLANG;
     this->ExprStr = Utils::getStringFromExpr(E);
     this->setTypeStr(this->getClangExpr()->getType().getAsString());
@@ -100,6 +117,11 @@ public:
   /// Get expression as an string
   std::string getExprStr() const { return this->ExprStr; }
 
+  /// Set kind of the expression
+  void setKind(MVExprKind Kind) { this->MK = Kind; }
+  /// Get kind of the expression
+  MVExprKind getKind() const { return this->MK; }
+
   /// This method allows to check whether the expression belongs or not to the
   /// original AST created by Clang
   bool isNotClang() { return (this->getTempInfo() != EXPR_CLANG); }
@@ -122,6 +144,8 @@ public:
   bool operator!=(const MVExpr &MVE) { return !operator==(MVE); }
 
 private:
+  /// MVExpr kind
+  MVExprKind MK;
   /// Type of MVExpr
   MVExprInfo TempInfo = TMP_RES;
   /// Type of data in string

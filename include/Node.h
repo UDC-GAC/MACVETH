@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Xov 09 Xan 2020 18:48:00 MST
+ * Last Modified Date: Xov 09 Xan 2020 21:05:04 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -18,7 +18,7 @@ using namespace macveth;
 namespace macveth {
 
 /// FIXME this is garbage
-inline static std::map<BinaryOperator::Opcode, std::string> BOtoValue = {
+inline static std::map<BinaryOperator::Opcode, std::string> MVOPtoValue = {
     {BO_Mul, "mul"}, {BO_Div, "div"},    {BO_Add, "add"},
     {BO_Sub, "sub"}, {BO_Rem, "modulo"}, {BO_Assign, "store"}};
 
@@ -65,7 +65,7 @@ public:
     /// the other way
     OutputType Type = MEM_STORE;
     /// Opcode if binary
-    BinaryOperator::Opcode BOP;
+    MVOp MVOP;
     /// Tell if it is binary or not
     bool IsBinaryOp = false;
   };
@@ -75,11 +75,9 @@ public:
     OutputInfo O;
     O.E = T.getA();
     O.Name = T.getA()->getExprStr();
-    O.Type = (T.getOP() == BinaryOperator::Opcode::BO_Assign) ? MEM_STORE
-                                                              : TEMP_STORE;
-    O.BOP = T.getOP();
-    // FIXME
-    O.IsBinaryOp = T.getC() != nullptr;
+    O.Type = (T.getMVOP().isAssignment()) ? MEM_STORE : TEMP_STORE;
+    O.MVOP = T.getMVOP();
+    O.IsBinaryOp = T.getMVOP().getType() == MVOpType::CLANG_BINOP;
     return O;
   }
 
@@ -107,7 +105,7 @@ public:
   Node(TAC T) {
     this->T = NODE_OP;
     this->MV = nullptr;
-    this->Value = BOtoValue[T.getOP()];
+    this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
     this->SI.StmtID = Node::UUID++;
     connectInput(new Node(T.getB()));
@@ -119,7 +117,7 @@ public:
   Node(TAC T, NodeListType L) {
     this->T = NODE_OP;
     this->MV = nullptr;
-    this->Value = BOtoValue[T.getOP()];
+    this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
     this->SI.StmtID = Node::UUID++;
     Node *NB = findOutputNode(T.getB()->getExprStr(), L);

@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Xov 09 Xan 2020 18:58:08 MST
+ * Last Modified Date: Xov 09 Xan 2020 21:39:32 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -80,7 +80,7 @@ bool VectorIR::VectorOP::isBinOp() {
 
 // ---------------------------------------------
 BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
-  return this->R.UOP[0]->getOutputInfo().BOP;
+  return this->R.UOP[0]->getOutputInfo().MVOP.ClangOP;
 }
 
 // ---------------------------------------------

@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Xov 09 Xan 2020 20:23:27 MST
+ * Last Modified Date: Xov 09 Xan 2020 21:13:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -35,12 +35,26 @@ using namespace clang;
 using namespace macveth;
 
 // ---------------------------------------------
-void TAC::exprToTAC(const clang::Expr *S, std::list<TAC> *TacList, int Val) {
-  const clang::BinaryOperator *SBin = NULL;
+MVOp TAC::getMVOPfromExpr(MVExpr *E) {
+  if (MVExprFunc *F = dyn_cast<MVExprFunc>(E)) {
+    return MVOp(F->getExprStr());
+  }
+  return MVOp("");
+}
+
+// ---------------------------------------------
+void TAC::exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val) {
+  clang::BinaryOperator *SBin = NULL;
   bool STypeBin = (SBin = dyn_cast<clang::BinaryOperator>(S->IgnoreImpCasts()));
   if (STypeBin) {
     binaryOperator2TAC(SBin, TacList, Val);
+    return;
   }
+  MVExpr *TmpA = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val), true);
+  MVExpr *TmpB = MVExprFactory::createMVExpr(S);
+  MVOp OP = TAC::getMVOPfromExpr(TmpB);
+  TAC NewTac = TAC(TmpA, TmpB, NULL, OP);
+  TacList->push_back(NewTac);
 }
 
 // ---------------------------------------------
@@ -69,7 +83,7 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
     MVExpr *TmpB =
         MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 2));
-    TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+    TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
 
     TacList->push_back(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
@@ -78,20 +92,20 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
     MVExpr *TmpB = MVExprFactory::createMVExpr(Lhs);
     MVExpr *TmpC =
         MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
-    TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+    TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
     TacList->push_back(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
   } else if (LhsTypeBin && !RhsTypeBin) {
     MVExpr *TmpB =
         MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Rhs);
-    TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+    TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
     TacList->push_back(NewTac);
     binaryOperator2TAC(LhsBin, TacList, Val + 1);
   } else {
     MVExpr *TmpB = MVExprFactory::createMVExpr(Lhs);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Rhs);
-    TAC NewTac = TAC(TmpA, TmpB, TmpC, S->getOpcode());
+    TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
     TacList->push_back(NewTac);
   }
   return;
@@ -109,10 +123,12 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   // std::cout << "A = " << std::to_string(UnrollA)
   //          << "; B = " << std::to_string(UnrollB)
   //          << "; C = " << std::to_string(UnrollC) << std::endl;
-  TAC *UnrolledTac =
-      new TAC(Tac->getA()->unrollExpr(UnrollA, LoopLevel),
-              Tac->getB()->unrollExpr(UnrollB, LoopLevel),
-              Tac->getC()->unrollExpr(UnrollC, LoopLevel), Tac->getOP());
+
+  TAC *UnrolledTac = new TAC(
+      Tac->getA()->unrollExpr(UnrollA, LoopLevel),
+      Tac->getB()->unrollExpr(UnrollB, LoopLevel),
+      Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL,
+      Tac->getMVOP());
   return UnrolledTac;
 }
 

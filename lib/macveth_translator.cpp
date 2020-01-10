@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mér 08 Xan 2020 16:47:20 CST
+ * Last Modified Date: Xov 09 Xan 2020 21:08:41 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -34,7 +34,6 @@
 #include <tuple>
 
 #include "include/CustomMatchers.h"
-#include "include/Intrinsics/IntrinsicsGenerator.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
 #include "lib/MVPragmaHandler.cpp"
