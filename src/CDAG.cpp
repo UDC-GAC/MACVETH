@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Xov 09 Xan 2020 22:56:03 MST
+ * Last Modified Date: Xov 09 Xan 2020 23:14:27 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -108,8 +108,6 @@ repeat:
   }
 
   // Compute the vector cost
-  // int CostVectorOperation =
-  //    VectorIR::computeCostVectorOp(VL, VOps, VLoadA, VLoadB);
   VList.push_back(VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB));
 
   // Repeat process if list not empty

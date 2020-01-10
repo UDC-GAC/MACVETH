@@ -2,7 +2,7 @@
  * File              : Node.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:01:36 MST
- * Last Modified Date: Dom 05 Xan 2020 15:46:11 MST
+ * Last Modified Date: Xov 09 Xan 2020 23:27:35 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -15,6 +15,7 @@ void Node::printNode() {
   std::cout << "\tFreeSched\t= " << this->getSchedInfo().FreeSched << std::endl;
   std::cout << "\tPlcmnt\t\t= " << this->getSchedInfo().Plcmnt << std::endl;
   std::cout << "\tStmtID\t\t= " << this->getSchedInfo().StmtID << std::endl;
+  std::cout << "\tOutput\t\t= " << this->getOutputInfo().Name << std::endl;
   std::cout << "\tInput1\t\t= " << this->getInputs().front()->getValue()
             << " (ID = " << this->getInputs().front()->getSchedInfo().StmtID
             << std::endl;

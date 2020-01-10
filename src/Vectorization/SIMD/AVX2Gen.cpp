@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Xov 09 Xan 2020 18:56:43 MST
+ * Last Modified Date: Xov 09 Xan 2020 23:22:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -78,7 +78,7 @@ void AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op,
       replacePatterns(Pattern, getMapWidth(V.getWidth()),
                       getMapType(V.getDataType()), PrefS, SuffS);
 
-  printDebb(AVXFunc);
+  // printDebb(AVXFunc);
 
   // Generate SIMD inst
   SIMDGenerator::SIMDInst I(V.getName(), AVXFunc, OPS);
