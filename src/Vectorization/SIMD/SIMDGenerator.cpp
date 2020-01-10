@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Xov 09 Xan 2020 19:02:19 MST
+ * Last Modified Date: Xov 09 Xan 2020 22:51:51 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -92,7 +92,7 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
                                     SIMDGenerator::SIMDInstListType *IL) {
   if (!V.IsLoad) {
     // TODO maybe it would be OK to perform another action in this case
-    std::cout << "NOT LOAD " << V.Name << std::endl;
+    // std::cout << "NOT LOAD " << V.Name << std::endl;
     return false;
   }
 
@@ -111,19 +111,23 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
 
   SIMDGenerator::SIMDInstListType TIL;
   bool EqualVal = equalValues(V.VSize, V.UOP);
-  // std::cout << "equalValues " << V.Name << std::endl;
   bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
   bool ScatterMem = V.MemOp && !ContMem;
-  std::cout << EqualVal << ", " << ContMem << ", " << ScatterMem << std::endl;
   bool ExpVal = !V.MemOp;
+  // std::cout << EqualVal << ", " << ContMem << ", " << ScatterMem << ", "
+  //          << ExpVal << std::endl;
 
+  // 0, 1, 0, 0
   if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
     TIL = vpack(V);
+    // 0, X, 1
   } else if ((!EqualVal) && (ScatterMem)) {
     TIL = vgather(V);
-  } else if ((EqualVal) && (!ScatterMem)) {
+    // 1, X, 0, 1
+  } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {
     TIL = vbcast(V);
   } else {
+    // 1, X, 0, 1
     TIL = vset(V);
   }
 
@@ -160,7 +164,7 @@ SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
       break;
     }
   } else {
-    // printDeb("or is just because of an empty fucking list");
+    // TODO decide what todo when we have the custom operations
   }
 
   return TIL;
@@ -170,8 +174,6 @@ SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
 bool SIMDGenerator::getSIMDVOperation(VectorIR::VectorOP V,
                                       SIMDGenerator::SIMDInstListType *IL) {
   SIMDGenerator::SIMDInstListType TIL;
-
-  printDeb("SIMDVOperation");
 
   switch (V.VT) {
   case VectorIR::VType::MAP:

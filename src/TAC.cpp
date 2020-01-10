@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Xov 09 Xan 2020 21:13:26 MST
+ * Last Modified Date: Xov 09 Xan 2020 22:05:00 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -50,7 +50,8 @@ void TAC::exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val) {
     binaryOperator2TAC(SBin, TacList, Val);
     return;
   }
-  MVExpr *TmpA = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val), true);
+  MVExpr *TmpA =
+      MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
   MVExpr *TmpB = MVExprFactory::createMVExpr(S);
   MVOp OP = TAC::getMVOPfromExpr(TmpB);
   TAC NewTac = TAC(TmpA, TmpB, NULL, OP);

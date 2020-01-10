@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Xov 09 Xan 2020 21:10:08 MST
+ * Last Modified Date: Xov 09 Xan 2020 22:04:48 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -76,57 +76,21 @@ public:
   StmtWrapper(){};
   /// Full constructor that parses the loop hierarchy
   StmtWrapper(const MatchFinder::MatchResult &Result) {
-    const BinaryOperator *BinOp =
-        Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp") ==
-                nullptr
-            ? Result.Nodes.getNodeAs<clang::BinaryOperator>("reduction")
-            : Result.Nodes.getNodeAs<clang::BinaryOperator>("assignArrayBinOp");
-
-    if (BinOp == nullptr) {
-      BinOp = Result.Nodes.getNodeAs<clang::BinaryOperator>("stmtROI");
-    }
+    const Expr *E = Result.Nodes.getNodeAs<clang::Expr>("ROI");
 
     /// Get loop information
     this->LoopL = getLoopList(Result);
-    this->S = (Stmt *)BinOp;
-    this->setStmtType(StmtWrapper::getStmtType(BinOp));
-    TAC::binaryOperator2TAC(BinOp, &this->TacList, -1);
+    this->S = (Stmt *)E;
+    // this->setStmtType(StmtWrapper::getStmtType(BinOp));
+    TAC::exprToTAC(const_cast<Expr *>(E), &this->TacList, -1);
     this->TacList.reverse();
   }
-  /// Constructor from BinaryOperator
-  StmtWrapper(const BinaryOperator *S) {
-    this->S = (Stmt *)S;
-    this->setStmtType(StmtWrapper::getStmtType(S));
-    TAC::binaryOperator2TAC(S, &this->TacList, -1);
-    this->TacList.reverse();
-    for (TAC t : this->getTacList()) {
-      t.printTAC();
-    }
-    std::cout << "--------------------\n" << std::flush;
-  };
 
   /// Given a statement, it is able to determine wherever it is or not a
   /// reduction
   static StmtType getStmtType(const BinaryOperator *S);
   StmtType getStmtType() { return this->ST; }
   void setStmtType(StmtType ST) { this->ST = ST; }
-
-  /// Translator
-  // void translateTacToIntrinsics() {
-  //  this->InstList = IntrinsicsInsGen::translateTAC(this->getTacList());
-  //  /// FIXME
-  //  /// Horrible code, horrible hack...
-  //  if (this->getStmtType() == StmtType::REDUCTION) {
-  //    TacListType T;
-  //    /// Create an unaltered TacList again in order to get the original
-  //    /// operands
-  //    TAC::binaryOperator2TAC((BinaryOperator *)this->getStmt(), &T, -1);
-  //    MVExpr In = this->getTacList().back().getA();
-  //    T.reverse();
-  //    MVExpr Out = T.back().getA();
-  //    this->InstList.push_back(IntrinsicsInsGen::reduceVector(&In, &Out));
-  //  }
-  //}
 
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop

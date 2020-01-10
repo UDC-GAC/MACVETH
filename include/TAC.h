@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Xov 09 Xan 2020 21:14:15 MST
+ * Last Modified Date: Xov 09 Xan 2020 21:48:30 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -75,8 +75,6 @@ public:
   /// Set third operand of the TAC expression
   void setC(MVExpr *C) { this->C = C; };
 
-  /// Get operation
-  // clang::BinaryOperator::Opcode getOP() { return this->OP; };
   /// Get macveth operation type
   MVOp getMVOP() { return this->MVOP; };
 

@@ -2,13 +2,14 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Xov 09 Xan 2020 21:05:04 MST
+ * Last Modified Date: Xov 09 Xan 2020 22:22:13 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
 #define MACVETH_NODE_H
 
 #include "include/MVExpr/MVExpr.h"
+#include "include/MVExpr/MVExprLiteral.h"
 #include "include/StmtWrapper.h"
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
@@ -168,7 +169,10 @@ public:
   bool hasInNode(Node *N);
 
   /// Is OP or MEM?
-  bool isMem() { return this->T == NodeType::NODE_MEM; }
+  bool isMem() {
+    return (this->T == NodeType::NODE_MEM) &&
+           (!dyn_cast<MVExprLiteral>(this->MV));
+  }
 
   /// Returns the string value of the node
   std::string getValue() const { return this->Value; }

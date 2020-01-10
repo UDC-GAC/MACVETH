@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Xov 09 Xan 2020 21:08:41 MST
+ * Last Modified Date: Xov 09 Xan 2020 22:08:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -34,9 +34,9 @@
 #include <tuple>
 
 #include "include/CustomMatchers.h"
+#include "include/MVPragmaHandler.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
-#include "lib/MVPragmaHandler.cpp"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -97,9 +97,9 @@ public:
 
     ///// For vectorizable statements
     for (int n = 0; n < 6; ++n) {
-      StatementMatcher ForLoopNestedMatcherVec = matchers_utils::ROI(
-          n,
-          matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
+      StatementMatcher ForLoopNestedMatcherVec =
+          matchers_utils::ROI(n, expr().bind("ROI"));
+      // matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
       // matchers_utils::reductionStmt("assignArrayBinOp", "lhs", "rhs"));
       MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
     }

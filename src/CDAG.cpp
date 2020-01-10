@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Xov 09 Xan 2020 21:05:59 MST
+ * Last Modified Date: Xov 09 Xan 2020 22:56:03 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -102,8 +102,9 @@ repeat:
 
   for (int n = 0; n < Cursor; ++n) {
     printDebug("CDAG", VOps[n]->getRegisterValue() + " = " +
-                           VLoadA[n]->getValue() + " " + VOps[n]->getValue() +
-                           " " + VLoadB[n]->getValue());
+                           VLoadA[n]->getRegisterValue() + " " +
+                           VOps[n]->getValue() + " " +
+                           VLoadB[n]->getRegisterValue());
   }
 
   // Compute the vector cost
