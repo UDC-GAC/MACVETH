@@ -2,14 +2,15 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Ven 10 Xan 2020 10:53:54 MST
+ * Last Modified Date: Ven 10 Xan 2020 23:22:17 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Vectorization/SIMD/AVX2Gen.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
-
+#include <map>
+#include <utility>
 using namespace macveth;
 
 // ---------------------------------------------
@@ -96,36 +97,43 @@ SIMDGenerator::SIMDInst AVX2Gen::genMultAccOp(SIMDGenerator::SIMDInst Mul,
 SIMDGenerator::SIMDInstListType
 AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
   SIMDGenerator::SIMDInstListType IL;
-  SIMDGenerator::SIMDInst PotentialFuse;
+  SIMDGenerator::SIMDInstListType PotentialFuse;
   SIMDGenerator::SIMDInstListType SkipList;
   std::map<SIMDGenerator::SIMDInst, SIMDGenerator::SIMDInst> Fuses;
+
   // Search replacements
   for (auto Inst : I) {
-
+    // If we find a multiply operation it may be a FMADD
     if (Inst.SType == SIMDGenerator::SIMDType::VMUL) {
-      std::cout << "POTENTIAL FMADD\n";
-      PotentialFuse = Inst;
+      PotentialFuse.push_back(Inst);
     }
+    // Check if we have any add/sub adding the result of a previous
+    // multiplication
     if ((Inst.SType == SIMDGenerator::SIMDType::VADD) ||
         (Inst.SType == SIMDGenerator::SIMDType::VSUB)) {
-      for (auto OP : Inst.OPS) {
-        std::cout << PotentialFuse.Result + " is equal to " + OP + "?\n";
-        if (OP == PotentialFuse.Result) {
-          SIMDGenerator::SIMDInst NewFuse =
-              AVX2Gen::genMultAccOp(PotentialFuse, Inst);
+      for (auto P : PotentialFuse) {
+        if (Utils::contains(Inst.OPS, P.Result)) {
+          SIMDGenerator::SIMDInst NewFuse = AVX2Gen::genMultAccOp(P, Inst);
           // We will like to skip this function later
-          SkipList.push_back(PotentialFuse);
+          SkipList.push_back(P);
           // We will want to replace the add/sub by this
           Fuses[Inst] = NewFuse;
         }
       }
     }
   }
+
   // Perform replacements if any
   for (auto Inst : I) {
-    if (!Utils::contains(SkipList, Inst)) {
-      IL.push_back(Inst);
+    std::cout << Inst.render() << std::endl;
+    if (Utils::contains(SkipList, Inst)) {
+      continue;
     }
+    if (Fuses.count(Inst) > 0) {
+      IL.push_back(Fuses.at(Inst));
+      continue;
+    }
+    IL.push_back(Inst);
   }
   return IL;
 }

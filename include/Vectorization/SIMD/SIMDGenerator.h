@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Ven 10 Xan 2020 10:50:01 MST
+ * Last Modified Date: Ven 10 Xan 2020 23:19:10 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -59,6 +59,8 @@ public:
   /// Wrap for representing the SIMDInst not just as single strings to print,
   /// but as a set of fields
   struct SIMDInst {
+    static inline unsigned int UID = 0;
+    unsigned int SIMD_UID = 0;
     /// Result register name
     std::string Result;
     /// Signature of the function
@@ -79,11 +81,14 @@ public:
     /// Render instruction as a string
     std::string render();
 
+    /// Comparison operator
     bool operator==(const SIMDInst &S) const {
-      return (S.Result == this->Result);
+      return (S.SIMD_UID == this->SIMD_UID);
     }
+
+    /// This is util if we want to use SIMDInst in std::map
     bool operator<(const SIMDInst &S) const {
-      return (S.Result == this->Result);
+      return S.SIMD_UID < this->SIMD_UID;
     }
 
     /// Empty constructor
@@ -91,7 +96,9 @@ public:
 
     /// Constructor
     SIMDInst(std::string R, std::string FN, std::list<std::string> OPS)
-        : Result(R), FuncName(FN), OPS(OPS) {}
+        : Result(R), FuncName(FN), OPS(OPS) {
+      this->SIMD_UID = SIMDInst::UID++;
+    }
   };
 
   /// Alias for list of SIMDInst structures
