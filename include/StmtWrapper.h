@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Xov 09 Xan 2020 22:04:48 MST
+ * Last Modified Date: Sáb 11 Xan 2020 12:17:16 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,18 +28,18 @@
 #ifndef MACVETH_STMTWRAPPER_H
 #define MACVETH_STMTWRAPPER_H
 
-#include "include/CustomMatchers.h"
 #include "include/MVExpr/MVExpr.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
 #include <unordered_map>
 
 using namespace clang;
+using namespace clang::ast_matchers;
 using namespace macveth;
-using namespace macveth::matchers_utils;
 
 namespace macveth {
 

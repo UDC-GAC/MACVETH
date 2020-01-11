@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Xov 09 Xan 2020 21:07:59 MST
+ * Last Modified Date: Sáb 11 Xan 2020 13:20:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,6 +29,8 @@
 #define MACVETH_CUSTOM_MATCHERS_H
 
 #include "include/MVExpr/MVExpr.h"
+#include "include/MVPragmaHandler.h"
+#include "include/StmtWrapper.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
@@ -65,6 +67,14 @@ public:
   IterationHandler(Rewriter &R) : Rewrite(R) {}
   /// Basic constructor with context
   IterationHandler(Rewriter &R, ASTContext *C) : Rewrite(R), Ctx(C) {}
+  /// Basic constructor with context
+  IterationHandler(Rewriter &R, ASTContext *C, ScopHandler L)
+      : Rewrite(R), Ctx(C), SL(L) {
+
+    for (auto Scop : SL.List) {
+      std::cout << "scop " << Scop.Start << ", " << Scop.End << std::endl;
+    }
+  }
 
   /// Override run method from MatchFinder
   virtual void run(const MatchFinder::MatchResult &Result);
@@ -73,10 +83,12 @@ public:
   const ASTContext *getCtx() { return Ctx; }
 
 private:
+  bool checkIfWithinScop(StmtWrapper *S);
   /// For rewriting code in the output program
   Rewriter &Rewrite;
   /// A copy of the ASTContext for rewriting purposes
   const ASTContext *Ctx;
+  ScopHandler SL;
 };
 
 /// Matching any type of statement no matter the assignment operator or

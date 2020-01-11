@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Dom 05 Xan 2020 13:39:24 MST
+ * Last Modified Date: Sáb 11 Xan 2020 12:46:37 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -27,12 +27,14 @@
  */
 
 #include "include/StmtWrapper.h"
+#include "include/CustomMatchers.h"
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
 #include <string>
 
 using namespace clang;
 using namespace macveth;
+using namespace macveth::matchers_utils;
 
 // ---------------------------------------------
 // void printDebug(std::string Name, TacListType TempTacList) {

@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Xov 09 Xan 2020 22:08:26 MST
+ * Last Modified Date: Sáb 11 Xan 2020 14:47:54 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -27,42 +27,23 @@
  * SOFTWARE.
  */
 
-#include <iostream>
-#include <list>
-#include <memory>
-#include <string>
-#include <tuple>
-
 #include "include/CustomMatchers.h"
 #include "include/MVPragmaHandler.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
-#include "clang/AST/AST.h"
-#include "clang/AST/ASTConsumer.h"
-#include "clang/AST/ASTContext.h"
-#include "clang/AST/ParentMap.h"
-#include "clang/AST/RecursiveASTVisitor.h"
-#include "clang/ASTMatchers/ASTMatchFinder.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
-#include "clang/Analysis/CFG.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
-#include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Signals.h"
-#include "llvm/Support/raw_ostream.h"
 
 #ifndef LLVM_VERSION
 #define LLVM_VERSION 10
 #endif
 
-/// Do not use namespace std
-/// using namespace std;
 using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
@@ -70,118 +51,99 @@ using namespace clang::tooling;
 using namespace llvm;
 using namespace macveth;
 
-/// Implementation of the ASTConsumer interface for reading an AST produced
-/// by the Clang parser. It registers a couple of matchers and runs them on
-/// the AST.
+// Implementation of the ASTConsumer interface for reading an AST produced
+// by the Clang parser. It registers a couple of matchers and runs them on
+// the AST.
 class MACVETHConsumer : public ASTConsumer {
-  /// SOME NOTES:
-  /// * Stmt - statements, could be a for loop, while, a single statement
-  /// * Decl - declarations (or defenitions) of variables, typedef, function...
-  /// * Type - types, CanonicalType, Builtin-type
-  /// * Expr - expressions, they inherit from Stmt tho; this is quite weird for
-  /// me...
+  // SOME NOTES:
+  // * Stmt - statements, could be a for loop, while, a single statement
+  // * Decl - declarations (or defenitions) of variables, typedef, function...
+  // * Type - types, CanonicalType, Builtin-type
+  // * Expr - expressions, they inherit from Stmt tho; this is quite weird for
+  // me...
 public:
-  MACVETHConsumer(Rewriter &R, ASTContext *C, ScopLocList L)
-      : Handler(R, C), L(L), Context(C) {}
+  MACVETHConsumer(Rewriter &R, ASTContext *C, ScopHandler L)
+      : Handler(R, C, L), Context(C) {}
 
   void HandleTranslationUnit(ASTContext &Context) override {
-    /// Generate loop information
-    // MatcherLoop.matchAST(Context);
-
-    ///// For reduction statements
-    // StatementMatcher ForLoopNestedMatcherRed =
-    // matchers_utils::forLoopMatcher(
-    //    "1", matchers_utils::reductionStmt("reduction", "lhs", "rhs"));
-    // MatcherRed.addMatcher(ForLoopNestedMatcherRed, &Handler);
-    // MatcherRed.matchAST(Context);
-
-    ///// For vectorizable statements
+    // For vectorizable statements
     for (int n = 0; n < 6; ++n) {
       StatementMatcher ForLoopNestedMatcherVec =
           matchers_utils::ROI(n, expr().bind("ROI"));
-      // matchers_utils::assignArrayBinOp("assignArrayBinOp", "lhs", "rhs"));
-      // matchers_utils::reductionStmt("assignArrayBinOp", "lhs", "rhs"));
       MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
     }
-    /// Run the matchers when we have the whole TU parsed.
+    // Run the matchers when we have the whole TU parsed.
     MatcherVec.matchAST(Context);
-
-    // MatcherLoop.addMatcher(
-    //    matchers_utils::forLoopMatcher(
-    //        "1", matchers_utils::assignArrayBinOp("Stmt", "lhs", "rhs")),
-    //    &Handler);
-    // MatcherLoop.matchAST(Context);
   }
 
 private:
   ASTContext *Context;
   matchers_utils::IterationHandler Handler;
-  ScopLocList L;
   MatchFinder MatcherRed;
   MatchFinder MatcherVec;
   MatchFinder MatcherLoop;
 };
 
-/// SECOND STEP
-/// For each source file provided to the tool, a new ASTFrontendAction is
-/// created, which inherits from FrontendAction (abstract class)
+// SECOND STEP
+// For each source file provided to the tool, a new ASTFrontendAction is
+// created, which inherits from FrontendAction (abstract class)
 class MACVETHFrontendAction : public ASTFrontendAction {
 public:
-  /// empty constructor
+  // empty constructor
   MACVETHFrontendAction() {}
 
-  /// This routine is called in BeginSourceFile(), from
-  /// CreateWrapperASTConsumer.
-  /// * CompilterInstance CI: got from getCompilerInstance()
-  /// * StringRef file: input file, provided by getCurrentFile()
+  // This routine is called in BeginSourceFile(), from
+  // CreateWrapperASTConsumer.
+  // * CompilterInstance CI: got from getCompilerInstance()
+  // * StringRef file: input file, provided by getCurrentFile()
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef file) override {
-    /// setSourceMgr: setter for the Rewriter
-    /// * SourceManager: handles loading and caching of source files into
-    /// memory. It can be queried for information such as SourceLocation
-    /// of objects.
-    /// * LangOptions: controls the dialect of C/C++ accepted
+    // setSourceMgr: setter for the Rewriter
+    // * SourceManager: handles loading and caching of source files into
+    // memory. It can be queried for information such as SourceLocation
+    // of objects.
+    // * LangOptions: controls the dialect of C/C++ accepted
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
     Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
                    &CI.getASTContext());
     Preprocessor &PP = CI.getPreprocessor();
-    ScopLocList *scops = new ScopLocList();
-    PP.AddPragmaHandler(new PragmaScopHandler(*scops));
-    PP.AddPragmaHandler(new PragmaEndScopHandler(*scops));
-    /// std::make_unique is C++14, while LLVM 9 is written in C++11, this
-    /// is the reason of this custom implementation
+    ScopHandler(scops);
+    PP.AddPragmaHandler(new PragmaScopHandler(scops));
+    PP.AddPragmaHandler(new PragmaEndScopHandler(scops));
+    // std::make_unique is C++14, while LLVM 9 is written in C++11, this
+    // is the reason of this custom implementation
 #if LLVM_VERSION > 9
     return std::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext(),
-                                             *scops);
+                                             scops);
 #else
     return llvm::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext(),
-                                              *scops);
+                                              scops);
 #endif
   }
 
-  /// this is called only following a successful call to
-  /// BeginSourceFileAction (and BeginSourceFile)
+  // this is called only following a successful call to
+  // BeginSourceFileAction (and BeginSourceFile)
   void EndSourceFileAction() override {
-    /// 1.- Get RewriteBuffer from FileID
-    /// 2.- Write to Stream (in this case llvm::outs(), which is
-    /// std::out) the result of applying all changes to the original
-    /// buffer. Original buffer is modified before calling this function,
-    /// from the ASTConsumer
+    // 1.- Get RewriteBuffer from FileID
+    // 2.- Write to Stream (in this case llvm::outs(), which is
+    // std::out) the result of applying all changes to the original
+    // buffer. Original buffer is modified before calling this function,
+    // from the ASTConsumer
     TheRewriter.getEditBuffer(TheRewriter.getSourceMgr().getMainFileID())
         .write(llvm::outs());
   }
 
 private:
-  /// Main interfacer to the rewrite buffers: dispatches high-level
-  /// requests to the low-level RewriteBuffers involved.
+  // Main interfacer to the rewrite buffers: dispatches high-level
+  // requests to the low-level RewriteBuffers involved.
   Rewriter TheRewriter;
 };
 
-/// FIXME
-/// Set up the command line options
+// TODO
+// Set up the command line options
 static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
-/// Custom cmd options
+// Custom cmd options
 static llvm::cl::opt<std::string> UnrollFactor(
     "u", llvm::cl::desc(
              "Unroll factor used when unrolling loops. Valid values are any "
@@ -190,21 +152,21 @@ static llvm::cl::opt<std::string>
     OutputFile("o", llvm::cl::desc("Output file to write the code, otherwise "
                                    "it will just print int std outputt"));
 
-/// Main program
+// Main program
 int main(int argc, const char **argv) {
   llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
 
-  /// FIRST STEP
-  /// Parser for options common to all cmd-line Clang tools
+  // FIRST STEP
+  // Parser for options common to all cmd-line Clang tools
   CommonOptionsParser Op(argc, argv, MacvethCategory);
-  /// Utility to run a FrontendAction over a set of files
-  /// * getCompilations(): contains compile cmd lines for the given source
-  /// paths
-  /// * getSourcePathList(): source files to run over
+  // Utility to run a FrontendAction over a set of files
+  // * getCompilations(): contains compile cmd lines for the given source
+  // paths
+  // * getSourcePathList(): source files to run over
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
-  /// Runs ToolAction over all files specified in the cmd line
-  /// newFrontendActionFactory returns a new FrontendActionFactory for
-  /// a given type, in this case our FrontendAction, declared above
+  // Runs ToolAction over all files specified in the cmd line
+  // newFrontendActionFactory returns a new FrontendActionFactory for
+  // a given type, in this case our FrontendAction, declared above
   return Tool.run(newFrontendActionFactory<MACVETHFrontendAction>().get());
 }

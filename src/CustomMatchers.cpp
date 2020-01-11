@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Sáb 04 Xan 2020 12:00:26 MST
+ * Last Modified Date: Sáb 11 Xan 2020 13:20:54 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -28,22 +28,34 @@
 
 #include "include/CustomMatchers.h"
 #include "include/CDAG.h"
-#include "include/StmtWrapper.h"
-
 #include "clang/ASTMatchers/ASTMatchers.h"
-
 #include <iostream>
 #include <string>
 
-// using namespace macveth;
+using namespace macveth::matchers_utils;
+
 typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 
-void matchers_utils::IterationHandler::run(
-    const MatchFinder::MatchResult &Result) {
+bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
+  auto SLoc = S->getStmt()->getBeginLoc();
+  for (auto Scop : this->SL.List) {
+    if ((SLoc >= Scop.Scop) && (SLoc <= Scop.EndScop)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void IterationHandler::run(const MatchFinder::MatchResult &Result) {
 
   // In this stage, we create a StmtWrapper, which will hold all the
   // information relative to the desired pattern found
   StmtWrapper *SWrap = new StmtWrapper(Result);
+
+  std::cout << "CHECK IF WITHIN SCOP\n";
+  if (!checkIfWithinScop(SWrap)) {
+    return;
+  }
 
   // FIXME
   // Unroll stage: we need to set this paremeter other way, maybe using pragmas
@@ -194,10 +206,11 @@ StatementMatcher matchers_utils::ROI(int NumLevels,
                                      StatementMatcher InnerStmt) {
   StatementMatcher NestedMatcher =
       matchers_utils::forLoopNested(NumLevels, InnerStmt);
-  StatementMatcher Annot =
-      compoundStmt(has(declStmt(hasSingleDecl(
-                       varDecl(hasInitializer(integerLiteral(equals(42))),
-                               hasAnyName("begin_roi"))))),
-                   has(NestedMatcher));
-  return Annot;
+  return NestedMatcher;
+  // StatementMatcher Annot =
+  //    compoundStmt(has(declStmt(hasSingleDecl(
+  //                     varDecl(hasInitializer(integerLiteral(equals(42))),
+  //                             hasAnyName("begin_roi"))))),
+  //                 has(NestedMatcher));
+  // return Annot;
 }

@@ -1,10 +1,13 @@
 /**
- * File              : MVPragmaHandler.cpp
+ * File              : MVPragmaHandler.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Xov 09 Xan 2020 22:11:27 MST
+ * Last Modified Date: Sáb 11 Xan 2020 13:15:47 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
+
+#ifndef MACVETH_PRAGMAHANDLER_H
+#define MACVETH_PRAGMAHANDLER_H
 
 #include "clang/Basic/SourceManager.h"
 #include "clang/Parse/Parser.h"
@@ -13,100 +16,107 @@
 
 using namespace clang;
 
-/// The location of the scop, as delimited by scop and endscop
+/// The Location of the Scop, as delimited by macveth and endmv
 /// pragmas by the user.
-/// "scop" and "endscop" are the source locations of the scop and
-/// endscop pragmas.
-/// "start_line" is the line number of the start position.
+/// "macveth" and "endmv" are the source locations of the macveth and
+/// endmv pragmas.
+/// "StartLine" is the Line number of the Start position.
 struct ScopLoc {
-  ScopLoc() : end(0) {}
+  ScopLoc() : End(0) {}
 
-  clang::SourceLocation scop;
-  clang::SourceLocation endscop;
-  unsigned start_line;
-  unsigned start;
-  unsigned end;
+  /// Start location of the pragma
+  clang::SourceLocation Scop;
+  /// End location of the pragma
+  clang::SourceLocation EndScop;
+  unsigned StartLine;
+  unsigned Start;
+  unsigned End;
 };
 
-/// List of pairs of #pragma scop and #pragma endscop locations.
-struct ScopLocList {
-  std::vector<ScopLoc> list;
+/// List of pairs of #pragma Scop and #pragma EndScop Locations.
+struct ScopHandler {
+  std::vector<ScopLoc> List;
 
-  /// Return a SourceLocation for line "line", column "col" of file "FID".
-  SourceLocation translateLineCol(SourceManager &SM, FileID FID, unsigned line,
+  /// Empty constructor
+  ScopHandler(){};
+
+  /// Return a SourceLocation for Line "Line", column "col" of file "FID".
+  SourceLocation translateLineCol(SourceManager &SM, FileID FID, unsigned Line,
                                   unsigned col) {
-    return SM.translateLineCol(FID, line, col);
+    return SM.translateLineCol(FID, Line, col);
   }
 
-  /// Add a new start (#pragma scop) location to the list.
-  /// If the last #pragma scop did not have a matching
-  /// #pragma endscop then overwrite it.
-  /// "start" points to the location of the scop pragma.
-  void add_start(SourceManager &SM, SourceLocation start) {
-    ScopLoc loc;
+  /// Add a new Start (#pragma macveth) Location to the list.
+  /// If the last #pragma macveth did not have a matching
+  /// #pragma endmv then overwrite it.
+  /// "Start" points to the location of the macveth pragma.
+  void addStart(SourceManager &SM, SourceLocation Start) {
+    ScopLoc Loc;
 
-    loc.scop = start;
-    int line = SM.getExpansionLineNumber(start);
-    start = translateLineCol(SM, SM.getFileID(start), line, 1);
-    loc.start_line = line;
-    loc.start = SM.getFileOffset(start);
-    if (list.size() == 0 || list[list.size() - 1].end != 0)
-      list.push_back(loc);
+    Loc.Scop = Start;
+    int Line = SM.getExpansionLineNumber(Start);
+    Start = translateLineCol(SM, SM.getFileID(Start), Line, 1);
+    Loc.StartLine = Line;
+    Loc.Start = SM.getFileOffset(Start);
+    if (List.size() == 0 || List[List.size() - 1].End != 0)
+      List.push_back(Loc);
     else
-      list[list.size() - 1] = loc;
+      List[List.size() - 1] = Loc;
   }
 
-  /// Set the end location (#pragma endscop) of the last pair
+  /// Set the end location (#pragma endmv) of the last pair
   /// in the list.
   /// If there is no such pair of if the end of that pair
-  /// is already set, then ignore the spurious #pragma endscop.
-  /// "end" points to the location of the endscop pragma.
-  void add_end(SourceManager &SM, SourceLocation end) {
-    if (list.size() == 0 || list[list.size() - 1].end != 0)
+  /// is already set, then ignore the spurious #pragma endmv.
+  /// "end" points to the location of the endmv pragma.
+  void addEnd(SourceManager &SM, SourceLocation end) {
+    if (List.size() == 0 || List[List.size() - 1].End != 0)
       return;
-    list[list.size() - 1].endscop = end;
-    int line = SM.getExpansionLineNumber(end);
-    end = translateLineCol(SM, SM.getFileID(end), line + 1, 1);
-    list[list.size() - 1].end = SM.getFileOffset(end);
+    List[List.size() - 1].EndScop = end;
+    int Line = SM.getExpansionLineNumber(end);
+    end = translateLineCol(SM, SM.getFileID(end), Line + 1, 1);
+    List[List.size() - 1].End = SM.getFileOffset(end);
   }
 };
 
 /// Handle pragmas of the form
 ///
-///  #pragma scop
+///  #pragma macveth
 ///
-/// In particular, store the location of the line containing
-/// the pragma in the list "scops".
+/// In particular, store the Location of the line containing
+/// the pragma in the list "Scops".
 struct PragmaScopHandler : public PragmaHandler {
-  ScopLocList &scops;
+  ScopHandler &Scops;
 
-  PragmaScopHandler(ScopLocList &scops)
-      : PragmaHandler("macveth"), scops(scops) {}
+  PragmaScopHandler(ScopHandler &Scops)
+      : PragmaHandler("macveth"), Scops(Scops) {}
 
   virtual void HandlePragma(Preprocessor &PP, PragmaIntroducer Introducer,
                             Token &ScopTok) {
     SourceManager &SM = PP.getSourceManager();
-    SourceLocation sloc = ScopTok.getLocation();
-    scops.add_start(SM, sloc);
+    SourceLocation Sloc = ScopTok.getLocation();
+    Scops.addStart(SM, Sloc);
   }
 };
 
 /// Handle pragmas of the form
 ///
-///  #pragma endscop
+///  #pragma endmv
 ///
-/// In particular, store the location of the line following the one containing
-/// the pragma in the list "scops".
+/// In particular, store the Location of the line following the one containing
+/// the pragma in the list "Scops".
 struct PragmaEndScopHandler : public PragmaHandler {
-  ScopLocList &scops;
+  ScopHandler &Scops;
 
-  PragmaEndScopHandler(ScopLocList &scops)
-      : PragmaHandler("endmacveth"), scops(scops) {}
+  PragmaEndScopHandler(ScopHandler &Scops)
+      : PragmaHandler("endmv"), Scops(Scops) {}
 
   virtual void HandlePragma(Preprocessor &PP, PragmaIntroducer Introducer,
                             Token &EndScopTok) {
     SourceManager &SM = PP.getSourceManager();
-    SourceLocation sloc = EndScopTok.getLocation();
-    scops.add_end(SM, sloc);
+    SourceLocation Sloc = EndScopTok.getLocation();
+    Scops.addEnd(SM, Sloc);
   }
 };
+
+#endif
