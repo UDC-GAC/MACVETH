@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Dom 12 Xan 2020 23:01:19 MST
+ * Last Modified Date: Lun 13 Xan 2020 08:50:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -34,42 +34,25 @@
 
 using namespace macveth::matchers_utils;
 
-typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
-
+// ---------------------------------------------
 bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
   auto SLoc = S->getStmt()->getBeginLoc();
-  for (auto Scop : SL->List) {
-    if ((SLoc >= Scop.Scop) && (SLoc <= Scop.EndScop)) {
+  for (int n = 0; n < SL->List.size(); ++n) {
+    if ((SLoc >= SL->List[n].Scop) && (SLoc <= SL->List[n].EndScop) &&
+        (!SL->List[n].Visited)) {
+      SL->List[n].Visited = true;
       return true;
     }
   }
   return false;
 }
 
+// ---------------------------------------------
 void IterationHandler::run(const MatchFinder::MatchResult &Result) {
 
-  // Get the statement from the ASTMatcher
-  auto *statement = Result.Nodes.getNodeAs<clang::Expr>("ROI");
-
-  // Get the source range and manager.
-  SourceRange range = statement->getSourceRange();
-  const SourceManager *SM = Result.SourceManager;
-
-  // Use LLVM's lexer to get source text.
-  llvm::StringRef ref = Lexer::getSourceText(
-      CharSourceRange::getCharRange(range), *SM, LangOptions());
-  std::cout << ref.str() << std::endl;
-
-  // In this stage, we create a StmtWrapper, which will hold all the
-  // information relative to the desired pattern found
   StmtWrapper *SWrap = new StmtWrapper(Result);
 
-  std::cout << SWrap->getLoopInfo().size() << std::endl;
-
-  return;
-
   if (!checkIfWithinScop(SWrap)) {
-    std::cout << "NOPE\n";
     return;
   }
 
@@ -94,8 +77,6 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // Computing the cost model of the CDAG created
   CDAG::computeCostModel(G);
 
-  std::cout << "DAMN IT\n";
-
   /// Unroll factor applied to the for header
   // for (int Inc = NLevel; Inc > 0; --Inc) {
   //  const UnaryOperator *IncVarPos =
@@ -119,6 +100,8 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   //}
   // Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
 }
+
+typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 
 /// Possible RHS
 /// var[][]..[]

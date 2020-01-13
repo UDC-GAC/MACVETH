@@ -2,7 +2,7 @@
  * File              : MVPragmaHandler.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Dom 12 Xan 2020 21:45:32 MST
+ * Last Modified Date: Lun 13 Xan 2020 08:20:59 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -31,6 +31,7 @@ struct ScopLoc {
   unsigned StartLine;
   unsigned Start;
   unsigned End;
+  bool Visited = false;
 };
 
 /// List of pairs of #pragma Scop and #pragma EndScop Locations.
