@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Sáb 11 Xan 2020 13:20:54 MST
+ * Last Modified Date: Dom 12 Xan 2020 23:01:19 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -38,7 +38,7 @@ typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 
 bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
   auto SLoc = S->getStmt()->getBeginLoc();
-  for (auto Scop : this->SL.List) {
+  for (auto Scop : SL->List) {
     if ((SLoc >= Scop.Scop) && (SLoc <= Scop.EndScop)) {
       return true;
     }
@@ -48,12 +48,28 @@ bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
 
 void IterationHandler::run(const MatchFinder::MatchResult &Result) {
 
+  // Get the statement from the ASTMatcher
+  auto *statement = Result.Nodes.getNodeAs<clang::Expr>("ROI");
+
+  // Get the source range and manager.
+  SourceRange range = statement->getSourceRange();
+  const SourceManager *SM = Result.SourceManager;
+
+  // Use LLVM's lexer to get source text.
+  llvm::StringRef ref = Lexer::getSourceText(
+      CharSourceRange::getCharRange(range), *SM, LangOptions());
+  std::cout << ref.str() << std::endl;
+
   // In this stage, we create a StmtWrapper, which will hold all the
   // information relative to the desired pattern found
   StmtWrapper *SWrap = new StmtWrapper(Result);
 
-  std::cout << "CHECK IF WITHIN SCOP\n";
+  std::cout << SWrap->getLoopInfo().size() << std::endl;
+
+  return;
+
   if (!checkIfWithinScop(SWrap)) {
+    std::cout << "NOPE\n";
     return;
   }
 
@@ -77,6 +93,8 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
 
   // Computing the cost model of the CDAG created
   CDAG::computeCostModel(G);
+
+  std::cout << "DAMN IT\n";
 
   /// Unroll factor applied to the for header
   // for (int Inc = NLevel; Inc > 0; --Inc) {
@@ -206,11 +224,11 @@ StatementMatcher matchers_utils::ROI(int NumLevels,
                                      StatementMatcher InnerStmt) {
   StatementMatcher NestedMatcher =
       matchers_utils::forLoopNested(NumLevels, InnerStmt);
-  return NestedMatcher;
-  // StatementMatcher Annot =
-  //    compoundStmt(has(declStmt(hasSingleDecl(
-  //                     varDecl(hasInitializer(integerLiteral(equals(42))),
-  //                             hasAnyName("begin_roi"))))),
-  //                 has(NestedMatcher));
-  // return Annot;
+  // return NestedMatcher;
+  StatementMatcher Annot = compoundStmt(
+      // has(declStmt(hasSingleDecl(
+      //          varDecl(hasInitializer(integerLiteral(equals(42))),
+      //                  hasAnyName("begin_roi"))))),
+      forEach(NestedMatcher));
+  return Annot;
 }

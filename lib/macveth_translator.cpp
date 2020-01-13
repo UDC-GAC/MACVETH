@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Sáb 11 Xan 2020 14:47:54 MST
+ * Last Modified Date: Dom 12 Xan 2020 22:59:32 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -31,6 +31,7 @@
 #include "include/MVPragmaHandler.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -62,7 +63,7 @@ class MACVETHConsumer : public ASTConsumer {
   // * Expr - expressions, they inherit from Stmt tho; this is quite weird for
   // me...
 public:
-  MACVETHConsumer(Rewriter &R, ASTContext *C, ScopHandler L)
+  MACVETHConsumer(Rewriter &R, ASTContext *C, ScopHandler *L)
       : Handler(R, C, L), Context(C) {}
 
   void HandleTranslationUnit(ASTContext &Context) override {
@@ -107,7 +108,7 @@ public:
     Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
                    &CI.getASTContext());
     Preprocessor &PP = CI.getPreprocessor();
-    ScopHandler(scops);
+    ScopHandler *scops = new ScopHandler();
     PP.AddPragmaHandler(new PragmaScopHandler(scops));
     PP.AddPragmaHandler(new PragmaEndScopHandler(scops));
     // std::make_unique is C++14, while LLVM 9 is written in C++11, this

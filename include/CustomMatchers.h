@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Sáb 11 Xan 2020 13:20:06 MST
+ * Last Modified Date: Dom 12 Xan 2020 21:39:40 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -68,10 +68,10 @@ public:
   /// Basic constructor with context
   IterationHandler(Rewriter &R, ASTContext *C) : Rewrite(R), Ctx(C) {}
   /// Basic constructor with context
-  IterationHandler(Rewriter &R, ASTContext *C, ScopHandler L)
+  IterationHandler(Rewriter &R, ASTContext *C, ScopHandler *L)
       : Rewrite(R), Ctx(C), SL(L) {
 
-    for (auto Scop : SL.List) {
+    for (auto Scop : SL->List) {
       std::cout << "scop " << Scop.Start << ", " << Scop.End << std::endl;
     }
   }
@@ -88,7 +88,7 @@ private:
   Rewriter &Rewrite;
   /// A copy of the ASTContext for rewriting purposes
   const ASTContext *Ctx;
-  ScopHandler SL;
+  ScopHandler *SL;
 };
 
 /// Matching any type of statement no matter the assignment operator or
