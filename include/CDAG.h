@@ -2,7 +2,7 @@
  * File              : CDAG.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Mér 08 Xan 2020 17:37:37 CST
+ * Last Modified Date: Lun 13 Xan 2020 15:04:08 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -12,6 +12,8 @@
 #include "include/Node.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
+#include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
 #include "include/Vectorization/VectorIR.h"
 #include <list>
 #include <stdio.h>
@@ -26,7 +28,7 @@ public:
   /// Given a list of TACs, create its correspondent CDAG
   static CDAG *createCDAGfromTAC(TacListType TL);
   /// Compute cost model
-  static int computeCostModel(CDAG *C);
+  static SIMDGenerator::SIMDInfo computeCostModel(CDAG *C, SIMDGenerator *SG);
   /// Compute cost model for a set of Nodes
   static int computeCostModel(Node::NodeListType NL);
 

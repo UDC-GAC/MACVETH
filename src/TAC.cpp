@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Ven 10 Xan 2020 11:27:20 MST
+ * Last Modified Date: Lun 13 Xan 2020 16:34:10 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -31,6 +31,7 @@
 #include "include/MVExpr/MVExprFactory.h"
 #include "clang/AST/Expr.h"
 #include "clang/Lex/Lexer.h"
+#include <llvm-10/llvm/Support/ErrorHandling.h>
 
 using namespace clang;
 using namespace macveth;
@@ -60,19 +61,26 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
 }
 
 // ---------------------------------------------
-void TAC::exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val) {
-  clang::BinaryOperator *SBin = NULL;
-  bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
-  if (STypeBin) {
-    binaryOperator2TAC(SBin, TacList, Val);
-    return;
+// void TAC::exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val) {
+void TAC::exprToTAC(clang::CompoundStmt *CS, std::list<TAC> *TacList, int Val) {
+  for (auto ST : CS->body()) {
+    clang::Expr *S = dyn_cast<clang::Expr>(ST);
+    if (S == NULL) {
+      llvm::llvm_unreachable_internal();
+    }
+    clang::BinaryOperator *SBin = NULL;
+    bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
+    if (STypeBin) {
+      binaryOperator2TAC(SBin, TacList, Val);
+      continue;
+    }
+    MVExpr *TmpA =
+        MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
+    MVExpr *TmpB = MVExprFactory::createMVExpr(S);
+    MVOp OP = TAC::getMVOPfromExpr(TmpB);
+    TAC NewTac = TAC(TmpA, TmpB, NULL, OP);
+    TacList->push_back(NewTac);
   }
-  MVExpr *TmpA =
-      MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
-  MVExpr *TmpB = MVExprFactory::createMVExpr(S);
-  MVOp OP = TAC::getMVOPfromExpr(TmpB);
-  TAC NewTac = TAC(TmpA, TmpB, NULL, OP);
-  TacList->push_back(NewTac);
 }
 
 // ---------------------------------------------

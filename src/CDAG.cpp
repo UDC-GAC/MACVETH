@@ -2,22 +2,23 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Ven 10 Xan 2020 17:21:09 MST
+ * Last Modified Date: Lun 13 Xan 2020 18:27:49 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/CDAG.h"
 #include "include/Vectorization/SIMD/AVX2Gen.h"
-#include "include/Vectorization/SIMD/SIMDGenerator.h"
-#include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
 #include "include/Vectorization/VectorIR.h"
 #include "clang/AST/Expr.h"
 
 namespace macveth {
 
+#define CDAG_DEBUG 0
+
 // ---------------------------------------------
 void printDebug(std::string M, std::string S) {
-  std::cout << "[" << M << " DEBUG] " << S << std::endl;
+  if (CDAG_DEBUG)
+    std::cout << "[" << M << " DEBUG] " << S << std::endl;
 }
 
 // ---------------------------------------------
@@ -35,20 +36,13 @@ int computeMaxDepth(Node *N) {
   }
 }
 
-// ---------------------------------------------
-int CDAG::computeCostModel(CDAG *G) {
-  /// FIXME at some point the compiler should be able to recognize the
-  /// architecture and ISA where it is compiling
-  SIMDGenerator *AVX =
-      SIMDGeneratorFactory::getBackend(SIMDGeneratorFactory::Arch::AVX2);
+// FIXME ---------------------------------------------
+std::list<VectorIR::VectorOP> getVectorOpFromCDAG(CDAG *G) {
   std::list<VectorIR::VectorOP> VList;
-  printDebug("CDAG", "Creating backend");
-
   Node *VLoadA[64];
   Node *VLoadB[64];
   Node *VOps[64];
   int Cursor = 0;
-  int TotalCost = -1;
 
   /// Working with a copy
   Node::NodeListType NL(G->getNodeListOps());
@@ -71,8 +65,6 @@ repeat:
   printDebug("CDAG", std::to_string(VL));
   while (!NL.empty()) {
     VOps[Cursor] = NL.front();
-    // printDebug("CDAG", VOps[Cursor]->getDataType());
-    // VL /= (SIMDGenerator::SizeOf[VOps[Cursor]->getDataType()] << 3);
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
       printDebug("CDAG",
@@ -95,9 +87,8 @@ repeat:
     Node::NodeListType Aux = VOps[i]->getInputs();
     VLoadA[i] = Aux.front();
     Aux.pop_front();
-    VLoadB[i] = Aux.front();
+    VLoadB[i++] = Aux.front();
     Aux.pop_front();
-    i++;
   }
 
   for (int n = 0; n < Cursor; ++n) {
@@ -118,18 +109,16 @@ repeat:
     }
     goto repeat;
   }
+  return VList;
+}
 
-  SIMDGenerator::SIMDInstListType S = AVX->getSIMDfromVectorOP(VList);
-  std::list<std::string> Ins = AVX->renderSIMDasString(S);
-  for (auto I : Ins) {
-    std::cout << I << std::endl;
-  }
-  Ins = AVX->computeSIMDCost(S);
-  for (auto I : Ins) {
-    std::cout << I << std::endl;
-  }
+// ---------------------------------------------
+SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
+  VectorIR::clearMappigs();
+  std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(G);
 
-  return TotalCost;
+  SIMDGenerator::SIMDInstListType S = SG->getSIMDfromVectorOP(VList);
+  return SG->computeSIMDCost(S);
 }
 
 // ---------------------------------------------
@@ -163,12 +152,12 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
   CDAG *G = new CDAG();
   Node *PrevNode = nullptr;
   for (TAC T : TL) {
-    /// TACs are of the form a = b op c, so if we create a Node for each TAC
-    /// we are basically creating NODE_OP Nodes. This way, when we connect
-    /// this new node to the rest of the CDAG, we are basically looking for
-    /// connections between the inputs and outputs. Actually we are looking
-    /// for outputs of of already connected Nodes that match the input of this
-    /// new NODE_OP. Looking for inputs
+    // TACs are of the form a = b op c, so if we create a Node for each TAC
+    // we are basically creating NODE_OP Nodes. This way, when we connect
+    // this new node to the rest of the CDAG, we are basically looking for
+    // connections between the inputs and outputs. Actually we are looking
+    // for outputs of of already connected Nodes that match the input of this
+    // new NODE_OP. Looking for inputs
     PrevNode = G->insertTac(T, PrevNode, G->getNodeListOps());
   }
   return G;

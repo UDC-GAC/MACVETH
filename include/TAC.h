@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Xov 09 Xan 2020 21:48:30 MST
+ * Last Modified Date: Lun 13 Xan 2020 15:33:20 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -94,7 +94,9 @@ public:
                                  std::list<TAC> *TacList, int Val);
 
   /// Inserts TACs in the input TacList
-  static void exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val);
+  // static void exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val);
+  static void exprToTAC(clang::CompoundStmt *S, std::list<TAC> *TacList,
+                        int Val);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,

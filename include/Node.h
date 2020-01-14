@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Xov 09 Xan 2020 22:22:13 MST
+ * Last Modified Date: Lun 13 Xan 2020 18:33:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -17,11 +17,6 @@
 using namespace macveth;
 
 namespace macveth {
-
-/// FIXME this is garbage
-inline static std::map<BinaryOperator::Opcode, std::string> MVOPtoValue = {
-    {BO_Mul, "mul"}, {BO_Div, "div"},    {BO_Add, "add"},
-    {BO_Sub, "sub"}, {BO_Rem, "modulo"}, {BO_Assign, "store"}};
 
 /// All Nodes belong to a CDAG. Each node or vertex holds information regarding
 /// the type of operation as well as its Edges (or links to another Nodes).

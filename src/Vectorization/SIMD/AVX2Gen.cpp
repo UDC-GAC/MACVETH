@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Ven 10 Xan 2020 23:22:17 MST
+ * Last Modified Date: Lun 13 Xan 2020 15:09:29 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -125,7 +125,6 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 
   // Perform replacements if any
   for (auto Inst : I) {
-    std::cout << Inst.render() << std::endl;
     if (Utils::contains(SkipList, Inst)) {
       continue;
     }

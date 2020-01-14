@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Sáb 11 Xan 2020 12:46:37 MST
+ * Last Modified Date: Lun 13 Xan 2020 15:09:03 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -37,15 +37,6 @@ using namespace macveth;
 using namespace macveth::matchers_utils;
 
 // ---------------------------------------------
-// void printDebug(std::string Name, TacListType TempTacList) {
-//  std::cout << "========" + Name + " UNROLLING=========" << std::endl;
-//  for (TAC Tac : TempTacList) {
-//    Tac.printTAC();
-//  }
-//  std::cout << "=================================" << std::endl;
-//}
-
-// ---------------------------------------------
 StmtWrapper::LoopList
 StmtWrapper::getLoopList(const MatchFinder::MatchResult &Result) {
   LoopList L;
@@ -54,10 +45,12 @@ StmtWrapper::getLoopList(const MatchFinder::MatchResult &Result) {
       Result.Nodes.getNodeAs<clang::ForStmt>("forLoop" + std::to_string(n));
   while (ForLoop != nullptr) {
     LoopInfo Loop;
+
     // Get name of variable
     const VarDecl *V = Result.Nodes.getNodeAs<clang::VarDecl>(
         varnames::NameVarInit + std::to_string(n));
     Loop.Dim = V->getNameAsString();
+
     // Get init val
     const clang::Expr *initializerExpr = V->getInit();
     clang::Expr::EvalResult R;
@@ -71,21 +64,19 @@ StmtWrapper::getLoopList(const MatchFinder::MatchResult &Result) {
     if (UpperBoundExpr != nullptr) {
       Loop.UpperBound = Utils::getIntFromExpr(UpperBoundExpr, Utils::getCtx());
     }
+
+    // Get step or stride and leftover
+    if (Loop.UpperBound != -1) {
+      Loop.Step = Loop.UpperBound;
+      Loop.LeftOver = 0;
+    }
+
     L.push_back(Loop);
     // Check if next loop
     ForLoop =
         Result.Nodes.getNodeAs<clang::ForStmt>("forLoop" + std::to_string(++n));
-    Loop.print();
   }
   return L;
-}
-
-// ---------------------------------------------
-StmtWrapper::StmtType StmtWrapper::getStmtType(const BinaryOperator *S) {
-  if (!isa<ArraySubscriptExpr>(S->getLHS())) {
-    return StmtWrapper::StmtType::REDUCTION;
-  }
-  return StmtWrapper::StmtType::VECTORIZABLE;
 }
 
 // ---------------------------------------------
@@ -106,70 +97,3 @@ void StmtWrapper::unroll(long UnrollFactor, long UpperBound,
                                      UpperBound, MaskList, LoopLevel);
   this->setTacList(T);
 }
-
-// ---------------------------------------------
-// void StmtWrapper::unroll(int UnrollFactor, int UpperBound) {
-//  // Limitations:
-//  // * Type of statements: VECTORIZABLE | REDUCTION
-//  // * Regarding reductions:
-//  //    - Works for reduction statements such as:
-//  //            sum = sum + [whatever]
-//  if (this->getStmtType() == StmtWrapper::StmtType::VECTORIZABLE) {
-//    this->setTacList(
-//        TAC::unrollTacList(this->getTacList(), UnrollFactor, UpperBound));
-//  } else if (this->getStmtType() == StmtWrapper::StmtType::REDUCTION) {
-//    // Get the last element, which is the final reductionºº
-//    TAC RedTac = this->getTacList().back();
-//    // Making a copy of the TAC list
-//    std::list<TAC> TempTacList = this->getTacList();
-//    // Remove the last element, the final reduction
-//    TempTacList.pop_back();
-//    TAC AddTac = TempTacList.back();
-//    TempTacList.pop_back();
-//    unsigned int MaskList[] = {0x010101, 0x010100};
-//
-//    // We can here distinguish two cases:
-//    // 1.- sum += atomic_expr
-//    // 2.- sum += complex_expr
-//    // In the first case, TAC list is empty at this stage, so the way we
-//    // perform unrolling is different: we provide a base case to the algorithm
-//    if (TempTacList.empty()) {
-//      TAC *TempTac =
-//          new TAC(new MVExpr("unroll0", MVExpr::MVExprInfo::TMP_RES),
-//                  new MVExpr(AddTac.getC()),
-//                  new MVExpr(*(AddTac.getC()) + UnrollFactor),
-//                  AddTac.getOP());
-//      TempTacList.push_back(*TempTac);
-//      UnrollFactor *= 2;
-//      TempTacList =
-//          TAC::unrollTacList(TempTacList, UnrollFactor, UpperBound, MaskList);
-//    } else {
-//      // Get the name of the last operand which holds basically the result of
-//      // the reduction. Thus, create a new TAC which basically will be the
-//      core
-//      // for unrolling.
-//      TAC *TempTac = new TAC(new MVExpr("unroll0",
-//      MVExpr::MVExprInfo::TMP_RES),
-//                             new MVExpr("unroll0",
-//                             MVExpr::MVExprInfo::TMP_RES), new MVExpr("temp0",
-//                             MVExpr::MVExprInfo::TMP_RES), AddTac.getOP());
-//      TempTacList.push_back(*TempTac);
-//      // Unroll TempTacList (which is the original without the last statement)
-//      TempTacList =
-//          TAC::unrollTacList(TempTacList, UnrollFactor, UpperBound, MaskList);
-//      // Now we are going to attach to the front of the list a new TAC which
-//      is
-//      // basically the "base case"
-//      TAC TempInit = TempTacList.front();
-//      TempInit.setA(new MVExpr("unroll0"));
-//      TempTacList.pop_front();
-//      TempTacList.pop_front();
-//      TempTacList.push_front(TempInit);
-//    }
-//    // Setting thiw new TAC list for this statement
-//    this->setTacList(TempTacList);
-//    // printDebug("AFTER", TempTacList);
-//  } else {
-//    std::cout << "STMT not supported yet!!!" << std::endl;
-//  }
-//}

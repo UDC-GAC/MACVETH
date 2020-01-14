@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Ven 10 Xan 2020 08:54:01 MST
+ * Last Modified Date: Lun 13 Xan 2020 17:07:52 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -30,25 +30,18 @@ std::string SIMDGenerator::SIMDInst::render() {
 }
 
 // ---------------------------------------------
-std::list<std::string> SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
-  std::map<std::string, long> M;
-  std::map<std::string, long> N;
+SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
+  std::map<std::string, long> CostOp;
+  std::map<std::string, long> NumOp;
   std::list<std::string> L;
-  long TotalCost = 0;
+  long TotCost = 0;
   for (SIMDInst I : S) {
-    M[I.FuncName] = I.Cost;
-    N[I.FuncName]++;
-    TotalCost += I.Cost;
+    CostOp[I.FuncName] = I.Cost;
+    NumOp[I.FuncName]++;
+    TotCost += I.Cost;
   }
-  L.push_back("---------- COST SIMD --------------");
-  for (auto It = M.begin(); It != M.end(); ++It) {
-    L.push_back(It->first + "\t=\t" +
-                std::to_string(N[It->first] * It->second) + "\t(" +
-                std::to_string(N[It->first]) + ")");
-  }
-  L.push_back("TOTAL = " + std::to_string(TotalCost));
-  L.push_back("-----------------------------------");
-  return L;
+  SIMDInfo SI(S, CostOp, NumOp, TotCost);
+  return SI;
 }
 
 // ---------------------------------------------
@@ -62,11 +55,8 @@ std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
     for (auto N = It->second.begin(); N != It->second.end(); ++N) {
       TypeRegDecl += (i++ == (It->second.size() - 1)) ? *N : (*N + ", ");
     }
-    L.push_back(TypeRegDecl);
+    L.push_back(TypeRegDecl + ";");
   }
-  // For pretty printing: letting a blank line between declarations and the
-  // actual instructions
-  L.push_back("\n");
   // Render instructions
   for (SIMDInst I : S) {
     std::string Inst = I.render() + ";\t// cost = " + std::to_string(I.Cost);
@@ -77,10 +67,8 @@ std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
 
 // ---------------------------------------------
 bool equalValues(int VL, Node **N) {
-  // std::cout << std::to_string(VL) << std::endl;
   for (int n = 1; n < VL; ++n) {
     if (N[0]->getValue() != N[n]->getValue()) {
-      // std::cout << N[0]->getValue() << " " << N[n]->getValue() << std::endl;
       return false;
     }
   }
@@ -92,7 +80,6 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
                                     SIMDGenerator::SIMDInstListType *IL) {
   if (!V.IsLoad) {
     // TODO maybe it would be OK to perform another action in this case
-    // std::cout << "NOT LOAD " << V.Name << std::endl;
     return false;
   }
 
@@ -114,8 +101,6 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
   bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
   bool ScatterMem = V.MemOp && !ContMem;
   bool ExpVal = !V.MemOp;
-  // std::cout << EqualVal << ", " << ContMem << ", " << ScatterMem << ", "
-  //          << ExpVal << std::endl;
 
   // 0, 1, 0, 0
   if ((!EqualVal) && (ContMem) && (!ScatterMem)) {

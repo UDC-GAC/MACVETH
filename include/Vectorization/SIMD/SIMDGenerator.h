@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Ven 10 Xan 2020 23:19:10 MST
+ * Last Modified Date: Lun 13 Xan 2020 17:02:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -106,8 +106,32 @@ public:
 
   /// Return value when generating new code
   struct SIMDInfo {
+    /// List of SIMD instructions generated
     SIMDInstListType SIMDList;
-    unsigned int Cost;
+    /// Cost of operations
+    std::map<std::string, long> CostOp;
+    /// Number of operations of each type
+    std::map<std::string, long> NumOp;
+    /// Total cost
+    long TotCost;
+
+    /// Constructor
+    SIMDInfo(SIMDInstListType S, std::map<std::string, long> CostOp,
+             std::map<std::string, long> NumOp, long TotCost)
+        : SIMDList(S), CostOp(CostOp), NumOp(NumOp), TotCost(TotCost) {}
+
+    /// For debugging purposes
+    void printCost() {
+      std::cout << "---------- COST SIMD --------------\n";
+      for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {
+        std::cout << It->first + "\t=\t" +
+                         std::to_string(NumOp[It->first] * It->second) + "\t(" +
+                         std::to_string(NumOp[It->first]) + ")"
+                  << std::endl;
+      }
+      std::cout << "TOTAL = " + std::to_string(TotCost) << std::endl;
+      std::cout << "-----------------------------------\n";
+    }
   };
 
   // VectorAPI: instructions to implement by the specific backends
@@ -182,7 +206,7 @@ public:
   std::list<std::string> renderSIMDasString(SIMDInstListType S);
 
   /// Just compute the cost of each SIMD inst
-  std::list<std::string> computeSIMDCost(SIMDInstListType S);
+  SIMDInfo computeSIMDCost(SIMDInstListType S);
 
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);
@@ -206,6 +230,9 @@ public:
   /// list of VectorOP
   SIMDInstListType getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList);
 
+  /// Clean the list of registers declared
+  static void clearMappings();
+
   /// Map data types to their size in bytes
   inline static std::map<std::string, int> SizeOf = {
       {"double", 8}, {"float", 4}, {"char", 1}, {"unsigned int", 4}};
@@ -224,11 +251,8 @@ protected:
   /// Add register to declare
   static void addRegToDeclare(std::string Type, std::string Name);
 
-protected:
   /// List of registers declared
   inline static std::map<std::string, std::list<std::string>> RegDeclared;
-  /// Clean the list of registers declared
-  static void clearMappings();
 };
 
 } // namespace macveth

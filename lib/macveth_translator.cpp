@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Dom 12 Xan 2020 22:59:32 MST
+ * Last Modified Date: Lun 13 Xan 2020 16:00:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -70,7 +70,7 @@ public:
     // For vectorizable statements
     for (int n = 0; n < 6; ++n) {
       StatementMatcher ForLoopNestedMatcherVec =
-          matchers_utils::ROI(n, expr().bind("ROI"));
+          matchers_utils::ROI(n, compoundStmt(has(expr())).bind("ROI"));
       MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
     }
     // Run the matchers when we have the whole TU parsed.
@@ -80,9 +80,7 @@ public:
 private:
   ASTContext *Context;
   matchers_utils::IterationHandler Handler;
-  MatchFinder MatcherRed;
   MatchFinder MatcherVec;
-  MatchFinder MatcherLoop;
 };
 
 // SECOND STEP

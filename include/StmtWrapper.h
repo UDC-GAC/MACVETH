@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Sáb 11 Xan 2020 12:17:16 MST
+ * Last Modified Date: Lun 13 Xan 2020 16:42:47 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -35,7 +35,6 @@
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
-#include <unordered_map>
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -47,6 +46,9 @@ namespace macveth {
 /// and the desired intrinsic translation
 class StmtWrapper {
 public:
+  /// Default value
+  static constexpr int UBFallback = 4;
+
   /// Helper structure to handle the loop information for this statement
   struct LoopInfo {
     /// Name of dimension
@@ -55,6 +57,10 @@ public:
     long InitVal = 0;
     /// Upperbound value (-1 if not known)
     long UpperBound = 0;
+    /// Stride or step
+    long Step = UBFallback;
+    /// TODO Leftover values: if Upperbound is -1, then LeftOver as well
+    long LeftOver = -1;
 
     /// For debugging purposes
     void print() {
@@ -70,41 +76,33 @@ public:
   /// From the result of a matcher it gets the loop hierarchy
   static LoopList getLoopList(const MatchFinder::MatchResult &Result);
 
-  /// Types of statements we differentiate when creating them
-  enum StmtType { REDUCTION, VECTORIZABLE };
   /// Empty constructor
   StmtWrapper(){};
   /// Full constructor that parses the loop hierarchy
   StmtWrapper(const MatchFinder::MatchResult &Result) {
-    const Expr *E = Result.Nodes.getNodeAs<clang::Expr>("ROI");
-
+    auto E = Result.Nodes.getNodeAs<clang::CompoundStmt>("ROI");
     /// Get loop information
     this->LoopL = getLoopList(Result);
-    this->S = (Stmt *)E;
-    // this->setStmtType(StmtWrapper::getStmtType(BinOp));
-    TAC::exprToTAC(const_cast<Expr *>(E), &this->TacList, -1);
+    for (auto ST : E->body()) {
+      this->S.push_back((Stmt *)ST);
+    }
+    TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->TacList, -1);
     this->TacList.reverse();
   }
 
-  /// Given a statement, it is able to determine wherever it is or not a
-  /// reduction
-  static StmtType getStmtType(const BinaryOperator *S);
-  StmtType getStmtType() { return this->ST; }
-  void setStmtType(StmtType ST) { this->ST = ST; }
-
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
-  // void unroll(int UnrollFactor, int UpperBound);
   void unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
-  void unrollAndJam(long UnrollFactor, long UpperBoundFallback = 4);
+  /// Unrolls the TAC list in all the possible dimensions
+  void unrollAndJam(long UnrollFactor, long UpperBoundFallback = UBFallback);
 
   /// Get LoopInfo
   LoopList getLoopInfo() { return this->LoopL; }
 
   /// Get Clang Stmt
-  Stmt *getStmt() { return this->S; };
+  std::vector<Stmt *> getStmt() { return this->S; };
   /// Set Clang Stmt
-  void setStmt(Stmt *S) { this->S = S; };
+  void setStmt(std::vector<Stmt *> S) { this->S = S; };
   /// Get TAC list
   TacListType getTacList() { return this->TacList; };
   /// Set TAC lsit
@@ -112,11 +110,9 @@ public:
 
 private:
   /// Statement holded
-  Stmt *S;
+  std::vector<Stmt *> S;
   /// Loop list
   LoopList LoopL;
-  /// Type of statement; we only address those which are of our interest
-  StmtType ST;
   /// TAC list with regard to the Statement S
   TacListType TacList;
 };

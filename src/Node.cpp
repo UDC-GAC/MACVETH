@@ -2,14 +2,18 @@
  * File              : Node.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:01:36 MST
- * Last Modified Date: Xov 09 Xan 2020 23:27:35 MST
+ * Last Modified Date: Lun 13 Xan 2020 15:07:45 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Node.h"
 
+#define NODE_DEBUG 0
+
 // ---------------------------------------------
 void Node::printNode() {
+  if (!NODE_DEBUG)
+    return;
   std::cout << "----------------------------------------" << std::endl;
   std::cout << "[NODE] name\t\t= " << this->getValue() << std::endl;
   std::cout << "\tFreeSched\t= " << this->getSchedInfo().FreeSched << std::endl;

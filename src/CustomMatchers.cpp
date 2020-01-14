@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 13 Xan 2020 08:50:22 MST
+ * Last Modified Date: Lun 13 Xan 2020 18:27:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -30,13 +30,14 @@
 #include "include/CDAG.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include <iostream>
+#include <llvm-10/llvm/ADT/StringRef.h>
 #include <string>
 
 using namespace macveth::matchers_utils;
 
 // ---------------------------------------------
 bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
-  auto SLoc = S->getStmt()->getBeginLoc();
+  auto SLoc = S->getStmt()[0]->getBeginLoc();
   for (int n = 0; n < SL->List.size(); ++n) {
     if ((SLoc >= SL->List[n].Scop) && (SLoc <= SL->List[n].EndScop) &&
         (!SL->List[n].Visited)) {
@@ -49,9 +50,11 @@ bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
 
 // ---------------------------------------------
 void IterationHandler::run(const MatchFinder::MatchResult &Result) {
-
+  // Get the info about the loops surrounding this statement
   StmtWrapper *SWrap = new StmtWrapper(Result);
 
+  // If this pragma has been already visited, then we skip the analysis. This
+  // may happen because of the implementatio of the AST finders and matchers
   if (!checkIfWithinScop(SWrap)) {
     return;
   }
@@ -62,43 +65,51 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   int UnrollFactor = 1;
   SWrap->unrollAndJam(UnrollFactor);
 
-  // Debugging
-  for (TAC t : SWrap->getTacList())
-    t.printTAC();
-
   // Creating the CDAG
-  std::cout << "Creating CDAG" << std::endl;
   CDAG *G = CDAG::createCDAGfromTAC(SWrap->getTacList());
-  std::cout << "CDAG done" << std::endl;
 
   // Computing the free schedule of the CDAG created
   CDAG::computeFreeSchedule(G);
 
-  // Computing the cost model of the CDAG created
-  CDAG::computeCostModel(G);
+  /// FIXME at some point the compiler should be able to recognize the
+  /// architecture and ISA where it is compiling
+  SIMDGenerator *AVX =
+      SIMDGeneratorFactory::getBackend(SIMDGeneratorFactory::Arch::AVX2);
 
-  /// Unroll factor applied to the for header
-  // for (int Inc = NLevel; Inc > 0; --Inc) {
-  //  const UnaryOperator *IncVarPos =
-  //      Result.Nodes.getNodeAs<clang::UnaryOperator>(varnames::NameVarIncPos +
-  //                                                   std::to_string(Inc));
-  //  const DeclRefExpr *IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
-  //      varnames::NameVarInc + std::to_string(Inc));
-  //  clang::CharSourceRange charRange = clang::CharSourceRange::getTokenRange(
-  //      IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
-  //  Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
-  //                                     "+=" + std::to_string(UpperBound));
-  //}
+  // Computing the cost model of the CDAG created
+  auto SInfo = CDAG::computeCostModel(G, AVX);
+
+  // FIXME: this code is not ugly AF but almost...
+
+  // Unroll factor applied to the for header
+  int Inc = 1;
+  for (auto Loop : SWrap->getLoopInfo()) {
+    int UpperBound = Loop.Step;
+    const UnaryOperator *IncVarPos =
+        Result.Nodes.getNodeAs<clang::UnaryOperator>(varnames::NameVarIncPos +
+                                                     std::to_string(Inc));
+    const DeclRefExpr *IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
+        varnames::NameVarInc + std::to_string(Inc++));
+    clang::CharSourceRange charRange = clang::CharSourceRange::getTokenRange(
+        IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
+    Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
+                                       "+=" + std::to_string(UpperBound));
+  }
 
   // clang::CharSourceRange CharRangeStr =
-  //    clang::CharSourceRange::getTokenRange(TacBinOp->getSourceRange());
+  // clang::CharSourceRange::getTokenRange(
+  //    SWrap->getStmt()[0]->getSourceRange());
 
-  // for (InstListType IList : SWrap->getInstList()) {
-  //  for (std::string S : IList) {
-  //    Rewrite.InsertText(TacBinOp->getBeginLoc(), S + ";\n", true, true);
-  //  }
-  //}
-  // Rewrite.InsertText(TacBinOp->getBeginLoc(), "//", true, true);
+  // Print new lines
+  for (auto InsSIMD : AVX->renderSIMDasString(SInfo.SIMDList)) {
+    Rewrite.InsertText(SWrap->getStmt()[0]->getBeginLoc(), InsSIMD + "\n", true,
+                       true);
+  }
+
+  // Comment statements
+  for (auto S : SWrap->getStmt()) {
+    Rewrite.InsertText(S->getBeginLoc(), "// REPLACED ", true, true);
+  }
 }
 
 typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;

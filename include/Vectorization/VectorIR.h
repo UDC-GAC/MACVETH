@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Mér 08 Xan 2020 17:17:00 CST
+ * Last Modified Date: Lun 13 Xan 2020 18:29:32 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -29,6 +29,13 @@ public:
   /// Keeping track of the correspondence between the registers name and the
   /// new naming
   static inline std::list<std::string> MapLoads;
+
+  /// Clearing all the mappings
+  static void clearMappigs() {
+    VectorIR::MapRegToVReg.clear();
+    MapLoads.clear();
+    VID = 0;
+  }
 
   /// Types of vector operations we distinguish according their scheduling
   enum VType {
