@@ -2,7 +2,7 @@
  * File              : Utils.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Sáb 23 Nov 2019 10:51:03 MST
- * Last Modified Date: Xov 09 Xan 2020 20:29:45 MST
+ * Last Modified Date: Lun 13 Xan 2020 19:35:31 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -36,9 +36,9 @@ int64_t Utils::getIntFromExpr(const Expr *E, const ASTContext *C) {
 }
 
 //-------------------------------------------------------------
-std::string Utils::getNameTempReg(int Val) {
-  return "temp" + std::to_string(Val);
-}
+// std::string Utils::getNameTempReg(int Val) {
+//  return "temp" + std::to_string(Val);
+//}
 
 //-------------------------------------------------------------
 bool Utils::isNumericValue(Expr *E) {

@@ -2,7 +2,7 @@
  * File              : Utils.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 15:16:05 MST
- * Last Modified Date: Ven 20 Dec 2019 14:37:04 MST
+ * Last Modified Date: Lun 13 Xan 2020 19:40:14 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -58,8 +58,6 @@ public:
 
   /// Converting clang expressions to strings
   static std::string getStringFromExpr(const Expr *E);
-  /// Dummy function to get the name of a temp register given a value
-  static std::string getNameTempReg(int Val);
 
   /// Given an Expr, get its integer value
   static int64_t getIntFromExpr(const Expr *E, const ASTContext *C);

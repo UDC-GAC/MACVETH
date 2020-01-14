@@ -2,7 +2,7 @@
  * File              : SIMDGeneratorFactory.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 14:43:18 MST
- * Last Modified Date: Lun 13 Xan 2020 18:22:01 MST
+ * Last Modified Date: Lun 13 Xan 2020 19:05:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -30,7 +30,6 @@ public:
     case AVX:
     case AVX2:
     case AVX512:
-      std::cout << "LLEGO\n";
       G = new AVX2Gen();
       G->clearMappings();
       return G;

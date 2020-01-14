@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Lun 13 Xan 2020 16:34:10 MST
+ * Last Modified Date: Lun 13 Xan 2020 19:51:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -37,6 +37,13 @@ using namespace clang;
 using namespace macveth;
 
 // ---------------------------------------------
+std::string getNameTempReg() { return "r" + std::to_string(TAC::RegVal); }
+
+std::string getCurrentNameTempReg() {
+  return "r" + std::to_string(TAC::RegVal++);
+}
+
+// ---------------------------------------------
 MVOp TAC::getMVOPfromExpr(MVExpr *E) {
   if (MVExprFunc *F = dyn_cast<MVExprFunc>(E)) {
     return MVOp(F->getExprStr());
@@ -61,8 +68,8 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
 }
 
 // ---------------------------------------------
-// void TAC::exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val) {
-void TAC::exprToTAC(clang::CompoundStmt *CS, std::list<TAC> *TacList, int Val) {
+void TAC::exprToTAC(clang::CompoundStmt *CS, std::list<TAC> *TacList) {
+  TAC::RegVal = 0;
   for (auto ST : CS->body()) {
     clang::Expr *S = dyn_cast<clang::Expr>(ST);
     if (S == NULL) {
@@ -70,16 +77,19 @@ void TAC::exprToTAC(clang::CompoundStmt *CS, std::list<TAC> *TacList, int Val) {
     }
     clang::BinaryOperator *SBin = NULL;
     bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
+    std::list<TAC> TL;
     if (STypeBin) {
-      binaryOperator2TAC(SBin, TacList, Val);
+      binaryOperator2TAC(SBin, &TL, -1);
+      for (auto T : TL) {
+        TacList->push_back(T);
+      }
       continue;
     }
-    MVExpr *TmpA =
-        MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
+    MVExpr *TmpA = MVExprFactory::createMVExpr(getNameTempReg(), true);
     MVExpr *TmpB = MVExprFactory::createMVExpr(S);
     MVOp OP = TAC::getMVOPfromExpr(TmpB);
     TAC NewTac = TAC(TmpA, TmpB, NULL, OP);
-    TacList->push_back(NewTac);
+    TacList->push_front(NewTac);
   }
 }
 
@@ -91,46 +101,40 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
   clang::BinaryOperator *LhsBin = NULL;
   clang::BinaryOperator *RhsBin = NULL;
   bool LhsTypeBin = (LhsBin = getBinOp(Lhs->IgnoreImpCasts()));
-  //(LhsBin = dyn_cast<clang::BinaryOperator>(Lhs->IgnoreImpCasts()));
   bool RhsTypeBin = (RhsBin = getBinOp(Rhs->IgnoreImpCasts()));
-  //(RhsBin = dyn_cast<clang::BinaryOperator>(Rhs->IgnoreImpCasts()));
 
   /// Since this is a recursive function, we have to test the first case
   MVExpr *TmpA =
-      (Val == -1)
-          ? MVExprFactory::createMVExpr(Lhs)
-          : MVExprFactory::createMVExpr(Utils::getNameTempReg(Val), true);
+      (Val == -1) ? MVExprFactory::createMVExpr(Lhs)
+                  : MVExprFactory::createMVExpr(getCurrentNameTempReg(), true);
 
   // recursive part, to delve deeper into BinaryOperators
   if (LhsTypeBin && RhsTypeBin) {
     // both true
-    MVExpr *TmpB =
-        MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
-    MVExpr *TmpC = MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 2));
+    MVExpr *TmpB = MVExprFactory::createMVExpr(getNameTempReg(), true);
+    MVExpr *TmpC = MVExprFactory::createMVExpr(getNameTempReg());
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
 
-    TacList->push_back(NewTac);
+    TacList->push_front(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
     binaryOperator2TAC(LhsBin, TacList, Val + 2);
   } else if (!LhsTypeBin && RhsTypeBin) {
     MVExpr *TmpB = MVExprFactory::createMVExpr(Lhs);
-    MVExpr *TmpC =
-        MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
+    MVExpr *TmpC = MVExprFactory::createMVExpr(getNameTempReg(), true);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
-    TacList->push_back(NewTac);
+    TacList->push_front(NewTac);
     binaryOperator2TAC(RhsBin, TacList, Val + 1);
   } else if (LhsTypeBin && !RhsTypeBin) {
-    MVExpr *TmpB =
-        MVExprFactory::createMVExpr(Utils::getNameTempReg(Val + 1), true);
+    MVExpr *TmpB = MVExprFactory::createMVExpr(getNameTempReg(), true);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Rhs);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
-    TacList->push_back(NewTac);
+    TacList->push_front(NewTac);
     binaryOperator2TAC(LhsBin, TacList, Val + 1);
   } else {
     MVExpr *TmpB = MVExprFactory::createMVExpr(Lhs);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Rhs);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
-    TacList->push_back(NewTac);
+    TacList->push_front(NewTac);
   }
   return;
 }

@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Lun 13 Xan 2020 15:33:20 MST
+ * Last Modified Date: Lun 13 Xan 2020 19:39:54 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -95,8 +95,7 @@ public:
 
   /// Inserts TACs in the input TacList
   // static void exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val);
-  static void exprToTAC(clang::CompoundStmt *S, std::list<TAC> *TacList,
-                        int Val);
+  static void exprToTAC(clang::CompoundStmt *S, std::list<TAC> *TacList);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
@@ -107,6 +106,9 @@ public:
   /// the S value which holds the iteration of the unrolling basically
   static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                      std::string LoopLevel);
+
+  /// For generating TACs
+  static inline long RegVal = 0;
 
 private:
   /// TAC result

@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 13 Xan 2020 16:42:47 MST
+ * Last Modified Date: Lun 13 Xan 2020 19:16:12 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -86,8 +86,7 @@ public:
     for (auto ST : E->body()) {
       this->S.push_back((Stmt *)ST);
     }
-    TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->TacList, -1);
-    this->TacList.reverse();
+    TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->TacList);
   }
 
   /// Perform unrolling for a given statement given its unroll factor and the

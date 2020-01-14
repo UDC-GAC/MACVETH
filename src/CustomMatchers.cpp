@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 13 Xan 2020 18:27:18 MST
+ * Last Modified Date: Lun 13 Xan 2020 19:06:06 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -64,6 +64,10 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // or using CLI
   int UnrollFactor = 1;
   SWrap->unrollAndJam(UnrollFactor);
+
+  for (auto S : SWrap->getTacList()) {
+    S.printTAC();
+  }
 
   // Creating the CDAG
   CDAG *G = CDAG::createCDAGfromTAC(SWrap->getTacList());
