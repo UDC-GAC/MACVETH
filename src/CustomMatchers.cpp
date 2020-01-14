@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Lun 13 Xan 2020 19:06:06 MST
+ * Last Modified Date: Mar 14 Xan 2020 12:02:48 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -31,21 +31,40 @@
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include <iostream>
 #include <llvm-10/llvm/ADT/StringRef.h>
+#include <llvm-10/llvm/Support/ErrorHandling.h>
 #include <string>
 
 using namespace macveth::matchers_utils;
 
 // ---------------------------------------------
-bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
+ScopLoc *getScopLoc(StmtWrapper *S, ScopHandler *SL) {
   auto SLoc = S->getStmt()[0]->getBeginLoc();
   for (int n = 0; n < SL->List.size(); ++n) {
-    if ((SLoc >= SL->List[n].Scop) && (SLoc <= SL->List[n].EndScop) &&
-        (!SL->List[n].Visited)) {
-      SL->List[n].Visited = true;
-      return true;
+    if ((SLoc >= SL->List[n].Scop) && (SLoc <= SL->List[n].EndScop)) {
+      return &SL->List[n];
     }
   }
+  return NULL;
+}
+
+// ---------------------------------------------
+bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
+  auto Scop = getScopLoc(S, this->SL);
+  if ((Scop != NULL) && (!Scop->Visited)) {
+    Scop->Visited = true;
+    return true;
+  }
   return false;
+}
+
+// ---------------------------------------------
+void IterationHandler::unrollOptions(StmtWrapper *S) {
+  auto SLoc = S->getStmt()[0]->getBeginLoc();
+  auto Scop = getScopLoc(S, SL);
+  assert(Scop != NULL && "Scop not found for these statements");
+  if (Scop->PA.UnrollAndJam) {
+    S->unrollAndJam(Scop->PA.UnrollFactor);
+  }
 }
 
 // ---------------------------------------------
@@ -59,11 +78,7 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   }
 
-  // FIXME
-  // Unroll stage: we need to set this paremeter other way, maybe using pragmas
-  // or using CLI
-  int UnrollFactor = 1;
-  SWrap->unrollAndJam(UnrollFactor);
+  unrollOptions(SWrap);
 
   for (auto S : SWrap->getTacList()) {
     S.printTAC();

@@ -2,13 +2,14 @@
  * File              : MVPragmaHandler.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Lun 13 Xan 2020 08:20:59 MST
+ * Last Modified Date: Mar 14 Xan 2020 12:04:51 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #ifndef MACVETH_PRAGMAHANDLER_H
 #define MACVETH_PRAGMAHANDLER_H
 
+#include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Parse/Parser.h"
 #include <iostream>
@@ -32,9 +33,18 @@ struct ScopLoc {
   unsigned Start;
   unsigned End;
   bool Visited = false;
+
+  struct PragmaArgs {
+    bool Unroll = true;
+    int UnrollFactor = 1;
+    bool UnrollAndJam = true;
+    std::list<std::string> UnrollDim;
+  };
+
+  PragmaArgs PA;
 };
 
-/// List of pairs of #pragma Scop and #pragma EndScop Locations.
+/// List of pairs of #pragma macveth and #pragma mvend Locations.
 struct ScopHandler {
   std::vector<ScopLoc> List;
 
@@ -51,9 +61,11 @@ struct ScopHandler {
   /// If the last #pragma macveth did not have a matching
   /// #pragma endmv then overwrite it.
   /// "Start" points to the location of the macveth pragma.
-  void addStart(SourceManager &SM, SourceLocation Start) {
+  void addStart(SourceManager &SM, SourceLocation Start,
+                ScopLoc::PragmaArgs PA) {
     ScopLoc Loc;
 
+    Loc.PA = PA;
     Loc.Scop = Start;
     int Line = SM.getExpansionLineNumber(Start);
     Start = translateLineCol(SM, SM.getFileID(Start), Line, 1);
@@ -81,6 +93,26 @@ struct ScopHandler {
   }
 };
 
+static IdentifierInfo *getValue(Token &token) {
+  if (token.isNot(tok::identifier))
+    return NULL;
+  return token.getIdentifierInfo();
+}
+
+static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
+  ScopLoc::PragmaArgs PA;
+  IdentifierInfo *II;
+  Token Tok;
+  PP.Lex(Tok);
+  if ((II = getValue(Tok)) != NULL) {
+    if (II->isStr("nounroll")) {
+      PA.Unroll = false;
+      PA.UnrollAndJam = false;
+    }
+  }
+  return PA;
+}
+
 /// Handle pragmas of the form
 ///
 ///  #pragma macveth
@@ -97,7 +129,7 @@ struct PragmaScopHandler : public PragmaHandler {
                             Token &ScopTok) {
     SourceManager &SM = PP.getSourceManager();
     SourceLocation Sloc = ScopTok.getLocation();
-    Scops->addStart(SM, Sloc);
+    Scops->addStart(SM, Sloc, parseArguments(PP));
   }
 };
 

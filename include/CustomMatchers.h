@@ -2,7 +2,7 @@
  * File              : CustomMatchers.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:15:23 MST
- * Last Modified Date: Lun 13 Xan 2020 11:53:48 MST
+ * Last Modified Date: Mar 14 Xan 2020 11:44:57 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -78,11 +78,16 @@ public:
   const ASTContext *getCtx() { return Ctx; }
 
 private:
+  /// Check scop options regarding unrolling and apply them to the statements
+  /// within
+  void unrollOptions(StmtWrapper *S);
+  /// Check if stmts are within the scope and/or have been already visited
   bool checkIfWithinScop(StmtWrapper *S);
   /// For rewriting code in the output program
   Rewriter &Rewrite;
   /// A copy of the ASTContext for rewriting purposes
   const ASTContext *Ctx;
+  /// Holds information regarding the ROI
   ScopHandler *SL;
 };
 

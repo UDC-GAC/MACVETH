@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Mar 14 Xan 2020 08:45:35 MST
+ * Last Modified Date: Mar 14 Xan 2020 09:58:31 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -37,7 +37,6 @@ public:
 
   /// Store values in memory
   virtual SIMDInstListType vstore(VectorIR::VectorOP V) override;
-  virtual SIMDInstListType vstore(VectorIR::VOperand V) override;
   /// Store values in memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
 

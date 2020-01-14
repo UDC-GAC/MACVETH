@@ -2,7 +2,7 @@
  * File              : macveth_translator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Lun 13 Xan 2020 16:00:18 MST
+ * Last Modified Date: Mar 14 Xan 2020 10:21:38 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -109,6 +109,7 @@ public:
     ScopHandler *scops = new ScopHandler();
     PP.AddPragmaHandler(new PragmaScopHandler(scops));
     PP.AddPragmaHandler(new PragmaEndScopHandler(scops));
+
     // std::make_unique is C++14, while LLVM 9 is written in C++11, this
     // is the reason of this custom implementation
 #if LLVM_VERSION > 9

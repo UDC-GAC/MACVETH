@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Mar 14 Xan 2020 08:45:48 MST
+ * Last Modified Date: Mar 14 Xan 2020 09:58:55 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -151,7 +151,6 @@ public:
 
   /// Generate store instructions to memory
   virtual SIMDInstListType vstore(VectorIR::VectorOP V) = 0;
-  virtual SIMDInstListType vstore(VectorIR::VOperand V) = 0;
   /// Generate store instructions to memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) = 0;
 

@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Mar 14 Xan 2020 09:22:17 MST
+ * Last Modified Date: Mar 14 Xan 2020 10:10:31 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -311,35 +311,11 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // TODO check
   // List of parameters
   std::list<std::string> OPS;
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  OPS.push_back(V.R.UOP[0]->getRegisterValue());
+  OPS.push_back(V.R.getName());
 
   // Adding SIMD inst to the list
   addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSTORE, &IL);
-
-  return IL;
-}
-
-// ---------------------------------------------
-SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VOperand V) {
-  SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
-  std::string PrefS = "";
-  // TODO generate suffix
-  std::string SuffS = "";
-  // Mask
-  PrefS += (V.Mask) ? "mask" : "";
-
-  // TODO
-  std::string Op = "set";
-
-  // TODO check
-  // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.getName());
-
-  // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VSTORE, &IL);
 
   return IL;
 }
