@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Lun 13 Xan 2020 18:29:32 MST
+ * Last Modified Date: Mar 14 Xan 2020 09:39:01 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -143,10 +143,16 @@ public:
     }
     /// Return name of VOperand
     std::string getName() { return this->Name; }
+
+    std::string toString() {
+      return Name + "[" + (IsTmpResult ? "TMP," : "") + (IsLoad ? "LD," : "") +
+             (IsStore ? "ST," : "") + (UOP[0]->getRegisterValue()) + "]";
+    }
+
     /// Printing the vector operand
     void printAsString();
     /// Basic constructor
-    VOperand(int VL, Node *V[]);
+    VOperand(int VL, Node *V[], bool Res);
   };
 
   /// Main component of the VectorIR which wraps the selected DAGs based on
@@ -163,12 +169,12 @@ public:
     VWidth VW = VWidth::W256;
     /// Vector data type used
     VDataType DT = VDataType::DOUBLE;
-    /// Vector result
-    VOperand R;
     /// Vector first operand
     VOperand OpA;
     /// Vector second operand
     VOperand OpB;
+    /// Vector result
+    VOperand R;
     /// Cost associated to this concrete VectorOP
     unsigned int Cost = 0;
     /// Check if it is a BinaryOperation
@@ -177,6 +183,11 @@ public:
     BinaryOperator::Opcode getBinOp();
     /// Constructor from the CDAG
     VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[]);
+
+    void render() {
+      std::cout << R.toString() << " = " << VN << "(" << OpA.toString() << ","
+                << OpB.toString() << ")" << std::endl;
+    }
   };
 
 }; // namespace macveth

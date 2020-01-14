@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Lun 13 Xan 2020 15:09:29 MST
+ * Last Modified Date: Mar 14 Xan 2020 09:22:17 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -296,6 +296,31 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
 }
 
 // ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
+  SIMDGenerator::SIMDInstListType IL;
+  // TODO generate preffix
+  std::string PrefS = "";
+  // TODO generate suffix
+  std::string SuffS = "";
+  // Mask
+  // PrefS += (V.Mask) ? "mask" : "";
+
+  // TODO
+  std::string Op = "store";
+
+  // TODO check
+  // List of parameters
+  std::list<std::string> OPS;
+  OPS.push_back(V.OpA.getName());
+  OPS.push_back(V.OpB.getName());
+
+  // Adding SIMD inst to the list
+  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSTORE, &IL);
+
+  return IL;
+}
+
+// ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VOperand V) {
   SIMDGenerator::SIMDInstListType IL;
   // TODO generate preffix
@@ -306,12 +331,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VOperand V) {
   PrefS += (V.Mask) ? "mask" : "";
 
   // TODO
-  std::string Op = "store";
+  std::string Op = "set";
 
   // TODO check
   // List of parameters
   std::list<std::string> OPS;
-  OPS.push_back(V.UOP[0]->getValue());
+  OPS.push_back(V.getName());
 
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VSTORE, &IL);
@@ -320,14 +345,14 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VOperand V) {
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VOperand V) {
+SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
   // TODO generate preffix
   std::string PrefS = "";
   // TODO generate suffix
   std::string SuffS = "";
   // Mask
-  PrefS += (V.Mask) ? "mask" : "";
+  ////PrefS += (V.Mask) ? "mask" : "";
 
   // TODO
   std::string Op = "scatter";
@@ -335,10 +360,11 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VOperand V) {
   // TODO check
   // List of parameters
   std::list<std::string> OPS;
-  OPS.push_back(V.UOP[0]->getValue());
+  OPS.push_back(V.OpA.getName());
+  OPS.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VSTORE, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSCATTER, &IL);
 
   return IL;
 }

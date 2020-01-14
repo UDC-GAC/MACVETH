@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Lun 13 Xan 2020 17:02:06 MST
+ * Last Modified Date: Mar 14 Xan 2020 08:45:48 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -120,7 +120,7 @@ public:
              std::map<std::string, long> NumOp, long TotCost)
         : SIMDList(S), CostOp(CostOp), NumOp(NumOp), TotCost(TotCost) {}
 
-    /// For debugging purposes
+    /// Printing the cost
     void printCost() {
       std::cout << "---------- COST SIMD --------------\n";
       for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {
@@ -148,10 +148,12 @@ public:
   virtual SIMDInstListType vgather(VectorIR::VOperand V) = 0;
   /// Generate set instrucctions. Set is meant for literal values
   virtual SIMDInstListType vset(VectorIR::VOperand V) = 0;
+
   /// Generate store instructions to memory
+  virtual SIMDInstListType vstore(VectorIR::VectorOP V) = 0;
   virtual SIMDInstListType vstore(VectorIR::VOperand V) = 0;
   /// Generate store instructions to memory using an index
-  virtual SIMDInstListType vscatter(VectorIR::VOperand V) = 0;
+  virtual SIMDInstListType vscatter(VectorIR::VectorOP V) = 0;
 
   // Binary operations
 

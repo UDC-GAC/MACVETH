@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Lun 13 Xan 2020 18:33:18 MST
+ * Last Modified Date: Mar 14 Xan 2020 09:05:16 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -29,11 +29,13 @@ public:
   /// object
   static inline int UUID = 0;
 
+  static void restart() { Node::UUID = 0; }
+
   /// Definition of NodeListType
   typedef std::list<Node *> NodeListType;
 
   /// Available types of nodes
-  enum NodeType { NODE_MEM, NODE_OP, UNDEF };
+  enum NodeType { NODE_MEM, NODE_STORE, NODE_OP, UNDEF };
 
   /// Types of stores for NODE_OP Node
   enum OutputType { TEMP_STORE, MEM_STORE };
@@ -106,6 +108,7 @@ public:
     this->SI.StmtID = Node::UUID++;
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
+    updateIfStore();
   }
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
@@ -120,6 +123,13 @@ public:
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);
     connectInput(NC == NULL ? new Node(T.getC()) : NC);
+    updateIfStore();
+  }
+
+  void updateIfStore() {
+    if (this->O.Type == MEM_STORE) {
+      this->getInputs().front()->T = NODE_STORE;
+    }
   }
 
   /// Schedule info is needed for the algorithms to perform permutations in
@@ -147,6 +157,8 @@ public:
   /// Get info regarding its scheduling
   SchedInfo getSchedInfo() { return this->SI; }
 
+  void setNodeType(NodeType T) { this->T = T; }
+
   /// Get data type of MVExpr as string
   std::string getDataType() {
     return (this->MV == nullptr) ? O.E->getTypeStr() : MV->getTypeStr();
@@ -165,9 +177,13 @@ public:
 
   /// Is OP or MEM?
   bool isMem() {
-    return (this->T == NodeType::NODE_MEM) &&
-           (!dyn_cast<MVExprLiteral>(this->MV));
+    return ((this->T == NODE_MEM)) && (!dyn_cast<MVExprLiteral>(this->MV));
   }
+
+  bool isStoreNodeOp() { return (this->T == NODE_STORE); }
+
+  /// Get the node type
+  NodeType getNodeType() { return this->T; }
 
   /// Returns the string value of the node
   std::string getValue() const { return this->Value; }

@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Lun 13 Xan 2020 19:51:06 MST
+ * Last Modified Date: Lun 13 Xan 2020 19:56:09 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -39,6 +39,7 @@ using namespace macveth;
 // ---------------------------------------------
 std::string getNameTempReg() { return "r" + std::to_string(TAC::RegVal); }
 
+// ---------------------------------------------
 std::string getCurrentNameTempReg() {
   return "r" + std::to_string(TAC::RegVal++);
 }

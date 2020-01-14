@@ -2,13 +2,13 @@
  * File              : Node.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:01:36 MST
- * Last Modified Date: Lun 13 Xan 2020 15:07:45 MST
+ * Last Modified Date: Lun 13 Xan 2020 23:33:27 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
 #include "include/Node.h"
 
-#define NODE_DEBUG 0
+#define NODE_DEBUG 1
 
 // ---------------------------------------------
 void Node::printNode() {
@@ -22,9 +22,11 @@ void Node::printNode() {
   std::cout << "\tOutput\t\t= " << this->getOutputInfo().Name << std::endl;
   std::cout << "\tInput1\t\t= " << this->getInputs().front()->getValue()
             << " (ID = " << this->getInputs().front()->getSchedInfo().StmtID
+            << "); NODE_MEM = " << (this->getInputs().front()->T == NODE_MEM)
             << std::endl;
   std::cout << "\tInput2\t\t= " << this->getInputs().back()->getValue()
             << " (ID = " << this->getInputs().back()->getSchedInfo().StmtID
+            << "); NODE_MEM = " << (this->getInputs().back()->T == NODE_MEM)
             << std::endl;
   std::cout << "----------------------------------------" << std::endl;
 }

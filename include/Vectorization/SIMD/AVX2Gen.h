@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Ven 10 Xan 2020 10:45:50 MST
+ * Last Modified Date: Mar 14 Xan 2020 08:45:35 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -34,10 +34,12 @@ public:
   virtual SIMDInstListType vgather(VectorIR::VOperand V) override;
   /// Set values to registers
   virtual SIMDInstListType vset(VectorIR::VOperand V) override;
+
   /// Store values in memory
+  virtual SIMDInstListType vstore(VectorIR::VectorOP V) override;
   virtual SIMDInstListType vstore(VectorIR::VOperand V) override;
   /// Store values in memory using an index
-  virtual SIMDInstListType vscatter(VectorIR::VOperand V) override;
+  virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
 
   // Binary operations
 

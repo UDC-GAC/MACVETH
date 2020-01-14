@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Lun 13 Xan 2020 15:06:59 MST
+ * Last Modified Date: Mar 14 Xan 2020 09:48:25 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -112,22 +112,27 @@ unsigned int getMask(int VL, Node *V[]) {
 }
 
 // ---------------------------------------------
-VectorIR::VOperand::VOperand(int VL, Node *V[]) {
+VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
+
   // Init list of unit operands
   this->UOP = (Node **)malloc(sizeof(Node *) * VL);
-  // Check if there is a vector assigned for these operands
-  auto VecAssigned = checkIfVectorAssigned(VL, V);
-  this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
-                           : "VOp" + std::to_string(VID++);
 
   // This is the number of elements in this Vector
   this->VSize = VL;
 
-  ///////////////////////////////////////////////////////////
-  // std::cout << this->Name << ", " << V[0]->getValue();
-  // std::cout << ", " << V[0]->getRegisterValue() << std::endl;
-  ///////////////////////////////////////////////////////////
+  if ((V[0]->getNodeType() == Node::NODE_STORE) && (Res)) {
+    std::cout << "STORE = " << V[0]->getRegisterValue() << std::endl;
+    this->Name = V[0]->getRegisterValue();
+    this->IsStore = true;
+  } else {
+    std::cout << "" << V[0]->getRegisterValue() << std::endl;
+  }
 
+  // Check if there is a vector assigned for these operands
+  auto VecAssigned = checkIfVectorAssigned(VL, V);
+
+  this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
+                           : "VOp" + std::to_string(VID++);
   // It is a temporal result if it has already been assigned
   this->IsTmpResult = VecAssigned;
   auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
@@ -197,7 +202,7 @@ VectorIR::VType getVectorType(int VL, Node *VOps[], Node *VLoadA[],
 // ---------------------------------------------
 VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
                              Node *VLoadB[])
-    : R(VL, VOps), OpA(VL, VLoadA), OpB(VL, VLoadB) {
+    : OpA(VL, VLoadA, false), OpB(VL, VLoadB, false), R(VL, VOps, true) {
 
   this->VT = getVectorType(VL, VOps, VLoadA, VLoadB);
 

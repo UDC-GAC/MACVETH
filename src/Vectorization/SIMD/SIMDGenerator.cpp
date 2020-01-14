@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Lun 13 Xan 2020 17:07:52 MST
+ * Last Modified Date: Mar 14 Xan 2020 09:54:32 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -19,8 +19,9 @@ void printDeb(std::string S) { std::cout << "[SIMDGEN] " << S << std::endl; }
 
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
-  std::string FullFunc =
-      Result == "" ? FuncName + "(" : Result + " = " + FuncName + "(";
+  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
+                             ? FuncName + "("
+                             : Result + " = " + FuncName + "(";
   std::list<std::string>::iterator Op;
   int i = 0;
   for (Op = OPS.begin(); Op != OPS.end(); ++Op) {
@@ -78,49 +79,47 @@ bool equalValues(int VL, Node **N) {
 // ---------------------------------------------
 bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
                                     SIMDGenerator::SIMDInstListType *IL) {
-  if (!V.IsLoad) {
-    // TODO maybe it would be OK to perform another action in this case
+  SIMDGenerator::SIMDInstListType TIL;
+  if (V.IsLoad) {
+    // Need to determine which type of memory/register load it is
+    // We will say that it is a load if all the operands are contiguous and
+    // need to be retrieved from memory
+    //
+    // We will say that it is a bcast if we need to replicate the values from
+    // memory or a registers
+    //
+    // We will say it is a gather if we have to use an index to retrieve data
+    // from memory (not contiguous)
+    //
+    // We will say it is a set if we have to explicity set the values of the
+    // vector operand
+
+    bool EqualVal = equalValues(V.VSize, V.UOP);
+    bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
+    bool ScatterMem = V.MemOp && !ContMem;
+    bool ExpVal = !V.MemOp;
+
+    // 0, 1, 0, 0
+    if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
+      TIL = vpack(V);
+      // 0, X, 1
+    } else if ((!EqualVal) && (ScatterMem)) {
+      TIL = vgather(V);
+      // 1, X, 0, 1
+    } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {
+      TIL = vbcast(V);
+    } else {
+      // 1, X, 0, 1
+      TIL = vset(V);
+    }
+
+  } else {
     return false;
   }
-
-  // Need to determine which type of memory/register load it is
-  // We will say that it is a load if all the operands are contiguous and need
-  // to be retrieved from memory
-  //
-  // We will say that it is a bcast if we need to replicate the values from
-  // memory or a registers
-  //
-  // We will say it is a gather if we have to use an index to retrieve data from
-  // memory (not contiguous)
-  //
-  // We will say it is a set if we have to explicity set the values of the
-  // vector operand
-
-  SIMDGenerator::SIMDInstListType TIL;
-  bool EqualVal = equalValues(V.VSize, V.UOP);
-  bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
-  bool ScatterMem = V.MemOp && !ContMem;
-  bool ExpVal = !V.MemOp;
-
-  // 0, 1, 0, 0
-  if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
-    TIL = vpack(V);
-    // 0, X, 1
-  } else if ((!EqualVal) && (ScatterMem)) {
-    TIL = vgather(V);
-    // 1, X, 0, 1
-  } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {
-    TIL = vbcast(V);
-  } else {
-    // 1, X, 0, 1
-    TIL = vset(V);
-  }
-
   // Update the list
   for (auto I : TIL) {
     IL->push_back(I);
   }
-
   return true;
 }
 
@@ -128,7 +127,6 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType TIL;
-
   if (V.isBinOp()) {
     /// We can filter it by
     switch (V.getBinOp()) {
@@ -147,9 +145,18 @@ SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
     case clang::BO_Rem:
       TIL = vmod(V);
       break;
+      //    case clang::BO_Assign:
+      //      TIL = vstore(V);
+      //      break;
     }
   } else {
     // TODO decide what todo when we have the custom operations
+  }
+
+  if (V.R.IsStore) {
+    for (auto I : vstore(V)) {
+      TIL.push_back(I);
+    }
   }
 
   return TIL;
@@ -196,8 +203,11 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
 
   // Registers used
   std::string RegType = getRegisterType(V.DT, V.VW);
+  // if (!V.R.IsStore)
   SIMDGenerator::addRegToDeclare(RegType, V.R.getName());
+  // if (!VOpA.IsStore)
   SIMDGenerator::addRegToDeclare(RegType, VOpA.getName());
+  // if (!VOpB.IsStore)
   SIMDGenerator::addRegToDeclare(RegType, VOpB.getName());
 
   return IL;
@@ -215,7 +225,7 @@ SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
   }
   // Then optimizations can be done, for instance, combine operatios such as
   // addition + multiplication. It will depend on the architecture/ISA
-  I = peepholeOptimizations(I);
+  // I = peepholeOptimizations(I);
 
   return I;
 }
