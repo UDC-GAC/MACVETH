@@ -2,7 +2,7 @@
  * File              : CustomMatchers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Mar 14 Xan 2020 12:02:48 MST
+ * Last Modified Date: Mar 14 Xan 2020 12:10:46 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -78,8 +78,10 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   }
 
+  // Perform unrolling according to the pragmas
   unrollOptions(SWrap);
 
+  // debug
   for (auto S : SWrap->getTacList()) {
     S.printTAC();
   }
@@ -114,10 +116,6 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
     Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
                                        "+=" + std::to_string(UpperBound));
   }
-
-  // clang::CharSourceRange CharRangeStr =
-  // clang::CharSourceRange::getTokenRange(
-  //    SWrap->getStmt()[0]->getSourceRange());
 
   // Print new lines
   for (auto InsSIMD : AVX->renderSIMDasString(SInfo.SIMDList)) {

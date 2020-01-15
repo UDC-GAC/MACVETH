@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Mar 14 Xan 2020 10:01:10 MST
+ * Last Modified Date: Mar 14 Xan 2020 16:43:26 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -127,6 +127,11 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType TIL;
+  SIMDGenerator::SIMDInstListType TILOps;
+  // Arranging the operands: maybe they need load, set, bcast...
+  getSIMDVOperand(V.OpA, &TILOps);
+  getSIMDVOperand(V.OpB, &TILOps);
+
   if (V.isBinOp()) {
     /// We can filter it by
     switch (V.getBinOp()) {
@@ -145,12 +150,13 @@ SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
     case clang::BO_Rem:
       TIL = vmod(V);
       break;
-      //    case clang::BO_Assign:
-      //      TIL = vstore(V);
-      //      break;
     }
   } else {
     // TODO decide what todo when we have the custom operations
+  }
+  TILOps.reverse();
+  for (auto I : TILOps) {
+    TIL.push_front(I);
   }
 
   if (V.R.IsStore) {
@@ -159,6 +165,22 @@ SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
     }
   }
 
+  return TIL;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
+SIMDGenerator::getReduceOperation(VectorIR::VectorOP V) {
+  SIMDGenerator::SIMDInstListType TIL;
+
+  // Let the magic happens
+  TIL = vreduce(V);
+
+  if (V.R.IsStore) {
+    for (auto I : vstore(V)) {
+      TIL.push_back(I);
+    }
+  }
   return TIL;
 }
 
@@ -172,7 +194,8 @@ bool SIMDGenerator::getSIMDVOperation(VectorIR::VectorOP V,
     TIL = getMapOperation(V);
     break;
   case VectorIR::VType::REDUCE:
-    TIL = vreduce(V);
+    std::cout << "THIS IS A REDUCE!!!!!!!!!!!" << std::endl;
+    TIL = getReduceOperation(V);
     break;
   case VectorIR::VType::SEQ:
     TIL = vseq(V);
@@ -193,10 +216,6 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
 
   VectorIR::VOperand VOpA = V.OpA;
   VectorIR::VOperand VOpB = V.OpB;
-
-  // Arranging the operands: maybe they need load, set, bcast...
-  getSIMDVOperand(VOpA, &IL);
-  getSIMDVOperand(VOpB, &IL);
 
   // Arranging the operation
   getSIMDVOperation(V, &IL);

@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Mar 14 Xan 2020 09:39:01 MST
+ * Last Modified Date: Mar 14 Xan 2020 17:06:19 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -10,7 +10,6 @@
 #define MACVETH_VECTORIR_H
 
 #include "include/Node.h"
-#include "include/Utils.h"
 #include <string.h>
 
 using namespace macveth;

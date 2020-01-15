@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Mar 14 Xan 2020 09:05:16 MST
+ * Last Modified Date: Mar 14 Xan 2020 15:34:36 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -62,7 +62,7 @@ public:
     /// If the target variable is in memory it will be a MEM_STORE; TEMP_STORE
     /// the other way
     OutputType Type = MEM_STORE;
-    /// Opcode if binary
+    /// Opcode
     MVOp MVOP;
     /// Tell if it is binary or not
     bool IsBinaryOp = false;

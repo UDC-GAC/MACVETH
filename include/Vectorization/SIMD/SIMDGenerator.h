@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Mar 14 Xan 2020 09:58:55 MST
+ * Last Modified Date: Mar 14 Xan 2020 14:19:18 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -47,6 +47,8 @@ public:
     VDIV,
     /// Modulo
     VMOD,
+    /// Permutation or shuffle
+    VPERM,
     /// Reduce operation
     VREDUC,
     /// Sequential operation
@@ -247,6 +249,9 @@ public:
 private:
   /// Auxiliary function to dispatch the VectorOP operation
   SIMDGenerator::SIMDInstListType getMapOperation(VectorIR::VectorOP V);
+
+  /// Auxiliary function to dispatch the VectorOP operation
+  SIMDGenerator::SIMDInstListType getReduceOperation(VectorIR::VectorOP V);
 
 protected:
   /// Add register to declare

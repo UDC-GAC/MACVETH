@@ -2,7 +2,7 @@
  * File              : AVX2Gen.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:29 MST
- * Last Modified Date: Mar 14 Xan 2020 09:58:31 MST
+ * Last Modified Date: Mar 14 Xan 2020 14:31:53 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -105,7 +105,8 @@ private:
                                       std::string PrefS, std::string SuffS,
                                       std::list<std::string> OPS,
                                       SIMDGenerator::SIMDType SType,
-                                      SIMDGenerator::SIMDInstListType *IL);
+                                      SIMDGenerator::SIMDInstListType *IL,
+                                      std::string NameOp = "");
   /// Populate the table only when creating the object, to avoid overloading the
   /// memory from the start
   static void populateTable();

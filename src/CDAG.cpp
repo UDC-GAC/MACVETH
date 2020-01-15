@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Mar 14 Xan 2020 09:05:44 MST
+ * Last Modified Date: Mar 14 Xan 2020 12:11:10 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -13,7 +13,7 @@
 
 namespace macveth {
 
-#define CDAG_DEBUG 0
+#define CDAG_DEBUG 1
 
 // ---------------------------------------------
 void printDebug(std::string M, std::string S) {

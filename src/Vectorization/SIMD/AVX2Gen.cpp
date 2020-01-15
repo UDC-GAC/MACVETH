@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Mar 14 Xan 2020 10:10:31 MST
+ * Last Modified Date: Mar 14 Xan 2020 16:26:58 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -18,9 +18,13 @@ void AVX2Gen::populateTable() {
   // Sandy Bridge (Intel Q1 2011), Bulldozer (AMD Q3 2011)
   // Math operations
   CostTable::addRow(NArch, "mul", 3, "_mm#W_#Pmul#S_#D");
+  CostTable::addRow(NArch, "*", 3, "_mm#W_#Pmul#S_#D");
   CostTable::addRow(NArch, "add", 1, "_mm#W_#Padd#S_#D");
+  CostTable::addRow(NArch, "+", 1, "_mm#W_#Padd#S_#D");
   CostTable::addRow(NArch, "sub", 1, "_mm#W_#Psub#S_#D");
+  CostTable::addRow(NArch, "-", 1, "_mm#W_#Psub#S_#D");
   CostTable::addRow(NArch, "div", 5, "_mm#W_#Pdiv#S_#D");
+  CostTable::addRow(NArch, "/", 5, "_mm#W_#Pdiv#S_#D");
   CostTable::addRow(NArch, "fmadd", 5, "_mm#W_#Pfmadd#S_#D");
   CostTable::addRow(NArch, "fmsub", 5, "_mm#W_#Pfmsub#S_#D");
   CostTable::addRow(NArch, "avg", 5, "_mm#W_avg_#D");
@@ -29,6 +33,9 @@ void AVX2Gen::populateTable() {
   CostTable::addRow(NArch, "round", 10, "_mm#W_#Psvml_round#S_#D");
   CostTable::addRow(NArch, "trunc", 10, "_mm#W_#Ptrunc#S_#D");
   CostTable::addRow(NArch, "ceil", 10, "_mm#W_#Psvml_ceil#S_#D");
+  // Shuffling
+  CostTable::addRow(NArch, "permute", 10, "_mm#W_#Ppermute#S_#D");
+  CostTable::addRow(NArch, "shuffle", 10, "_mm#W_#Pshuffle#S_#D");
   // Load operations
   CostTable::addRow(NArch, "load", 1, "_mm#W_#Pload#S_#D");
   CostTable::addRow(NArch, "gather", 1, "_mm#W_#Pgather#S_#D");
@@ -167,7 +174,7 @@ SIMDGenerator::SIMDInst
 AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
                      std::string SuffS, std::list<std::string> OPS,
                      SIMDGenerator::SIMDType SType,
-                     SIMDGenerator::SIMDInstListType *IL) {
+                     SIMDGenerator::SIMDInstListType *IL, std::string NameOp) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
@@ -177,7 +184,8 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
                       getMapType(V.getDataType()), PrefS, SuffS);
 
   // Generate SIMD inst
-  SIMDGenerator::SIMDInst I(V.getName(), AVXFunc, OPS);
+  SIMDGenerator::SIMDInst I((NameOp == "") ? V.getName() : NameOp, AVXFunc,
+                            OPS);
 
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
@@ -473,17 +481,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vmod(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
-  std::string PrefS = "";
-  // TODO generate suffix
-  std::string SuffS = "";
-  // List of parameters
-  std::list<std::string> OPS;
-  // Mask
-  // PrefS += (V.Mask) ? "mask" : "";
+  std::string RegType = getRegisterType(V.DT, V.VW);
 
-  // TODO
-  std::string Op = V.VN;
   /// Algorithm overview
   /// ymm0 = _mm256_loadu_pd(indata);
   /// ymm1 = _mm256_permute_pd(ymm0, 0x05);
@@ -492,12 +491,44 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   /// ymm4 = _mm256_#OP#_pd(ymm2, ymm3);
   /// [OPT] _mm256_storeu_pd(outdata, ymm4);
 
-  // TODO check
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  // FIXME
+  // This is quite ugly but it works for 4 double elements
 
-  // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VREDUC, &IL);
+  // Permutation
+  addSIMDInst(V.R, "permute", "", "", {V.OpB.Name, "0x05"}, SIMDType::VPERM,
+              &IL, "ymm0");
+  SIMDGenerator::addRegToDeclare(RegType, "ymm0");
+
+  std::cout << "REDUCTION OF " << V.VN << std::endl;
+
+  // Reduction operation
+  addSIMDInst(V.R, V.VN, "", "", {V.OpB.Name, "ymm0"}, SIMDType::VREDUC, &IL,
+              "ymm1");
+  SIMDGenerator::addRegToDeclare(RegType, "ymm1");
+
+  // Another permutation
+  addSIMDInst(V.R, "permute", "", "2f128", {"ymm1", "ymm1", "0x01"},
+              SIMDType::VPERM, &IL, "ymm2");
+  SIMDGenerator::addRegToDeclare(RegType, "ymm2");
+
+  // Another reduction operation
+  addSIMDInst(V.R, V.VN, "", "", {"ymm2", "ymm1"}, SIMDType::VREDUC, &IL,
+              "ymm3");
+  SIMDGenerator::addRegToDeclare(RegType, "ymm3");
+
+  // FIXME
+  // Set the reduced value
+  addSIMDInst(V.R, "set", "", "", {V.R.Name, V.R.Name, V.R.Name, V.R.Name},
+              SIMDType::VSET, &IL, "ymm4");
+  SIMDGenerator::addRegToDeclare(RegType, "ymm4");
+
+  // Last reduction and then store
+  addSIMDInst(V.R, V.VN, "", "", {"ymm4", "ymm3"}, SIMDType::VREDUC, &IL,
+              "ymm5");
+  SIMDGenerator::addRegToDeclare(RegType, "ymm5");
+
+  addSIMDInst(V.R, "store", "mask", "", {V.R.Name, "0x01", "ymm5"},
+              SIMDType::VSTORE, &IL);
 
   return IL;
 }
