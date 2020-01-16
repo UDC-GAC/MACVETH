@@ -2,7 +2,7 @@
  * File              : MVExpr.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Xov 09 Xan 2020 21:31:09 MST
+ * Last Modified Date: Mér 15 Xan 2020 12:07:57 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -142,6 +142,9 @@ public:
   /// Two expressions are not equal if and only if their name or original code
   /// expression is not equal.
   bool operator!=(const MVExpr &MVE) { return !operator==(MVE); }
+
+  /// Operators
+  virtual int operator-(const MVExpr &MVE) { return -1; }
 
 private:
   /// MVExpr kind

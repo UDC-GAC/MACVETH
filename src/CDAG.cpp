@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Mar 14 Xan 2020 12:11:10 MST
+ * Last Modified Date: Mér 15 Xan 2020 11:28:22 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -56,11 +56,10 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(CDAG *G) {
     N->printNode();
   }
 
-  printDebug("CDAG", "Entering loop");
-
   // Until the list is over
 repeat:
   // int VL = AVX->getMaxWidth();
+  // FIXME
   int VL = 4;
   printDebug("CDAG", std::to_string(VL));
   while (!NL.empty()) {

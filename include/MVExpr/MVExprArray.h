@@ -2,13 +2,14 @@
  * File              : MVExprArray.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Xov 12 Dec 2019 10:03:14 MST
- * Last Modified Date: Xov 09 Xan 2020 21:32:40 MST
+ * Last Modified Date: Mér 15 Xan 2020 12:07:59 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_MVEXPRARRAY_H
 #define MACVETH_MVEXPRARRAY_H
 #include "include/MVExpr/MVExpr.h"
 
+#include <llvm-10/llvm/Support/Casting.h>
 #include <string.h>
 
 using namespace macveth;
@@ -39,20 +40,16 @@ public:
 
   /// Implementation of unrolling for arrays. In this case we will need to
   /// create a new MVExpr
-  virtual MVExpr *unrollExpr(int UF, std::string LL);
+  virtual MVExpr *unrollExpr(int UF, std::string LL) override;
 
   /// As we may not know the total size of the array at compilation time, we
   /// can only know the difference between two indices
-  int operator-(const MVExprArray &MVE) {
+  virtual int operator-(const MVExpr &MVE) override {
     if ((getClangExpr() != NULL) && (MVE.getClangExpr() != NULL)) {
       int Diff = 0;
-      std::string::size_type sz; // alias of size_t
-      std::string A = Idx.back();
-      std::string B = MVE.Idx.back();
-      Diff = std::stoi(B, &sz) - std::stoi(A, &sz);
       return Diff;
     } else {
-      return 0;
+      return -1;
     }
   }
 

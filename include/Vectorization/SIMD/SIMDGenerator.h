@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Mar 14 Xan 2020 14:19:18 MST
+ * Last Modified Date: Mér 15 Xan 2020 10:57:54 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -10,9 +10,6 @@
 #define MACVETH_SIMDGENERATOR_H
 
 #include "include/Vectorization/VectorIR.h"
-#include <list>
-#include <map>
-#include <string>
 
 using namespace macveth;
 
@@ -208,14 +205,14 @@ public:
   /// represents a new line
   std::list<std::string> renderSIMDasString(SIMDInstListType S);
 
+  /// Auxiliary function to retrieve properly the operands
+  std::string getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal);
+
   /// Just compute the cost of each SIMD inst
   SIMDInfo computeSIMDCost(SIMDInstListType S);
 
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);
-
-  /// Insert the SIMDInst in the list given an VOperand
-  bool getSIMDVOperation(VectorIR::VectorOP V, SIMDInstListType *IL);
 
   /// Auxiliary function for replacing patterns in a string
   static std::string replacePatterns(std::string Pattern, std::string W,
@@ -248,10 +245,10 @@ public:
 
 private:
   /// Auxiliary function to dispatch the VectorOP operation
-  SIMDGenerator::SIMDInstListType getMapOperation(VectorIR::VectorOP V);
+  void mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
 
   /// Auxiliary function to dispatch the VectorOP operation
-  SIMDGenerator::SIMDInstListType getReduceOperation(VectorIR::VectorOP V);
+  void reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
 
 protected:
   /// Add register to declare

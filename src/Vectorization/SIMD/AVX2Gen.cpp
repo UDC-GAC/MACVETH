@@ -2,7 +2,7 @@
  * File              : AVX2Gen.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Mar 14 Xan 2020 16:26:58 MST
+ * Last Modified Date: Mér 15 Xan 2020 11:07:02 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -209,7 +209,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
   // TODO generate suffix
   std::string SuffS = "";
   // Mask
-  PrefS += (V.Mask) ? "mask" : "";
+  PrefS += (V.IsPartial) ? "mask" : "";
 
   // TODO
   // Type of load: load/u
@@ -221,7 +221,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
   // TODO check
   // List of parameters
   std::list<std::string> OPS;
-  OPS.push_back(V.UOP[0]->getValue());
+  OPS.push_back(getOpName(V, true, true));
 
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VPACK, &IL);
@@ -237,7 +237,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
   // TODO generate suffix
   std::string SuffS = "";
   // Mask
-  PrefS += (V.Mask) ? "mask" : "";
+  PrefS += (V.IsPartial) ? "mask" : "";
 
   // TODO
   std::string Op = "broadcast";
@@ -284,8 +284,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
   std::string PrefS = "";
   // TODO generate suffix
   std::string SuffS = "";
-  // Mask
-  PrefS += (V.Mask) ? "mask" : "";
 
   // TODO
   std::string Op = "set";
@@ -319,8 +317,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // TODO check
   // List of parameters
   std::list<std::string> OPS;
-  OPS.push_back(V.R.UOP[0]->getRegisterValue());
-  OPS.push_back(V.R.getName());
+  OPS.push_back(getOpName(V.R, true, true));
+  OPS.push_back(getOpName(V.R, false, false));
 
   // Adding SIMD inst to the list
   addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSTORE, &IL);
@@ -518,8 +516,9 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
 
   // FIXME
   // Set the reduced value
-  addSIMDInst(V.R, "set", "", "", {V.R.Name, V.R.Name, V.R.Name, V.R.Name},
-              SIMDType::VSET, &IL, "ymm4");
+  std::string Val = getOpName(V.R, false, true);
+  addSIMDInst(V.R, "set", "", "", {Val, Val, Val, Val}, SIMDType::VSET, &IL,
+              "ymm4");
   SIMDGenerator::addRegToDeclare(RegType, "ymm4");
 
   // Last reduction and then store
@@ -527,8 +526,10 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
               "ymm5");
   SIMDGenerator::addRegToDeclare(RegType, "ymm5");
 
-  addSIMDInst(V.R, "store", "mask", "", {V.R.Name, "0x01", "ymm5"},
-              SIMDType::VSTORE, &IL);
+  addSIMDInst(
+      V.R, "store", "mask", "",
+      {getOpName(V.R, true, true), "_mm256_set_epi64x(0,0,0,1)", "ymm5"},
+      SIMDType::VSTORE, &IL);
 
   return IL;
 }

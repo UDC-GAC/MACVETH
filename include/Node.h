@@ -2,7 +2,7 @@
  * File              : Node.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 18 Dec 2019 17:03:50 MST
- * Last Modified Date: Mar 14 Xan 2020 15:34:36 MST
+ * Last Modified Date: Mér 15 Xan 2020 12:09:57 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 #ifndef MACVETH_NODE_H
@@ -201,16 +201,18 @@ public:
   /// Print node: debugging purposes
   void printNode();
 
-  int operator-(const Node &N) { return MV - N.MV; }
-  int operator-(const Node *N) { return MV - N->MV; }
+  /// This is useful for calculating the difference between two Nodes in terms
+  /// of addresses, in some way
+  int operator-(const Node &N) { return (*MV - *N.MV); }
+
   /// Two nodes are equal if and only if they have the same value. Seems
   /// pretty straigthforward but it must be defined someway.
   bool operator==(const Node &N) { return (getValue() == N.getValue()); }
-  bool operator==(const Node *N) { return (getValue() == N->getValue()); }
+
   /// Two nodes are not equal if and only if they have the same value. Seems
   /// pretty straigthforward but it must be defined someway.
   bool operator!=(const Node &N) { return !operator==(N); }
-  bool operator!=(const Node *N) { return !operator==(N); }
+
   /// For sorting lists of nodes
   bool operator<(const Node &N) {
     if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
@@ -219,7 +221,6 @@ public:
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
     }
   }
-  bool operator<(const Node *N) { return operator<(*N); }
 
 private:
   /// MVExpr info

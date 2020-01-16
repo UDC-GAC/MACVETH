@@ -2,7 +2,7 @@
  * File              : VectorIR.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Mar 14 Xan 2020 09:48:25 MST
+ * Last Modified Date: Mér 15 Xan 2020 12:32:46 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -10,7 +10,7 @@
 #include <bits/stdint-uintn.h>
 #include <sys/types.h>
 
-#define VECTORIR_DEBUG 0
+#define VECTORIR_DEBUG 1
 
 // ---------------------------------------------
 void printDebug(std::string M, std::string S) {
@@ -81,15 +81,18 @@ BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
 }
 
 // ---------------------------------------------
-int64_t *getMemIdx(int VL, Node *V[]) {
+int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
   // FIXME
   int64_t *Idx = (int64_t *)malloc(sizeof(int64_t) * VL);
   Idx[0] = 0;
   if (VL <= 1)
     return Idx;
-  for (int n = 0; n < VL; ++n) {
-    Idx[n + 1] = V[n + 1] - V[n];
+  for (int n = 0; n < VL - 1; ++n) {
+    Idx[n + 1] = *V[n + 1] - *V[n];
+    std::cout << "index " << std::to_string(n) << " = "
+              << std::to_string(Idx[n]) << ",";
   }
+  std::cout << std::endl;
   return Idx;
 }
 
@@ -106,8 +109,12 @@ unsigned int getShuffle(int VL, int Width, Node *V[]) {
 
 // ---------------------------------------------
 unsigned int getMask(int VL, Node *V[]) {
-  // TODO
-  unsigned int Mask = 0x0;
+  unsigned int Mask = 0x00;
+  for (int n = 0; n < VL; ++n) {
+    if (V[n] != nullptr) {
+      Mask |= (1 << n);
+    }
+  }
   return Mask;
 }
 
@@ -121,18 +128,15 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   this->VSize = VL;
 
   if ((V[0]->getNodeType() == Node::NODE_STORE) && (Res)) {
-    std::cout << "STORE = " << V[0]->getRegisterValue() << std::endl;
     this->Name = V[0]->getRegisterValue();
     this->IsStore = true;
-  } else {
-    std::cout << "" << V[0]->getRegisterValue() << std::endl;
   }
 
   // Check if there is a vector assigned for these operands
   auto VecAssigned = checkIfVectorAssigned(VL, V);
 
   this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
-                           : "VOp" + std::to_string(VID++);
+                           : "vop" + std::to_string(VID++);
   // It is a temporal result if it has already been assigned
   this->IsTmpResult = VecAssigned;
   auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
@@ -158,11 +162,16 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Get data mask
   this->Mask = getMask(VL, V);
 
+  // Determine whether is partial or not
+  if (Mask != ((1 << this->Size) - 1)) {
+    this->IsPartial = true;
+  }
+
   // In case we have to access to memory we are also interested in how we do it:
   // if we have to use an index for it, or if we have to shuffle data
   if (this->MemOp) {
     // Get Memory index
-    this->Idx = getMemIdx(VL, V);
+    this->Idx = getMemIdx(VL, V, this->Mask);
 
     // Get shuffle index
     this->Shuffle = getShuffle(VL, this->getWidth(), V);

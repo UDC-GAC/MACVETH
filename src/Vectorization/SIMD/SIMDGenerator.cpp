@@ -2,7 +2,7 @@
  * File              : SIMDGenerator.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Dom 22 Dec 2019 20:50:04 MST
- * Last Modified Date: Mar 14 Xan 2020 16:43:26 MST
+ * Last Modified Date: Mér 15 Xan 2020 12:26:46 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -16,6 +16,18 @@
 using namespace macveth;
 
 void printDeb(std::string S) { std::cout << "[SIMDGEN] " << S << std::endl; }
+
+// ---------------------------------------------
+std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
+                                     bool RegVal) {
+  if ((Ptr) && (V.IsStore || V.IsLoad)) {
+    return "&" + V.getRegName();
+  }
+  if (RegVal) {
+    return V.getRegName();
+  }
+  return V.Name;
+}
 
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
@@ -94,6 +106,7 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     // We will say it is a set if we have to explicity set the values of the
     // vector operand
 
+    // FIXME
     bool EqualVal = equalValues(V.VSize, V.UOP);
     bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
     bool ScatterMem = V.MemOp && !ContMem;
@@ -124,13 +137,12 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInstListType
-SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
+void SIMDGenerator::mapOperation(VectorIR::VectorOP V,
+                                 SIMDGenerator::SIMDInstListType *TI) {
   SIMDGenerator::SIMDInstListType TIL;
-  SIMDGenerator::SIMDInstListType TILOps;
   // Arranging the operands: maybe they need load, set, bcast...
-  getSIMDVOperand(V.OpA, &TILOps);
-  getSIMDVOperand(V.OpB, &TILOps);
+  getSIMDVOperand(V.OpA, TI);
+  getSIMDVOperand(V.OpB, TI);
 
   if (V.isBinOp()) {
     /// We can filter it by
@@ -154,59 +166,36 @@ SIMDGenerator::getMapOperation(VectorIR::VectorOP V) {
   } else {
     // TODO decide what todo when we have the custom operations
   }
-  TILOps.reverse();
-  for (auto I : TILOps) {
-    TIL.push_front(I);
-  }
 
+  // If there is a store
   if (V.R.IsStore) {
     for (auto I : vstore(V)) {
       TIL.push_back(I);
     }
   }
 
-  return TIL;
+  for (auto I : TIL) {
+    TI->push_back(I);
+  }
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInstListType
-SIMDGenerator::getReduceOperation(VectorIR::VectorOP V) {
+void SIMDGenerator::reduceOperation(VectorIR::VectorOP V,
+                                    SIMDInstListType *TI) {
   SIMDGenerator::SIMDInstListType TIL;
+
+  // Retrieve operands
+  if (V.R.Name == V.OpA.Name)
+    getSIMDVOperand(V.OpB, TI);
+  if (V.R.Name == V.OpB.Name)
+    getSIMDVOperand(V.OpA, TI);
 
   // Let the magic happens
   TIL = vreduce(V);
 
-  if (V.R.IsStore) {
-    for (auto I : vstore(V)) {
-      TIL.push_back(I);
-    }
-  }
-  return TIL;
-}
-
-// ---------------------------------------------
-bool SIMDGenerator::getSIMDVOperation(VectorIR::VectorOP V,
-                                      SIMDGenerator::SIMDInstListType *IL) {
-  SIMDGenerator::SIMDInstListType TIL;
-
-  switch (V.VT) {
-  case VectorIR::VType::MAP:
-    TIL = getMapOperation(V);
-    break;
-  case VectorIR::VType::REDUCE:
-    std::cout << "THIS IS A REDUCE!!!!!!!!!!!" << std::endl;
-    TIL = getReduceOperation(V);
-    break;
-  case VectorIR::VType::SEQ:
-    TIL = vseq(V);
-    break;
-  };
-
-  // Update the list
   for (auto I : TIL) {
-    IL->push_back(I);
+    TI->push_back(I);
   }
-  return true;
 }
 
 // ---------------------------------------------
@@ -214,20 +203,25 @@ SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   SIMDInstListType IL;
 
-  VectorIR::VOperand VOpA = V.OpA;
-  VectorIR::VOperand VOpB = V.OpB;
-
   // Arranging the operation
-  getSIMDVOperation(V, &IL);
+  switch (V.VT) {
+  case VectorIR::VType::MAP:
+    mapOperation(V, &IL);
+    break;
+  case VectorIR::VType::REDUCE:
+    reduceOperation(V, &IL);
+    break;
+  case VectorIR::VType::SEQ:
+    std::cout << "[DEBUG] Sequential case\n";
+    IL = vseq(V);
+    break;
+  };
 
   // Registers used
   std::string RegType = getRegisterType(V.DT, V.VW);
-  // if (!V.R.IsStore)
   SIMDGenerator::addRegToDeclare(RegType, V.R.getName());
-  // if (!VOpA.IsStore)
-  SIMDGenerator::addRegToDeclare(RegType, VOpA.getName());
-  // if (!VOpB.IsStore)
-  SIMDGenerator::addRegToDeclare(RegType, VOpB.getName());
+  SIMDGenerator::addRegToDeclare(RegType, V.OpA.getName());
+  SIMDGenerator::addRegToDeclare(RegType, V.OpB.getName());
 
   return IL;
 }

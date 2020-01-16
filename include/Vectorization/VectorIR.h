@@ -2,7 +2,7 @@
  * File              : VectorIR.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 20 Dec 2019 09:59:02 MST
- * Last Modified Date: Mar 14 Xan 2020 17:06:19 MST
+ * Last Modified Date: Mér 15 Xan 2020 11:34:03 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -107,7 +107,7 @@ public:
     /// Total size of vector
     unsigned int VSize;
     /// Number non null Nodes
-    unsigned int Size;
+    unsigned int Size = 4;
     /// Array of variable size (Size elements actually) initialized when
     /// creating the object
     Node **UOP = nullptr;
@@ -121,6 +121,14 @@ public:
     unsigned int Shuffle = 0x0;
     /// Mask to avoid elements if necessary
     unsigned int Mask = 0x0;
+    /// Memory addres is unaligned
+    bool Unaligned = false;
+    /// Memory is contiguous
+    bool Contiguous = true;
+    /// Is partial (mask is not all 1)
+    bool IsPartial = false;
+    /// If the memory addresses cross cache line sizes
+    bool OutOfCacheLine = false;
     /// The vector operand is a temporal result if it has already been assigned
     /// before
     bool IsTmpResult = false;
@@ -143,6 +151,10 @@ public:
     /// Return name of VOperand
     std::string getName() { return this->Name; }
 
+    /// Return register name
+    std::string getRegName() { return this->UOP[0]->getRegisterValue(); }
+
+    /// For debugging
     std::string toString() {
       return Name + "[" + (IsTmpResult ? "TMP," : "") + (IsLoad ? "LD," : "") +
              (IsStore ? "ST," : "") + (UOP[0]->getRegisterValue()) + "]";
@@ -184,8 +196,8 @@ public:
     VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[]);
 
     void render() {
-      std::cout << R.toString() << " = " << VN << "(" << OpA.toString() << ","
-                << OpB.toString() << ")" << std::endl;
+      std::cout << "[VectorIR] " + R.toString() << " = " << VN << "("
+                << OpA.toString() << "," << OpB.toString() << ")" << std::endl;
     }
   };
 

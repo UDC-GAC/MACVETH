@@ -52,6 +52,10 @@ using namespace clang::tooling;
 using namespace llvm;
 using namespace macveth;
 
+struct CustomOpts {
+  std::string OutputFile = "";
+};
+
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser. It registers a couple of matchers and runs them on
 // the AST.
@@ -89,7 +93,7 @@ private:
 class MACVETHFrontendAction : public ASTFrontendAction {
 public:
   // empty constructor
-  MACVETHFrontendAction() {}
+  MACVETHFrontendAction(CustomOpts C) : CO(C) {}
 
   // This routine is called in BeginSourceFile(), from
   // CreateWrapperASTConsumer.
@@ -129,28 +133,35 @@ public:
     // std::out) the result of applying all changes to the original
     // buffer. Original buffer is modified before calling this function,
     // from the ASTConsumer
-    TheRewriter.getEditBuffer(TheRewriter.getSourceMgr().getMainFileID())
-        .write(llvm::outs());
+    SourceManager &SM = TheRewriter.getSourceMgr();
+    std::error_code ErrorCode;
+    std::string OutFile =
+        (CO.OutputFile == "") ? "macveth_output.c" : CO.OutputFile;
+    llvm::raw_fd_ostream outFile(OutFile, ErrorCode, llvm::sys::fs::F_None);
+    TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
   }
 
 private:
   // Main interfacer to the rewrite buffers: dispatches high-level
   // requests to the low-level RewriteBuffers involved.
   Rewriter TheRewriter;
+  /// CustomOptions struct
+  CustomOpts CO;
 };
 
 // TODO
 // Set up the command line options
-static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
+static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 // Custom cmd options
 static llvm::cl::opt<std::string> UnrollFactor(
     "u", llvm::cl::desc(
              "Unroll factor used when unrolling loops. Valid values are any "
              "integer number greater than zero, 'full' or 'fulljam'. "));
 static llvm::cl::opt<std::string>
-    OutputFile("o", llvm::cl::desc("Output file to write the code, otherwise "
-                                   "it will just print int std outputt"));
+    OutputFile("o", cl::cat(MacvethCategory),
+               llvm::cl::desc("Output file to write the code, otherwise "
+                              "it will just print int std outputt"));
 
 // Main program
 int main(int argc, const char **argv) {
