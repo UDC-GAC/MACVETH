@@ -41,6 +41,25 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Signals.h"
 
+#ifdef WIN32
+#include <direct.h>
+std::string getExePath() {
+  char result[MAX_PATH];
+  int found;
+  GetModuleFileName(NULL, result, MAX_PATH);
+  found = string(result).find_last_of("\\");
+  return (string(result).substr(0, found) + "\\");
+}
+#else
+#include <unistd.h>
+std::string getExePath() {
+  char result[PATH_MAX];
+  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+  std::size_t found = std::string(result).find_last_of("/");
+  return std::string(result).substr(0, found) + "/";
+}
+#endif
+
 #ifndef LLVM_VERSION
 #define LLVM_VERSION 10
 #endif
@@ -52,8 +71,9 @@ using namespace clang::tooling;
 using namespace llvm;
 using namespace macveth;
 
+/// Handling CLI options
 struct CustomOpts {
-  std::string OutputFile = "";
+  static inline std::string OutputFile = "";
 };
 
 // Implementation of the ASTConsumer interface for reading an AST produced
@@ -93,7 +113,7 @@ private:
 class MACVETHFrontendAction : public ASTFrontendAction {
 public:
   // empty constructor
-  MACVETHFrontendAction(CustomOpts C) : CO(C) {}
+  MACVETHFrontendAction() {}
 
   // This routine is called in BeginSourceFile(), from
   // CreateWrapperASTConsumer.
@@ -135,8 +155,10 @@ public:
     // from the ASTConsumer
     SourceManager &SM = TheRewriter.getSourceMgr();
     std::error_code ErrorCode;
-    std::string OutFile =
-        (CO.OutputFile == "") ? "macveth_output.c" : CO.OutputFile;
+    std::string OutFile = (CustomOpts::OutputFile == "")
+                              ? "macveth_output.c"
+                              : CustomOpts::OutputFile;
+    OutFile = getExePath() + OutFile;
     llvm::raw_fd_ostream outFile(OutFile, ErrorCode, llvm::sys::fs::F_None);
     TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
   }
@@ -145,8 +167,6 @@ private:
   // Main interfacer to the rewrite buffers: dispatches high-level
   // requests to the low-level RewriteBuffers involved.
   Rewriter TheRewriter;
-  /// CustomOptions struct
-  CustomOpts CO;
 };
 
 // TODO
@@ -175,6 +195,9 @@ int main(int argc, const char **argv) {
   // paths
   // * getSourcePathList(): source files to run over
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
+
+  /// CustomOpts
+  CustomOpts::OutputFile = OutputFile.getValue();
 
   // Runs ToolAction over all files specified in the cmd line
   // newFrontendActionFactory returns a new FrontendActionFactory for
