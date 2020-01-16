@@ -7,41 +7,59 @@
 # Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 
 import os
+import filecmp
 
 # Some declarations
 build_path = "../build"
 unittest_path = "unittest"
 ft = ".c"
 exp_sufix = "_exp.c"
-mv_prefix = "mv_"
-
-# Compiling the compiler: assume that cmake has been already called
+comp_sufix = "_comp.c"
 
 
 def compile_macveth():
     # Compiling MACVETH
     os.system("make -C %s " % build_path)
     os.system("cp %s/macveth ." % build_path)
-
     return True
 
 
-# Compiling the org_file and print it in the out_file
 def compile_test(org_file, out_file):
-
+    # Compiling the tests
+    os.system("./macveth %s/%s -o=%s/%s" %
+              (unittest_path, org_file, unittest_path, out_file))
     return True
 
-# Compare codes: if True, then there are differences between those two files, if
-# False then files are equal
+
+def test_simd_code(exp_out, comp_out):
+    # Aggressive comparison between exepected output and compiled version: files
+    # must be exactly the same. Maybe we should be less aggressive
+    return filecmp.cmp(exp_out, comp_out)
 
 
-def test_simd_code(expected, compiled):
+def test_output(exp_out, comp_out):
     return False
+
+
+def print_results(passed, failed, tests):
+    # Printing results
+    print("passed tests = %3d / %3d" % (len(passed), len(tests)))
+    print("failed tests = %3d / %3d" % (len(failed), len(tests)))
+
+    if (len(failed) == 0):
+        print("\tGood work!")
+        exit(0)
+    elif (len(failed) == 1):
+        print("\tAlmost...")
+
+    print("failed tests:")
+    print("=============")
+    for fail in failed:
+        print("\t" + fail)
 
 
 failed_tests = []
 passed_tests = []
-
 
 # Parsing all the available tests in unittest
 # Create list with all the unit test
@@ -51,29 +69,16 @@ for r, d, f in os.walk(unittest_path):
         if exp_sufix in file:
             tests_name.append(file.split(exp_sufix)[0])
 
+# Compiling macveth
 compile_macveth()
-for test in tests_name:
-    compile_test(test+ft, test + exp_sufix)
 
+# Compiling the original codes
 for test in tests_name:
-    comp_test = mv_prefix + test
-    compile_macveth(test, comp_test)
+    comp_test = test + comp_sufix
+    compile_test(test + ft, test + comp_sufix)
     if (test_simd_code(test, comp_test)):
         failed_tests.append(comp_test)
     else:
         passed_tests.append(comp_test)
 
-# Printing results
-print("passed tests = %3d / %3d" % (len(passed_tests), len(tests_name)))
-print("failed tests = %3d / %3d" % (len(failed_tests), len(tests_name)))
-
-if (len(failed_tests) == 0):
-    print("\tGood work!")
-    exit(0)
-elif (len(failed_tests) == 1):
-    print("\tAlmost...")
-
-print("failed tests:")
-print("=============")
-for fail in failed_tests:
-    print("\t" + fail)
+print_results(passed_tests, failed_tests, tests_name)

@@ -1,5 +1,6 @@
-# executable macveth
+# testing executable macveth
 macveth
+*_comp.c
 
 # Benchmarking
 ubench
