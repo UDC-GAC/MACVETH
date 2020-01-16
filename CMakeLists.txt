@@ -19,7 +19,7 @@ set(LLVM_BIN_PATH ${LLVM_BUILD_PATH}/bin)
 set(CURSES_USE_NCURSES TRUE)
 
 # Custom flags
-set(CUSTOM_CXXFLAGS " -fno-rtti -O0 ")
+set(CUSTOM_CXXFLAGS " -g -fno-rtti -O0 ")
 add_definitions(${CUSTOM_CXXFLAGS})
 
 ############################################################
