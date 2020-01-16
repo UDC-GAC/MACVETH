@@ -9,5 +9,5 @@ void kernel_spmvstyle(int m, int n, double A[m][n], double x[n], double y[n],
   for (int i = 0; i < n; ++i) {
     x[i] = p[i] * 4;
   }
-#pragma endmv
+#pragma endmacveth
 }

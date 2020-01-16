@@ -1,0 +1,23 @@
+* Terminology:
+--------------
+
+Some terms which will be used in this document:
+
+    * Case: certain configuration or setup of a program to evaluate. It can be
+      composed of more than one file
+
+* How to write new tests:
+-------------------------
+
+There are two folders: unittest and fulltest.
+You will want to add a new test for testing the shape of the code itself by
+creating a new case in 'unittest'
+
+    * Original code: for being compiled by macveth
+    * SIMD code: the expected output to be compared to macveth's output
+
+If you want to assess the correctness of a certain code being produced, you will
+want to write the code in 'fulltest'. You will just have to write a file:
+
+    * Original code: you will use a template created for this, using the
+      PolyBench-style kernels. This way is easier to compare the outputs

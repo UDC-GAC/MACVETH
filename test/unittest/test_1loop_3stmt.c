@@ -12,5 +12,5 @@ void kernel_spmvstyle(int m, int n, double A[m][n], double x[n], double y[n],
     y[i] = p[i] * 4;
     c[i] = p[i] * 4;
   }
-#pragma endmv
+#pragma endmacveth
 }
