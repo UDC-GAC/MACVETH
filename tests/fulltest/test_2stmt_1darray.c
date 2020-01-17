@@ -37,28 +37,22 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
-static void print_array(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
+static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
   int i, j;
 
   for (i = 0; i < n; i++)
-    for (j = 0; j < n; j++) {
-      fprintf(stderr, DATA_PRINTF_MODIFIER, C[i][j]);
-      if (i % 20 == 0)
-        fprintf(stderr, "\n");
-    }
+    fprintf(stderr, DATA_PRINTF_MODIFIER, C[i]);
+  if (i % 20 == 0)
+    fprintf(stderr, "\n");
   fprintf(stderr, "\n");
 }
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-static void kernel_template(int n, DATA_TYPE POLYBENCH_2D(X, N, N, n, n),
-                            DATA_TYPE POLYBENCH_2D(A, N, N, n, n),
-                            DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
+static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
 #pragma macveth
   for (int i = 0; i < _PB_N; i++) {
-    for (int j = 0; j < _PB_N; j++) {
-      C[i][j] = C[i][j] + X[i][j] * A[i][j];
-    }
+    x[i] = x[i] * i + 42.3f;
   }
 #pragma endmacveth
 }
@@ -68,21 +62,16 @@ int main(int argc, char **argv) {
   int n = N;
 
   /* Variable declaration/allocation. */
-  POLYBENCH_2D_ARRAY_DECL(X, DATA_TYPE, N, N, n, n);
-  POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);
-  POLYBENCH_2D_ARRAY_DECL(C, DATA_TYPE, N, N, n, n);
+  POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
 
   /* Initialize array(s). */
-  init_2darray(n, POLYBENCH_ARRAY(A));
-  init_2darray(n, POLYBENCH_ARRAY(X));
-  init_2darray(n, POLYBENCH_ARRAY(C));
+  init_1darray(n, POLYBENCH_ARRAY(x));
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
-  kernel_template(n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(X),
-                  POLYBENCH_ARRAY(C));
+  kernel_template(n, POLYBENCH_ARRAY(x));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
@@ -90,10 +79,10 @@ int main(int argc, char **argv) {
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
-  polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(C)));
+  polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
 
   /* Be clean. */
-  POLYBENCH_FREE_ARRAY(C);
+  POLYBENCH_FREE_ARRAY(x);
 
   return 0;
 }

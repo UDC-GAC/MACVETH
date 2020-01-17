@@ -51,13 +51,13 @@ static void print_array(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-static void kernel_template(int n, DATA_TYPE POLYBENCH_2D(X, N, N, n, n),
-                            DATA_TYPE POLYBENCH_2D(A, N, N, n, n),
+static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n),
                             DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 #pragma macveth
   for (int i = 0; i < _PB_N; i++) {
     for (int j = 0; j < _PB_N; j++) {
-      C[i][j] = C[i][j] + X[i][j] * A[i][j];
+      C[i][j] = C[i][j] + x[j] * C[i][j];
+      x[i] = x[j] * 4.0 + C[i][j];
     }
   }
 #pragma endmacveth
@@ -68,21 +68,18 @@ int main(int argc, char **argv) {
   int n = N;
 
   /* Variable declaration/allocation. */
-  POLYBENCH_2D_ARRAY_DECL(X, DATA_TYPE, N, N, n, n);
-  POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);
+  POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
   POLYBENCH_2D_ARRAY_DECL(C, DATA_TYPE, N, N, n, n);
 
   /* Initialize array(s). */
-  init_2darray(n, POLYBENCH_ARRAY(A));
-  init_2darray(n, POLYBENCH_ARRAY(X));
+  init_1darray(n, POLYBENCH_ARRAY(x));
   init_2darray(n, POLYBENCH_ARRAY(C));
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
-  kernel_template(n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(X),
-                  POLYBENCH_ARRAY(C));
+  kernel_template(n, POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(C));
 
   /* Stop and print timer. */
   polybench_stop_instruments;

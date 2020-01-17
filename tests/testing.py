@@ -32,7 +32,7 @@ cc = "gcc"
 # FIXME:
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
-mv_poly_flags = " --extra-arg-before='-Itest/fulltest/utilities' "
+mv_poly_flags = " --extra-arg-before='-Itests/fulltest/utilities' "
 
 # Discussion:
 # is POLYBENCH_USE_C99_PROTO needed?
@@ -189,7 +189,10 @@ for test in tests_name:
         failed_tests.append(macveth_t)
 
 
-# Print results obtained
+# Write results obtained
 print_results("fulltest", passed_tests, failed_tests, tests_name)
+
+# Print results
+os.system("cat %s" % test_report)
 
 clean_tmp_files()
