@@ -3,13 +3,14 @@
 
 Some terms which will be used in this document:
 
+    * Set:
     * Case: certain configuration or setup of a program to evaluate. It can be
       composed of more than one file
 
 * How to write new tests:
 -------------------------
 
-There are two folders: unittest and fulltest.
+There are two main sets: unittest and fulltest.
 You will want to add a new test for testing the shape of the code itself by
 creating a new case in 'unittest'
 

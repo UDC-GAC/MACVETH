@@ -13,13 +13,15 @@ import filecmp
 build_path = "../build"
 unittest_path = "unittest/"
 fulltest_path = "fulltest/"
-macveth_path = "macveth/
+macveth_path = "macveth_dir/"
 fail_path = "failed_tests/"
 tmp_path = "tmpfiles/"
+test_report = "test_report.txt"
 
 os.system("mkdir -p %s" % fail_path)
 os.system("mkdir -p %s" % tmp_path)
 os.system("mkdir -p %s" % macveth_path)
+os.system("echo "" > %s" % test_report)
 
 # File extensions
 file_t = ".c"
@@ -27,7 +29,6 @@ exp_sufix = "_exp" + file_t
 comp_sufix = "_comp" + file_t
 # Compiler options: for testing the outputs obtained
 cc = "gcc"
-poly_flags = " -I utilities utilities/polybench.c -DPOLYBENCH_DUMP_ARRAYS "
 # FIXME:
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
@@ -39,15 +40,25 @@ mv_poly_flags = " --extra-arg-before='-Itest/fulltest/utilities' "
 # already emitting SIMD code, right?
 
 
-def comp_cmd(path, cc, flags, file, output):
+def clean_tmp_files():
+    os.system("rm -Rf %s" % tmp_path)
+
+
+def poly_flags(p):
+    return (
+        " -I%s -I %sutilities %sutilities/polybench.c -DPOLYBENCH_DUMP_ARRAYS" %
+        (p, p, p))
+
+
+def comp_cmd(flags, file, output):
     # Get the compilation line
     # print("(cd %s && %s %s %s -o ../%s)" % (path, cc, flags, file, output))
-    os.system("(cd %s && %s %s %s -o ../%s)" % (path, cc, flags, file, tmp_path
-                                                + output))
+    os.system("%s %s %s -o %s" % (cc, flags, file,
+                                  output))
 
 
-def run_test(path, test, output):
-    os.system("./%s 2> %s" % (tmp_path + test, tmp_path + output))
+def run_test(test, output):
+    os.system("./%s 2> %s" % (test, output))
 
 
 def compile_macveth():
@@ -57,52 +68,54 @@ def compile_macveth():
     return True
 
 
-def compile_test(p, org_file, out_file, args=""):
+def compile_test(org_file, out_file, args=""):
     # Compiling the tests
     os.system("./macveth %s %s -o=%s" %
-              (args, (p + org_file), (p + out_file)))
+              (args, org_file, out_file))
     # FIXME more than urgently
     # HAHA please remove this ASAP, please
-    os.system("sed -i '1i#include <immintrin.h>' %s" % p + out_file)
+    os.system("sed -i '1i#include <immintrin.h>' %s" % out_file)
     return True
 
 
-def test_output(path, exp_out, comp_out, code=False):
+def test_output(exp_out, comp_out, code=False):
     # Aggressive comparison between exepected output and compiled version: files
     # must be exactly the same. Maybe we should be less aggressive when it comes
     # to compare code
     # @return True if same values, False otherwise
-    return filecmp.cmp(path + exp_out, path + comp_out)
+    return filecmp.cmp(exp_out, comp_out)
 
 
 def print_results(name, passed, failed, tests):
     # Printing results obtained
-    print("results for %s" % name)
-    print("\tpassed tests = %3d / %3d" % (len(passed), len(tests)))
-    print("\tfailed tests = %3d / %3d" % (len(failed), len(tests)))
+    with open(test_report, "a") as f:
+        f.write("=============\n")
+        f.write("results for %s\n" % name)
+        f.write("\tpassed tests = %3d / %3d\n" % (len(passed), len(tests)))
+        f.write("\tfailed tests = %3d / %3d\n" % (len(failed), len(tests)))
 
-    if (len(failed) == 0):
-        print("\tGood work!")
-        exit(0)
-    elif (len(failed) == 1):
-        print("\tAlmost...")
+        if (len(failed) == 0):
+            f.write("\tGood work!\n")
 
-    print("\tfailed tests:")
-    print("\t=============")
-    for fail in failed:
-        os.system("cp %s %s" % (name+fail, fail_path))
-        print("\t\t" + fail)
+        f.write("\tpassed tests:\n")
+        f.write("\t=============\n")
+        for tpass in passed:
+            # If the test passes, we do not want to have a copy of it because is the
+            # same as the expected value, therefore redundant. Be clean
+            f.write("\t\t%s\n" % tpass)
+            os.system("rm %s" % tpass)
 
-    for tpass in passed:
-        # If the test passes, we do not want to have a copy of it because is the
-        # same as the expected value, therefore redundant. Be clean
-        os.system("rm %s" % (name + tpass))
+        f.write("\tfailed tests:\n")
+        f.write("\t=============\n")
+        for fail in failed:
+            os.system("cp %s %s\n" % (fail, fail_path))
+            f.write("\t\t%s\n" % fail)
 
 
 # Compiling macveth
 compile_macveth()
 
-########################
+#########################
 # Unittests
 failed_tests = []
 passed_tests = []
@@ -119,16 +132,18 @@ for r, d, f in os.walk(unittest_path):
 
 # Compiling the original codes
 for test in tests_name:
-    comp_test = test + comp_sufix
-    exp_test = test + exp_sufix
-    compile_test(unittest_path, test + file_t, test + comp_sufix)
-    if (test_output(unittest_path, exp_test, comp_test)):
+    org_test = unittest_path + test + file_t
+    exp_test = unittest_path + test + exp_sufix
+    comp_test = macveth_path + test + comp_sufix
+    compile_test(org_test, comp_test)
+    if (test_output(exp_test, comp_test)):
         passed_tests.append(comp_test)
     else:
         failed_tests.append(comp_test)
 
 # Print results obtained
 print_results("unittest", passed_tests, failed_tests, tests_name)
+
 
 ########################
 # Fulltests
@@ -140,32 +155,34 @@ passed_tests = []
 tests_name = []
 for r, d, f in os.walk(fulltest_path):
     for file in f:
-        if ("test" and file_t) in file:
+        if ("test") in file:
             tests_name.append(file.split(".")[0])
 
 # Compiling the original codes
 for test in tests_name:
     # File names
-    macveth_t = test + comp_sufix
-    org_t = test + file_t
+    macveth_t = macveth_path + test + comp_sufix
+    org_t = fulltest_path + test + file_t
 
     # Compile with macveth the test
-    compile_test(fulltest_path, org_t, macveth_t, mv_poly_flags)
+    compile_test(org_t, macveth_t, mv_poly_flags)
+
+    pref = tmp_path + test
 
     # Compile and run the original
-    tmp_org_bin = test + "_org.bin"
-    tmp_org_out = test + "_org.output"
-    comp_cmd(fulltest_path, cc, poly_flags, org_t, test + "_org")
-    run_test(fulltest_path, tmp_org_bin, tmp_org_out)
+    tmp_org_bin = pref + "_org.bin"
+    tmp_org_out = pref + "_org.output"
+    comp_cmd(poly_flags(fulltest_path), org_t, tmp_org_bin)
+    run_test(tmp_org_bin, tmp_org_out)
 
     # Compile and run macveth's version
-    tmp_mv_bin = test + "_org.bin"
-    tmp_mv_out = test + "_org.output"
-    comp_cmd(fulltest_path, cc, poly_flags +
+    tmp_mv_bin = pref + "_mv.bin"
+    tmp_mv_out = pref + "_mv.output"
+    comp_cmd(poly_flags(fulltest_path) +
              " -mavx2 -mfma ", macveth_t, tmp_mv_bin)
-    run_test(fulltest_path, tmp_mv_bin, tmp_mv_out)
+    run_test(tmp_mv_bin, tmp_mv_out)
 
-    if (test_output(tmp_path, tmp_org_out,
+    if (test_output(tmp_org_out,
                     tmp_mv_out)):
         passed_tests.append(macveth_t)
     else:
@@ -174,3 +191,5 @@ for test in tests_name:
 
 # Print results obtained
 print_results("fulltest", passed_tests, failed_tests, tests_name)
+
+clean_tmp_files()
