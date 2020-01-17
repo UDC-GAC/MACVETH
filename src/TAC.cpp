@@ -73,8 +73,10 @@ void TAC::exprToTAC(clang::CompoundStmt *CS, std::list<TAC> *TacList) {
   TAC::RegVal = 0;
   for (auto ST : CS->body()) {
     clang::Expr *S = dyn_cast<clang::Expr>(ST);
+    /// FIXME: bug for test_3darray
     if (S == NULL) {
-      llvm::llvm_unreachable_internal();
+      // llvm::llvm_unreachable_internal();
+      return;
     }
     clang::BinaryOperator *SBin = NULL;
     bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));

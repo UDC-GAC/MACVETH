@@ -17,10 +17,10 @@
 
 using namespace clang;
 
-/// The Location of the Scop, as delimited by macveth and endmv
+/// The Location of the Scop, as delimited by macveth and endmacveth
 /// pragmas by the user.
-/// "macveth" and "endmv" are the source locations of the macveth and
-/// endmv pragmas.
+/// "macveth" and "endmacveth" are the source locations of the macveth and
+/// endmacveth pragmas.
 /// "StartLine" is the Line number of the Start position.
 struct ScopLoc {
   ScopLoc() : End(0) {}
@@ -59,7 +59,7 @@ struct ScopHandler {
 
   /// Add a new Start (#pragma macveth) Location to the list.
   /// If the last #pragma macveth did not have a matching
-  /// #pragma endmv then overwrite it.
+  /// #pragma endmacveth then overwrite it.
   /// "Start" points to the location of the macveth pragma.
   void addStart(SourceManager &SM, SourceLocation Start,
                 ScopLoc::PragmaArgs PA) {
@@ -78,11 +78,11 @@ struct ScopHandler {
     }
   }
 
-  /// Set the end location (#pragma endmv) of the last pair
+  /// Set the end location (#pragma endmacveth) of the last pair
   /// in the list.
   /// If there is no such pair of if the end of that pair
-  /// is already set, then ignore the spurious #pragma endmv.
-  /// "end" points to the location of the endmv pragma.
+  /// is already set, then ignore the spurious #pragma endmacveth.
+  /// "end" points to the location of the endmacveth pragma.
   void addEnd(SourceManager &SM, SourceLocation End) {
     if (List.size() == 0 || List[List.size() - 1].End != 0)
       return;
@@ -135,7 +135,7 @@ struct PragmaScopHandler : public PragmaHandler {
 
 /// Handle pragmas of the form
 ///
-///  #pragma endmv
+///  #pragma endmacveth
 ///
 /// In particular, store the Location of the line following the one containing
 /// the pragma in the list "Scops".
@@ -143,7 +143,7 @@ struct PragmaEndScopHandler : public PragmaHandler {
   ScopHandler *Scops;
 
   PragmaEndScopHandler(ScopHandler *Scops)
-      : PragmaHandler("endmv"), Scops(Scops) {}
+      : PragmaHandler("endmacveth"), Scops(Scops) {}
 
   virtual void HandlePragma(Preprocessor &PP, PragmaIntroducer Introducer,
                             Token &EndScopTok) {

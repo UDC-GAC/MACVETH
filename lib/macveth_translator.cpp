@@ -174,14 +174,13 @@ private:
 static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
 static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 // Custom cmd options
-static llvm::cl::opt<std::string> UnrollFactor(
-    "u", llvm::cl::desc(
-             "Unroll factor used when unrolling loops. Valid values are any "
-             "integer number greater than zero, 'full' or 'fulljam'. "));
 static llvm::cl::opt<std::string>
     OutputFile("o", cl::cat(MacvethCategory),
                llvm::cl::desc("Output file to write the code, otherwise "
                               "it will just print int std outputt"));
+static llvm::cl::opt<std::string>
+    Architecture("march", cl::cat(MacvethCategory),
+                 llvm::cl::desc("Target architecture"));
 
 // Main program
 int main(int argc, const char **argv) {
