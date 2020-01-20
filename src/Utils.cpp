@@ -7,8 +7,45 @@
  */
 
 #include "include/Utils.h"
+#include <llvm-10/llvm/ADT/APFloat.h>
 
 using namespace macveth;
+
+#ifdef WIN32
+#include <direct.h>
+//-------------------------------------------------------------
+std::string Utils::getExePath() {
+  char result[MAX_PATH];
+  int found;
+  GetModuleFileName(NULL, result, MAX_PATH);
+  found = string(result).find_last_of("\\");
+  return (string(result).substr(0, found) + "\\");
+}
+#else
+#include <unistd.h>
+//-------------------------------------------------------------
+std::string Utils::getExePath() {
+  char result[PATH_MAX];
+  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+  std::size_t found = std::string(result).find_last_of("/");
+  return std::string(result).substr(0, found) + "/";
+}
+#endif
+
+//// ---------------------------------------------
+// void Utils::printDebug(std::string M, std::string S) {
+//  std::cout << "[" << M << " DEBUG] " << S << std::endl;
+//}
+
+//-------------------------------------------------------------
+template <typename T>
+bool Utils::contains(std::list<T> &listOfElements, const T &element) {
+  // Find the iterator if element in list
+  auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
+  // return if iterator points to end or not. It points to end then it
+  // means element does not exists in list
+  return it != listOfElements.end();
+}
 
 //-------------------------------------------------------------
 SourceManager *Utils::getSourceMgr() { return Utils::SourceMgr; }
@@ -34,11 +71,6 @@ int64_t Utils::getIntFromExpr(const Expr *E, const ASTContext *C) {
   }
   return -1;
 }
-
-//-------------------------------------------------------------
-// std::string Utils::getNameTempReg(int Val) {
-//  return "temp" + std::to_string(Val);
-//}
 
 //-------------------------------------------------------------
 bool Utils::isNumericValue(Expr *E) {

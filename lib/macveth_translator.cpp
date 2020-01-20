@@ -28,6 +28,7 @@
  */
 
 #include "include/CustomMatchers.h"
+#include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
@@ -36,29 +37,8 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
-#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Signals.h"
-
-#ifdef WIN32
-#include <direct.h>
-std::string getExePath() {
-  char result[MAX_PATH];
-  int found;
-  GetModuleFileName(NULL, result, MAX_PATH);
-  found = string(result).find_last_of("\\");
-  return (string(result).substr(0, found) + "\\");
-}
-#else
-#include <unistd.h>
-std::string getExePath() {
-  char result[PATH_MAX];
-  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-  std::size_t found = std::string(result).find_last_of("/");
-  return std::string(result).substr(0, found) + "/";
-}
-#endif
 
 #ifndef LLVM_VERSION
 #define LLVM_VERSION 10
@@ -70,11 +50,6 @@ using namespace clang::driver;
 using namespace clang::tooling;
 using namespace llvm;
 using namespace macveth;
-
-/// Handling CLI options
-struct CustomOpts {
-  static inline std::string OutputFile = "";
-};
 
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser. It registers a couple of matchers and runs them on
@@ -155,10 +130,9 @@ public:
     // from the ASTConsumer
     SourceManager &SM = TheRewriter.getSourceMgr();
     std::error_code ErrorCode;
-    std::string OutFile = (CustomOpts::OutputFile == "")
-                              ? "macveth_output.c"
-                              : CustomOpts::OutputFile;
-    OutFile = getExePath() + OutFile;
+    std::string OutFile =
+        (MVOptions::OutFile == "") ? "macveth_output.c" : MVOptions::OutFile;
+    OutFile = Utils::getExePath() + OutFile;
     llvm::raw_fd_ostream outFile(OutFile, ErrorCode, llvm::sys::fs::F_None);
     TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
   }
@@ -168,19 +142,6 @@ private:
   // requests to the low-level RewriteBuffers involved.
   Rewriter TheRewriter;
 };
-
-// TODO
-// Set up the command line options
-static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
-static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
-// Custom cmd options
-static llvm::cl::opt<std::string>
-    OutputFile("o", cl::cat(MacvethCategory),
-               llvm::cl::desc("Output file to write the code, otherwise "
-                              "it will just print int std outputt"));
-static llvm::cl::opt<std::string>
-    Architecture("march", cl::cat(MacvethCategory),
-                 llvm::cl::desc("Target architecture"));
 
 // Main program
 int main(int argc, const char **argv) {
@@ -195,8 +156,8 @@ int main(int argc, const char **argv) {
   // * getSourcePathList(): source files to run over
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
-  /// CustomOpts
-  CustomOpts::OutputFile = OutputFile.getValue();
+  /// MVOptions
+  MVOptions::parseOptions();
 
   // Runs ToolAction over all files specified in the cmd line
   // newFrontendActionFactory returns a new FrontendActionFactory for

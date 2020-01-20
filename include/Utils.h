@@ -28,13 +28,11 @@
 #ifndef MACVETH_UTILS_H
 #define MACVETH_UTILS_H
 
-#include <iostream>
-
 #include "clang/AST/AST.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
-#include <llvm-10/llvm/ADT/APFloat.h>
+#include <iostream>
 
 using namespace clang;
 
@@ -73,24 +71,9 @@ public:
   static clang::ASTContext *getCtx();
   /// Set some clang resources
   static void setOpts(SourceManager *SO, LangOptions *LO, ASTContext *C);
-  /// Print function for debugging purposes
-  // static void printDebug(std::string M, std::string S);
+  /// Get execution path of the binary; not just a getcwd() call
+  static std::string getExePath();
 };
-
-//// ---------------------------------------------
-// void Utils::printDebug(std::string M, std::string S) {
-//  std::cout << "[" << M << " DEBUG] " << S << std::endl;
-//}
-
-//-------------------------------------------------------------
-template <typename T>
-bool Utils::contains(std::list<T> &listOfElements, const T &element) {
-  // Find the iterator if element in list
-  auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
-  // return if iterator points to end or not. It points to end then it
-  // means element does not exists in list
-  return it != listOfElements.end();
-}
 
 } // namespace macveth
 #endif
