@@ -63,7 +63,10 @@ def run_test(test, output):
 
 def compile_macveth():
     # Compiling MACVETH
-    os.system("make -C %s " % build_path)
+    out = os.system("make -C %s " % build_path)
+    if (out != 0):
+        print("Something went wrong compiling MACVETH! Exiting...")
+        exit(0)
     os.system("cp %s/macveth ." % build_path)
     return True
 
@@ -195,4 +198,4 @@ print_results("fulltest", passed_tests, failed_tests, tests_name)
 # Print results
 os.system("cat %s" % test_report)
 
-clean_tmp_files()
+# clean_tmp_files()

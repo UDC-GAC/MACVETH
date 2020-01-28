@@ -2,6 +2,10 @@
 macveth
 *_comp.c
 *.bin
+*_report.txt
+
+# Temp files
+tmp/
 
 # Benchmarking
 ubench
