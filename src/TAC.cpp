@@ -151,9 +151,6 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                 UnrollFactor * ((mask & TAC::MASK_OP_B) >> TAC::BITS_OP_B);
   int UnrollC = S * UnrollFactor +
                 UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
-  // std::cout << "A = " << std::to_string(UnrollA)
-  //          << "; B = " << std::to_string(UnrollB)
-  //          << "; C = " << std::to_string(UnrollC) << std::endl;
 
   TAC *UnrolledTac = new TAC(
       Tac->getA()->unrollExpr(UnrollA, LoopLevel),
@@ -169,16 +166,12 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
                                   std::string LoopLevel) {
   std::list<TAC> TacListOrg;
   int Steps = UpperBound / UnrollFactor;
-  for (int S = 0; S < Steps; ++S) {
-    // FIXME
-    int Mask = 0;
-    for (TAC Tac : TacList) {
-      // FIXME Skip stores until the end
-      // if ((BOtoValue[Tac.getOP()] == "store") && (S < Steps - 1))
-      //  continue;
+  for (TAC Tac : TacList) {
+    for (int S = 0; S < Steps; ++S) {
+      // FIXME
+      int Mask = 0;
       TacListOrg.push_back(
           *(TAC::unroll(&Tac, UnrollFactor, S, 0x000000, LoopLevel)));
-      //*(TAC::unroll(&Tac, UnrollFactor, S, MaskList[Mask++], LoopLevel)));
     }
   }
   return TacListOrg;

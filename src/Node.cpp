@@ -17,6 +17,7 @@ void Node::printNode() {
   std::cout << "----------------------------------------" << std::endl;
   std::cout << "[NODE] name\t\t= " << this->getValue() << std::endl;
   std::cout << "\tFreeSched\t= " << this->getSchedInfo().FreeSched << std::endl;
+  std::cout << "\tTacOrder\t= " << this->getSchedInfo().TacOrder << std::endl;
   std::cout << "\tPlcmnt\t\t= " << this->getSchedInfo().Plcmnt << std::endl;
   std::cout << "\tStmtID\t\t= " << this->getSchedInfo().StmtID << std::endl;
   std::cout << "\tOutput\t\t= " << this->getOutputInfo().Name << std::endl;

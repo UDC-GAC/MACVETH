@@ -81,7 +81,7 @@ StmtWrapper::getLoopList(const MatchFinder::MatchResult &Result) {
 
 // ---------------------------------------------
 void StmtWrapper::unrollAndJam(long UnrollFactor, long UpperBoundFallback) {
-  this->LoopL.reverse();
+  // this->LoopL.reverse();
   for (LoopInfo L : this->LoopL) {
     long UB = L.UpperBound == -1 ? UpperBoundFallback : L.UpperBound;
     this->unroll(UnrollFactor, UB, L.Dim);
@@ -91,7 +91,7 @@ void StmtWrapper::unrollAndJam(long UnrollFactor, long UpperBoundFallback) {
 // ---------------------------------------------
 void StmtWrapper::unroll(long UnrollFactor, long UpperBound,
                          std::string LoopLevel) {
-  /// FIXME
+  // FIXME
   unsigned int MaskList[] = {0x000000, 0x000000, 0x000000, 0x000000, 0x000000};
   TacListType T = TAC::unrollTacList(this->getTacList(), UnrollFactor,
                                      UpperBound, MaskList, LoopLevel);

@@ -15,6 +15,12 @@ MVExpr *MVExprVar::unrollExpr(int UF, std::string LL) {
     MVExprVar *NewExpr = new MVExprVar(this);
     NewExpr->setExprStr(NewExpr->getExprStr() + LL + std::to_string(UF));
     return NewExpr;
+  } else if (this->getExprStr() == LL) {
+    // Special case, when unrolling loop variable
+    MVExprVar *NewExpr = new MVExprVar(this);
+    NewExpr->setExprStr("(" + (NewExpr->getExprStr()) + " + " +
+                        std::to_string(UF) + ")");
+    return NewExpr;
   }
   return this;
 }

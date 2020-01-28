@@ -62,7 +62,10 @@ repeat:
   // FIXME
   int VL = 4;
   printDebug("CDAG", std::to_string(VL));
+  printDebug("CDAG", std::to_string(NL.size()));
   while (!NL.empty()) {
+    printDebug("CDAG", std::to_string(Cursor));
+
     VOps[Cursor] = NL.front();
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
@@ -143,9 +146,21 @@ void replaceOutput(TAC T, Node *N) {
 }
 
 // ---------------------------------------------
+// Node *findOutputNode(std::string Out, Node::NodeListType NL) {
+//  for (auto N : NL) {
+//    if (N->getOutputInfoName() == Out) {
+//      return N;
+//    }
+//  }
+//  return nullptr;
+//}
+
+// ---------------------------------------------
 Node *CDAG::insertTac(TAC T, Node *PrevNode, Node::NodeListType L) {
-  if ((T.getMVOP().isAssignment()) && (PrevNode != nullptr)) {
-    replaceOutput(T, PrevNode);
+  // if ((T.getMVOP().isAssignment()) && (PrevNode != nullptr)) {
+  if (T.getMVOP().isAssignment()) {
+    // Assumption: a = b op c, c is always the "connector"
+    replaceOutput(T, Node::findOutputNode(T.getC()->getExprStr(), L));
     return nullptr;
   }
   Node *NewNode = new Node(T, L);

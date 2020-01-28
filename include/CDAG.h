@@ -43,7 +43,7 @@ public:
   /// Get the node of list registered for this CDAG
   Node::NodeListType getNodeListOps() { return this->NLOps; }
   /// Get the node of list registered for this CDAG
-  Node::NodeListType getNodeListMem() { return this->NLMem; }
+  // Node::NodeListType getNodeListMem() { return this->NLMem; }
 
 private:
   /// Insert TAC instruction to the CDAG

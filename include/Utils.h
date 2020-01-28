@@ -52,7 +52,11 @@ public:
 
   /// Check if list contains an element given
   template <typename T>
-  static bool contains(std::list<T> &listOfElements, const T &element);
+  static bool contains(std::list<T> listOfElements, T element);
+
+  /// Check if list contains an element given
+  // template <typename T>
+  // static bool contains(std::list<T> &listOfElements, const T &element);
 
   /// Converting clang expressions to strings
   static std::string getStringFromExpr(const Expr *E);

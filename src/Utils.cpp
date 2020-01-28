@@ -32,20 +32,25 @@ std::string Utils::getExePath() {
 }
 #endif
 
-//// ---------------------------------------------
-// void Utils::printDebug(std::string M, std::string S) {
-//  std::cout << "[" << M << " DEBUG] " << S << std::endl;
-//}
-
 //-------------------------------------------------------------
 template <typename T>
-bool Utils::contains(std::list<T> &listOfElements, const T &element) {
+bool Utils::contains(std::list<T> listOfElements, T element) {
   // Find the iterator if element in list
   auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
   // return if iterator points to end or not. It points to end then it
   // means element does not exists in list
   return it != listOfElements.end();
 }
+
+//-------------------------------------------------------------
+// template <typename T>
+// bool Utils::contains(std::list<T> &listOfElements, const T &element) {
+//  // Find the iterator if element in list
+//  auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
+//  // return if iterator points to end or not. It points to end then it
+//  // means element does not exists in list
+//  return it != listOfElements.end();
+//}
 
 //-------------------------------------------------------------
 SourceManager *Utils::getSourceMgr() { return Utils::SourceMgr; }

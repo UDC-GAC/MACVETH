@@ -8,6 +8,7 @@
 #ifndef MACVETH_NODE_H
 #define MACVETH_NODE_H
 
+#include "MVExpr/MVExprVar.h"
 #include "include/MVExpr/MVExpr.h"
 #include "include/MVExpr/MVExprLiteral.h"
 #include "include/StmtWrapper.h"
@@ -20,7 +21,8 @@ namespace macveth {
 
 /// All Nodes belong to a CDAG. Each node or vertex holds information regarding
 /// the type of operation as well as its Edges (or links to another Nodes).
-/// Nodes also hold information regarding the scheduling.
+/// Nodes also hold information regarding the scheduling, i.e. the order on
+/// which they are consumed.
 class Node {
 public:
   /// Simply universal identifier for each instance node. We have to be cautious
@@ -29,6 +31,7 @@ public:
   /// object
   static inline int UUID = 0;
 
+  /// Restart UUID numbering
   static void restart() { Node::UUID = 0; }
 
   /// Definition of NodeListType
@@ -44,6 +47,8 @@ public:
   struct SchedInfo {
     /// Unique ID of the Statement/Node
     int StmtID = -1;
+    /// TAC order
+    int TacOrder = 0;
     /// Topological order of this node
     int FreeSched = 0;
     /// TODO this value should be calculated by an algorithm
@@ -137,7 +142,7 @@ public:
   void setFreeSchedInfo(int Value);
 
   /// Check if Node N is already in node list L
-  Node *findOutputNode(std::string NodeName, NodeListType L);
+  static Node *findOutputNode(std::string NodeName, NodeListType L);
 
   /// Connect a Node as input
   void connectInput(Node *N);
@@ -175,9 +180,13 @@ public:
   /// Checks if given node is in the input list
   bool hasInNode(Node *N);
 
-  /// Is OP or MEM?
-  bool isMem() {
-    return ((this->T == NODE_MEM)) && (!dyn_cast<MVExprLiteral>(this->MV));
+  /// Is OP
+  bool needsMemLoad() {
+    //    if (dyn_cast<MVExprVar>(this->MV)) {
+    //      return (dyn_cast<MVExprVar>(this->MV)->getTempInfo() ==
+    //              MVExpr::MVExprInfo::EXPR_CLANG);
+    //    }
+    return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)));
   }
 
   bool isStoreNodeOp() { return (this->T == NODE_STORE); }
@@ -217,8 +226,10 @@ public:
   bool operator<(const Node &N) {
     if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
       return (this->getSchedInfo().StmtID < N.SI.StmtID);
+      // return (this->getSchedInfo().TacOrder < N.SI.TacOrder);
     } else {
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
+      // return (this->getSchedInfo().TacOrder < N.SI.TacOrder);
     }
   }
 

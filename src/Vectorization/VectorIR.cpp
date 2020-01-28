@@ -7,6 +7,7 @@
  */
 
 #include "include/Vectorization/VectorIR.h"
+#include <algorithm>
 #include <bits/stdint-uintn.h>
 #include <sys/types.h>
 
@@ -139,7 +140,9 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
                            : "vop" + std::to_string(VID++);
   // It is a temporal result if it has already been assigned
   this->IsTmpResult = VecAssigned;
-  auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
+  // auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
+  auto AlreadyLoaded = std::find(MapLoads.begin(), MapLoads.end(),
+                                 this->getName()) != MapLoads.end();
   // So, if it has not been assigned yet, then we added to the list of loads (or
   // register that we are going to pack somehow)
   if (!AlreadyLoaded)
@@ -151,7 +154,7 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   bool IsMemOp = true;
   // Tracking the operands
   for (int n = 0; n < VL; ++n) {
-    IsMemOp = (IsMemOp) && (V[n]->isMem());
+    IsMemOp = (IsMemOp) && (V[n]->needsMemLoad());
     this->UOP[n] = V[n];
     if (!VecAssigned) {
       MapRegToVReg[V[n]->getRegisterValue()] = this->Name;

@@ -7,10 +7,12 @@
  */
 
 #include "include/Vectorization/SIMD/AVX2Gen.h"
+#include "include/Utils.h"
 #include "include/Vectorization/SIMD/CostTable.h"
-#include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include <algorithm>
 #include <map>
 #include <utility>
+
 using namespace macveth;
 
 // ---------------------------------------------
@@ -119,7 +121,9 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
     if ((Inst.SType == SIMDGenerator::SIMDType::VADD) ||
         (Inst.SType == SIMDGenerator::SIMDType::VSUB)) {
       for (auto P : PotentialFuse) {
-        if (Utils::contains(Inst.OPS, P.Result)) {
+        // if (Utils::contains(Inst.OPS, P.Result)) {
+        if (std::find(Inst.OPS.begin(), Inst.OPS.end(), P.Result) !=
+            Inst.OPS.end()) {
           SIMDGenerator::SIMDInst NewFuse = AVX2Gen::genMultAccOp(P, Inst);
           // We will like to skip this function later
           SkipList.push_back(P);
@@ -132,7 +136,8 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 
   // Perform replacements if any
   for (auto Inst : I) {
-    if (Utils::contains(SkipList, Inst)) {
+    // if (Utils::contains(SkipList, Inst)) {
+    if (std::find(SkipList.begin(), SkipList.end(), Inst) != SkipList.end()) {
       continue;
     }
     if (Fuses.count(Inst) > 0) {
@@ -245,7 +250,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
   // TODO check
   // List of parameters
   std::list<std::string> OPS;
-  OPS.push_back(V.UOP[0]->getValue());
+  OPS.push_back(getOpName(V, true, true));
 
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VBCAST, &IL);

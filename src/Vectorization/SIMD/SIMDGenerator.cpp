@@ -7,8 +7,8 @@
  */
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include "include/Utils.h"
 #include "include/Vectorization/SIMD/CostTable.h"
-#include "include/Vectorization/VectorIR.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Type.h"
 #include <regex>
@@ -61,8 +61,7 @@ SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
 std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
   std::list<std::string> L;
   // Render register declarations
-  for (auto It = SIMDGenerator::RegDeclared.begin();
-       It != SIMDGenerator::RegDeclared.end(); ++It) {
+  for (auto It = RegDeclared.begin(); It != RegDeclared.end(); ++It) {
     std::string TypeRegDecl = It->first + " ";
     int i = 0;
     for (auto N = It->second.begin(); N != It->second.end(); ++N) {
@@ -90,8 +89,8 @@ bool equalValues(int VL, Node **N) {
 
 // ---------------------------------------------
 bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
-                                    SIMDGenerator::SIMDInstListType *IL) {
-  SIMDGenerator::SIMDInstListType TIL;
+                                    SIMDInstListType *IL) {
+  SIMDInstListType TIL;
   if (V.IsLoad) {
     // Need to determine which type of memory/register load it is
     // We will say that it is a load if all the operands are contiguous and
@@ -137,9 +136,8 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
 }
 
 // ---------------------------------------------
-void SIMDGenerator::mapOperation(VectorIR::VectorOP V,
-                                 SIMDGenerator::SIMDInstListType *TI) {
-  SIMDGenerator::SIMDInstListType TIL;
+void SIMDGenerator::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
+  SIMDInstListType TIL;
   // Arranging the operands: maybe they need load, set, bcast...
   getSIMDVOperand(V.OpA, TI);
   getSIMDVOperand(V.OpB, TI);
@@ -182,7 +180,7 @@ void SIMDGenerator::mapOperation(VectorIR::VectorOP V,
 // ---------------------------------------------
 void SIMDGenerator::reduceOperation(VectorIR::VectorOP V,
                                     SIMDInstListType *TI) {
-  SIMDGenerator::SIMDInstListType TIL;
+  SIMDInstListType TIL;
 
   // Retrieve operands
   if (V.R.Name == V.OpA.Name)
@@ -219,9 +217,9 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
 
   // Registers used
   std::string RegType = getRegisterType(V.DT, V.VW);
-  SIMDGenerator::addRegToDeclare(RegType, V.R.getName());
-  SIMDGenerator::addRegToDeclare(RegType, V.OpA.getName());
-  SIMDGenerator::addRegToDeclare(RegType, V.OpB.getName());
+  addRegToDeclare(RegType, V.R.getName());
+  addRegToDeclare(RegType, V.OpA.getName());
+  addRegToDeclare(RegType, V.OpB.getName());
 
   return IL;
 }
@@ -245,8 +243,10 @@ SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
 
 // ---------------------------------------------
 void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name) {
-  if (!Utils::contains(SIMDGenerator::RegDeclared[Type], Name)) {
-    SIMDGenerator::RegDeclared[Type].push_back(Name);
+  // if (!Utils::contains(SIMDGenerator::RegDeclared[Type], Name)) {
+  if (!(std::find(RegDeclared[Type].begin(), RegDeclared[Type].end(), Name) !=
+        RegDeclared[Type].end())) {
+    RegDeclared[Type].push_back(Name);
   }
 }
 
@@ -275,8 +275,8 @@ std::string SIMDGenerator::replacePatterns(std::string Pattern, std::string W,
 
 // ---------------------------------------------
 void SIMDGenerator::clearMappings() {
-  for (auto &X : SIMDGenerator::RegDeclared) {
+  for (auto &X : RegDeclared) {
     X.second.clear();
   }
-  SIMDGenerator::RegDeclared.clear();
+  RegDeclared.clear();
 }

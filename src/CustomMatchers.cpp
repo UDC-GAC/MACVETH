@@ -92,8 +92,8 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // Computing the free schedule of the CDAG created
   CDAG::computeFreeSchedule(G);
 
-  /// FIXME at some point the compiler should be able to recognize the
-  /// architecture and ISA where it is compiling
+  // FIXME at some point the compiler should be able to recognize the
+  // architecture and ISA where it is compiling
   SIMDGenerator *AVX =
       SIMDGeneratorFactory::getBackend(SIMDGeneratorFactory::Arch::AVX2);
 

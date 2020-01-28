@@ -55,12 +55,13 @@ private:
   ///                  a = b op c
   /// Where a, b and c are Expr and op is an Opcode
 public:
+  inline static int TacUUID = 0;
   /// Empty constructor
   TAC(){};
 
   /// Constructor when using MVOp for the operator
   TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP)
-      : A(A), B(B), C(C), MVOP(MVOP) {}
+      : A(A), B(B), C(C), MVOP(MVOP), TacOrder(TAC::TacUUID++) {}
 
   /// Get first (result) operand of the TAC expression
   MVExpr *getA() { return this->A; };
@@ -119,6 +120,8 @@ private:
   MVExpr *C;
   /// Type of operation
   MVOp MVOP;
+  /// Tac order
+  int TacOrder = -1;
 };
 
 /// List of TACs
