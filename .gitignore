@@ -6,6 +6,10 @@ macveth
 
 # Temp files
 tmp/
+tmpfiles/
+tests/warn
+tests/macveth_output.c
+tests/test
 
 # Benchmarking
 ubench
@@ -22,6 +26,8 @@ inputs/
 *.log
 *.synctex.gz
 *.pdf
+*.bbl
+*.blg
 
 *.swp
 *.swo
