@@ -1,7 +1,6 @@
 #ifndef MACVETH_MVOPTIONS_H
 #define MACVETH_MVOPTIONS_H
 
-#include "Vectorization/SIMD/SIMDGeneratorFactory.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "llvm/Support/CommandLine.h"
 
@@ -18,14 +17,28 @@ static llvm::cl::opt<std::string>
     OutputFile("o", cl::cat(MacvethCategory),
                llvm::cl::desc("Output file to write the code, otherwise "
                               "it will just print int std outputt"));
+static llvm::cl::opt<std::string>
+    CDAGInFile("input-cdag", cl::cat(MacvethCategory),
+               llvm::cl::desc("Input file to read the custom CDAG placement"));
 
-/// Possible architectures
+/// Supported architectures
 enum MArch {
-  SSE = SIMDGeneratorFactory::Arch::AVX,
-  AVX = SIMDGeneratorFactory::Arch::AVX,
-  AVX2 = SIMDGeneratorFactory::Arch::AVX2,
-  AVX512 = SIMDGeneratorFactory::Arch::AVX512,
-  NATIVE = -1
+  // FIXME: do it the other way around
+  //  SSE = SIMDGeneratorFactory::Arch::AVX,
+  //  AVX = SIMDGeneratorFactory::Arch::AVX,
+  //  AVX2 = SIMDGeneratorFactory::Arch::AVX2,
+  //  AVX512 = SIMDGeneratorFactory::Arch::AVX512,
+  //  NATIVE = -1
+  /// TODO: detect architecture
+  NATIVE = -1,
+  /// SSE support
+  SSE = 10,
+  /// AVX support
+  AVX = 20,
+  /// AVX2 support
+  AVX2 = 21,
+  /// AVX512 support
+  AVX512 = 22
 };
 static llvm::cl::opt<MArch> Architecture(
     "march", llvm::cl::desc("Target architecture"),
@@ -48,11 +61,18 @@ static llvm::cl::opt<bool> DEBUG("debug",
                                  llvm::cl::desc("Print debug information"),
                                  llvm::cl::init(false),
                                  llvm::cl::cat(MacvethCategory));
+static llvm::cl::opt<std::string>
+    DebugFile("output-debug", cl::cat(MacvethCategory),
+              llvm::cl::desc("Output file to print the debug information"));
 
 /// Parse and hold information regarding CLI arguments
 struct MVOptions {
   /// Name of the output file (-o=<file>)
   static inline std::string OutFile = "";
+  /// Name of the input CDAG file (-input-cdag=<file>)
+  static inline std::string InCDAGFile = "";
+  /// Name of the output debug file (-output-debug=<file>)
+  static inline std::string OutDebugFile = "";
   /// Target architecture
   static inline MArch Arch = MArch::NATIVE;
   /// FMA support
@@ -63,9 +83,11 @@ struct MVOptions {
   /// Parsing method for retrieving all the options
   static void parseOptions() {
     MVOptions::OutFile = OutputFile.getValue();
+    MVOptions::InCDAGFile = CDAGInFile.getValue();
     MVOptions::Arch = Architecture.getValue();
     MVOptions::FMASupport = FMA.getValue();
     MVOptions::Debug = DEBUG.getValue();
+    MVOptions::OutDebugFile = DebugFile.getValue();
   }
 };
 

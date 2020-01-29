@@ -28,13 +28,16 @@
 #ifndef MACVETH_UTILS_H
 #define MACVETH_UTILS_H
 
+#include "include/MVOptions.h"
 #include "clang/AST/AST.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
+#include <fstream>
 #include <iostream>
 
 using namespace clang;
+using namespace macveth;
 
 namespace macveth {
 
@@ -66,6 +69,29 @@ public:
 
   /// Check whether expression is or not numeric
   static bool isNumericValue(Expr *E);
+
+  static void printDebug(std::string M, std::string Msg) {
+    if (MVOptions::Debug) {
+      if (MVOptions::OutDebugFile != "") {
+        std::ofstream O;
+        O.open(getExePath() + MVOptions::OutDebugFile,
+               std::ios_base::app); // append instead of overwrite
+        O << "[" << M << "] " << Msg << std::endl;
+        O.close();
+      } else {
+        std::cout << "[" << M << "] " << Msg << std::endl;
+      }
+    }
+  }
+
+  static void initFile(std::string FileName) {
+    if (FileName != "") {
+      ofstream NewFile;
+      NewFile.open(getExePath() + FileName, std::ios_base::trunc);
+      NewFile << MVOptions::OutFile << std::endl;
+      NewFile.close();
+    }
+  }
 
   /// Get clang SourceManager
   static clang::SourceManager *getSourceMgr();

@@ -134,6 +134,14 @@ public:
     return this;
   }
 
+  /// If this function is called, then the expression is in memory
+  void setLoadFromMem() { this->NeedsMemLoad = true; }
+  /// If this function is called, then the expression is not in memory
+  void setDoNotLoadFromMem() { this->NeedsMemLoad = false; }
+
+  /// Check if expression is in memory or not
+  bool needsToBeLoaded() { return this->NeedsMemLoad; }
+
   /// Two expressions are equal if and only if their name or original code
   /// expression is equal, regardless where they appear in code.
   bool operator==(const MVExpr &MVE) {
@@ -157,6 +165,8 @@ private:
   std::string ExprStr = "";
   /// Expresion as Clang's
   clang::Expr *ClangExpr = NULL;
+  /// Need to be loaded from mem
+  bool NeedsMemLoad = true;
 };
 
 /// Operators

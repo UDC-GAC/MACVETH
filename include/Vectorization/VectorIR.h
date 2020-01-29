@@ -121,6 +121,8 @@ public:
     unsigned int Shuffle = 0x0;
     /// Mask to avoid elements if necessary
     unsigned int Mask = 0x0;
+    /// UOPS are all the same
+    bool EqualVal = true;
     /// Memory addres is unaligned
     bool Unaligned = false;
     /// Memory is contiguous

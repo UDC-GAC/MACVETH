@@ -82,9 +82,13 @@ public:
   /// Just for debugging purposes
   void printTAC() {
     std::string Op = this->MVOP.toString();
-    std::cout << "t: " << this->getA()->getExprStr() << ", "
-              << this->getB()->getExprStr() << ", "
-              << this->getC()->getExprStr() << ", " << Op << std::endl;
+    // std::cout << "t: " << this->getA()->getExprStr() << ", "
+    //          << this->getB()->getExprStr() << ", "
+    //          << this->getC()->getExprStr() << ", " << Op << std::endl;
+    Op = "t: " + this->getA()->getExprStr() + ", " +
+         this->getB()->getExprStr() + ", " + this->getC()->getExprStr() + ", " +
+         Op;
+    Utils::printDebug("TAC", Op);
   }
 
   /// Discover the equivalent MVOp given a clang::Expr

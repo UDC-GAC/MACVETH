@@ -159,6 +159,14 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
     if (!VecAssigned) {
       MapRegToVReg[V[n]->getRegisterValue()] = this->Name;
     }
+    if (n > 0) {
+      this->EqualVal = this->EqualVal && (V[n]->getRegisterValue() ==
+                                          V[n - 1]->getRegisterValue());
+      std::cout << "VECTORIR = " << V[n - 1]->getRegisterValue() << " and "
+                << V[n]->getRegisterValue() << "; then "
+                << (V[n]->getRegisterValue() == V[n - 1]->getRegisterValue())
+                << " is " << this->EqualVal << std::endl;
+    }
   }
   this->MemOp = IsMemOp;
 

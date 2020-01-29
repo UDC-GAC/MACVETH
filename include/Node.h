@@ -186,7 +186,9 @@ public:
     //      return (dyn_cast<MVExprVar>(this->MV)->getTempInfo() ==
     //              MVExpr::MVExprInfo::EXPR_CLANG);
     //    }
-    return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)));
+    // return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)));
+    return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)) &&
+            (this->MV->needsToBeLoaded()));
   }
 
   bool isStoreNodeOp() { return (this->T == NODE_STORE); }
@@ -216,7 +218,13 @@ public:
 
   /// Two nodes are equal if and only if they have the same value. Seems
   /// pretty straigthforward but it must be defined someway.
-  bool operator==(const Node &N) { return (getValue() == N.getValue()); }
+  bool operator==(const Node &N) {
+    return (getRegisterValue() == N.getRegisterValue());
+  }
+
+  bool operator==(const Node *N) {
+    return (getRegisterValue() == N->getRegisterValue());
+  }
 
   /// Two nodes are not equal if and only if they have the same value. Seems
   /// pretty straigthforward but it must be defined someway.

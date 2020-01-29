@@ -88,13 +88,15 @@ SIMDGenerator::SIMDInst AVX2Gen::genMultAccOp(SIMDGenerator::SIMDInst Mul,
   std::string SuffS = "";
   std::string Op = (Acc.SType == SIMDType::VADD) ? "fmadd" : "fmsub";
   std::list<std::string> OPS;
+
+  // Format is: (a * b) + c
+  for (auto OP : Mul.OPS) {
+    OPS.push_back(OP);
+  }
   for (auto OP : Acc.OPS) {
     if (OP != Mul.Result) {
       OPS.push_back(OP);
     }
-  }
-  for (auto OP : Mul.OPS) {
-    OPS.push_back(OP);
   }
   // Adding SIMD inst to the list
   Fuse = createSIMDInst(Op, Res, Width, DataType, PrefS, SuffS, OPS,
@@ -299,6 +301,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
   for (int n = 0; n < V.VSize; n++) {
     OPS.push_back((V.UOP[n] != NULL) ? V.UOP[n]->getValue() : "0.0");
   }
+  OPS.reverse();
 
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VSET, &IL);
@@ -314,7 +317,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // TODO generate suffix
   std::string SuffS = "";
   // Mask
-  // PrefS += (V.Mask) ? "mask" : "";
+  // PrefS += (V.R.Mask) ? "mask" : "";
 
   // TODO
   std::string Op = "store";
@@ -323,7 +326,15 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // List of parameters
   std::list<std::string> OPS;
   OPS.push_back(getOpName(V.R, true, true));
-  OPS.push_back(getOpName(V.R, false, false));
+  if (V.R.EqualVal) {
+    // FIXME
+    PrefS += "mask";
+    OPS.push_back("_mm256_set_epi64x(0,0,0,1)");
+    OPS.push_back("_mm256_permute4x64_pd(" + getOpName(V.R, false, false) +
+                  ", 0xe4)");
+  } else {
+    OPS.push_back(getOpName(V.R, false, false));
+  }
 
   // Adding SIMD inst to the list
   addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSTORE, &IL);

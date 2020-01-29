@@ -160,9 +160,13 @@ Node *CDAG::insertTac(TAC T, Node *PrevNode, Node::NodeListType L) {
   // if ((T.getMVOP().isAssignment()) && (PrevNode != nullptr)) {
   if (T.getMVOP().isAssignment()) {
     // Assumption: a = b op c, c is always the "connector"
+    if (Node::findOutputNode(T.getC()->getExprStr(), L) == NULL) {
+      goto no_output;
+    }
     replaceOutput(T, Node::findOutputNode(T.getC()->getExprStr(), L));
     return nullptr;
   }
+no_output:
   Node *NewNode = new Node(T, L);
   this->NLOps.push_back(NewNode);
   return NewNode;

@@ -20,6 +20,7 @@ MVExpr *MVExprVar::unrollExpr(int UF, std::string LL) {
     MVExprVar *NewExpr = new MVExprVar(this);
     NewExpr->setExprStr("(" + (NewExpr->getExprStr()) + " + " +
                         std::to_string(UF) + ")");
+    NewExpr->setDoNotLoadFromMem();
     return NewExpr;
   }
   return this;
