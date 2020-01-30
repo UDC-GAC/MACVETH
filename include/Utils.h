@@ -86,7 +86,7 @@ public:
 
   static void initFile(std::string FileName) {
     if (FileName != "") {
-      ofstream NewFile;
+      std::ofstream NewFile;
       NewFile.open(getExePath() + FileName, std::ios_base::trunc);
       NewFile << MVOptions::OutFile << std::endl;
       NewFile.close();

@@ -1,5 +1,5 @@
 /**
- * File              : macveth_translator.h.in
+ * File              : macveth.h.in
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 15:15:46 MST
  * Last Modified Date: Ven 06 Dec 2019 16:37:39 MST

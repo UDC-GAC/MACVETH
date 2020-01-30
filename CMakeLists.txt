@@ -77,14 +77,14 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # configuration file, for macros for instance
 set(LLVM_VERSION 10)
-configure_file(macveth_translator.h.in lib/macveth_translator.h)
+configure_file(macveth.h.in lib/macveth.h)
 
 # add a subdirectory to the buildd
 add_subdirectory(src)
 
 # define the binary to compile
 add_executable(macveth
-    lib/macveth_translator.cpp
+    lib/macveth.cpp
     )
 
 # CLANG_INCLUDES (former Makefile)

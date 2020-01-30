@@ -14,7 +14,7 @@ static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
 static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 // Custom cmd options
 static llvm::cl::opt<std::string>
-    OutputFile("o", cl::cat(MacvethCategory),
+    OutputFile("outfile", cl::cat(MacvethCategory),
                llvm::cl::desc("Output file to write the code, otherwise "
                               "it will just print int std outputt"));
 static llvm::cl::opt<std::string>
@@ -23,12 +23,6 @@ static llvm::cl::opt<std::string>
 
 /// Supported architectures
 enum MArch {
-  // FIXME: do it the other way around
-  //  SSE = SIMDGeneratorFactory::Arch::AVX,
-  //  AVX = SIMDGeneratorFactory::Arch::AVX,
-  //  AVX2 = SIMDGeneratorFactory::Arch::AVX2,
-  //  AVX512 = SIMDGeneratorFactory::Arch::AVX512,
-  //  NATIVE = -1
   /// TODO: detect architecture
   NATIVE = -1,
   /// SSE support
@@ -61,8 +55,9 @@ static llvm::cl::opt<bool> DEBUG("debug",
                                  llvm::cl::desc("Print debug information"),
                                  llvm::cl::init(false),
                                  llvm::cl::cat(MacvethCategory));
+/// Output debug
 static llvm::cl::opt<std::string>
-    DebugFile("output-debug", cl::cat(MacvethCategory),
+    DebugFile("debug-out", cl::cat(MacvethCategory),
               llvm::cl::desc("Output file to print the debug information"));
 
 /// Parse and hold information regarding CLI arguments
