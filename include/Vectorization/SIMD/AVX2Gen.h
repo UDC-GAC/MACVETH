@@ -120,7 +120,9 @@ private:
   /// Map of VectorIR types and its translation in the AVX2 architecture
   static inline std::map<VectorIR::VDataType, std::string> MapType = {
       {VectorIR::VDataType::FLOAT, "ps"},
+      {VectorIR::VDataType::SFLOAT, "ss"},
       {VectorIR::VDataType::DOUBLE, "pd"},
+      {VectorIR::VDataType::SDOUBLE, "sd"},
       {VectorIR::VDataType::INT8, "epi8"},
       {VectorIR::VDataType::INT16, "epi16"},
       {VectorIR::VDataType::INT32, "epi32"},

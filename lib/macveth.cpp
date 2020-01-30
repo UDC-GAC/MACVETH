@@ -28,15 +28,13 @@
  */
 
 #include "include/CustomMatchers.h"
+#include "include/MVFrontend.h"
+#include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
-#include "include/TAC.h"
 #include "include/Utils.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
-#include "clang/Basic/LangOptions.h"
-#include "clang/Basic/SourceManager.h"
-#include "clang/Frontend/CompilerInstance.h"
-#include "clang/Frontend/FrontendActions.h"
+#include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Signals.h"
 
 #ifndef LLVM_VERSION
@@ -50,97 +48,42 @@ using namespace clang::tooling;
 using namespace llvm;
 using namespace macveth;
 
-// Implementation of the ASTConsumer interface for reading an AST produced
-// by the Clang parser. It registers a couple of matchers and runs them on
-// the AST.
-class MACVETHConsumer : public ASTConsumer {
-  // SOME NOTES:
-  // * Stmt - statements, could be a for loop, while, a single statement
-  // * Decl - declarations (or defenitions) of variables, typedef, function...
-  // * Type - types, CanonicalType, Builtin-type
-  // * Expr - expressions, they inherit from Stmt tho; this is quite weird for
-  // me...
-public:
-  MACVETHConsumer(Rewriter &R, ASTContext *C, ScopHandler *L)
-      : Handler(R, C, L), Context(C) {}
+// Set up the command line options
+static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
+static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
+// Custom cmd options
+static llvm::cl::opt<std::string>
+    OutputFile("o", cl::cat(MacvethCategory),
+               llvm::cl::desc("Output file to write the code, otherwise "
+                              "it will just print int std outputt"));
+static llvm::cl::opt<std::string>
+    CDAGInFile("input-cdag", cl::cat(MacvethCategory),
+               llvm::cl::desc("Input file to read the custom CDAG placement"));
 
-  void HandleTranslationUnit(ASTContext &Context) override {
-    // For vectorizable statements
-    for (int n = 0; n < 6; ++n) {
-      StatementMatcher ForLoopNestedMatcherVec =
-          matchers_utils::ROI(n, compoundStmt(has(expr())).bind("ROI"));
-      MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
-    }
-    // Run the matchers when we have the whole TU parsed.
-    MatcherVec.matchAST(Context);
-  }
+static llvm::cl::opt<MArch> Architecture(
+    "march", llvm::cl::desc("Target architecture"),
+    llvm::cl::init(MArch::NATIVE), llvm::cl::cat(MacvethCategory),
+    llvm::cl::values(clEnumValN(MArch::NATIVE, "native",
+                                "Detect ISA of the architecture"),
+                     clEnumValN(MArch::AVX, "sse", "SSE ISA"),
+                     clEnumValN(MArch::AVX, "avx", "AVX ISA"),
+                     clEnumValN(MArch::AVX2, "avx2", "AVX2 ISA"),
+                     clEnumValN(MArch::AVX512, "avx512", "AVX512 ISA")));
+/// FMA support flag
+static llvm::cl::opt<bool> FMA("fma",
+                               llvm::cl::desc("Explicitly tell if FMA support"),
+                               llvm::cl::init(false),
+                               llvm::cl::cat(MacvethCategory));
 
-private:
-  ASTContext *Context;
-  matchers_utils::IterationHandler Handler;
-  MatchFinder MatcherVec;
-};
-
-// SECOND STEP
-// For each source file provided to the tool, a new ASTFrontendAction is
-// created, which inherits from FrontendAction (abstract class)
-class MACVETHFrontendAction : public ASTFrontendAction {
-public:
-  // empty constructor
-  MACVETHFrontendAction() {}
-
-  // This routine is called in BeginSourceFile(), from
-  // CreateWrapperASTConsumer.
-  // * CompilterInstance CI: got from getCompilerInstance()
-  // * StringRef file: input file, provided by getCurrentFile()
-  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
-                                                 StringRef file) override {
-    // setSourceMgr: setter for the Rewriter
-    // * SourceManager: handles loading and caching of source files into
-    // memory. It can be queried for information such as SourceLocation
-    // of objects.
-    // * LangOptions: controls the dialect of C/C++ accepted
-    TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-    Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
-                   &CI.getASTContext());
-    Preprocessor &PP = CI.getPreprocessor();
-    ScopHandler *scops = new ScopHandler();
-    PP.AddPragmaHandler(new PragmaScopHandler(scops));
-    PP.AddPragmaHandler(new PragmaEndScopHandler(scops));
-
-    // std::make_unique is C++14, while LLVM 9 is written in C++11, this
-    // is the reason of this custom implementation
-#if LLVM_VERSION > 9
-    return std::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext(),
-                                             scops);
-#else
-    return llvm::make_unique<MACVETHConsumer>(TheRewriter, &CI.getASTContext(),
-                                              scops);
-#endif
-  }
-
-  // this is called only following a successful call to
-  // BeginSourceFileAction (and BeginSourceFile)
-  void EndSourceFileAction() override {
-    // 1.- Get RewriteBuffer from FileID
-    // 2.- Write to Stream (in this case llvm::outs(), which is
-    // std::out) the result of applying all changes to the original
-    // buffer. Original buffer is modified before calling this function,
-    // from the ASTConsumer
-    SourceManager &SM = TheRewriter.getSourceMgr();
-    std::error_code ErrorCode;
-    std::string OutFile =
-        (MVOptions::OutFile == "") ? "macveth_output.c" : MVOptions::OutFile;
-    OutFile = Utils::getExePath() + OutFile;
-    llvm::raw_fd_ostream outFile(OutFile, ErrorCode, llvm::sys::fs::F_None);
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
-  }
-
-private:
-  // Main interfacer to the rewrite buffers: dispatches high-level
-  // requests to the low-level RewriteBuffers involved.
-  Rewriter TheRewriter;
-};
+/// Debug flag
+static llvm::cl::opt<bool> DEBUG("debug",
+                                 llvm::cl::desc("Print debug information"),
+                                 llvm::cl::init(false),
+                                 llvm::cl::cat(MacvethCategory));
+/// Output debug
+static llvm::cl::opt<std::string>
+    DebugFile("output-debug", cl::cat(MacvethCategory),
+              llvm::cl::desc("Output file to print the debug information"));
 
 // Main program
 int main(int argc, const char **argv) {
@@ -156,7 +99,16 @@ int main(int argc, const char **argv) {
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
   /// MVOptions
-  MVOptions::parseOptions();
+  MVOptions::OutFile = OutputFile.getValue();
+  MVOptions::InCDAGFile = CDAGInFile.getValue();
+  MVOptions::OutDebugFile = DebugFile.getValue();
+  MVOptions::Arch = Architecture.getValue();
+  MVOptions::FMASupport = FMA.getValue();
+  MVOptions::Debug = DEBUG.getValue();
+
+  /// Create needed files
+  Utils::initFile(MVOptions::OutFile);
+  Utils::initFile(MVOptions::OutDebugFile);
 
   // Runs ToolAction over all files specified in the cmd line
   // newFrontendActionFactory returns a new FrontendActionFactory for

@@ -70,6 +70,7 @@ public:
   /// Check whether expression is or not numeric
   static bool isNumericValue(Expr *E);
 
+  /// For printing debug information to file if specified
   static void printDebug(std::string M, std::string Msg) {
     if (MVOptions::Debug) {
       if (MVOptions::OutDebugFile != "") {
@@ -84,6 +85,7 @@ public:
     }
   }
 
+  /// Truncate file: create or rewrite if already created
   static void initFile(std::string FileName) {
     if (FileName != "") {
       std::ofstream NewFile;

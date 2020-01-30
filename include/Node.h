@@ -139,7 +139,10 @@ public:
 
   /// Schedule info is needed for the algorithms to perform permutations in
   /// nodes
-  void setFreeSchedInfo(int Value);
+  void setFreeSchedInfo(int FS) { this->SI.FreeSched = FS; }
+
+  /// Set Plcmnt value
+  void setPlcmt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
 
   /// Check if Node N is already in node list L
   static Node *findOutputNode(std::string NodeName, NodeListType L);
@@ -210,7 +213,7 @@ public:
   void setOutputName(std::string S) { this->O.Name = S; }
 
   /// Print node: debugging purposes
-  void printNode();
+  std::string toString();
 
   /// This is useful for calculating the difference between two Nodes in terms
   /// of addresses, in some way

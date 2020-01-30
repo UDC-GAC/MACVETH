@@ -10,7 +10,6 @@
 #define MACVETH_VECTORIR_H
 
 #include "include/Node.h"
-#include <string.h>
 
 using namespace macveth;
 
@@ -52,8 +51,14 @@ public:
 
   /// Vector data types: most of them are self exaplanatory
   enum VDataType {
+    /// This is the direct translation to "pd"
     DOUBLE,
+    /// This is the direct translation onto "sd"
+    SDOUBLE,
+    /// This is the direct translation to "ps"
     FLOAT,
+    /// This is the direct translation to "ss"
+    SFLOAT,
     UINT8,
     UINT16,
     UINT32,
@@ -112,7 +117,7 @@ public:
     /// creating the object
     Node **UOP = nullptr;
     /// FIXME Data type
-    VDataType Data = VDataType::DOUBLE;
+    VDataType DType = VDataType::DOUBLE;
     /// FIXME Width of this operand
     VWidth Width = VWidth::W256;
     /// Mask for shuffling if necessary
@@ -148,7 +153,7 @@ public:
     /// type
     VDataType getDataType() {
       // Be careful with this
-      return CTypeToVDataType[this->UOP[0]->getDataType()];
+      return DType;
     }
     /// Return name of VOperand
     std::string getName() { return this->Name; }
@@ -156,14 +161,9 @@ public:
     /// Return register name
     std::string getRegName() { return this->UOP[0]->getRegisterValue(); }
 
-    /// For debugging
-    std::string toString() {
-      return Name + "[" + (IsTmpResult ? "TMP," : "") + (IsLoad ? "LD," : "") +
-             (IsStore ? "ST," : "") + (UOP[0]->getRegisterValue()) + "]";
-    }
-
     /// Printing the vector operand
-    void printAsString();
+    std::string toString();
+
     /// Basic constructor
     VOperand(int VL, Node *V[], bool Res);
   };
@@ -197,10 +197,8 @@ public:
     /// Constructor from the CDAG
     VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[]);
 
-    void render() {
-      std::cout << "[VectorIR] " + R.toString() << " = " << VN << "("
-                << OpA.toString() << "," << OpB.toString() << ")" << std::endl;
-    }
+    /// Render vector operation as string
+    std::string toString();
   };
 
 }; // namespace macveth

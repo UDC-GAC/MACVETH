@@ -254,6 +254,10 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
   std::list<std::string> OPS;
   OPS.push_back(getOpName(V, true, true));
 
+  if (V.getDataType() == VectorIR::VDataType::DOUBLE) {
+    V.DType = VectorIR::VDataType::SDOUBLE;
+  }
+
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VBCAST, &IL);
 

@@ -10,16 +10,11 @@
 #include "include/Vectorization/SIMD/AVX2Gen.h"
 #include "include/Vectorization/VectorIR.h"
 #include "clang/AST/Expr.h"
+#include <llvm-10/llvm/Support/ErrorHandling.h>
+#include <llvm-10/llvm/Support/raw_ostream.h>
+#include <stdexcept>
 
 namespace macveth {
-
-#define CDAG_DEBUG 1
-
-// ---------------------------------------------
-void printDebug(std::string M, std::string S) {
-  if (CDAG_DEBUG)
-    std::cout << "[" << M << " DEBUG] " << S << std::endl;
-}
 
 // ---------------------------------------------
 int computeMaxDepth(Node *N) {
@@ -51,9 +46,9 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(CDAG *G) {
   // chronological order of the nodes.
   NL.sort([](Node *lhs, Node *rhs) { return *lhs < *rhs; });
 
-  printDebug("CDAG", "Printing nodes");
+  Utils::printDebug("CDAG", "Printing nodes");
   for (Node *N : NL) {
-    N->printNode();
+    Utils::printDebug("NODE", N->toString());
   }
 
   // Until the list is over
@@ -61,27 +56,24 @@ repeat:
   // int VL = AVX->getMaxWidth();
   // FIXME
   int VL = 4;
-  printDebug("CDAG", std::to_string(VL));
-  printDebug("CDAG", std::to_string(NL.size()));
   while (!NL.empty()) {
-    printDebug("CDAG", std::to_string(Cursor));
 
     VOps[Cursor] = NL.front();
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
-      printDebug("CDAG",
-                 "Full OPS of same type = " + VOps[Cursor - 1]->getValue());
+      Utils::printDebug("CDAG", "Full OPS of same type = " +
+                                    VOps[Cursor - 1]->getValue());
       break;
     }
     NL.pop_front();
     if (++Cursor == VL) {
-      printDebug("CDAG", "VL OPS achieved");
+      Utils::printDebug("CDAG", "VL OPS achieved");
       break;
     }
   }
   bool IsPartial = (Cursor < VL);
   if (IsPartial) {
-    printDebug("CDAG", "isPartial: " + std::to_string(Cursor));
+    Utils::printDebug("CDAG", "isPartial: " + std::to_string(Cursor));
   }
   // Compute memory operands for the operations fetched above
   int i = 0;
@@ -94,10 +86,10 @@ repeat:
   }
 
   for (int n = 0; n < Cursor; ++n) {
-    printDebug("CDAG", VOps[n]->getRegisterValue() + " = " +
-                           VLoadA[n]->getRegisterValue() + " " +
-                           VOps[n]->getValue() + " " +
-                           VLoadB[n]->getRegisterValue());
+    Utils::printDebug("CDAG", VOps[n]->getRegisterValue() + " = " +
+                                  VLoadA[n]->getRegisterValue() + " " +
+                                  VOps[n]->getValue() + " " +
+                                  VLoadB[n]->getRegisterValue());
   }
 
   // Compute the vector cost
@@ -115,13 +107,54 @@ repeat:
 }
 
 // ---------------------------------------------
+void setPlcmtFromFile(CDAG *G) {
+  std::ifstream CF;
+  CF.open(Utils::getExePath() + MVOptions::InCDAGFile, std::ios_base::in);
+  if (CF.is_open()) {
+    std::string L;
+    for (auto N : G->getNodeListOps()) {
+      while (getline(CF, L)) {
+        if (L.rfind("//", 0) == 0) {
+          // This is a comment, skip it
+          continue;
+        } else {
+          if (!(L.find_first_not_of("0123456789") == std::string::npos)) {
+            llvm::outs() << "CDAG input file is not correct!\n";
+            llvm::llvm_unreachable_internal();
+          }
+          // Clang does not allow to perform any type of exception handling in
+          // order to minimize the size of the executable (same reasoning for
+          // not using RTTI), that is why we perform the previous check. On any
+          // case, user should be aware of the format of the file: comments
+          // starting with // are allowed, but each non-comment row must only
+          // contain an integer value
+          N->setPlcmt(std::stoi(L));
+          break;
+        }
+      }
+    }
+  } else {
+    llvm::llvm_unreachable_internal();
+  }
+  CF.close();
+}
+
+// ---------------------------------------------
 SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
   VectorIR::clearMappigs();
-  std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(G);
-  for (auto V : VList) {
-    V.render();
+  if (MVOptions::InCDAGFile != "") {
+    setPlcmtFromFile(G);
   }
 
+  // Execute greedy algorithm
+  std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(G);
+
+  // If debug enabled, it will print the VectorOP obtained
+  for (auto V : VList) {
+    Utils::printDebug("VectorIR", V.toString());
+  }
+
+  // Generate the SIMD list
   SIMDGenerator::SIMDInstListType S = SG->getSIMDfromVectorOP(VList);
 
   return SG->computeSIMDCost(S);

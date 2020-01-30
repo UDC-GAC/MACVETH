@@ -7,17 +7,8 @@
  */
 
 #include "include/Vectorization/VectorIR.h"
+#include "include/Utils.h"
 #include <algorithm>
-#include <bits/stdint-uintn.h>
-#include <sys/types.h>
-
-#define VECTORIR_DEBUG 1
-
-// ---------------------------------------------
-void printDebug(std::string M, std::string S) {
-  if (VECTORIR_DEBUG)
-    std::cout << "[" << M << " DEBUG] " << S << std::endl;
-}
 
 // ---------------------------------------------
 bool opsAreSequential(int VL, Node *VOps[]) {
@@ -63,12 +54,24 @@ bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node *V[]) {
 }
 
 // ---------------------------------------------
-void VectorIR::VOperand::printAsString() {
-  std::cout << "-------------------------------------" << std::endl;
-  std::cout << "VOperand: " << this->Name << std::endl;
-  for (int i = 0; i < this->Size; ++i)
-    std::cout << "\t" << this->UOP[i]->getValue() << std::endl;
-  std::cout << "-------------------------------------" << std::endl;
+std::string VectorIR::VOperand::toString() {
+  std::string Str;
+  Str = Name + "[" + (IsTmpResult ? "TMP," : "") + (IsLoad ? "LD," : "") +
+        (IsStore ? "ST," : "");
+  for (int i = 0; i < this->VSize; ++i) {
+    Str +=
+        (UOP[i]->getRegisterValue()) + ((i == (this->VSize - 1)) ? "" : ", ");
+  }
+  Str += "]";
+  return Str;
+}
+
+// ---------------------------------------------
+std::string VectorIR::VectorOP::toString() {
+  std::string Str;
+  Str = "[VectorIR] " + R.toString() + " = " + VN + "(" + OpA.toString() + "," +
+        OpB.toString() + ")";
+  return Str;
 }
 
 // ---------------------------------------------
@@ -90,10 +93,10 @@ int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
     return Idx;
   for (int n = 0; n < VL - 1; ++n) {
     Idx[n + 1] = *V[n + 1] - *V[n];
-    std::cout << "index " << std::to_string(n) << " = "
-              << std::to_string(Idx[n]) << ",";
+    // std::cout << "index " << std::to_string(n) << " = "
+    //          << std::to_string(Idx[n]) << ",";
   }
-  std::cout << std::endl;
+  // std::cout << std::endl;
   return Idx;
 }
 
@@ -121,7 +124,6 @@ unsigned int getMask(int VL, Node *V[]) {
 
 // ---------------------------------------------
 VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
-
   // Init list of unit operands
   this->UOP = (Node **)malloc(sizeof(Node *) * VL);
 
@@ -162,10 +164,6 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
     if (n > 0) {
       this->EqualVal = this->EqualVal && (V[n]->getRegisterValue() ==
                                           V[n - 1]->getRegisterValue());
-      std::cout << "VECTORIR = " << V[n - 1]->getRegisterValue() << " and "
-                << V[n]->getRegisterValue() << "; then "
-                << (V[n]->getRegisterValue() == V[n - 1]->getRegisterValue())
-                << " is " << this->EqualVal << std::endl;
     }
   }
   this->MemOp = IsMemOp;
@@ -187,16 +185,22 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
     // Get shuffle index
     this->Shuffle = getShuffle(VL, this->getWidth(), V);
   }
+
+  // Get data type
+  this->DType = CTypeToVDataType[this->UOP[0]->getDataType()];
+  if ((this->EqualVal) && (this->MemOp)) {
+    this->DType = VectorIR::VDataType(this->DType + 1);
+  }
 };
 
 // ---------------------------------------------
-VectorIR::VType getVectorType(int VL, Node *VOps[], Node *VLoadA[],
-                              Node *VLoadB[]) {
+VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
+                                Node *VLoadB[]) {
   // Premises of our algorithm
   // 1.- Check wheter operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
   if (Seq) {
-    printDebug("CDAG", "Ops are sequential");
+    Utils::printDebug("CDAG", "Ops are sequential");
   }
   // 2.- Check if operands have RAW dependencies with output of the operations
   bool RAW_A = rawDependencies(VL, VOps, VLoadA);
@@ -208,13 +212,13 @@ VectorIR::VType getVectorType(int VL, Node *VOps[], Node *VLoadA[],
 
   // Type of VectorOP
   if ((Seq) && ((RAW_A) || (RAW_B)) && Atomic_A && Atomic_B) {
-    printDebug("VectorIR", "reduction");
+    Utils::printDebug("VectorIR", "reduction");
     return VectorIR::VType::REDUCE;
   } else if ((!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
-    printDebug("VectorIR", "map");
+    Utils::printDebug("VectorIR", "map");
     return VectorIR::VType::MAP;
   } else {
-    printDebug("VectorIR", "sequential");
+    Utils::printDebug("VectorIR", "sequential");
     return VectorIR::VType::SEQ;
   }
 }
@@ -224,7 +228,7 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
                              Node *VLoadB[])
     : OpA(VL, VLoadA, false), OpB(VL, VLoadB, false), R(VL, VOps, true) {
 
-  this->VT = getVectorType(VL, VOps, VLoadA, VLoadB);
+  this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
 
   // Name: operation (assuming all operations have the same value, which is a
   // valid assumption)
