@@ -89,7 +89,7 @@ unrolling.
 \section{Three-Address Code IR: TAC}
 The Three-Address Code (TAC) representation used translates any statement ($S$) 
 into a
-set of Single Stament Assignment (SSA), using quadruples, as described in 
+set of Single Stament Assignment (SSA) using quadruples, as described in 
 Definition~\ref{def:TAC}.
 
 \theoremstyle{definition}
@@ -100,8 +100,11 @@ Definition~\ref{def:TAC}.
 	b \oplus c$. If the $\oplus$ operator is unary then $c$ is null.
 \end{definition}
 
-In order to perform this translation, the recursive process is listed in 
-Algorithm~\ref{alg:stmtToTAC}. Therefore, we can conclude that any statement 
+In order to perform this translation, we have implemented the recursive process 
+is listed in 
+Algorithm~\ref{alg:stmtToTAC}. Each statement may be composed by a 
+concatenation of operations, which are split onto TACs respecting the 
+operational order. Therefore, we can conclude that any statement 
 can be represented as a set of TACs (formally stated in 
 Corollary~\ref{cor:TAC}).
 
@@ -130,7 +133,8 @@ This representation is widely used in compilers. The main advantages of it
 resides in the simplicity of handling operations with the same number of 
 operands. 
 
-Unrolling is performed at this stage, following the recursive process listed in 
+Unrolling is also performed using this format, following the iterative process 
+listed in 
 Algorithm~\ref{alg:TACunrolling}.
 
 \begin{algorithm}[H]\label{alg:TACunrolling}
