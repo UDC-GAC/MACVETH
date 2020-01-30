@@ -13,6 +13,7 @@ import filecmp
 build_path = "../build"
 unittest_path = "unittest/"
 fulltest_path = "fulltest/"
+mustpass_path = "mustpass/"
 macveth_path = "macveth_dir/"
 fail_path = "failed_tests/"
 tmp_path = "tmpfiles/"
@@ -99,7 +100,7 @@ def print_results(name, passed, failed, tests):
         f.write("\tpassed tests = %3d / %3d\n" % (len(passed), len(tests)))
         f.write("\tfailed tests = %3d / %3d\n" % (len(failed), len(tests)))
 
-        if (len(failed) == 0):
+        if (len(failed) == 0) and (len(tests) > 0):
             f.write("\tGood work!\n")
 
         f.write("\tpassed tests:\n")
@@ -148,7 +149,7 @@ def unittest_suite():
     print_results("unittest", passed_tests, failed_tests, tests_name)
 
 
-def fulltest_suite():
+def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
     ########################
     # Fulltests
     failed_tests = []
@@ -157,16 +158,16 @@ def fulltest_suite():
     # Parsing all the available tests in unittest
     # Create list with all the unit test
     tests_name = []
-    for r, d, f in os.walk(fulltest_path):
+    for r, d, f in os.walk(path_suite):
         for file in f:
-            if ("test") in file:
+            if (kword) in file:
                 tests_name.append(file.split(".")[0])
 
     # Compiling the original codes
     for test in tests_name:
         # File names
         macveth_t = macveth_path + test + comp_sufix
-        org_t = fulltest_path + test + file_t
+        org_t = path_suite + test + file_t
 
         # Compile with macveth the test
         compile_test(org_t, macveth_t, mv_poly_flags)
@@ -176,14 +177,14 @@ def fulltest_suite():
         # Compile and run the original
         tmp_org_bin = pref + "_org.bin"
         tmp_org_out = pref + "_org.output"
-        comp_cmd(poly_flags(fulltest_path), org_t, tmp_org_bin)
+        comp_cmd(poly_flags(path_suite), org_t, tmp_org_bin)
         run_test(tmp_org_bin, tmp_org_out)
 
         # Compile and run macveth's version
         tmp_mv_bin = pref + "_mv.bin"
         tmp_mv_out = pref + "_mv.output"
-        comp_cmd(poly_flags(fulltest_path) +
-                 " -mavx2 -mfma ", macveth_t, tmp_mv_bin)
+        comp_cmd(poly_flags(path_suite) +
+                 compiler_flags, macveth_t, tmp_mv_bin)
         run_test(tmp_mv_bin, tmp_mv_out)
 
         if (test_output(tmp_org_out,
@@ -193,7 +194,7 @@ def fulltest_suite():
             failed_tests.append(macveth_t)
 
     # Write results obtained
-    print_results("fulltest", passed_tests, failed_tests, tests_name)
+    print_results(path_suite, passed_tests, failed_tests, tests_name)
 
 
 # Compiling macveth
@@ -203,7 +204,10 @@ compile_macveth()
 unittest_suite()
 
 # Fulltest
-fulltest_suite()
+exectest_suite(fulltest_path)
+
+# "MUST PASS" tests
+exectest_suite(mustpass_path, "must")
 
 # Print results
 os.system("cat %s" % test_report)
