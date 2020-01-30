@@ -3,6 +3,7 @@ macveth
 *_comp.c
 *.bin
 *_report.txt
+*.warn
 
 # Temp files
 tmp/

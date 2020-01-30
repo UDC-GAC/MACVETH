@@ -8,6 +8,8 @@
 
 import os
 import filecmp
+from utils.utilities import pr_col
+from utils.utilities import colors as c
 
 # Some path declarations
 build_path = "../build"
@@ -56,8 +58,8 @@ def poly_flags(p):
 def comp_cmd(flags, file, output):
     # Get the compilation line
     # print("(cd %s && %s %s %s -o ../%s)" % (path, cc, flags, file, output))
-    os.system("%s %s %s -o %s" % (cc, flags, file,
-                                  output))
+    os.system("%s %s %s -o %s " % (cc, flags, file,
+                                   output))
 
 
 def run_test(test, output):
@@ -74,9 +76,9 @@ def compile_macveth():
     return True
 
 
-def compile_test(org_file, out_file, args=""):
+def compile_test_with_macveth(org_file, out_file, args=""):
     # Compiling the tests
-    os.system("./macveth %s %s -o=%s" %
+    os.system("./macveth %s %s -o=%s 2>> macveth_compiler.log" %
               (args, org_file, out_file))
     # FIXME more than urgently
     # HAHA please remove this ASAP, please
@@ -111,6 +113,8 @@ def print_results(name, passed, failed, tests):
             f.write("\t\t%s\n" % tpass)
             os.system("rm %s" % tpass)
 
+        if (len(failed) == 0):
+            return
         f.write("\tfailed tests:\n")
         f.write("\t=============\n")
         for fail in failed:
@@ -139,11 +143,14 @@ def unittest_suite():
         org_test = unittest_path + test + file_t
         exp_test = unittest_path + test + exp_sufix
         comp_test = macveth_path + test + comp_sufix
-        compile_test(org_test, comp_test)
+        compile_test_with_macveth(org_test, comp_test)
+        print("{:<80}".format("execution test of " + org_test + "..."), end="")
         if (test_output(exp_test, comp_test)):
             passed_tests.append(comp_test)
+            pr_col(c.fg.green, " [PASSED]")
         else:
             failed_tests.append(comp_test)
+            pr_col(c.fg.red, " [FAILED]")
 
     # Print results obtained
     print_results("unittest", passed_tests, failed_tests, tests_name)
@@ -170,7 +177,8 @@ def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
         org_t = path_suite + test + file_t
 
         # Compile with macveth the test
-        compile_test(org_t, macveth_t, mv_poly_flags)
+        compile_test_with_macveth(org_t, macveth_t, mv_poly_flags)
+        print("{:<80}".format("execution test of " + org_t + "..."), end="")
 
         pref = tmp_path + test
 
@@ -190,8 +198,10 @@ def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
         if (test_output(tmp_org_out,
                         tmp_mv_out)):
             passed_tests.append(macveth_t)
+            pr_col(c.fg.green, " [PASSED]")
         else:
             failed_tests.append(macveth_t)
+            pr_col(c.fg.red, " [FAILED]")
 
     # Write results obtained
     print_results(path_suite, passed_tests, failed_tests, tests_name)
