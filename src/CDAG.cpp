@@ -7,6 +7,7 @@
  */
 
 #include "include/CDAG.h"
+#include "include/PlcmntAlgo.h"
 #include "include/Vectorization/SIMD/AVX2Gen.h"
 #include "include/Vectorization/VectorIR.h"
 #include "clang/AST/Expr.h"
@@ -32,7 +33,7 @@ int computeMaxDepth(Node *N) {
 }
 
 // FIXME ---------------------------------------------
-std::list<VectorIR::VectorOP> getVectorOpFromCDAG(CDAG *G) {
+std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList) {
   std::list<VectorIR::VectorOP> VList;
   Node *VLoadA[64];
   Node *VLoadB[64];
@@ -40,11 +41,10 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(CDAG *G) {
   int Cursor = 0;
 
   /// Working with a copy
-  Node::NodeListType NL(G->getNodeListOps());
+  Node::NodeListType NL(NList);
   // The sorting of the list is done by comparing the FreeSched value and the
   // StmtID, which is sequential when creating each node. This way we have a
   // chronological order of the nodes.
-  NL.sort([](Node *lhs, Node *rhs) { return *lhs < *rhs; });
 
   Utils::printDebug("CDAG", "Printing nodes");
   for (Node *N : NL) {
@@ -107,47 +107,18 @@ repeat:
 }
 
 // ---------------------------------------------
-void setPlcmtFromFile(CDAG *G) {
-  std::ifstream CF;
-  CF.open(Utils::getExePath() + MVOptions::InCDAGFile, std::ios_base::in);
-  if (CF.is_open()) {
-    std::string L;
-    for (auto N : G->getNodeListOps()) {
-      while (getline(CF, L)) {
-        if (L.rfind("//", 0) == 0) {
-          // This is a comment, skip it
-          continue;
-        } else {
-          if (!(L.find_first_not_of("0123456789") == std::string::npos)) {
-            llvm::outs() << "CDAG input file is not correct!\n";
-            llvm::llvm_unreachable_internal();
-          }
-          // Clang does not allow to perform any type of exception handling in
-          // order to minimize the size of the executable (same reasoning for
-          // not using RTTI), that is why we perform the previous check. On any
-          // case, user should be aware of the format of the file: comments
-          // starting with // are allowed, but each non-comment row must only
-          // contain an integer value
-          N->setPlcmt(std::stoi(L));
-          break;
-        }
-      }
-    }
-  } else {
-    llvm::llvm_unreachable_internal();
-  }
-  CF.close();
-}
-
-// ---------------------------------------------
 SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
   VectorIR::clearMappigs();
+
+  Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
+
   if (MVOptions::InCDAGFile != "") {
-    setPlcmtFromFile(G);
+    PlcmntAlgo::setPlcmtFromFile(G);
   }
 
   // Execute greedy algorithm
-  std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(G);
+  std::list<VectorIR::VectorOP> VList =
+      getVectorOpFromCDAG(G->getNodeListOps());
 
   // If debug enabled, it will print the VectorOP obtained
   for (auto V : VList) {

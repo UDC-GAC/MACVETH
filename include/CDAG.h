@@ -38,8 +38,6 @@ public:
   /// of Nodes
   static void computeFreeSchedule(Node::NodeListType NL);
 
-  /// Generate intrinsics
-  static int generateIntrinsics(CDAG *C);
   /// Get the node of list registered for this CDAG
   Node::NodeListType getNodeListOps() { return this->NLOps; }
   /// Get the node of list registered for this CDAG
