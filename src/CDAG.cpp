@@ -33,7 +33,9 @@ int computeMaxDepth(Node *N) {
 }
 
 // FIXME ---------------------------------------------
-std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList) {
+
+std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
+                                                  SIMDGenerator *SG) {
   std::list<VectorIR::VectorOP> VList;
   Node *VLoadA[64];
   Node *VLoadB[64];
@@ -53,9 +55,8 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList) {
 
   // Until the list is over
 repeat:
-  // int VL = AVX->getMaxWidth();
-  // FIXME
-  int VL = 4;
+  int VL = SG->getMaxVectorSize();
+  // int VL = 4;
   while (!NL.empty()) {
 
     VOps[Cursor] = NL.front();
@@ -113,12 +114,12 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
   Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
 
   if (MVOptions::InCDAGFile != "") {
-    PlcmntAlgo::setPlcmtFromFile(G);
+    PlcmntAlgo::setPlcmtFromFile(G->getNodeListOps());
   }
 
   // Execute greedy algorithm
   std::list<VectorIR::VectorOP> VList =
-      getVectorOpFromCDAG(G->getNodeListOps());
+      getVectorOpFromCDAG(G->getNodeListOps(), SG);
 
   // If debug enabled, it will print the VectorOP obtained
   for (auto V : VList) {
@@ -148,16 +149,6 @@ void replaceOutput(TAC T, Node *N) {
   N->setOutputName(T.getA()->getExprStr());
   N->setNodeType(Node::NODE_STORE);
 }
-
-// ---------------------------------------------
-// Node *findOutputNode(std::string Out, Node::NodeListType NL) {
-//  for (auto N : NL) {
-//    if (N->getOutputInfoName() == Out) {
-//      return N;
-//    }
-//  }
-//  return nullptr;
-//}
 
 // ---------------------------------------------
 Node *CDAG::insertTac(TAC T, Node *PrevNode, Node::NodeListType L) {

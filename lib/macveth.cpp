@@ -76,10 +76,16 @@ static llvm::cl::opt<bool> FMA("fma",
                                llvm::cl::cat(MacvethCategory));
 
 /// Debug flag
-static llvm::cl::opt<bool> DEBUG("debug",
+static llvm::cl::opt<bool> Debug("debug",
                                  llvm::cl::desc("Print debug information"),
                                  llvm::cl::init(false),
                                  llvm::cl::cat(MacvethCategory));
+/// Macro-free code
+static llvm::cl::opt<bool> MacroFree(
+    "macro-free",
+    llvm::cl::desc("If set, do not use macro for generating vectorized code"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
 /// Output debug
 static llvm::cl::opt<std::string>
     DebugFile("output-debug", cl::cat(MacvethCategory),
@@ -89,7 +95,6 @@ static llvm::cl::opt<std::string>
 int main(int argc, const char **argv) {
   llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
 
-  // FIRST STEP
   // Parser for options common to all cmd-line Clang tools
   CommonOptionsParser Op(argc, argv, MacvethCategory);
   // Utility to run a FrontendAction over a set of files
@@ -104,7 +109,8 @@ int main(int argc, const char **argv) {
   MVOptions::OutDebugFile = DebugFile.getValue();
   MVOptions::Arch = Architecture.getValue();
   MVOptions::FMASupport = FMA.getValue();
-  MVOptions::Debug = DEBUG.getValue();
+  MVOptions::Debug = Debug.getValue();
+  MVOptions::MacroFree = MacroFree.getValue();
 
   /// Create needed files
   Utils::initFile(MVOptions::OutFile);
