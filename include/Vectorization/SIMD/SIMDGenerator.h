@@ -64,12 +64,13 @@ public:
     std::string Result;
     /// Signature of the function
     std::string FuncName;
+    /// Signature of the function
+    std::string MVFuncName;
     /// Type of the function
     SIMDType SType;
     /// List of *sorted* arguments of the function
-    std::list<std::string> OPS;
-    /// TODO list of instructions needed?
-    std::list<SIMDInst> DependsOn;
+    std::list<std::string> Args;
+    std::list<std::string> MVArgs;
     /// Cost of the instruction
     int Cost = 0;
     /// Data type
@@ -94,8 +95,10 @@ public:
     SIMDInst(){};
 
     /// Constructor
-    SIMDInst(std::string R, std::string FN, std::list<std::string> OPS)
-        : Result(R), FuncName(FN), OPS(OPS) {
+    SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
+             std::string MVFN, std::list<std::string> MVArgs)
+        : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFN),
+          MVArgs(MVArgs) {
       this->SIMD_UID = SIMDInst::UID++;
     }
   };
@@ -229,6 +232,9 @@ public:
   /// Basically calls its other overloaded function iterating over the input
   /// list of VectorOP
   SIMDInstListType getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList);
+
+  /// Get maximum vector operands size
+  virtual int getMaxVectorSize() { return 4; };
 
   /// Clean the list of registers declared
   static void clearMappings();

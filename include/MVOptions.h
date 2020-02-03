@@ -32,6 +32,8 @@ struct MVOptions {
   static inline bool FMASupport = false;
   /// Debug
   static inline bool Debug = false;
+  /// Generate or not macro-based code
+  static inline bool MacroFree = false;
 };
 
 }; // namespace macveth

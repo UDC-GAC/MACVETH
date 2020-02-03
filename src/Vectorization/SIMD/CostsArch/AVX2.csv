@@ -1,0 +1,33 @@
+# Multiplication
+Skylake,mul,4,_mm#W_#Pmul#S_#D
+Skylake,*,4,_mm#W_#Pmul#S_#D
+Broadwell,mul,3,_mm#W_#Pmul#S_#D
+Broadwell,*,3,_mm#W_#Pmul#S_#D
+Haswell,mul,5,_mm#W_#Pmul#S_#D
+Haswell,*,5,_mm#W_#Pmul#S_#D
+IvyBridge,mul,5,_mm#W_#Pmul#S_#D
+IvyBridge,*,5,_mm#W_#Pmul#S_#D
+UNDEF,*,5,_mm#W_#Pmul#S_#D
+UNDEF,mul,5,_mm#W_#Pmul#S_#D
+# Addition
+Skylake,add,4,_mm#W_#Padd#S_#D
+Skylake,+,4,_mm#W_#Padd#S_#D
+Broadwell,add,3,_mm#W_#Padd#S_#D
+Broadwell,+,3,_mm#W_#Padd#S_#D
+Haswell,add,3,_mm#W_#Padd#S_#D
+Haswell,+,3,_mm#W_#Padd#S_#D
+IvyBridge,add,3,_mm#W_#Padd#S_#D
+IvyBridge,+,3,_mm#W_#Padd#S_#D
+UNDEF,+,4,_mm#W_#Padd#S_#D
+UNDEF,add,4,_mm#W_#Padd#S_#D
+# Substraction
+Skylake,sub,4,_mm#W_#Psub#S_#D
+Skylake,-,4,_mm#W_#Psub#S_#D
+Broadwell,sub,3,_mm#W_#Psub#S_#D
+Broadwell,-,3,_mm#W_#Psub#S_#D
+Haswell,sub,3,_mm#W_#Psub#S_#D
+Haswell,-,3,_mm#W_#Psub#S_#D
+IvyBridge,sub,3,_mm#W_#Psub#S_#D
+IvyBridge,-,3,_mm#W_#Psub#S_#D
+UNDEF,-,4,_mm#W_#Psub#S_#D
+UNDEF,sub,4,_mm#W_#Psub#S_#D

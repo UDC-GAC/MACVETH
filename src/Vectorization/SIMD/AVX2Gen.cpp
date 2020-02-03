@@ -19,28 +19,28 @@ using namespace macveth;
 void AVX2Gen::populateTable() {
   // Sandy Bridge (Intel Q1 2011), Bulldozer (AMD Q3 2011)
   // Math operations
-  CostTable::addRow(NArch, "mul", 3, "_mm#W_#Pmul#S_#D");
-  CostTable::addRow(NArch, "*", 3, "_mm#W_#Pmul#S_#D");
-  CostTable::addRow(NArch, "add", 1, "_mm#W_#Padd#S_#D");
-  CostTable::addRow(NArch, "+", 1, "_mm#W_#Padd#S_#D");
-  CostTable::addRow(NArch, "sub", 1, "_mm#W_#Psub#S_#D");
-  CostTable::addRow(NArch, "-", 1, "_mm#W_#Psub#S_#D");
-  CostTable::addRow(NArch, "div", 5, "_mm#W_#Pdiv#S_#D");
-  CostTable::addRow(NArch, "/", 5, "_mm#W_#Pdiv#S_#D");
-  CostTable::addRow(NArch, "fmadd", 5, "_mm#W_#Pfmadd#S_#D");
-  CostTable::addRow(NArch, "fmsub", 5, "_mm#W_#Pfmsub#S_#D");
-  CostTable::addRow(NArch, "avg", 5, "_mm#W_avg_#D");
+  CostTable::addRow(NArch, "mul", 4, "_mm#W_#Pmul#S_#D");
+  CostTable::addRow(NArch, "*", 4, "_mm#W_#Pmul#S_#D");
+  CostTable::addRow(NArch, "add", 3, "_mm#W_#Padd#S_#D");
+  CostTable::addRow(NArch, "+", 3, "_mm#W_#Padd#S_#D");
+  CostTable::addRow(NArch, "sub", 3, "_mm#W_#Psub#S_#D");
+  CostTable::addRow(NArch, "-", 3, "_mm#W_#Psub#S_#D");
+  CostTable::addRow(NArch, "div", 15, "_mm#W_#Pdiv#S_#D");
+  CostTable::addRow(NArch, "/", 15, "_mm#W_#Pdiv#S_#D");
+  CostTable::addRow(NArch, "fmadd", 6, "_mm#W_#Pfmadd#S_#D");
+  CostTable::addRow(NArch, "fmsub", 6, "_mm#W_#Pfmsub#S_#D");
+  CostTable::addRow(NArch, "avg", 1, "_mm#W_avg_#D");
   CostTable::addRow(NArch, "min", 5, "_mm#W_min_#D");
   CostTable::addRow(NArch, "max", 5, "_mm#W_max_#D");
-  CostTable::addRow(NArch, "round", 10, "_mm#W_#Psvml_round#S_#D");
-  CostTable::addRow(NArch, "trunc", 10, "_mm#W_#Ptrunc#S_#D");
-  CostTable::addRow(NArch, "ceil", 10, "_mm#W_#Psvml_ceil#S_#D");
+  CostTable::addRow(NArch, "round", 5, "_mm#W_#Psvml_round#S_#D");
+  CostTable::addRow(NArch, "trunc", 5, "_mm#W_#Ptrunc#S_#D");
+  CostTable::addRow(NArch, "ceil", 5, "_mm#W_#Psvml_ceil#S_#D");
   // Shuffling
-  CostTable::addRow(NArch, "permute", 10, "_mm#W_#Ppermute#S_#D");
-  CostTable::addRow(NArch, "shuffle", 10, "_mm#W_#Pshuffle#S_#D");
+  CostTable::addRow(NArch, "permute", 1, "_mm#W_#Ppermute#S_#D");
+  CostTable::addRow(NArch, "shuffle", 1, "_mm#W_#Pshuffle#S_#D");
   // Load operations
   CostTable::addRow(NArch, "load", 1, "_mm#W_#Pload#S_#D");
-  CostTable::addRow(NArch, "gather", 1, "_mm#W_#Pgather#S_#D");
+  CostTable::addRow(NArch, "gather", 10, "_mm#W_#Pgather#S_#D");
   CostTable::addRow(NArch, "broadcast", 1, "_mm#W_#Pbroadcast#S_#D");
   CostTable::addRow(NArch, "set", 1, "_mm#W_#Pset#S_#D");
   // Store operation
@@ -57,7 +57,7 @@ void AVX2Gen::populateTable() {
 SIMDGenerator::SIMDInst createSIMDInst(std::string Op, std::string Res,
                                        std::string Width, std::string DataType,
                                        std::string PrefS, std::string SuffS,
-                                       std::list<std::string> OPS,
+                                       std::list<std::string> Args,
                                        SIMDGenerator::SIMDType SType) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
@@ -67,7 +67,7 @@ SIMDGenerator::SIMDInst createSIMDInst(std::string Op, std::string Res,
       SIMDGenerator::replacePatterns(Pattern, Width, DataType, PrefS, SuffS);
 
   // Generate SIMD inst
-  SIMDGenerator::SIMDInst I(Res, AVXFunc, OPS);
+  SIMDGenerator::SIMDInst I(Res, AVXFunc, Args);
 
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
@@ -87,19 +87,19 @@ SIMDGenerator::SIMDInst AVX2Gen::genMultAccOp(SIMDGenerator::SIMDInst Mul,
   std::string PrefS = "";
   std::string SuffS = "";
   std::string Op = (Acc.SType == SIMDType::VADD) ? "fmadd" : "fmsub";
-  std::list<std::string> OPS;
+  std::list<std::string> Args;
 
   // Format is: (a * b) + c
-  for (auto OP : Mul.OPS) {
-    OPS.push_back(OP);
+  for (auto OP : Mul.Args) {
+    Args.push_back(OP);
   }
-  for (auto OP : Acc.OPS) {
+  for (auto OP : Acc.Args) {
     if (OP != Mul.Result) {
-      OPS.push_back(OP);
+      Args.push_back(OP);
     }
   }
   // Adding SIMD inst to the list
-  Fuse = createSIMDInst(Op, Res, Width, DataType, PrefS, SuffS, OPS,
+  Fuse = createSIMDInst(Op, Res, Width, DataType, PrefS, SuffS, Args,
                         SIMDGenerator::SIMDType::VOPT);
 
   return Fuse;
@@ -123,9 +123,9 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
     if ((Inst.SType == SIMDGenerator::SIMDType::VADD) ||
         (Inst.SType == SIMDGenerator::SIMDType::VSUB)) {
       for (auto P : PotentialFuse) {
-        // if (Utils::contains(Inst.OPS, P.Result)) {
-        if (std::find(Inst.OPS.begin(), Inst.OPS.end(), P.Result) !=
-            Inst.OPS.end()) {
+        // if (Utils::contains(Inst.Args, P.Result)) {
+        if (std::find(Inst.Args.begin(), Inst.Args.end(), P.Result) !=
+            Inst.Args.end()) {
           SIMDGenerator::SIMDInst NewFuse = AVX2Gen::genMultAccOp(P, Inst);
           // We will like to skip this function later
           SkipList.push_back(P);
@@ -179,7 +179,7 @@ std::string AVX2Gen::getRegisterType(VectorIR::VDataType DT,
 // ---------------------------------------------
 SIMDGenerator::SIMDInst
 AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
-                     std::string SuffS, std::list<std::string> OPS,
+                     std::string SuffS, std::list<std::string> Args,
                      SIMDGenerator::SIMDType SType,
                      SIMDGenerator::SIMDInstListType *IL, std::string NameOp) {
   // Get the function
@@ -192,7 +192,7 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
 
   // Generate SIMD inst
   SIMDGenerator::SIMDInst I((NameOp == "") ? V.getName() : NameOp, AVXFunc,
-                            OPS);
+                            Args);
 
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
@@ -227,11 +227,11 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(getOpName(V, true, true));
+  std::list<std::string> Args;
+  Args.push_back(getOpName(V, true, true));
 
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VPACK, &IL);
+  addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VPACK, &IL);
 
   return IL;
 }
@@ -251,15 +251,15 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(getOpName(V, true, true));
+  std::list<std::string> Args;
+  Args.push_back(getOpName(V, true, true));
 
   if (V.getDataType() == VectorIR::VDataType::DOUBLE) {
     V.DType = VectorIR::VDataType::SDOUBLE;
   }
 
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VBCAST, &IL);
+  addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VBCAST, &IL);
 
   return IL;
 }
@@ -279,11 +279,11 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.UOP[0]->getValue());
+  std::list<std::string> Args;
+  Args.push_back(V.UOP[0]->getValue());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VGATHER, &IL);
+  addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VGATHER, &IL);
 
   return IL;
 }
@@ -301,14 +301,14 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
+  std::list<std::string> Args;
   for (int n = 0; n < V.VSize; n++) {
-    OPS.push_back((V.UOP[n] != NULL) ? V.UOP[n]->getValue() : "0.0");
+    Args.push_back((V.UOP[n] != NULL) ? V.UOP[n]->getValue() : "0.0");
   }
-  OPS.reverse();
+  Args.reverse();
 
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, OPS, SIMDType::VSET, &IL);
+  addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VSET, &IL);
 
   return IL;
 }
@@ -328,20 +328,20 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(getOpName(V.R, true, true));
+  std::list<std::string> Args;
+  Args.push_back(getOpName(V.R, true, true));
   if (V.R.EqualVal) {
     // FIXME
     PrefS += "mask";
-    OPS.push_back("_mm256_set_epi64x(0,0,0,1)");
-    OPS.push_back("_mm256_permute4x64_pd(" + getOpName(V.R, false, false) +
-                  ", 0xe4)");
+    Args.push_back("_mm256_set_epi64x(0,0,0,1)");
+    Args.push_back("_mm256_permute4x64_pd(" + getOpName(V.R, false, false) +
+                   ", 0xe4)");
   } else {
-    OPS.push_back(getOpName(V.R, false, false));
+    Args.push_back(getOpName(V.R, false, false));
   }
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSTORE, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VSTORE, &IL);
 
   return IL;
 }
@@ -361,12 +361,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VectorOP V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  std::list<std::string> Args;
+  Args.push_back(V.OpA.getName());
+  Args.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSCATTER, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VSCATTER, &IL);
 
   return IL;
 }
@@ -386,12 +386,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vadd(VectorIR::VectorOP V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  std::list<std::string> Args;
+  Args.push_back(V.OpA.getName());
+  Args.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VADD, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VADD, &IL);
 
   return IL;
 }
@@ -411,12 +411,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vmul(VectorIR::VectorOP V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  std::list<std::string> Args;
+  Args.push_back(V.OpA.getName());
+  Args.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VMUL, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VMUL, &IL);
 
   return IL;
 }
@@ -436,12 +436,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vsub(VectorIR::VectorOP V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  std::list<std::string> Args;
+  Args.push_back(V.OpA.getName());
+  Args.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSUB, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VSUB, &IL);
 
   return IL;
 }
@@ -461,12 +461,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vdiv(VectorIR::VectorOP V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  std::list<std::string> Args;
+  Args.push_back(V.OpA.getName());
+  Args.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VDIV, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VDIV, &IL);
 
   return IL;
 }
@@ -486,12 +486,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vmod(VectorIR::VectorOP V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  std::list<std::string> Args;
+  Args.push_back(V.OpA.getName());
+  Args.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VMOD, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VMOD, &IL);
 
   return IL;
 }
@@ -569,12 +569,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vseq(VectorIR::VectorOP V) {
 
   // TODO check
   // List of parameters
-  std::list<std::string> OPS;
-  OPS.push_back(V.OpA.getName());
-  OPS.push_back(V.OpB.getName());
+  std::list<std::string> Args;
+  Args.push_back(V.OpA.getName());
+  Args.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, OPS, SIMDType::VSEQ, &IL);
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VSEQ, &IL);
 
   return IL;
 }

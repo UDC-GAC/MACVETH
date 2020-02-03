@@ -7,6 +7,7 @@
  */
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include "MVOptions.h"
 #include "include/Utils.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 #include "clang/AST/OperationKinds.h"
@@ -14,8 +15,6 @@
 #include <regex>
 
 using namespace macveth;
-
-void printDeb(std::string S) { std::cout << "[SIMDGEN] " << S << std::endl; }
 
 // ---------------------------------------------
 std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
@@ -31,15 +30,27 @@ std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
 
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
-  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
-                             ? FuncName + "("
-                             : Result + " = " + FuncName + "(";
-  std::list<std::string>::iterator Op;
-  int i = 0;
-  for (Op = OPS.begin(); Op != OPS.end(); ++Op) {
-    FullFunc += (i++ == (OPS.size() - 1)) ? (*Op + ")") : (*Op + ", ");
+  if (MVOptions::MacroFree) {
+    std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
+                               ? FuncName + "("
+                               : Result + " = " + FuncName + "(";
+    std::list<std::string>::iterator Op;
+    int i = 0;
+    for (Op = Args.begin(); Op != Args.end(); ++Op) {
+      FullFunc += (i++ == (Args.size() - 1)) ? (*Op + ")") : (*Op + ", ");
+    }
+    return FullFunc;
+  } else {
+    std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
+                               ? MVFuncName + "("
+                               : Result + " = " + MVFuncName + "(";
+    std::list<std::string>::iterator Op;
+    int i = 0;
+    for (Op = MVArgs.begin(); Op != MVArgs.end(); ++Op) {
+      FullFunc += (i++ == (MVArgs.size() - 1)) ? (*Op + ")") : (*Op + ", ");
+    }
+    return FullFunc;
   }
-  return FullFunc;
 }
 
 // ---------------------------------------------
