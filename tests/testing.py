@@ -78,7 +78,7 @@ def compile_macveth():
 
 def compile_test_with_macveth(org_file, out_file, args=""):
     # Compiling the tests
-    os.system("./macveth %s %s -o=%s 2>> macveth_compiler.log" %
+    os.system("./macveth -macro-free %s %s -o=%s 2>> macveth_compiler.log" %
               (args, org_file, out_file))
     # FIXME more than urgently
     # HAHA please remove this ASAP, please
