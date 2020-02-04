@@ -1,0 +1,12 @@
+# Syntax:
+---------
+
+These files follow a CSV-style format. Each ISA contains a set of rows which
+follow the next pattern:
+
+Architecture,Operation,Latency,[Throughput, NumUnits,]Pattern
+
+Therefore, rows must have 4 or 6 fields. Comments starting with # are allowed.
+For a specific architecture if the value is not specified, the UNDEF value will
+be used. UNDEF values must be placed at the beggining of the file. All
+arithmetic operations, at least, must be set; as well as the memory operations.
