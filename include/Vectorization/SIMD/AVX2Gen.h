@@ -97,19 +97,16 @@ public:
   virtual ~AVX2Gen(){};
 
   /// Constructor
-  AVX2Gen() : SIMDGenerator() { AVX2Gen::populateTable(); }
+  AVX2Gen() : SIMDGenerator() { SIMDGenerator::populateTable(MVISA::AVX2); }
 
 private:
   /// Auxiliar function for adding the SIMDInst to the list
-  SIMDGenerator::SIMDInst addSIMDInst(VectorIR::VOperand V, std::string Op,
-                                      std::string PrefS, std::string SuffS,
-                                      std::list<std::string> OPS,
-                                      SIMDGenerator::SIMDType SType,
-                                      SIMDGenerator::SIMDInstListType *IL,
-                                      std::string NameOp = "");
-  /// Populate the table only when creating the object, to avoid overloading the
-  /// memory from the start
-  static void populateTable();
+  SIMDGenerator::SIMDInst
+  addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
+              std::string SuffS, std::list<std::string> OPS,
+              SIMDGenerator::SIMDType SType,
+              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
+              std::string MVFunc = "", std::list<std::string> MVArgs = {});
   /// Specific instruction for loading data according to the operand
   bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
   /// Max width

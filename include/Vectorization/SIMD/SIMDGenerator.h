@@ -204,6 +204,10 @@ public:
   /// Map of VectorIR types to the concrete architecture
   virtual std::string getMapType(VectorIR::VDataType D) = 0;
 
+  /// Populate the table only when creating the object, to avoid overloading the
+  /// memory from the start
+  static void populateTable(MVISA ISA);
+
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
   std::list<std::string> renderSIMDasString(SIMDInstListType S);

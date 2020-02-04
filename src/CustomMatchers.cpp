@@ -81,7 +81,7 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // Perform unrolling according to the pragmas
   unrollOptions(SWrap);
 
-  // debug
+  // Debugging purposes
   for (auto S : SWrap->getTacList()) {
     S.printTAC();
   }
@@ -92,15 +92,10 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // Computing the free schedule of the CDAG created
   CDAG::computeFreeSchedule(G);
 
-  // FIXME at some point the compiler should be able to recognize the
-  // architecture and ISA where it is compiling
-  SIMDGenerator *AVX =
-      SIMDGeneratorFactory::getBackend(SIMDGeneratorFactory::Arch::AVX2);
+  SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
 
   // Computing the cost model of the CDAG created
-  auto SInfo = CDAG::computeCostModel(G, AVX);
-
-  // FIXME: this code is not ugly AF but almost...
+  auto SInfo = CDAG::computeCostModel(G, SIMDGen);
 
   // Unroll factor applied to the for header
   int Inc = 1;
@@ -114,67 +109,26 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
     clang::CharSourceRange charRange = clang::CharSourceRange::getTokenRange(
         IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
     Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
-                                       "+=" + std::to_string(UpperBound));
+                                       " += " + std::to_string(UpperBound));
   }
 
   // Print new lines
-  for (auto InsSIMD : AVX->renderSIMDasString(SInfo.SIMDList)) {
+  for (auto InsSIMD : SIMDGen->renderSIMDasString(SInfo.SIMDList)) {
     Rewrite.InsertText(SWrap->getStmt()[0]->getBeginLoc(), InsSIMD + "\n", true,
                        true);
   }
 
   // Comment statements
   for (auto S : SWrap->getStmt()) {
-    Rewrite.InsertText(S->getBeginLoc(), "// REPLACED ", true, true);
+    Rewrite.InsertText(S->getBeginLoc(), "// statement replaced: ", true, true);
   }
 }
 
 typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 
-/// Possible RHS
-/// var[][]..[]
-/// var
-StatementMatcher possibleRhs(std::string BindName) {
-  // return anyOf(implicitCastExpr().bind(BindName),
-  //             binaryOperator().bind(BindName));
-  return (binaryOperator().bind(BindName));
-}
-
-// Function wrapper for matching expressions such as:
-// expr = expr
-StatementMatcher matchers_utils::anyStmt(std::string Name, std::string Lhs,
-                                         std::string Rhs) {
-  return binaryOperator(anyOf(hasOperatorName("="), hasOperatorName("+="),
-                              hasOperatorName("*="), hasOperatorName("-=")),
-                        hasLHS(expr().bind(Lhs)), hasRHS(expr().bind(Rhs)))
-      .bind(Name);
-}
-
-/// Function wrapper for matching expressions such as:
-/// var      = expr op expr
-StatementMatcher matchers_utils::reductionStmt(std::string Name,
-                                               std::string Lhs,
-                                               std::string Rhs) {
-  return binaryOperator(anyOf(hasOperatorName("="), hasOperatorName("+=")),
-                        hasLHS(declRefExpr().bind(Lhs)),
-                        hasRHS(ignoringImpCasts(possibleRhs(Rhs))))
-      // hasRHS(possibleRhs(Rhs)))
-      .bind(Name);
-}
-
-/// Function wrapper for matching expressions such as:
-/// var[idx] = expr op expr
-StatementMatcher matchers_utils::assignArrayBinOp(std::string Name,
-                                                  std::string Lhs,
-                                                  std::string Rhs) {
-  return binaryOperator(hasOperatorName("="),
-                        hasLHS(arraySubscriptExpr().bind(Lhs)),
-                        hasRHS(possibleRhs(Rhs)))
-      .bind(Name);
-}
-
-/// This matches either int i = 0 or int i = val
+// ---------------------------------------------
 MatcherForStmt customLoopInit(std::string Name) {
+  // This matches either int i = 0 or int i = val
   return hasLoopInit(declStmt(hasSingleDecl(
       varDecl(hasInitializer(
                   anyOf(integerLiteral(equals(0)),
@@ -182,6 +136,7 @@ MatcherForStmt customLoopInit(std::string Name) {
           .bind(matchers_utils::varnames::NameVarInit + Name))));
 }
 
+// ---------------------------------------------
 MatcherForStmt customIncrement(std::string Name) {
   return hasIncrement(
       unaryOperator(hasOperatorName("++"),
@@ -191,9 +146,10 @@ MatcherForStmt customIncrement(std::string Name) {
           .bind(matchers_utils::varnames::NameVarIncPos + Name));
 }
 
-/// This condition allows for loops such as:
-/// * (int)var < (int)val
+// ---------------------------------------------
 MatcherForStmt customCondition(std::string Name) {
+  // This condition allows for loops such as:
+  // * (int)var < (int)val
   return hasCondition(binaryOperator(
       hasOperatorName("<"),
       hasLHS(ignoringParenImpCasts(declRefExpr(
@@ -203,25 +159,28 @@ MatcherForStmt customCondition(std::string Name) {
                  .bind(matchers_utils::varnames::UpperBound + Name))));
 }
 
-/// Body of the loops we are looking for. In this case could be something like:
-/// * for() { InnerStmt; }
-/// * for() { [Stmt]* [InnerStmt]+ [InnerStmt|Stmt]*}
+// ---------------------------------------------
 MatcherForStmt customBody(StatementMatcher InnerStmt) {
+  // Body of the loops we are looking for. In this case could be something like:
+  // * for() { InnerStmt; }
+  // * for() { [Stmt]* [InnerStmt]+ [InnerStmt|Stmt]*}
   return hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt))));
 }
 
-/// Function wrapper for matching expressions such as:
-/// for (int var = 0; var < upper_bound; [++]var[++])
+// ---------------------------------------------
 StatementMatcher matchers_utils::forLoopMatcher(std::string Name,
                                                 StatementMatcher InnerStmt) {
+  // Function wrapper for matching expressions such as:
+  // for (int var = 0; var < upper_bound; [++]var[++])
   return forStmt(customLoopInit(Name), customIncrement(Name),
                  customCondition(Name), customBody(InnerStmt))
       .bind("forLoop" + Name);
 }
 
-/// Function wrapper for loop nests with the forLoopMatcher form
+// ---------------------------------------------
 StatementMatcher matchers_utils::forLoopNested(int NumLevels,
                                                StatementMatcher InnerStmt) {
+  // Function wrapper for loop nests with the forLoopMatcher form
   StatementMatcher NestedMatcher = InnerStmt;
   for (int N = NumLevels; N > 0; --N) {
     NestedMatcher =
@@ -230,16 +189,12 @@ StatementMatcher matchers_utils::forLoopNested(int NumLevels,
   return NestedMatcher;
 }
 
-/// Function wrapper for loop nests with the forLoopMatcher form
+// ---------------------------------------------
 StatementMatcher matchers_utils::ROI(int NumLevels,
                                      StatementMatcher InnerStmt) {
+  // Function wrapper for loop nests with the forLoopMatcher form
   StatementMatcher NestedMatcher =
       matchers_utils::forLoopNested(NumLevels, InnerStmt);
-  // return NestedMatcher;
-  StatementMatcher Annot = compoundStmt(
-      // has(declStmt(hasSingleDecl(
-      //          varDecl(hasInitializer(integerLiteral(equals(42))),
-      //                  hasAnyName("begin_roi"))))),
-      forEach(NestedMatcher));
+  StatementMatcher Annot = compoundStmt(forEach(NestedMatcher));
   return Annot;
 }

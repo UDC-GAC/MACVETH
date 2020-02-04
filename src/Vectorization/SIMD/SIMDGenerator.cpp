@@ -7,14 +7,50 @@
  */
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
-#include "MVOptions.h"
+#include "include/MVOptions.h"
 #include "include/Utils.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Type.h"
+#include <filesystem>
 #include <regex>
+#include <sstream>
+#include <unistd.h>
 
 using namespace macveth;
+
+// ---------------------------------------------
+void SIMDGenerator::populateTable(MVISA ISA) {
+  std::string PathISA = "/src/Vectorization/SIMD/CostsArch/" + MVISAStr[ISA];
+  char buff[PATH_MAX];
+  getcwd(buff, PATH_MAX);
+  std::string cwd(buff);
+  PathISA = cwd + PathISA;
+  std::string Arch = MVArchStr[MVOptions::Arch];
+  std::ifstream F(PathISA);
+  std::string L, W;
+  if (F.is_open()) {
+    while (getline(F, L)) {
+      if (L.rfind("#", 0) == 0) {
+        // Check if line is a comment
+        continue;
+      }
+      std::stringstream TMP(L);
+      std::vector<std::string> Args;
+      while (getline(TMP, W, ',')) {
+        Args.push_back(W);
+      }
+      if (((Args[0] == Arch) || (Args[0] == "UNDEF")) && (Args.size() == 4)) {
+        CostTable::addRow(Arch, Args[1], std::stoi(Args[2]), Args[3]);
+      } else if (((Args[0] == Arch) || (Args[0] == "UNDEF")) &&
+                 (Args.size() == 6)) {
+        CostTable::addRow(Arch, Args[1], std::stoi(Args[2]), std::stod(Args[3]),
+                          std::stoi(Args[4]), Args[5]);
+      }
+    }
+    F.close();
+  }
+}
 
 // ---------------------------------------------
 std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,

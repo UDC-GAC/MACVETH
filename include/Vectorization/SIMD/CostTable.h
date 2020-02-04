@@ -23,10 +23,10 @@ private:
     unsigned int Latency = 1;
     /// Throughput of the operation: number of cycles it takes to the processor
     /// to perform the calculations or operations of that instruction
-    double Throughput = 1;
+    double Throughput = 0;
     /// Number of units available for executing this type of operation
     /// simultaneously
-    unsigned int NUnits = 1;
+    unsigned int NUnits = 0;
     /// Pattern of the instruction
     std::string Pattern = "";
   };
@@ -39,41 +39,42 @@ public:
   /// and its correspondant Table, which is basically another map where each
   /// operation identifies each Row, that holds information regarding the
   /// latency, througput, number of units, and the pattern
-  static inline std::map<std::string, Table> Tables;
-
-  /// Add Row to Arch Table taking into account all parameters described in the
-  /// Row
-  static void addRow(std::string Arch, std::string Op, unsigned int C,
-                     double TP, unsigned int NU, std::string Pattern) {
-    CostTable::Tables[Arch][Op] = {C, TP, NU, Pattern};
-  }
+  // static inline std::map<std::string, Table> Tables;
+  static inline Table Tables;
 
   /// Get latency of operation given an architecture and the desired operation
   /// Op
   static unsigned int getLatency(std::string Arch, std::string Op) {
-    return CostTable::Tables[Arch][Op].Latency;
+    return CostTable::Tables[Op].Latency;
   }
 
   /// Get throughput of operation given an architecture and the desired
   /// operation
   static double getThroughput(std::string Arch, std::string Op) {
-    return CostTable::Tables[Arch][Op].Throughput;
+    return CostTable::Tables[Op].Throughput;
   }
 
   /// Get number of units available for executing this type of operation
   static unsigned int getUnits(std::string Arch, std::string Op) {
-    return CostTable::Tables[Arch][Op].NUnits;
+    return CostTable::Tables[Op].NUnits;
   }
 
   /// Get Row given an architecture and the desired operation Op
   static std::string getPattern(std::string Arch, std::string Op) {
-    return CostTable::Tables[Arch][Op].Pattern;
+    return CostTable::Tables[Op].Pattern;
   }
 
   /// Add Row to Arch Table but with throughput 1 and number of units 1
   static void addRow(std::string Arch, std::string Op, unsigned int Cost,
                      std::string Pattern) {
-    CostTable::Tables[Arch][Op] = {Cost, 1, 1, Pattern};
+    CostTable::Tables[Op] = {Cost, 0, 0, Pattern};
+  }
+
+  /// Add Row to Arch Table taking into account all parameters described in the
+  /// Row
+  static void addRow(std::string Arch, std::string Op, unsigned int C,
+                     double TP, unsigned int NU, std::string Pattern) {
+    CostTable::Tables[Op] = {C, TP, NU, Pattern};
   }
 };
 } // namespace macveth

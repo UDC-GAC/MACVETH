@@ -91,15 +91,6 @@ private:
   ScopHandler *SL;
 };
 
-/// Matching any type of statement no matter the assignment operator or
-/// expression type
-StatementMatcher anyStmt(std::string Name, std::string Lhs, std::string Rhs);
-/// Matching reduction statements
-StatementMatcher reductionStmt(std::string Name, std::string Lhs,
-                               std::string Rhs);
-/// Matching any type of binary operations
-StatementMatcher assignArrayBinOp(std::string Name, std::string Lhs,
-                                  std::string Rhs);
 /// Matcher for any for loop
 StatementMatcher forLoopMatcher(std::string Name, StatementMatcher InnerStmt);
 /// Matcher for NumLevels nested for loops with InnerStmt type

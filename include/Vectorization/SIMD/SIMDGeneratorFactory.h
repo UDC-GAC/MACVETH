@@ -9,6 +9,7 @@
 #ifndef MACVETH_SIMDGENERATORFACTORY_H
 #define MACVETH_SIMDGENERATORFACTORY_H
 
+#include "include/MVOptions.h"
 #include "include/Vectorization/SIMD/AVX2Gen.h"
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
 #include <string>
@@ -19,14 +20,12 @@ namespace macveth {
 /// backends
 class SIMDGeneratorFactory {
 public:
-  /// Types of architectures we currently support
-  enum Arch { AVX, AVX2, AVX512 };
-
-  /// FIXME
   /// Return a specific backend given as input
-  static SIMDGenerator *getBackend(SIMDGeneratorFactory::Arch Arc) {
+  static SIMDGenerator *getBackend(MVISA ISA) {
     SIMDGenerator *G;
-    switch (Arc) {
+    switch (ISA) {
+    case NATIVE:
+    case SSE:
     case AVX:
     case AVX2:
     case AVX512:

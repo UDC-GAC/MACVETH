@@ -16,44 +16,6 @@
 using namespace macveth;
 
 // ---------------------------------------------
-void AVX2Gen::populateTable() {
-  // Sandy Bridge (Intel Q1 2011), Bulldozer (AMD Q3 2011)
-  // Math operations
-  CostTable::addRow(NArch, "mul", 4, "_mm#W_#Pmul#S_#D");
-  CostTable::addRow(NArch, "*", 4, "_mm#W_#Pmul#S_#D");
-  CostTable::addRow(NArch, "add", 3, "_mm#W_#Padd#S_#D");
-  CostTable::addRow(NArch, "+", 3, "_mm#W_#Padd#S_#D");
-  CostTable::addRow(NArch, "sub", 3, "_mm#W_#Psub#S_#D");
-  CostTable::addRow(NArch, "-", 3, "_mm#W_#Psub#S_#D");
-  CostTable::addRow(NArch, "div", 15, "_mm#W_#Pdiv#S_#D");
-  CostTable::addRow(NArch, "/", 15, "_mm#W_#Pdiv#S_#D");
-  CostTable::addRow(NArch, "fmadd", 6, "_mm#W_#Pfmadd#S_#D");
-  CostTable::addRow(NArch, "fmsub", 6, "_mm#W_#Pfmsub#S_#D");
-  CostTable::addRow(NArch, "avg", 1, "_mm#W_avg_#D");
-  CostTable::addRow(NArch, "min", 5, "_mm#W_min_#D");
-  CostTable::addRow(NArch, "max", 5, "_mm#W_max_#D");
-  CostTable::addRow(NArch, "round", 5, "_mm#W_#Psvml_round#S_#D");
-  CostTable::addRow(NArch, "trunc", 5, "_mm#W_#Ptrunc#S_#D");
-  CostTable::addRow(NArch, "ceil", 5, "_mm#W_#Psvml_ceil#S_#D");
-  // Shuffling
-  CostTable::addRow(NArch, "permute", 1, "_mm#W_#Ppermute#S_#D");
-  CostTable::addRow(NArch, "shuffle", 1, "_mm#W_#Pshuffle#S_#D");
-  // Load operations
-  CostTable::addRow(NArch, "load", 1, "_mm#W_#Pload#S_#D");
-  CostTable::addRow(NArch, "gather", 10, "_mm#W_#Pgather#S_#D");
-  CostTable::addRow(NArch, "broadcast", 1, "_mm#W_#Pbroadcast#S_#D");
-  CostTable::addRow(NArch, "set", 1, "_mm#W_#Pset#S_#D");
-  // Store operation
-  CostTable::addRow(NArch, "store", 1, "_mm#W_#Pstore#S_#D");
-  CostTable::addRow(NArch, "stream", 1, "_mm#W_#Pstream#S_#D");
-  // Trigonometry
-  CostTable::addRow(NArch, "cos", 10, "_mm#W_#Pcos#S_#D");
-  CostTable::addRow(NArch, "sin", 10, "_mm#W_#Psin#S_#D");
-  CostTable::addRow(NArch, "tan", 10, "_mm#W_#Ptan#S_#D");
-  CostTable::addRow(NArch, "atanh", 10, "_mm#W_#Patanh#S_#D");
-}
-
-// ---------------------------------------------
 SIMDGenerator::SIMDInst createSIMDInst(std::string Op, std::string Res,
                                        std::string Width, std::string DataType,
                                        std::string PrefS, std::string SuffS,
@@ -67,7 +29,7 @@ SIMDGenerator::SIMDInst createSIMDInst(std::string Op, std::string Res,
       SIMDGenerator::replacePatterns(Pattern, Width, DataType, PrefS, SuffS);
 
   // Generate SIMD inst
-  SIMDGenerator::SIMDInst I(Res, AVXFunc, Args);
+  SIMDGenerator::SIMDInst I(Res, AVXFunc, Args, "", {});
 
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
@@ -181,7 +143,8 @@ SIMDGenerator::SIMDInst
 AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
                      std::string SuffS, std::list<std::string> Args,
                      SIMDGenerator::SIMDType SType,
-                     SIMDGenerator::SIMDInstListType *IL, std::string NameOp) {
+                     SIMDGenerator::SIMDInstListType *IL, std::string NameOp,
+                     std::string MVFunc, std::list<std::string> MVArgs) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
@@ -192,7 +155,7 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
 
   // Generate SIMD inst
   SIMDGenerator::SIMDInst I((NameOp == "") ? V.getName() : NameOp, AVXFunc,
-                            Args);
+                            Args, MVFunc, MVArgs);
 
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);

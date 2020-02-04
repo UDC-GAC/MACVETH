@@ -60,15 +60,44 @@ static llvm::cl::opt<std::string>
     CDAGInFile("input-cdag", cl::cat(MacvethCategory),
                llvm::cl::desc("Input file to read the custom CDAG placement"));
 
-static llvm::cl::opt<MArch> Architecture(
+static llvm::cl::opt<MVISA>
+    ISA("misa", llvm::cl::desc("Target ISA"), llvm::cl::init(MVISA::NATIVE),
+        llvm::cl::cat(MacvethCategory),
+        llvm::cl::values(clEnumValN(MVISA::NATIVE, "native",
+                                    "Detect ISA of the architecture"),
+                         clEnumValN(MVISA::AVX, "sse", "SSE ISA"),
+                         clEnumValN(MVISA::AVX, "avx", "AVX ISA"),
+                         clEnumValN(MVISA::AVX2, "avx2", "AVX2 ISA"),
+                         clEnumValN(MVISA::AVX512, "avx512", "AVX512 ISA")));
+
+static llvm::cl::opt<MVArch> Architecture(
     "march", llvm::cl::desc("Target architecture"),
-    llvm::cl::init(MArch::NATIVE), llvm::cl::cat(MacvethCategory),
-    llvm::cl::values(clEnumValN(MArch::NATIVE, "native",
-                                "Detect ISA of the architecture"),
-                     clEnumValN(MArch::AVX, "sse", "SSE ISA"),
-                     clEnumValN(MArch::AVX, "avx", "AVX ISA"),
-                     clEnumValN(MArch::AVX2, "avx2", "AVX2 ISA"),
-                     clEnumValN(MArch::AVX512, "avx512", "AVX512 ISA")));
+    llvm::cl::init(MVArch::AUTODETECT), llvm::cl::cat(MacvethCategory),
+    llvm::cl::values(
+        clEnumValN(MVArch::AUTODETECT, "native", "Detect the architecture"),
+        clEnumValN(MVArch::Nehalem, "nehalem",
+                   "Intel Nehalem (2009) architecture (tock): SSE4.2"),
+        clEnumValN(MVArch::Westmere, "westmere",
+                   "Intel Westmere (2010) architecture (tick): SSE4.2"),
+        clEnumValN(MVArch::SandyBridge, "sandybridge",
+                   "Intel SandyBridge (2011) architecture (tock): AVX"),
+        clEnumValN(MVArch::IvyBridge, "ivybridge",
+                   "Intel IvyBridge (2012) architecture (tick): AVX"),
+        clEnumValN(MVArch::Haswell, "haswell",
+                   "Intel Haswell (2013) architecture (tock): AVX2"),
+        clEnumValN(MVArch::Broadwell, "broadwell",
+                   "Intel Broadwell (2014) architecture (tick): AVX2"),
+        clEnumValN(MVArch::Skylake, "skylake",
+                   "Intel Skylake (2015) architecture (tock): AVX512"),
+        clEnumValN(MVArch::KabyLake, "kabylake",
+                   "Intel Kaby Lake (2016) architecture (tock): AVX2"),
+        clEnumValN(MVArch::CoffeeLake, "coffeelake",
+                   "Intel Coffee Lake (2017) architecture (tock): AVX2"),
+        clEnumValN(MVArch::CascadeLake, "cascadelake",
+                   "Intel Cascade Lake (2019) architecture (tock): AVX512")
+
+            ));
+
 /// FMA support flag
 static llvm::cl::opt<bool> FMA("fma",
                                llvm::cl::desc("Explicitly tell if FMA support"),
@@ -107,6 +136,7 @@ int main(int argc, const char **argv) {
   MVOptions::OutFile = OutputFile.getValue();
   MVOptions::InCDAGFile = CDAGInFile.getValue();
   MVOptions::OutDebugFile = DebugFile.getValue();
+  MVOptions::ISA = ISA.getValue();
   MVOptions::Arch = Architecture.getValue();
   MVOptions::FMASupport = FMA.getValue();
   MVOptions::Debug = Debug.getValue();
