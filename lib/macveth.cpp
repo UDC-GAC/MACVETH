@@ -117,7 +117,7 @@ static llvm::cl::opt<bool> MacroFree(
 
 /// Output debug
 static llvm::cl::opt<std::string>
-    DebugFile("output-debug", cl::cat(MacvethCategory),
+    DebugFile("debug-file", cl::cat(MacvethCategory),
               llvm::cl::desc("Output file to print the debug information"));
 
 // Main program

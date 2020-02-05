@@ -5,7 +5,9 @@
 Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
   if (MVOptions::InCDAGFile != "") {
     setPlcmtFromFile(NL);
-    NL.sort([](Node *Lhs, Node *Rhs) { return *Lhs < *Rhs; });
+    NL.sort([](Node *Lhs, Node *Rhs) {
+      return Lhs->getSchedInfo().Plcmnt < Rhs->getSchedInfo().Plcmnt;
+    });
     return NL;
   }
   Node::NodeListType NewNL;

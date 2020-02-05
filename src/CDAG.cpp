@@ -19,8 +19,8 @@ namespace macveth {
 
 // ---------------------------------------------
 int computeMaxDepth(Node *N) {
-  /// This algorithm is not efficient if the CDAG is big. At some point more
-  /// intelligent strategies should be used instead.
+  // This algorithm is not efficient if the CDAG is big. At some point more
+  // intelligent strategies should be used instead.
   if (N->getInputNum() == 0) {
     return 0;
   } else {
@@ -32,37 +32,37 @@ int computeMaxDepth(Node *N) {
   }
 }
 
-// FIXME ---------------------------------------------
-
+//---------------------------------------------
 std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
                                                   SIMDGenerator *SG) {
+  // Returning list
   std::list<VectorIR::VectorOP> VList;
   Node *VLoadA[64];
   Node *VLoadB[64];
   Node *VOps[64];
   int Cursor = 0;
 
-  /// Working with a copy
+  // Working with a copy
   Node::NodeListType NL(NList);
-  // The sorting of the list is done by comparing the FreeSched value and the
-  // StmtID, which is sequential when creating each node. This way we have a
-  // chronological order of the nodes.
 
-  Utils::printDebug("CDAG", "Printing nodes");
+  // Debugging options
   for (Node *N : NL) {
-    Utils::printDebug("NODE", N->toString());
+    Utils::printDebug("CDAG", N->toString());
   }
 
-  // Until the list is over
+  // Until the list is empty
 repeat:
+  // Get vector length
   int VL = SG->getMaxVectorSize();
-  // int VL = 4;
+  // Consume nodes
   while (!NL.empty()) {
-
+    // Consume the first one
     VOps[Cursor] = NL.front();
     if ((Cursor > 0) &&
+        (VOps[Cursor]->getSchedInfo().Plcmnt !=
+         VOps[Cursor - 1]->getSchedInfo().Plcmnt) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
-      Utils::printDebug("CDAG", "Full OPS of same type = " +
+      Utils::printDebug("CDAG", "Full OPS of same type and placement = " +
                                     VOps[Cursor - 1]->getValue());
       break;
     }
@@ -76,6 +76,7 @@ repeat:
   if (IsPartial) {
     Utils::printDebug("CDAG", "isPartial: " + std::to_string(Cursor));
   }
+
   // Compute memory operands for the operations fetched above
   int i = 0;
   while ((i < Cursor) && (VOps[i] != nullptr)) {
@@ -86,6 +87,7 @@ repeat:
     Aux.pop_front();
   }
 
+  // Debugging
   for (int n = 0; n < Cursor; ++n) {
     Utils::printDebug("CDAG", VOps[n]->getRegisterValue() + " = " +
                                   VLoadA[n]->getRegisterValue() + " " +
@@ -104,22 +106,20 @@ repeat:
     }
     goto repeat;
   }
+
   return VList;
 }
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
+  // Be clean
   VectorIR::clearMappigs();
 
+  // Set placement according to the desired algorithm
   Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
 
-  if (MVOptions::InCDAGFile != "") {
-    PlcmntAlgo::setPlcmtFromFile(G->getNodeListOps());
-  }
-
   // Execute greedy algorithm
-  std::list<VectorIR::VectorOP> VList =
-      getVectorOpFromCDAG(G->getNodeListOps(), SG);
+  std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(NL, SG);
 
   // If debug enabled, it will print the VectorOP obtained
   for (auto V : VList) {
