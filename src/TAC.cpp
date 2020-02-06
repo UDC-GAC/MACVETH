@@ -69,17 +69,25 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
 }
 
 // ---------------------------------------------
-void TAC::exprToTAC(clang::CompoundStmt *CS, std::list<TAC> *TacList) {
+void TAC::exprToTAC(clang::CompoundStmt *CS, std::vector<Stmt *> *SList,
+                    std::list<TAC> *TacList) {
   TAC::RegVal = 0;
   for (auto ST : CS->body()) {
     clang::Expr *S = dyn_cast<clang::Expr>(ST);
-    /// FIXME: bug for test_3darray
+    // If the Statement can not be converted onto an Expr, then we are not
+    // interested on in: maybe it is a loop that will be parsed using the AST
+    // matchers
     if (S == NULL) {
-      // llvm::llvm_unreachable_internal();
-      return;
+      continue;
     }
+
+    // If the Statement can be parsed and replaced with TACs, then we add it
+    SList->push_back(ST);
+
     clang::BinaryOperator *SBin = NULL;
     bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
+
+    // Check if binary expression
     std::list<TAC> TL;
     if (STypeBin) {
       binaryOperator2TAC(SBin, &TL, -1);
@@ -88,6 +96,7 @@ void TAC::exprToTAC(clang::CompoundStmt *CS, std::list<TAC> *TacList) {
       }
       continue;
     }
+    // New TAC will look like: TmpA = MVExpr(S) OP NULL; (not binary)
     MVExpr *TmpA = MVExprFactory::createMVExpr(getNameTempReg(), true);
     MVExpr *TmpB = MVExprFactory::createMVExpr(S);
     MVOp OP = TAC::getMVOPfromExpr(TmpB);

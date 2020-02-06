@@ -10,8 +10,7 @@ Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
     });
     return NL;
   }
-  Node::NodeListType NewNL;
-  return NewNL;
+  return NL;
 }
 
 // ---------------------------------------------

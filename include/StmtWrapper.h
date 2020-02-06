@@ -83,10 +83,7 @@ public:
     auto E = Result.Nodes.getNodeAs<clang::CompoundStmt>("ROI");
     /// Get loop information
     this->LoopL = getLoopList(Result);
-    for (auto ST : E->body()) {
-      this->S.push_back((Stmt *)ST);
-    }
-    TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->TacList);
+    TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->S, &this->TacList);
   }
 
   /// Perform unrolling for a given statement given its unroll factor and the

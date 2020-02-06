@@ -59,8 +59,8 @@ repeat:
     // Consume the first one
     VOps[Cursor] = NL.front();
     if ((Cursor > 0) &&
-        (VOps[Cursor]->getSchedInfo().Plcmnt !=
-         VOps[Cursor - 1]->getSchedInfo().Plcmnt) &&
+        //(VOps[Cursor]->getSchedInfo().Plcmnt !=
+        // VOps[Cursor - 1]->getSchedInfo().Plcmnt) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
       Utils::printDebug("CDAG", "Full OPS of same type and placement = " +
                                     VOps[Cursor - 1]->getValue());

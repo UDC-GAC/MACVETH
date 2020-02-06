@@ -99,8 +99,8 @@ public:
                                  std::list<TAC> *TacList, int Val);
 
   /// Inserts TACs in the input TacList
-  // static void exprToTAC(clang::Expr *S, std::list<TAC> *TacList, int Val);
-  static void exprToTAC(clang::CompoundStmt *S, std::list<TAC> *TacList);
+  static void exprToTAC(clang::CompoundStmt *CS, std::vector<Stmt *> *SList,
+                        std::list<TAC> *TacList);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,

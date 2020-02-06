@@ -85,6 +85,7 @@ static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n),
       for (int k = 0; k < _PB_N; k++) {
         A[i][j][k] = x[j] * C[i][j] + A[i][j][k];
       }
+      C[i][j] = C[i][j] * 4.0;
     }
   }
 #pragma endmacveth
