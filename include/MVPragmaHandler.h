@@ -32,7 +32,7 @@ struct ScopLoc {
   unsigned StartLine;
   unsigned Start;
   unsigned End;
-  bool Visited = false;
+  std::list<std::string> DimVisited = {};
 
   struct PragmaArgs {
     bool Unroll = true;
@@ -44,7 +44,7 @@ struct ScopLoc {
   PragmaArgs PA;
 };
 
-/// List of pairs of #pragma macveth and #pragma mvend Locations.
+/// List of pairs of #pragma macveth and #pragma macvethend Locations.
 struct ScopHandler {
   std::vector<ScopLoc> List;
 

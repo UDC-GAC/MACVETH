@@ -50,9 +50,16 @@ ScopLoc *getScopLoc(StmtWrapper *S, ScopHandler *SL) {
 // ---------------------------------------------
 bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
   auto Scop = getScopLoc(S, this->SL);
-  if ((Scop != NULL) && (!Scop->Visited)) {
-    Scop->Visited = true;
-    return true;
+  if ((Scop != NULL)) {
+    bool NewStmt = false;
+    for (auto L : S->getLoopInfo()) {
+      if (std::find(Scop->DimVisited.begin(), Scop->DimVisited.end(), L.Dim) ==
+          Scop->DimVisited.end()) {
+        Scop->DimVisited.push_back(L.Dim);
+        NewStmt = true;
+      }
+    }
+    return NewStmt;
   }
   return false;
 }

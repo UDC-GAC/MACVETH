@@ -32,9 +32,29 @@ This will create an executable in the same folder called 'macveth'
 ** Executing:
 ------------
 
-User may execute the compiler just
+User may execute the compiler just typing:
 
 $> ./macveth <input_file.c>
+
+For displaying all the available options, type:
+
+$> ./macveth --help
+
+* CLI Options:
+--------------
+
+In this section we will comment in detail all the options available:
+
+    --debug: Print debug comments, from TAC creation to the backend generator
+    --debug-file=<file>: Print debug output to file
+    --fma: FMA support in the architecture
+    --input-cdag=<file>: Input file with placements for the CDAG
+    --macro-free: The backend will generate intrinsics and will not use the
+                  Vector API for generating SIMD code
+    --march=<arch>: Target architecture
+    --misa=<isa>: Target ISA
+    -o=<output>: Output file, otherwise macveth_output.c
+    -p=<path>: Build path
 
 * Region-of-interest in our code:
 ----------------------------------
@@ -74,8 +94,10 @@ account when using this compiler:
         + Initialization of variables within the loop is allowed
         + There are no increments in the body of the loop of the region of
           interest
-    - Statement related:
-    - Known issues:
+        + One #pragma per loop nest
 
+* License:
+----------
 
+Under development, code disclosed under request.
 

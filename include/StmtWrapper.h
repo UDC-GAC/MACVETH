@@ -63,10 +63,10 @@ public:
     long LeftOver = -1;
 
     /// For debugging purposes
-    void print() {
-      std::cout << "[LOOP] " << Dim
-                << "; init val = " << std::to_string(InitVal)
-                << ", upperbound = " << std::to_string(UpperBound) << std::endl;
+    std::string toString() {
+      std::string Str = Dim + "; init val = " + std::to_string(InitVal) +
+                        ", upperbound = " + std::to_string(UpperBound);
+      return Str;
     }
   };
 

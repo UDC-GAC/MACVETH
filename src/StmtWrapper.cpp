@@ -72,6 +72,7 @@ StmtWrapper::getLoopList(const MatchFinder::MatchResult &Result) {
     }
 
     L.push_back(Loop);
+    Utils::printDebug("StmtWrapper", Loop.toString());
     // Check if next loop
     ForLoop =
         Result.Nodes.getNodeAs<clang::ForStmt>("forLoop" + std::to_string(++n));
