@@ -239,6 +239,14 @@ public:
   /// list of VectorOP
   SIMDInstListType getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList);
 
+  virtual SIMDGenerator::SIMDInst
+  addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
+              std::string SuffS, std::list<std::string> OPS,
+              SIMDGenerator::SIMDType SType,
+              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
+              std::string MVFunc = "", std::list<std::string> MVArgs = {},
+              int TacOrder = -1) = 0;
+
   /// Get maximum vector operands size
   virtual int getMaxVectorSize() { return 4; };
 

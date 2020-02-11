@@ -139,12 +139,11 @@ std::string AVX2Gen::getRegisterType(VectorIR::VDataType DT,
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInst
-AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
-                     std::string SuffS, std::list<std::string> Args,
-                     SIMDGenerator::SIMDType SType,
-                     SIMDGenerator::SIMDInstListType *IL, std::string NameOp,
-                     std::string MVFunc, std::list<std::string> MVArgs) {
+SIMDGenerator::SIMDInst AVX2Gen::addSIMDInst(
+    VectorIR::VOperand V, std::string Op, std::string PrefS, std::string SuffS,
+    std::list<std::string> Args, SIMDGenerator::SIMDType SType,
+    SIMDGenerator::SIMDInstListType *IL, std::string NameOp, std::string MVFunc,
+    std::list<std::string> MVArgs, int TacOrder) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
