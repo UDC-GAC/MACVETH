@@ -208,6 +208,8 @@ def exectest(path_suite, name, mv_args, compiler_flags=" -mavx2 -mfma "):
     print_results(path_suite, passed_tests, failed_tests, tests_name)
 
 
+compile_macveth()
+
 # Fulltest
 path = sys.argv[1]
 name = sys.argv[2]

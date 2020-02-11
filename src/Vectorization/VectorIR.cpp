@@ -228,6 +228,11 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
                              Node *VLoadB[])
     : OpA(VL, VLoadA, false), OpB(VL, VLoadB, false), R(VL, VOps, true) {
 
+  // The assumption is that as all operations are the same, then all the
+  // operations have the same TAC order
+  this->Order = VOps[0]->getTacOrder();
+
+  // Vector type will depend on the operations and operations, logically
   this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
 
   // Name: operation (assuming all operations have the same value, which is a

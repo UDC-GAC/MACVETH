@@ -46,7 +46,7 @@ public:
   /// Holds information regarding the scheduling for this Node
   struct SchedInfo {
     /// Unique ID of the Statement/Node
-    int StmtID = -1;
+    int NodeID = -1;
     /// TAC order
     int TacOrder = 0;
     /// Topological order of this node
@@ -90,7 +90,7 @@ public:
     this->T = NODE_MEM;
     this->Value = TE->getExprStr();
     this->MV = TE;
-    this->SI.StmtID = Node::UUID++;
+    this->SI.NodeID = Node::UUID++;
   }
 
   /// Copy constructor for cloning
@@ -110,7 +110,8 @@ public:
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
-    this->SI.StmtID = Node::UUID++;
+    this->SI.NodeID = Node::UUID++;
+    this->SI.TacOrder = T.getTacOrder();
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
     updateIfStore();
@@ -123,7 +124,8 @@ public:
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
-    this->SI.StmtID = Node::UUID++;
+    this->SI.NodeID = Node::UUID++;
+    this->SI.TacOrder = T.getTacOrder();
     Node *NB = findOutputNode(T.getB()->getExprStr(), L);
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);
@@ -140,6 +142,9 @@ public:
   /// Schedule info is needed for the algorithms to perform permutations in
   /// nodes
   void setFreeSchedInfo(int FS) { this->SI.FreeSched = FS; }
+
+  /// Set the TAC order
+  void setTacOrder(int TacOrder) { this->SI.TacOrder = TacOrder; }
 
   /// Set Plcmnt value
   void setPlcmt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
@@ -164,7 +169,9 @@ public:
   NodeListType getInputs() { return this->I; }
   /// Get info regarding its scheduling
   SchedInfo getSchedInfo() { return this->SI; }
-
+  /// Get TAC order
+  int getTacOrder() { return this->SI.TacOrder; }
+  /// Set the type of the node
   void setNodeType(NodeType T) { this->T = T; }
 
   /// Get data type of MVExpr as string
@@ -236,7 +243,7 @@ public:
   /// For sorting lists of nodes
   bool operator<(const Node &N) {
     if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
-      return (this->getSchedInfo().StmtID < N.SI.StmtID);
+      return (this->getSchedInfo().NodeID < N.SI.NodeID);
       // return (this->getSchedInfo().TacOrder < N.SI.TacOrder);
     } else {
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);

@@ -56,8 +56,7 @@ void MACVETHFrontendAction::EndSourceFileAction() {
   // from the ASTConsumer
   SourceManager &SM = TheRewriter.getSourceMgr();
   std::error_code ErrorCode;
-  std::string OutFile =
-      (MVOptions::OutFile == "") ? "macveth_output.c" : MVOptions::OutFile;
+  std::string OutFile = MVOptions::OutFile;
   OutFile = Utils::getExePath() + OutFile;
   llvm::raw_fd_ostream outFile(OutFile, ErrorCode, llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);

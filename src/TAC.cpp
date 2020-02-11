@@ -92,6 +92,7 @@ void TAC::exprToTAC(clang::CompoundStmt *CS, std::vector<Stmt *> *SList,
     if (STypeBin) {
       binaryOperator2TAC(SBin, &TL, -1);
       for (auto T : TL) {
+        T.setTacOrder(SList->size());
         TacList->push_back(T);
       }
       continue;

@@ -49,6 +49,8 @@ public:
   /// Default value
   static constexpr int UBFallback = 4;
 
+  friend clang::Stmt;
+
   /// Helper structure to handle the loop information for this statement
   struct LoopInfo {
     /// Name of dimension
@@ -78,11 +80,20 @@ public:
 
   /// Empty constructor
   StmtWrapper(){};
+
+  /// Be clean
+  ~StmtWrapper() {
+    for (Stmt *V : this->S) {
+      // delete V;
+    }
+  };
+
   /// Full constructor that parses the loop hierarchy
   StmtWrapper(const MatchFinder::MatchResult &Result) {
     auto E = Result.Nodes.getNodeAs<clang::CompoundStmt>("ROI");
     /// Get loop information
     this->LoopL = getLoopList(Result);
+    /// Conver the expression to a set of TACs
     TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->S, &this->TacList);
   }
 

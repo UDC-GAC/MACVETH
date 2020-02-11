@@ -133,7 +133,8 @@ int main(int argc, const char **argv) {
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
   /// MVOptions
-  MVOptions::OutFile = OutputFile.getValue();
+  MVOptions::OutFile =
+      OutputFile.getValue() == "" ? "macveth_output.c" : OutputFile.getValue();
   MVOptions::InCDAGFile = CDAGInFile.getValue();
   MVOptions::OutDebugFile = DebugFile.getValue();
   MVOptions::ISA = ISA.getValue();

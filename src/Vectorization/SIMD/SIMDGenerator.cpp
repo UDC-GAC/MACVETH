@@ -251,13 +251,15 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   // Arranging the operation
   switch (V.VT) {
   case VectorIR::VType::MAP:
+    Utils::printDebug("SIMDGen", "map");
     mapOperation(V, &IL);
     break;
   case VectorIR::VType::REDUCE:
+    Utils::printDebug("SIMDGen", "reduce");
     reduceOperation(V, &IL);
     break;
   case VectorIR::VType::SEQ:
-    std::cout << "[DEBUG] Sequential case\n";
+    Utils::printDebug("SIMDGen", "sequential");
     IL = vseq(V);
     break;
   };
@@ -290,7 +292,6 @@ SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
 
 // ---------------------------------------------
 void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name) {
-  // if (!Utils::contains(SIMDGenerator::RegDeclared[Type], Name)) {
   if (!(std::find(RegDeclared[Type].begin(), RegDeclared[Type].end(), Name) !=
         RegDeclared[Type].end())) {
     RegDeclared[Type].push_back(Name);

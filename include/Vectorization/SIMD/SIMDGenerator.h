@@ -58,18 +58,23 @@ public:
   /// Wrap for representing the SIMDInst not just as single strings to print,
   /// but as a set of fields
   struct SIMDInst {
+    /// Unique identifier generator
     static inline unsigned int UID = 0;
+    /// Unique identifier
     unsigned int SIMD_UID = 0;
+    /// TAC order
+    int TacOrder = -1;
     /// Result register name
     std::string Result;
     /// Signature of the function
     std::string FuncName;
-    /// Signature of the function
+    /// Signature of the function (macro approach)
     std::string MVFuncName;
     /// Type of the function
     SIMDType SType;
     /// List of *sorted* arguments of the function
     std::list<std::string> Args;
+    /// List of *sorted* arguments of the function (macro approach)
     std::list<std::string> MVArgs;
     /// Cost of the instruction
     int Cost = 0;
@@ -96,9 +101,9 @@ public:
 
     /// Constructor
     SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
-             std::string MVFN, std::list<std::string> MVArgs)
-        : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFN),
-          MVArgs(MVArgs) {
+             std::string MVFN, std::list<std::string> MVArgs, int TacOrder)
+        : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFN), MVArgs(MVArgs),
+          TacOrder(TacOrder) {
       this->SIMD_UID = SIMDInst::UID++;
     }
   };
@@ -168,9 +173,6 @@ public:
   virtual SIMDInstListType vdiv(VectorIR::VectorOP V) = 0;
   /// Generate modulo operations
   virtual SIMDInstListType vmod(VectorIR::VectorOP V) = 0;
-
-  // TODO basic math functions
-  // TODO trigonometric functions
 
   // Reduction operations
 

@@ -17,21 +17,6 @@
 
 namespace macveth {
 
-// ---------------------------------------------
-int computeMaxDepth(Node *N) {
-  // This algorithm is not efficient if the CDAG is big. At some point more
-  // intelligent strategies should be used instead.
-  if (N->getInputNum() == 0) {
-    return 0;
-  } else {
-    int Max = 0;
-    for (Node *T : N->getInputs()) {
-      Max = std::max(Max, computeMaxDepth(T));
-    }
-    return 1 + Max;
-  }
-}
-
 //---------------------------------------------
 std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
                                                   SIMDGenerator *SG) {
@@ -58,9 +43,14 @@ repeat:
   while (!NL.empty()) {
     // Consume the first one
     VOps[Cursor] = NL.front();
+    // FIXME: how do you solve this? I mean, for reductions, for instance,
+    // you will have different Plcmnts, something like: 1,2,3,4; but this
+    // algorithm should be able to select them. So maybe when selecting
+    // operations you should only look at the type of operations, but not at
+    // the Plcmnt or schedule.
+    //(VOps[Cursor]->getSchedInfo().Plcmnt !=
+    // VOps[Cursor - 1]->getSchedInfo().Plcmnt) &&
     if ((Cursor > 0) &&
-        //(VOps[Cursor]->getSchedInfo().Plcmnt !=
-        // VOps[Cursor - 1]->getSchedInfo().Plcmnt) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
       Utils::printDebug("CDAG", "Full OPS of same type and placement = " +
                                     VOps[Cursor - 1]->getValue());
@@ -133,6 +123,21 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
 }
 
 // ---------------------------------------------
+int computeMaxDepth(Node *N) {
+  // This algorithm is not efficient if the CDAG is big. At some point more
+  // intelligent strategies should be used instead.
+  if (N->getInputNum() == 0) {
+    return 0;
+  } else {
+    int Max = 0;
+    for (Node *T : N->getInputs()) {
+      Max = std::max(Max, computeMaxDepth(T));
+    }
+    return 1 + Max;
+  }
+}
+
+// ---------------------------------------------
 void CDAG::computeFreeSchedule(Node::NodeListType NL) {
   for (Node *N : NL) {
     N->setFreeSchedInfo(computeMaxDepth(N));
@@ -145,20 +150,17 @@ void CDAG::computeFreeSchedule(CDAG *C) {
 }
 
 // ---------------------------------------------
-void replaceOutput(TAC T, Node *N) {
-  N->setOutputName(T.getA()->getExprStr());
-  N->setNodeType(Node::NODE_STORE);
-}
-
-// ---------------------------------------------
 Node *CDAG::insertTac(TAC T, Node *PrevNode, Node::NodeListType L) {
-  // if ((T.getMVOP().isAssignment()) && (PrevNode != nullptr)) {
+  // Special cases are those Nodes which hold an assignment after the operation
   if (T.getMVOP().isAssignment()) {
     // Assumption: a = b op c, c is always the "connector"
     if (Node::findOutputNode(T.getC()->getExprStr(), L) == NULL) {
       goto no_output;
     }
-    replaceOutput(T, Node::findOutputNode(T.getC()->getExprStr(), L));
+    Node *N = Node::findOutputNode(T.getC()->getExprStr(), L);
+    N->setOutputName(T.getA()->getExprStr());
+    N->setNodeType(Node::NODE_STORE);
+    N->setTacOrder(T.getTacOrder());
     return nullptr;
   }
 no_output:
@@ -170,6 +172,7 @@ no_output:
 // ---------------------------------------------
 CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
   CDAG *G = new CDAG();
+  // Be clean
   Node::restart();
   Node *PrevNode = nullptr;
   for (TAC T : TL) {

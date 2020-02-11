@@ -188,6 +188,8 @@ public:
     VOperand OpB;
     /// Vector result
     VOperand R;
+    /// Order of the vector operation
+    int Order = -1;
     /// Cost associated to this concrete VectorOP
     unsigned int Cost = 0;
     /// Check if it is a BinaryOperation

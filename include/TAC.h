@@ -59,6 +59,13 @@ public:
   /// Empty constructor
   TAC(){};
 
+  /// Destructor
+  ~TAC() {
+    // delete A;
+    // delete B;
+    // delete C;
+  }
+
   /// Constructor when using MVOp for the operator
   TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP)
       : A(A), B(B), C(C), MVOP(MVOP), TacOrder(TAC::TacUUID++) {}
@@ -75,6 +82,10 @@ public:
   MVExpr *getC() { return this->C; };
   /// Set third operand of the TAC expression
   void setC(MVExpr *C) { this->C = C; };
+  /// Set TacOrder value
+  void setTacOrder(int TacOrder) { this->TacOrder = TacOrder; }
+  /// Get that TacOrder value
+  int getTacOrder() { return this->TacOrder; }
 
   /// Get macveth operation type
   MVOp getMVOP() { return this->MVOP; };
@@ -82,9 +93,6 @@ public:
   /// Just for debugging purposes
   void printTAC() {
     std::string Op = this->MVOP.toString();
-    // std::cout << "t: " << this->getA()->getExprStr() << ", "
-    //          << this->getB()->getExprStr() << ", "
-    //          << this->getC()->getExprStr() << ", " << Op << std::endl;
     Op = "t: " + this->getA()->getExprStr() + ", " +
          this->getB()->getExprStr() + ", " + this->getC()->getExprStr() + ", " +
          Op;

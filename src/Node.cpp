@@ -17,14 +17,14 @@ std::string Node::toString() {
   Str +=
       "\tTacOrder\t= " + std::to_string(this->getSchedInfo().TacOrder) + "\n";
   Str += "\tPlcmnt\t\t= " + std::to_string(this->getSchedInfo().Plcmnt) + "\n";
-  Str += "\tStmtID\t\t= " + std::to_string(this->getSchedInfo().StmtID) + "\n";
+  Str += "\tNodeID\t\t= " + std::to_string(this->getSchedInfo().NodeID) + "\n";
   Str += "\tOutput\t\t= " + this->getOutputInfo().Name + "\n";
   Str += "\tInput1\t\t= " + this->getInputs().front()->getValue() + " (ID = " +
-         std::to_string(this->getInputs().front()->getSchedInfo().StmtID) +
+         std::to_string(this->getInputs().front()->getSchedInfo().NodeID) +
          "); NODE_MEM = " +
          std::to_string(this->getInputs().front()->T == NODE_MEM) + "\n";
   Str += "\tInput2\t\t= " + this->getInputs().back()->getValue() + " (ID = " +
-         std::to_string(this->getInputs().back()->getSchedInfo().StmtID) +
+         std::to_string(this->getInputs().back()->getSchedInfo().NodeID) +
          "); NODE_MEM = " +
          std::to_string(this->getInputs().back()->T == NODE_MEM) + "\n";
   Str += "----------------------------------------";

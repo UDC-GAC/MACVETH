@@ -99,6 +99,7 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // Computing the free schedule of the CDAG created
   CDAG::computeFreeSchedule(G);
 
+  // Get SIMD generator according to the option chosen
   SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
 
   // Computing the cost model of the CDAG created
@@ -119,8 +120,10 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
                                        " += " + std::to_string(UpperBound));
   }
 
-  // Print new lines
+  // FIXME: here SIMD inst should be place according to the statement they
+  // belong
   for (auto InsSIMD : SIMDGen->renderSIMDasString(SInfo.SIMDList)) {
+    // for (auto InsSIMD : SInfo.SIMDList) {
     Rewrite.InsertText(SWrap->getStmt()[0]->getBeginLoc(), InsSIMD + "\n", true,
                        true);
   }
@@ -128,7 +131,12 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // Comment statements
   for (auto S : SWrap->getStmt()) {
     Rewrite.InsertText(S->getBeginLoc(), "// statement replaced: ", true, true);
+    // Rewrite.InsertText(S->getSourceRange().getEnd(), "*/", true, true);
   }
+
+  // Be clean
+  delete SWrap;
+  delete G;
 }
 
 typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
