@@ -105,6 +105,7 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // Computing the cost model of the CDAG created
   auto SInfo = CDAG::computeCostModel(G, SIMDGen);
 
+  // FIXME: create epilog as well
   // Unroll factor applied to the for header
   int Inc = 1;
   for (auto Loop : SWrap->getLoopInfo()) {
@@ -120,18 +121,22 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
                                        " += " + std::to_string(UpperBound));
   }
 
-  // FIXME: here SIMD inst should be place according to the statement they
-  // belong
-  for (auto InsSIMD : SIMDGen->renderSIMDasString(SInfo.SIMDList)) {
-    // for (auto InsSIMD : SInfo.SIMDList) {
+  // Printing the registers we are going to use
+  for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
     Rewrite.InsertText(SWrap->getStmt()[0]->getBeginLoc(), InsSIMD + "\n", true,
                        true);
+  }
+  for (auto InsSIMD : SInfo.SIMDList) {
+    Rewrite.InsertText(SWrap->getStmt()[SWrap->getTacToStmt()[InsSIMD.TacOrder]]
+                           ->getBeginLoc(),
+                       InsSIMD.render() + ";\t// cost = " +
+                           std::to_string(InsSIMD.Cost) + "\n",
+                       true, true);
   }
 
   // Comment statements
   for (auto S : SWrap->getStmt()) {
     Rewrite.InsertText(S->getBeginLoc(), "// statement replaced: ", true, true);
-    // Rewrite.InsertText(S->getSourceRange().getEnd(), "*/", true, true);
   }
 
   // Be clean

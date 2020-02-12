@@ -20,7 +20,8 @@ SIMDGenerator::SIMDInst createSIMDInst(std::string Op, std::string Res,
                                        std::string Width, std::string DataType,
                                        std::string PrefS, std::string SuffS,
                                        std::list<std::string> Args,
-                                       SIMDGenerator::SIMDType SType) {
+                                       SIMDGenerator::SIMDType SType,
+                                       int TacOrder) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
@@ -29,7 +30,7 @@ SIMDGenerator::SIMDInst createSIMDInst(std::string Op, std::string Res,
       SIMDGenerator::replacePatterns(Pattern, Width, DataType, PrefS, SuffS);
 
   // Generate SIMD inst
-  SIMDGenerator::SIMDInst I(Res, AVXFunc, Args, "", {});
+  SIMDGenerator::SIMDInst I(Res, AVXFunc, Args, "", {}, TacOrder);
 
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
@@ -62,7 +63,7 @@ SIMDGenerator::SIMDInst AVX2Gen::genMultAccOp(SIMDGenerator::SIMDInst Mul,
   }
   // Adding SIMD inst to the list
   Fuse = createSIMDInst(Op, Res, Width, DataType, PrefS, SuffS, Args,
-                        SIMDGenerator::SIMDType::VOPT);
+                        SIMDGenerator::SIMDType::VOPT, Acc.TacOrder);
 
   return Fuse;
 }
@@ -139,11 +140,12 @@ std::string AVX2Gen::getRegisterType(VectorIR::VDataType DT,
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInst AVX2Gen::addSIMDInst(
-    VectorIR::VOperand V, std::string Op, std::string PrefS, std::string SuffS,
-    std::list<std::string> Args, SIMDGenerator::SIMDType SType,
-    SIMDGenerator::SIMDInstListType *IL, std::string NameOp, std::string MVFunc,
-    std::list<std::string> MVArgs, int TacOrder) {
+SIMDGenerator::SIMDInst
+AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
+                     std::string SuffS, std::list<std::string> Args,
+                     SIMDGenerator::SIMDType SType,
+                     SIMDGenerator::SIMDInstListType *IL, std::string NameOp,
+                     std::string MVFunc, std::list<std::string> MVArgs) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
@@ -153,8 +155,9 @@ SIMDGenerator::SIMDInst AVX2Gen::addSIMDInst(
                       getMapType(V.getDataType()), PrefS, SuffS);
 
   // Generate SIMD inst
+
   SIMDGenerator::SIMDInst I((NameOp == "") ? V.getName() : NameOp, AVXFunc,
-                            Args, MVFunc, MVArgs);
+                            Args, MVFunc, MVArgs, V.Order);
 
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);

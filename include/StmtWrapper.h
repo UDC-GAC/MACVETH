@@ -94,7 +94,8 @@ public:
     /// Get loop information
     this->LoopL = getLoopList(Result);
     /// Conver the expression to a set of TACs
-    TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->S, &this->TacList);
+    this->TacToStmt =
+        TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->S, &this->TacList);
   }
 
   /// Perform unrolling for a given statement given its unroll factor and the
@@ -105,6 +106,9 @@ public:
 
   /// Get LoopInfo
   LoopList getLoopInfo() { return this->LoopL; }
+
+  /// Return the mapping of TAC to Stmt
+  std::map<int, int> getTacToStmt() { return this->TacToStmt; }
 
   /// Get Clang Stmt
   std::vector<Stmt *> getStmt() { return this->S; };
@@ -122,6 +126,8 @@ private:
   LoopList LoopL;
   /// TAC list with regard to the Statement S
   TacListType TacList;
+  /// Map from TacOrder to Stmt number
+  std::map<int, int> TacToStmt;
 };
 } // namespace macveth
 #endif // MACVETH_STMTWRAPPER_H

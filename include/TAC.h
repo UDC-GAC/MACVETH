@@ -69,6 +69,8 @@ public:
   /// Constructor when using MVOp for the operator
   TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP)
       : A(A), B(B), C(C), MVOP(MVOP), TacOrder(TAC::TacUUID++) {}
+  TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP, int TacOrder)
+      : A(A), B(B), C(C), MVOP(MVOP), TacOrder(TacOrder) {}
 
   /// Get first (result) operand of the TAC expression
   MVExpr *getA() { return this->A; };
@@ -106,9 +108,11 @@ public:
   static void binaryOperator2TAC(const clang::BinaryOperator *S,
                                  std::list<TAC> *TacList, int Val);
 
-  /// Inserts TACs in the input TacList
-  static void exprToTAC(clang::CompoundStmt *CS, std::vector<Stmt *> *SList,
-                        std::list<TAC> *TacList);
+  /// Inserts TACs in the input TacList and outputs the relation between the
+  /// statements and the ordering of the TACs
+  static std::map<int, int> exprToTAC(clang::CompoundStmt *CS,
+                                      std::vector<Stmt *> *SList,
+                                      std::list<TAC> *TacList);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,

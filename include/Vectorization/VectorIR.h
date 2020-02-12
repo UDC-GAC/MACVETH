@@ -145,6 +145,8 @@ public:
     bool MemOp = false;
     /// Vector operand may be a store in memory operation
     bool IsStore = false;
+    /// Order of the vector operation
+    int Order = -1;
     /// Check if there is a vector already assigned wraping the same values
     bool checkIfVectorAssigned(int VL, Node *V[]);
     /// Get width

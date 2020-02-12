@@ -105,7 +105,7 @@ SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
 }
 
 // ---------------------------------------------
-std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
+std::list<std::string> SIMDGenerator::renderSIMDRegister(SIMDInstListType S) {
   std::list<std::string> L;
   // Render register declarations
   for (auto It = RegDeclared.begin(); It != RegDeclared.end(); ++It) {
@@ -116,6 +116,12 @@ std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
     }
     L.push_back(TypeRegDecl + ";");
   }
+  return L;
+}
+
+// ---------------------------------------------
+std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
+  std::list<std::string> L;
   // Render instructions
   for (SIMDInst I : S) {
     std::string Inst = I.render() + ";\t// cost = " + std::to_string(I.Cost);

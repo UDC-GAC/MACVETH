@@ -210,6 +210,9 @@ public:
   /// memory from the start
   static void populateTable(MVISA ISA);
 
+  /// Generate the declaration of the necessary registers for the operations
+  std::list<std::string> renderSIMDRegister(SIMDInstListType S);
+
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
   std::list<std::string> renderSIMDasString(SIMDInstListType S);
@@ -244,8 +247,7 @@ public:
               std::string SuffS, std::list<std::string> OPS,
               SIMDGenerator::SIMDType SType,
               SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "", std::list<std::string> MVArgs = {},
-              int TacOrder = -1) = 0;
+              std::string MVFunc = "", std::list<std::string> MVArgs = {}) = 0;
 
   /// Get maximum vector operands size
   virtual int getMaxVectorSize() { return 4; };

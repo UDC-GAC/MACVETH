@@ -106,8 +106,8 @@ private:
               std::string SuffS, std::list<std::string> OPS,
               SIMDGenerator::SIMDType SType,
               SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "", std::list<std::string> MVArgs = {},
-              int TacOrder = -1) override;
+              std::string MVFunc = "",
+              std::list<std::string> MVArgs = {}) override;
   /// Specific instruction for loading data according to the operand
   bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
   /// Max width

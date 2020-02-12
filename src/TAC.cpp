@@ -69,9 +69,11 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
 }
 
 // ---------------------------------------------
-void TAC::exprToTAC(clang::CompoundStmt *CS, std::vector<Stmt *> *SList,
-                    std::list<TAC> *TacList) {
+std::map<int, int> TAC::exprToTAC(clang::CompoundStmt *CS,
+                                  std::vector<Stmt *> *SList,
+                                  std::list<TAC> *TacList) {
   TAC::RegVal = 0;
+  std::map<int, int> M;
   for (auto ST : CS->body()) {
     clang::Expr *S = dyn_cast<clang::Expr>(ST);
     // If the Statement can not be converted onto an Expr, then we are not
@@ -92,8 +94,8 @@ void TAC::exprToTAC(clang::CompoundStmt *CS, std::vector<Stmt *> *SList,
     if (STypeBin) {
       binaryOperator2TAC(SBin, &TL, -1);
       for (auto T : TL) {
-        T.setTacOrder(SList->size());
         TacList->push_back(T);
+        M[T.getTacOrder()] = SList->size() - 1;
       }
       continue;
     }
@@ -103,7 +105,9 @@ void TAC::exprToTAC(clang::CompoundStmt *CS, std::vector<Stmt *> *SList,
     MVOp OP = TAC::getMVOPfromExpr(TmpB);
     TAC NewTac = TAC(TmpA, TmpB, NULL, OP);
     TacList->push_front(NewTac);
+    M[NewTac.getTacOrder()] = SList->size() - 1;
   }
+  return M;
 }
 
 // ---------------------------------------------
@@ -166,7 +170,7 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
       Tac->getA()->unrollExpr(UnrollA, LoopLevel),
       Tac->getB()->unrollExpr(UnrollB, LoopLevel),
       Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL,
-      Tac->getMVOP());
+      Tac->getMVOP(), Tac->getTacOrder());
   return UnrolledTac;
 }
 
