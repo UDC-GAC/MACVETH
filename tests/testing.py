@@ -111,7 +111,7 @@ def print_results(name, passed, failed, tests):
             # If the test passes, we do not want to have a copy of it because is the
             # same as the expected value, therefore redundant. Be clean
             f.write("\t\t%s\n" % tpass)
-            os.system("rm %s" % tpass)
+            #os.system("rm %s" % tpass)
 
         if (len(failed) == 0):
             return

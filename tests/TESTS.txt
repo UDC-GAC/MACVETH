@@ -1,0 +1,103 @@
+* Description:
+--------------
+
+This document describes the test suite: the aim of each set of benchmarks and a
+brief description of each case. This will help to understand what is missing.
+
+* unittest:
+-----------
+
+These tests are meant to compare the form/shape of the code. The diff between
+the expected file and the one that creates MACVETH must be exactly zero. The
+naming of each (the .c file) follows the next pattern:
+
+    test_Nloop_Nstmt[_otherFeatures].c - where N is a number. _otherFeatures may
+    explain "special" features of the test case, such as FMA generation, or not
+    even sizes, prime sizes, etc.
+
+Tests are located in unittest/ directory. For each test must exist the expected
+version with the suffix "_exp", e.g.:
+
+    test_1loop_1stmt.c and test_1loop_1stmt_exp.c
+
+Thus, the "_exp" version will be the SIMD-fashion version of the original one,
+which will be compared with the output of MACVETH.
+
+Current test cases (8):
+    * test_1loop_1stmt.c - Stmt to analyze: x[i] = p[i] * 4; simple
+      multiplication, analyze the generation of the set, mul and store
+      operations.
+    * test_1loop_2stmt.c - Stmt to analyze: x[i] = p[i] * 4; x[i] = y[i] * 4;
+      the same as the case before but with two statements.
+    * test_1loop_2stmt_fma.c - x[i] = p[i] * 4; x[i] = x[i] + y[i] * 4; things
+      to analyze (besides the commented in the case immediately before):
+        * Reuse of the x[i] value in the second statement
+        * Generation of the FMA in the second statement
+    * test_1loop_3stmt.c - x[i] = p[i] * 4; y[i] = p[i] * 4; c[i] = p[i] *4;
+      reuse of an operation which is the same in all assignments
+    * test_2loop_1stmt.c - x[i] =* 4 + p[i]; analyze how it behaves 2 loops with
+      1d unrolling
+    * test_2loop_2stmt.c - same as before with two statements
+    * test_2loop_2stmt_2darray.c - putting together 1d and 2d arrays, analyzing
+      unrolling
+    * test_3loop_1stmt.c - mixing 1d, 2d and 3d arrays
+
+Caveats:
+    * Do not generate very complex tests here: difficult to analyze "by hand"
+      the output
+    * Play with sizes: analyze the epilogs created
+
+* fulltest:
+-----------
+
+These tests are based on PolyBench's templates. A sequential and non-optimized
+version of the code and a MACVETH's version of the code are compiled and
+executed, comparing their output using diff. If the diff is zero, then the test
+passes. The output is basically the content of the arrays used in the kernels.
+The naming of the tests follow the next pattern:
+
+    test_Nstmt_DIMarray[_otherFeatures].c - where N is a number and DIM
+    represents the dimensions of the arrays used
+
+Current test cases (12):
+
+    * test_1d2d3darray.c - A[i][j][k] = x[i] * C[i][j] + A[i][j][k]; analyze a
+      reduction with 3 loops and different array dimensions
+    * test_1d2darray.c - C[i][j] = C[i][j] + x[j] * C[i][j]; analyze a reduction
+      with 2 loops and different array dimensions and unrollings
+    * test_1darray.c - x[i] = x[i] * i + 42.3f; analyze the use of variables,
+      literals, reduction all together
+    * test_2d3darray_2stmt.c - C[i][j] = C[i][j] + x[j] * C[i][j]; in j and
+      A[i][j][k] = x[j] * C[i][j] + A[i][j][k]; in k; analyze different unrollings
+      in different points of the ROI
+    * test_2d3darray_3stmt.c -
+      C[i][j] = C[i][j] + x[j] * C[i][j];
+      for (int k = 0; k < _PB_N; k++) {
+        A[i][j][k] = x[j] * C[i][j] + A[i][j][k];
+      }
+      C[i][j] = C[i][j] * 4.0;
+      Asses the correctness of the ordering of operations using nested loops
+    * test_2darray.c - C[i][j] = C[i][j] + X[i][j] * A[i][j]; asses the
+      correctness of reductions using only 2d arrays
+    * test_2stmt_1d2darray.c - C[i][j] = C[i][j] + x[j] * C[i][j];
+      x[i] = x[j] * 4.0 + C[i][j]; asses the reuse of arrays between statements
+      and the correctness of the operations and ordering
+    * test_2stmt_1darray.c - REDO
+    * test_2stmt_3darray.c - A[i][j][k] = x[j] * C[i][j] + A[i][j][k];
+      A[i][j][k] = A[i][j][k] * 42.3f; asses the correctness of the operations
+      using 3d arrays and multiple statements with different operations and
+      reuse
+    * test_3darray.c -
+    * test_3stmt_1darray.c -
+    * test_dumb_3darray.c -
+
+* mustpass (experimental):
+--------------------------
+
+This is a set of the minimum cases where the compiler should always work. We use
+the same approach that fulltest/ tests do.
+
+Current test cases (1):
+
+
+
