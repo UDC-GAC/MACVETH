@@ -45,7 +45,7 @@ public:
 
 private:
   /// Insert TAC instruction to the CDAG
-  Node *insertTac(TAC T, Node *PrevNode, Node::NodeListType L);
+  Node *insertTac(TAC T, Node::NodeListType L);
   /// List of OP nodes
   Node::NodeListType NLOps;
   /// List of memory nodes

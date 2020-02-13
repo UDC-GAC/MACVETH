@@ -48,7 +48,7 @@ public:
     /// Unique ID of the Statement/Node
     int NodeID = -1;
     /// TAC order
-    int TacOrder = 0;
+    int TacID = 0;
     /// Topological order of this node
     int FreeSched = 0;
     /// TODO this value should be calculated by an algorithm
@@ -111,7 +111,7 @@ public:
     this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
     this->SI.NodeID = Node::UUID++;
-    this->SI.TacOrder = T.getTacOrder();
+    this->SI.TacID = T.getTacID();
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
     updateIfStore();
@@ -125,7 +125,7 @@ public:
     this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
     this->SI.NodeID = Node::UUID++;
-    this->SI.TacOrder = T.getTacOrder();
+    this->SI.TacID = T.getTacID();
     Node *NB = findOutputNode(T.getB()->getExprStr(), L);
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);
@@ -144,7 +144,7 @@ public:
   void setFreeSchedInfo(int FS) { this->SI.FreeSched = FS; }
 
   /// Set the TAC order
-  void setTacOrder(int TacOrder) { this->SI.TacOrder = TacOrder; }
+  void setTacID(int TacID) { this->SI.TacID = TacID; }
 
   /// Set Plcmnt value
   void setPlcmt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
@@ -170,7 +170,7 @@ public:
   /// Get info regarding its scheduling
   SchedInfo getSchedInfo() { return this->SI; }
   /// Get TAC order
-  int getTacOrder() { return this->SI.TacOrder; }
+  int getTacID() { return this->SI.TacID; }
   /// Set the type of the node
   void setNodeType(NodeType T) { this->T = T; }
 
@@ -187,8 +187,6 @@ public:
   bool isTerminal();
   /// Checks if given node is in the output list
   bool hasOutNode(Node *N);
-  /// Checks if given node is in the input list
-  bool hasInNode(Node *N);
 
   /// Is OP
   bool needsMemLoad() {
@@ -201,6 +199,7 @@ public:
             (this->MV->needsToBeLoaded()));
   }
 
+  /// Check if Node type is NODE_STORE
   bool isStoreNodeOp() { return (this->T == NODE_STORE); }
 
   /// Get the node type
@@ -244,10 +243,10 @@ public:
   bool operator<(const Node &N) {
     if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
       return (this->getSchedInfo().NodeID < N.SI.NodeID);
-      // return (this->getSchedInfo().TacOrder < N.SI.TacOrder);
+      // return (this->getSchedInfo().TacID < N.SI.TacID);
     } else {
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
-      // return (this->getSchedInfo().TacOrder < N.SI.TacOrder);
+      // return (this->getSchedInfo().TacID < N.SI.TacID);
     }
   }
 

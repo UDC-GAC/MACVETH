@@ -2,13 +2,38 @@
 #include "include/MVOptions.h"
 
 // ---------------------------------------------
+int computeMaxDepth(Node *N) {
+  // This algorithm is not efficient if the CDAG is big. At some point more
+  // intelligent strategies should be used instead.
+  if (N->getInputNum() == 0) {
+    return 0;
+  } else {
+    int Max = 0;
+    for (Node *T : N->getInputs()) {
+      Max = std::max(Max, computeMaxDepth(T));
+    }
+    return 1 + Max;
+  }
+}
+
+// ---------------------------------------------
+void computeFreeSchedule(Node::NodeListType NL) {
+  for (Node *N : NL) {
+    N->setFreeSchedInfo(computeMaxDepth(N));
+  }
+}
+
+// ---------------------------------------------
 Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
+  computeFreeSchedule(NL);
   if (MVOptions::InCDAGFile != "") {
     setPlcmtFromFile(NL);
     NL.sort([](Node *Lhs, Node *Rhs) {
       return Lhs->getSchedInfo().Plcmnt < Rhs->getSchedInfo().Plcmnt;
     });
     return NL;
+  } else {
+    return topSort(NL);
   }
   return NL;
 }

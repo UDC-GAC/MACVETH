@@ -14,11 +14,10 @@ std::string Node::toString() {
   Str += "name\t\t= " + this->getValue() + "\n";
   Str +=
       "\tFreeSched\t= " + std::to_string(this->getSchedInfo().FreeSched) + "\n";
-  Str +=
-      "\tTacOrder\t= " + std::to_string(this->getSchedInfo().TacOrder) + "\n";
+  Str += "\tTacID\t= " + std::to_string(this->getSchedInfo().TacID) + "\n";
   Str += "\tPlcmnt\t\t= " + std::to_string(this->getSchedInfo().Plcmnt) + "\n";
   Str += "\tNodeID\t\t= " + std::to_string(this->getSchedInfo().NodeID) + "\n";
-  Str += "\tOutput\t\t= " + this->getOutputInfo().Name + "\n";
+  Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
   Str += "\tInput1\t\t= " + this->getInputs().front()->getValue() + " (ID = " +
          std::to_string(this->getInputs().front()->getSchedInfo().NodeID) +
          "); NODE_MEM = " +
@@ -56,14 +55,4 @@ Node *Node::findOutputNode(std::string NodeName, NodeListType L) {
     }
   }
   return NULL;
-}
-
-// ---------------------------------------------
-bool Node::hasInNode(Node *N) {
-  for (Node *C : this->I) {
-    if (C == N) {
-      return true;
-    }
-  }
-  return false;
 }

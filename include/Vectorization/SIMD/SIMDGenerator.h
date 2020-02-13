@@ -63,7 +63,7 @@ public:
     /// Unique identifier
     unsigned int SIMD_UID = 0;
     /// TAC order
-    int TacOrder = -1;
+    int TacID = -1;
     /// Result register name
     std::string Result;
     /// Signature of the function
@@ -101,9 +101,9 @@ public:
 
     /// Constructor
     SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
-             std::string MVFN, std::list<std::string> MVArgs, int TacOrder)
+             std::string MVFN, std::list<std::string> MVArgs, int TacID)
         : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFN), MVArgs(MVArgs),
-          TacOrder(TacOrder) {
+          TacID(TacID) {
       this->SIMD_UID = SIMDInst::UID++;
     }
   };

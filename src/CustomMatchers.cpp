@@ -96,9 +96,6 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
   // Creating the CDAG
   CDAG *G = CDAG::createCDAGfromTAC(SWrap->getTacList());
 
-  // Computing the free schedule of the CDAG created
-  CDAG::computeFreeSchedule(G);
-
   // Get SIMD generator according to the option chosen
   SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
 
@@ -127,11 +124,11 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
                        true);
   }
   for (auto InsSIMD : SInfo.SIMDList) {
-    Rewrite.InsertText(SWrap->getStmt()[SWrap->getTacToStmt()[InsSIMD.TacOrder]]
-                           ->getBeginLoc(),
-                       InsSIMD.render() + ";\t// cost = " +
-                           std::to_string(InsSIMD.Cost) + "\n",
-                       true, true);
+    Rewrite.InsertText(
+        SWrap->getStmt()[SWrap->getTacToStmt()[InsSIMD.TacID]]->getBeginLoc(),
+        InsSIMD.render() + ";\t// cost = " + std::to_string(InsSIMD.Cost) +
+            "\n",
+        true, true);
   }
 
   // Comment statements

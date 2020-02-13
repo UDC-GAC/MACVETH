@@ -95,7 +95,8 @@ public:
     this->LoopL = getLoopList(Result);
     /// Conver the expression to a set of TACs
     this->TacToStmt =
-        TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->S, &this->TacList);
+        TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->ListOfTAC,
+                       &this->S, &this->TacList);
   }
 
   /// Perform unrolling for a given statement given its unroll factor and the
@@ -122,11 +123,13 @@ public:
 private:
   /// Statement holded
   std::vector<Stmt *> S;
+  /// Sorted list of TACs
+  std::vector<TacListType> ListOfTAC;
   /// Loop list
   LoopList LoopL;
   /// TAC list with regard to the Statement S
   TacListType TacList;
-  /// Map from TacOrder to Stmt number
+  /// Map from TacID to Stmt number
   std::map<int, int> TacToStmt;
 };
 } // namespace macveth

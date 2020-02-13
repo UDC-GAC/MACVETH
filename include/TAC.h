@@ -41,6 +41,7 @@ using namespace clang;
 using namespace macveth;
 
 namespace macveth {
+
 /// Class TAC: three-address-code. This abstraction is a way of representing the
 /// Single-Statement Assignment (SSA)
 class TAC {
@@ -68,9 +69,10 @@ public:
 
   /// Constructor when using MVOp for the operator
   TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP)
-      : A(A), B(B), C(C), MVOP(MVOP), TacOrder(TAC::TacUUID++) {}
-  TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP, int TacOrder)
-      : A(A), B(B), C(C), MVOP(MVOP), TacOrder(TacOrder) {}
+      : A(A), B(B), C(C), MVOP(MVOP), TacID(TAC::TacUUID++) {}
+  /// Constructor given a TAC ID
+  TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP, int TacID)
+      : A(A), B(B), C(C), MVOP(MVOP), TacID(TacID) {}
 
   /// Get first (result) operand of the TAC expression
   MVExpr *getA() { return this->A; };
@@ -84,22 +86,25 @@ public:
   MVExpr *getC() { return this->C; };
   /// Set third operand of the TAC expression
   void setC(MVExpr *C) { this->C = C; };
-  /// Set TacOrder value
-  void setTacOrder(int TacOrder) { this->TacOrder = TacOrder; }
-  /// Get that TacOrder value
-  int getTacOrder() { return this->TacOrder; }
+  /// Set TacID value
+  void setTacID(int TacID) { this->TacID = TacID; }
+  /// Get that TacID value
+  int getTacID() { return this->TacID; }
 
   /// Get macveth operation type
   MVOp getMVOP() { return this->MVOP; };
 
-  /// Just for debugging purposes
-  void printTAC() {
+  /// To string method
+  std::string toString() {
     std::string Op = this->MVOP.toString();
     Op = "t: " + this->getA()->getExprStr() + ", " +
          this->getB()->getExprStr() + ", " + this->getC()->getExprStr() + ", " +
          Op;
-    Utils::printDebug("TAC", Op);
+    return Op;
   }
+
+  /// Just for debugging purposes
+  void printTAC() { Utils::printDebug("TAC", this->toString()); }
 
   /// Discover the equivalent MVOp given a clang::Expr
   static MVOp getMVOPfromExpr(MVExpr *E);
@@ -111,13 +116,13 @@ public:
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs
   static std::map<int, int> exprToTAC(clang::CompoundStmt *CS,
+                                      std::vector<std::list<TAC>> *ListStmtTAC,
                                       std::vector<Stmt *> *SList,
                                       std::list<TAC> *TacList);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
-                                      int UpperBound, unsigned int MaskList[],
-                                      std::string LoopLevel);
+                                      int UpperBound, std::string LoopLevel);
 
   /// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and
   /// the S value which holds the iteration of the unrolling basically
@@ -136,8 +141,9 @@ private:
   MVExpr *C;
   /// Type of operation
   MVOp MVOP;
-  /// Tac order
-  int TacOrder = -1;
+  /// TAC identifier: as TAC may be unrolled, the ID is only meant for
+  /// identifying it
+  int TacID = -1;
 };
 
 /// List of TACs

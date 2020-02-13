@@ -70,9 +70,12 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
 
 // ---------------------------------------------
 std::map<int, int> TAC::exprToTAC(clang::CompoundStmt *CS,
+                                  std::vector<std::list<TAC>> *ListStmtTAC,
                                   std::vector<Stmt *> *SList,
                                   std::list<TAC> *TacList) {
+  // Reset the RegVal in TAC class
   TAC::RegVal = 0;
+  // Return value
   std::map<int, int> M;
   for (auto ST : CS->body()) {
     clang::Expr *S = dyn_cast<clang::Expr>(ST);
@@ -86,26 +89,31 @@ std::map<int, int> TAC::exprToTAC(clang::CompoundStmt *CS,
     // If the Statement can be parsed and replaced with TACs, then we add it
     SList->push_back(ST);
 
+    // Check if the expression is binary
     clang::BinaryOperator *SBin = NULL;
     bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
-
-    // Check if binary expression
-    std::list<TAC> TL;
     if (STypeBin) {
+      TacListType TL;
       binaryOperator2TAC(SBin, &TL, -1);
       for (auto T : TL) {
         TacList->push_back(T);
-        M[T.getTacOrder()] = SList->size() - 1;
+        M[T.getTacID()] = SList->size() - 1;
       }
+      ListStmtTAC->push_back(TL);
       continue;
     }
-    // New TAC will look like: TmpA = MVExpr(S) OP NULL; (not binary)
+
+    // New TAC will look like: TmpA = MVExpr(S) OP NULL; (not binary or unary)
     MVExpr *TmpA = MVExprFactory::createMVExpr(getNameTempReg(), true);
     MVExpr *TmpB = MVExprFactory::createMVExpr(S);
     MVOp OP = TAC::getMVOPfromExpr(TmpB);
-    TAC NewTac = TAC(TmpA, TmpB, NULL, OP);
+    // Create new TAC
+    TAC NewTac(TmpA, TmpB, NULL, OP);
+    // Push in the front of the TAC list
     TacList->push_front(NewTac);
-    M[NewTac.getTacOrder()] = SList->size() - 1;
+    // Push at the back in the Stmt to TAC list
+    ListStmtTAC->push_back({NewTac});
+    M[NewTac.getTacID()] = SList->size() - 1;
   }
   return M;
 }
@@ -170,20 +178,17 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
       Tac->getA()->unrollExpr(UnrollA, LoopLevel),
       Tac->getB()->unrollExpr(UnrollB, LoopLevel),
       Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL,
-      Tac->getMVOP(), Tac->getTacOrder());
+      Tac->getMVOP(), Tac->getTacID());
   return UnrolledTac;
 }
 
 // ---------------------------------------------
 std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
-                                  int UpperBound, unsigned int MaskList[],
-                                  std::string LoopLevel) {
+                                  int UpperBound, std::string LoopLevel) {
   std::list<TAC> TacListOrg;
   int Steps = UpperBound / UnrollFactor;
-  for (TAC Tac : TacList) {
-    for (int S = 0; S < Steps; ++S) {
-      // FIXME
-      int Mask = 0;
+  for (int S = 0; S < Steps; S++) {
+    for (TAC Tac : TacList) {
       TacListOrg.push_back(
           *(TAC::unroll(&Tac, UnrollFactor, S, 0x000000, LoopLevel)));
     }

@@ -15,6 +15,8 @@ bool opsAreSequential(int VL, Node *VOps[]) {
   for (int i = 1; i < VL; ++i) {
     if ((VOps[i - 1]->getSchedInfo().FreeSched <
          VOps[i]->getSchedInfo().FreeSched)) {
+      // if ((VOps[i - 1]->getSchedInfo().Plcmnt <
+      // VOps[i]->getSchedInfo().Plcmnt)) {
       return true;
     }
   }
@@ -211,6 +213,12 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
   bool Atomic_B = isAtomic(VL, VOps, VLoadB);
 
   // Type of VectorOP
+  Utils::printDebug("VectorIR", "Seq = " + std::to_string(Seq));
+  Utils::printDebug("VectorIR", "RAW_A = " + std::to_string(RAW_A));
+  Utils::printDebug("VectorIR", "RAW_B = " + std::to_string(RAW_B));
+  Utils::printDebug("VectorIR", "Atomic_A = " + std::to_string(Atomic_A));
+  Utils::printDebug("VectorIR", "Atomic_B = " + std::to_string(Atomic_B));
+
   if ((Seq) && ((RAW_A) || (RAW_B)) && Atomic_A && Atomic_B) {
     Utils::printDebug("VectorIR", "reduction");
     return VectorIR::VType::REDUCE;
@@ -230,7 +238,7 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
 
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order
-  this->Order = VOps[0]->getTacOrder();
+  this->Order = VOps[0]->getTacID();
 
   // Vector type will depend on the operations and operations, logically
   this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
