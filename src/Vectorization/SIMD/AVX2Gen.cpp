@@ -168,8 +168,8 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
   I.W = V.getWidth();
 
   // Adding instruction to the list
-  if (IL != nullptr)
-    IL->push_back(I);
+  IL->push_back(I);
+
   return I;
 }
 
@@ -482,8 +482,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
               &IL, "ymm0");
   SIMDGenerator::addRegToDeclare(RegType, "ymm0");
 
-  std::cout << "REDUCTION OF " << V.VN << std::endl;
-
   // Reduction operation
   addSIMDInst(V.R, V.VN, "", "", {V.OpB.Name, "ymm0"}, SIMDType::VREDUC, &IL,
               "ymm1");
@@ -511,10 +509,12 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
               "ymm5");
   SIMDGenerator::addRegToDeclare(RegType, "ymm5");
 
-  addSIMDInst(
-      V.R, "store", "mask", "",
-      {getOpName(V.R, true, true), "_mm256_set_epi64x(0,0,0,1)", "ymm5"},
-      SIMDType::VSTORE, &IL);
+  // FIXME: maskstore has higher throughtput than a store; therefore maybe is
+  // better to waste some memory in benefit of cycle performance
+  addSIMDInst(V.R, "store", "mask", "",
+              {getOpName(V.R, true, true),
+               "_mm256_set_epi64x(0,0,0,0xffffffffffffffff)", "ymm5"},
+              SIMDType::VSTORE, &IL);
 
   return IL;
 }

@@ -222,4 +222,4 @@ exectest_suite(mustpass_path, "must")
 # Print results
 os.system("cat %s" % test_report)
 
-# clean_tmp_files()
+clean_tmp_files()
