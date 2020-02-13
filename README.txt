@@ -1,6 +1,9 @@
 
-MACVETH - Multi-dimensional Array C-compiler VEctorization and Transformation
-for HPC applications
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*                                    MACVETH
+*    Multi-dimensional Array C-compiler VEctorization and Translation for
+*                              HPC applications
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 Contact:
     Marcos Horro Varela <marcos.horro@udc.es>
@@ -88,13 +91,51 @@ This the list of restrictions and assumptions that the user must take into
 account when using this compiler:
 
     - ISA support:
-        - Currently only working for AVX2 ISA architectures
+        + Currently only working for AVX2 ISA architectures
+
+    - Types:
+        + Pointers are not allowed at the moment, e.g.:
+            (*S) = (*S) + A[i];
+
+          This may be a common scenario when writing reductions in the code
+          (when passing variables to the function by reference). You can simply
+          avoid this issue by using a temporal variable.
+
     - Loop related:
-        + Only for loops are supported
-        + Initialization of variables within the loop is allowed
+        + Only "for" loops are supported
+        + Initialization of variables within the loop is allowed, e.g.:
+                for (int i = 0; ...
         + There are no increments in the body of the loop of the region of
-          interest
-        + One #pragma per loop nest
+          interest, i.e. the loop condition is only incremented in the for
+          statement
+        + One #pragma per set of loop nests, e.g.:
+
+            This is correct:
+
+            #pragma macveth
+            for (int i = 0; i < N; ++i) {
+            }
+            #pragma endmacveth
+            #pragma macveth
+            for (int i = 0; i < N; ++i) {
+                for (int j = 0; j < M; ++j) {
+                    ...
+                }
+            }
+            #pragma endmacveth
+
+            This is not:
+
+            #pragma macveth
+            for (int i = 0; i < N; ++i) {
+            }
+            for (int i = 0; i < N; ++i) {
+                for (int j = 0; j < M; ++j) {
+                    ...
+                }
+            }
+            #pragma endmacveth
+
 
 * License:
 ----------
