@@ -44,18 +44,41 @@ StmtWrapper::getLoopList(const MatchFinder::MatchResult &Result) {
   const clang::ForStmt *ForLoop =
       Result.Nodes.getNodeAs<clang::ForStmt>("forLoop" + std::to_string(n));
   while (ForLoop != nullptr) {
-    LoopInfo Loop;
+    LoopInfo(Loop);
 
+    Utils::printDebug("LoopInfo", "parsing vardecl...");
     // Get name of variable
     const VarDecl *V = Result.Nodes.getNodeAs<clang::VarDecl>(
         varnames::NameVarInit + std::to_string(n));
-    Loop.Dim = V->getNameAsString();
+    Loop.Declared = (V != nullptr);
+    Utils::printDebug("LoopInfo", std::to_string(Loop.Declared) + " and " +
+                                      std::to_string((V == nullptr)));
+    if (Loop.Declared) {
+      Utils::printDebug("LoopInfo", V->getNameAsString());
+      Loop.Dim = V->getNameAsString();
+    } else {
+      const DeclRefExpr *VN = Result.Nodes.getNodeAs<DeclRefExpr>(
+          varnames::NameVarInitNotDeclared + std::to_string(n));
+      Loop.Dim = Utils::getStringFromExpr(VN);
+      Utils::printDebug("LoopInfo", "value got from DeclRefExpr = " + Loop.Dim);
+    }
 
     // Get init val
-    const clang::Expr *initializerExpr = V->getInit();
-    clang::Expr::EvalResult R;
-    if (initializerExpr->EvaluateAsInt(R, *Utils::getCtx())) {
-      Loop.InitVal = (long)R.Val.getInt().getExtValue();
+    const DeclRefExpr *NameValInit = Result.Nodes.getNodeAs<DeclRefExpr>(
+        varnames::NameValInit + std::to_string(n));
+    if (NameValInit != nullptr) {
+      Utils::printDebug("LoopInfo", "NameValInt not NULL");
+      clang::Expr::EvalResult R;
+      if (NameValInit->EvaluateAsInt(R, *Utils::getCtx())) {
+        Loop.InitVal = (long)R.Val.getInt().getExtValue();
+      }
+    } else {
+      Utils::printDebug("LoopInfo", "NameValInt NULL");
+      const Expr *ValInit =
+          Result.Nodes.getNodeAs<Expr>(varnames::ValInit + std::to_string(n));
+      if (ValInit != nullptr) {
+        Loop.InitVal = Utils::getIntFromExpr(ValInit, Utils::getCtx());
+      }
     }
 
     // Get UpperBound

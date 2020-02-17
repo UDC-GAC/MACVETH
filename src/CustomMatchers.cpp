@@ -146,11 +146,23 @@ typedef clang::ast_matchers::internal::Matcher<clang::ForStmt> MatcherForStmt;
 // ---------------------------------------------
 MatcherForStmt customLoopInit(std::string Name) {
   // This matches either int i = 0 or int i = val
-  return hasLoopInit(declStmt(hasSingleDecl(
-      varDecl(hasInitializer(
-                  anyOf(integerLiteral(equals(0)),
-                        ignoringImpCasts(declRefExpr(hasType(isInteger()))))))
-          .bind(matchers_utils::varnames::NameVarInit + Name))));
+  return hasLoopInit(anyOf(
+      binaryOperator(
+          hasOperatorName("="),
+          hasLHS(declRefExpr(hasType(isInteger()))
+                     .bind(matchers_utils::varnames::NameVarInitNotDeclared +
+                           Name)),
+          hasRHS(
+              integerLiteral().bind(matchers_utils::varnames::ValInit + Name))),
+      declStmt(hasSingleDecl(
+          varDecl(hasInitializer(anyOf(
+                      integerLiteral().bind(matchers_utils::varnames::ValInit +
+                                            Name),
+                      ignoringImpCasts(
+                          declRefExpr(hasType(isInteger()))
+                              .bind(matchers_utils::varnames::NameValInit +
+                                    Name)))))
+              .bind(matchers_utils::varnames::NameVarInit + Name)))));
 }
 
 // ---------------------------------------------

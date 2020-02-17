@@ -54,7 +54,11 @@ namespace varnames {
 const std::string NameVarInc = "incVar";
 const std::string NameVarIncPos = "incVarPos";
 const std::string NameVarInit = "initVar";
+const std::string NameVarInitNotDeclared = "initVarNoDecl";
 const std::string NameVarCond = "condVar";
+
+const std::string ValInit = "valInit";
+const std::string NameValInit = "nameValInit";
 
 const std::string UpperBound = "upperBound";
 } // namespace varnames

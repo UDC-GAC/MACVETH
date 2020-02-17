@@ -298,9 +298,10 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   if (V.R.EqualVal) {
     // FIXME
     PrefS += "mask";
-    Args.push_back("_mm256_set_epi64x(0,0,0,1)");
+    Args.push_back("_mm256_set_epi64x(0,0,0,0xffffffffffffffff)");
+    // Args.push_back(getOpName(V.R, false, false));
     Args.push_back("_mm256_permute4x64_pd(" + getOpName(V.R, false, false) +
-                   ", 0xe4)");
+                   ", 0xff)");
   } else {
     Args.push_back(getOpName(V.R, false, false));
   }
@@ -506,14 +507,13 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
 
   // Last reduction and then store
   addSIMDInst(V.R, V.VN, "", "", {"ymm4", "ymm3"}, SIMDType::VREDUC, &IL,
-              "ymm5");
-  SIMDGenerator::addRegToDeclare(RegType, "ymm5");
+              V.R.getName());
 
   // FIXME: maskstore has higher throughtput than a store; therefore maybe is
   // better to waste some memory in benefit of cycle performance
   addSIMDInst(V.R, "store", "mask", "",
               {getOpName(V.R, true, true),
-               "_mm256_set_epi64x(0,0,0,0xffffffffffffffff)", "ymm5"},
+               "_mm256_set_epi64x(0,0,0,0xffffffffffffffff)", V.R.getName()},
               SIMDType::VSTORE, &IL);
 
   return IL;

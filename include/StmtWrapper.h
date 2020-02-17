@@ -63,11 +63,14 @@ public:
     long Step = UBFallback;
     /// TODO Leftover values: if Upperbound is -1, then LeftOver as well
     long LeftOver = -1;
+    /// Variable declared in the loop creation
+    bool Declared = false;
 
     /// For debugging purposes
     std::string toString() {
       std::string Str = Dim + "; init val = " + std::to_string(InitVal) +
-                        ", upperbound = " + std::to_string(UpperBound);
+                        ", upperbound = " + std::to_string(UpperBound) +
+                        "; declared within loop = " + std::to_string(Declared);
       return Str;
     }
   };
