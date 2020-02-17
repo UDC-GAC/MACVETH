@@ -37,6 +37,13 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
+static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
+  int i;
+
+  for (i = 0; i < n; i++)
+    fprintf(stderr, DATA_PRINTF_MODIFIER "\n", C[i]);
+  fprintf(stderr, "\n");
+}
 static void print_array(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
   int i, j;
 
@@ -87,7 +94,8 @@ int main(int argc, char **argv) {
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
-  polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(C)));
+  // polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(C)));
+  polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
 
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(C);
