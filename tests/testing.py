@@ -21,11 +21,6 @@ fail_path = "failed_tests/"
 tmp_path = "tmpfiles/"
 test_report = "test_report.txt"
 
-# Init directories
-os.system("mkdir -p %s" % fail_path)
-os.system("mkdir -p %s" % tmp_path)
-os.system("mkdir -p %s" % macveth_path)
-os.system("echo "" > %s" % test_report)
 
 # File extensions
 file_t = ".c"
@@ -43,6 +38,17 @@ mv_poly_flags = " --extra-arg-before='-Itests/fulltest/utilities' "
 # is POLYBENCH_USE_C99_PROTO needed?
 # Should not, we do not want the compiler to vectorize anything as we are
 # already emitting SIMD code, right?
+
+
+def clean_previous_files():
+    os.system("rm -Rf %s" % tmp_path)
+    os.system("rm -Rf %s" % macveth_path)
+    os.system("rm -Rf %s" % fail_path)
+    # Init directories
+    os.system("mkdir -p %s" % fail_path)
+    os.system("mkdir -p %s" % tmp_path)
+    os.system("mkdir -p %s" % macveth_path)
+    os.system("echo "" > %s" % test_report)
 
 
 def clean_tmp_files():
@@ -111,7 +117,6 @@ def print_results(name, passed, failed, tests):
             # If the test passes, we do not want to have a copy of it because is the
             # same as the expected value, therefore redundant. Be clean
             f.write("\t\t%s\n" % tpass)
-            #os.system("rm %s" % tpass)
 
         if (len(failed) == 0):
             return
@@ -207,6 +212,9 @@ def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
     print_results(path_suite, passed_tests, failed_tests, tests_name)
 
 
+# Clean everything
+clean_previous_files()
+
 # Compiling macveth
 compile_macveth()
 
@@ -222,4 +230,4 @@ exectest_suite(mustpass_path, "must")
 # Print results
 os.system("cat %s" % test_report)
 
-# clean_tmp_files()
+clean_tmp_files()
