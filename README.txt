@@ -103,11 +103,20 @@ account when using this compiler:
 
     - Loop related:
         + Only "for" loops are supported
-        + Initialization of variables within the loop is allowed, e.g.:
+        + Declaration of variables within the loop is allowed, e.g.:
+                for (int i = 0; ...
+          Also declaration outside the loop is allowed, e.g.:
+                int i;
+                ...
+                for (i = 0; ...
+          Nonetheless, some compilers may allow declarations in both sides,
+          MACVETH does not, e.g.:
+                int i;
+                ...
                 for (int i = 0; ...
         + There are no increments in the body of the loop of the region of
           interest, i.e. the loop condition is only incremented in the for
-          statement
+          statement. Besides, steps must be uniary, i.e.
         + One #pragma per set of loop nests, e.g.:
 
             This is correct:
