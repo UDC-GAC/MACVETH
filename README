@@ -10,11 +10,22 @@ Contact:
     Louis-Noël Pouchet <pouchet@colostate.edu>
 
 MACVETH is a source-to-source compiler from C/C++ codes to SIMD. It is platform
-dependent.
+or ISA and architecture dependent.
+
+MACVETH stands for Multi-Array C-compiler for VEctorization and Translation for
+High-performance computing. Besides, Macbeth, tragedy written by William
+Shakespeare, represents the detrimental effects of human's narcissism and vanity
+when looking for the power for its own benefits. In contraposition, MACVETH is
+composed of many components seeking for a common purpose: optimize vectorization.
+Last but not least, the first and last letter of the acronym stand for the name
+of the main author (Marcos Horro).
 
 * Main dependencies:
 --------------------
-- Clang 10.0
+
+- Clang >=10.0
+- CMake >=3.14
+- GNU GCC >=8.x
 
 * Getting started:
 ------------------

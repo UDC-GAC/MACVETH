@@ -8,6 +8,7 @@
 
 import os
 import filecmp
+import re
 from utils.utilities import pr_col
 from utils.utilities import colors as c
 
@@ -97,6 +98,17 @@ def test_output(exp_out, comp_out, code=False):
     # must be exactly the same. Maybe we should be less aggressive when it comes
     # to compare code
     # @return True if same values, False otherwise
+    if (code):
+        with open(exp_out) as f1, open(comp_out) as f2:
+            s1 = ""
+            for l in f1:
+                l = re.sub("//.*", "", l)
+                s1 += l.replace(" ", "").replace("\n", "").replace("\t", "")
+            s2 = ""
+            for l in f2:
+                l = re.sub("//.*", "", l)
+                s2 += l.replace(" ", "").replace("\n", "").replace("\t", "")
+        return s1 == s2
     return filecmp.cmp(exp_out, comp_out)
 
 
@@ -150,7 +162,7 @@ def unittest_suite():
         comp_test = macveth_path + test + comp_sufix
         compile_test_with_macveth(org_test, comp_test)
         print("{:<80}".format("execution test of " + org_test + "..."), end="")
-        if (test_output(exp_test, comp_test)):
+        if (test_output(exp_test, comp_test, True)):
             passed_tests.append(comp_test)
             pr_col(c.fg.green, " [PASSED]")
         else:
