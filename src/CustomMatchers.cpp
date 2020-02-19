@@ -29,6 +29,8 @@
 #include "include/CustomMatchers.h"
 #include "include/CDAG.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
+#include "clang/Basic/AttrKinds.h"
+#include "clang/Basic/SourceLocation.h"
 #include <iostream>
 #include <llvm-10/llvm/ADT/StringRef.h>
 #include <llvm-10/llvm/Support/ErrorHandling.h>
@@ -50,18 +52,25 @@ ScopLoc *getScopLoc(StmtWrapper *S, ScopHandler *SL) {
 // ---------------------------------------------
 bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
   auto Scop = getScopLoc(S, this->SL);
+  bool NewStmt = false;
   if ((Scop != NULL)) {
-    bool NewStmt = false;
     for (auto L : S->getLoopInfo()) {
       if (std::find(Scop->DimVisited.begin(), Scop->DimVisited.end(), L.Dim) ==
           Scop->DimVisited.end()) {
+        if (Scop->DimVisited.size() == 0) {
+          // Clearing mapping
+          StmtWrapper::LoopInfo::DimDeclared.clear();
+        }
         Scop->DimVisited.push_back(L.Dim);
+        // New dimension
         NewStmt = true;
       }
     }
+    // The scop is not recognized
     return NewStmt;
   }
-  return false;
+
+  return NewStmt;
 }
 
 // ---------------------------------------------
@@ -72,6 +81,45 @@ void IterationHandler::unrollOptions(StmtWrapper *S) {
   if (Scop->PA.UnrollAndJam) {
     S->unrollAndJam(Scop->PA.UnrollFactor);
   }
+}
+
+// ---------------------------------------------
+void rewriteLoops(StmtWrapper *SWrap, Rewriter *Rewrite) {
+  int Inc = 0;
+  std::list<StmtWrapper::LoopInfo> Dims = {};
+  std::list<std::string> DimsDeclared = {};
+  // Rewrite loop header
+  for (auto Loop : SWrap->getLoopInfo()) {
+    Utils::printDebug("CustomMatchers", "Rewriting loop = " + Loop.Dim);
+    // Rewrite headers
+    Rewrite->ReplaceText(Loop.SRVarInit,
+                         Loop.Dim + " = " + std::to_string(Loop.InitVal));
+    // IMPORTANT: need to put ";" at the end since the range is calculated as
+    // the -1 offset of the location of the increment. This is done like this
+    // because the SourceLocation of the UpperBound could be a macro variable
+    // located in another place. This happens, for instance, with the loop
+    // bounds in PolyBench suite
+    Rewrite->ReplaceText(Loop.SRVarCond,
+                         "(" + Loop.Dim + " + " + std::to_string(Loop.Step) +
+                             ") <= " + Loop.StrUpperBound + ";");
+    Rewrite->ReplaceText(Loop.SRVarInc,
+                         Loop.Dim + " += " + std::to_string(Loop.Step));
+    if (Loop.Declared) {
+      std::list<std::string> L = StmtWrapper::LoopInfo::DimDeclared;
+      if (!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) {
+        StmtWrapper::LoopInfo::DimDeclared.push_back(Loop.Dim);
+        DimsDeclared.push_back(Loop.Dim);
+      }
+    }
+    Dims.push_front(Loop);
+    std::string Epilog =
+        StmtWrapper::LoopInfo::getEpilogs(Dims, SWrap->getStmt());
+    Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
+  }
+  // Declare variables
+  SourceLocation Loc = SWrap->getLoopInfo().back().BegLoc;
+  Rewrite->InsertTextBefore(
+      Loc, StmtWrapper::LoopInfo::getDimDeclarations(DimsDeclared));
 }
 
 // ---------------------------------------------
@@ -104,19 +152,8 @@ void IterationHandler::run(const MatchFinder::MatchResult &Result) {
 
   // FIXME: create epilog as well
   // Unroll factor applied to the for header
-  int Inc = 1;
-  for (auto Loop : SWrap->getLoopInfo()) {
-    int UpperBound = Loop.Step;
-    const UnaryOperator *IncVarPos =
-        Result.Nodes.getNodeAs<clang::UnaryOperator>(varnames::NameVarIncPos +
-                                                     std::to_string(Inc));
-    const DeclRefExpr *IncVarName = Result.Nodes.getNodeAs<DeclRefExpr>(
-        varnames::NameVarInc + std::to_string(Inc++));
-    clang::CharSourceRange charRange = clang::CharSourceRange::getTokenRange(
-        IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
-    Rewrite.ReplaceText(charRange, IncVarName->getNameInfo().getAsString() +
-                                       " += " + std::to_string(UpperBound));
-  }
+
+  rewriteLoops(SWrap, &Rewrite);
 
   // Printing the registers we are going to use
   for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
@@ -179,18 +216,20 @@ MatcherForStmt customIncrement(std::string Name) {
 MatcherForStmt customCondition(std::string Name) {
   // This condition allows for loops such as:
   // * (int)var < (int)val
-  return hasCondition(binaryOperator(
-      hasOperatorName("<"),
-      hasLHS(ignoringParenImpCasts(declRefExpr(
-          to(varDecl(hasType(isInteger()))
-                 .bind(matchers_utils::varnames::NameVarCond + Name))))),
-      hasRHS(expr(hasType(isInteger()))
-                 .bind(matchers_utils::varnames::UpperBound + Name))));
+  return hasCondition(
+      binaryOperator(
+          hasOperatorName("<"),
+          hasLHS(ignoringParenImpCasts(declRefExpr(
+              to(varDecl(hasType(isInteger()))
+                     .bind(matchers_utils::varnames::NameVarCond + Name))))),
+          hasRHS(expr().bind(matchers_utils::varnames::UpperBound + Name)))
+          .bind(matchers_utils::varnames::ExprCond + Name));
 }
 
 // ---------------------------------------------
 MatcherForStmt customBody(StatementMatcher InnerStmt) {
-  // Body of the loops we are looking for. In this case could be something like:
+  // Body of the loops we are looking for. In this case could be something
+  // like:
   // * for() { InnerStmt; }
   // * for() { [Stmt]* [InnerStmt]+ [InnerStmt|Stmt]*}
   return hasBody(anyOf(InnerStmt, compoundStmt(forEach(InnerStmt))));

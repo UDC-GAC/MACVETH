@@ -26,6 +26,7 @@ of the main author (Marcos Horro).
 - Clang >=10.0
 - CMake >=3.14
 - GNU GCC >=8.x
+- Doxygen >=1.8.x
 
 * Getting started:
 ------------------

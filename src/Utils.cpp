@@ -95,6 +95,16 @@ bool Utils::isNumericValue(Expr *E) {
 }
 
 //-------------------------------------------------------------
+std::string Utils::getStringFromStmt(const clang::Stmt *S) {
+  SourceManager *SM = Utils::getSourceMgr();
+  LangOptions *LO = Utils::getLangOpts();
+  clang::CharSourceRange CharRangeExpr =
+      clang::CharSourceRange::getTokenRange(S->getSourceRange());
+  std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO);
+  return Text;
+}
+
+//-------------------------------------------------------------
 std::string Utils::getStringFromExpr(const clang::Expr *E) {
   SourceManager *SM = Utils::getSourceMgr();
   LangOptions *LO = Utils::getLangOpts();

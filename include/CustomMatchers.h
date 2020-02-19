@@ -57,6 +57,8 @@ const std::string NameVarInit = "initVar";
 const std::string NameVarInitNotDeclared = "initVarNoDecl";
 const std::string NameVarCond = "condVar";
 
+const std::string ExprCond = "exprCond";
+
 const std::string ValInit = "valInit";
 const std::string NameValInit = "nameValInit";
 

@@ -62,6 +62,9 @@ public:
   // static bool contains(std::list<T> &listOfElements, const T &element);
 
   /// Converting clang expressions to strings
+  static std::string getStringFromStmt(const Stmt *S);
+
+  /// Converting clang expressions to strings
   static std::string getStringFromExpr(const Expr *E);
 
   /// Given an Expr, get its integer value

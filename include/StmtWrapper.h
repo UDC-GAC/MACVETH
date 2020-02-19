@@ -35,6 +35,7 @@
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Basic/SourceLocation.h"
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -53,18 +54,41 @@ public:
 
   /// Helper structure to handle the loop information for this statement
   struct LoopInfo {
+    /// List of dimensions declared
+    static inline std::list<std::string> DimDeclared = {};
+    /// Location of the loop itself
+    clang::SourceLocation BegLoc;
+    /// Location after the loop itself
+    clang::SourceLocation EndLoc;
     /// Name of dimension
     std::string Dim;
     /// Initial value (-1 if not known)
     long InitVal = 0;
     /// Upperbound value (-1 if not known)
     long UpperBound = 0;
+    /// Upperbound as string
+    std::string StrUpperBound = "";
     /// Stride or step
     long Step = UBFallback;
     /// TODO Leftover values: if Upperbound is -1, then LeftOver as well
     long LeftOver = -1;
     /// Variable declared in the loop creation
     bool Declared = false;
+    /// Location of the initialization in the loop
+    clang::CharSourceRange SRVarInit;
+    /// Location of the condition of the loop
+    clang::CharSourceRange SRVarCond;
+    /// Location of the increment in the loop
+    clang::CharSourceRange SRVarInc;
+
+    /// Empty constructor
+    LoopInfo() {}
+
+    /// Get epilogs of given dimensions and
+    static std::string getEpilogs(std::list<LoopInfo> Dims,
+                                  std::vector<Stmt *> SVec);
+
+    static std::string getDimDeclarations(std::list<std::string> DimsDeclared);
 
     /// For debugging purposes
     std::string toString() {
