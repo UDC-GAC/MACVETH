@@ -16,7 +16,7 @@ compiler.
 
 In order to execute manually the test suite you must have installed, at least:
 
-- Python >=3.x
+- Python >=3.6.0
 
 * Getting started:
 ------------------

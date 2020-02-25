@@ -23,10 +23,10 @@ of the main author (Marcos Horro).
 * Main dependencies:
 --------------------
 
-- Clang >=10.0
-- CMake >=3.14
-- GNU GCC >=8.x
-- Doxygen >=1.8.x
+- Clang >=10.0.0
+- CMake >=3.13
+- GNU GCC >=8.3.0
+- Doxygen >=1.8.13
 
 * Getting started:
 ------------------
@@ -62,12 +62,17 @@ In this section we will comment in detail all the options available:
 
     --debug: Print debug comments, from TAC creation to the backend generator
     --debug-file=<file>: Print debug output to file
-    --fma: FMA support in the architecture
-    --input-cdag=<file>: Input file with placements for the CDAG
+
+    --input-cdag=<file>: Input file with placements for the CDAG created as IR
+
     --macro-free: The backend will generate intrinsics and will not use the
-                  Vector API for generating SIMD code
-    --march=<arch>: Target architecture
-    --misa=<isa>: Target ISA
+                  Vector API for generating SIMD code. This flag is needed right
+                  now because the VectorAPI is not implemented yet.
+
+    --march=<arch>: Target architecture (not implemented yet)
+    --misa=<isa>: Target ISA (only AVX2 right now)
+    --fma: FMA support in the architecture
+
     -o=<output>: Output file, otherwise macveth_output.c
     -p=<path>: Build path
 
@@ -113,6 +118,9 @@ account when using this compiler:
           (when passing variables to the function by reference). You can simply
           avoid this issue by using a temporal variable.
 
+        + Reductions should look like:
+            S = S + <expr>
+          in order to be detected properly
     - Loop related:
         + Only "for" loops are supported
         + Declaration of variables within the loop is allowed, e.g.:
@@ -162,4 +170,3 @@ account when using this compiler:
 ----------
 
 Under development, code disclosed under request.
-
