@@ -1,5 +1,5 @@
 #include "include/MVFrontend.h"
-#include "include/CustomMatchers.h"
+#include "include/MVHandlers.h"
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
@@ -11,9 +11,9 @@
 // ---------------------------------------------
 void MACVETHConsumer::HandleTranslationUnit(ASTContext &Context) {
   // For vectorizable statements
-  for (int n = 0; n < 6; ++n) {
+  for (int N = 0; N < matchers_utils::MaxDepthForLoops; ++N) {
     StatementMatcher ForLoopNestedMatcherVec =
-        matchers_utils::ROI(n, compoundStmt(has(expr())).bind("ROI"));
+        matchers_utils::ROI(N, compoundStmt(has(expr())).bind("ROI"));
     MatcherVec.addMatcher(ForLoopNestedMatcherVec, &Handler);
   }
   // Run the matchers when we have the whole TU parsed.
@@ -56,8 +56,7 @@ void MACVETHFrontendAction::EndSourceFileAction() {
   // from the ASTConsumer
   SourceManager &SM = TheRewriter.getSourceMgr();
   std::error_code ErrorCode;
-  std::string OutFile = MVOptions::OutFile;
-  OutFile = Utils::getExePath() + OutFile;
-  llvm::raw_fd_ostream outFile(OutFile, ErrorCode, llvm::sys::fs::F_None);
+  std::string OutFileName = Utils::getExePath() + MVOptions::OutFile;
+  llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
 }

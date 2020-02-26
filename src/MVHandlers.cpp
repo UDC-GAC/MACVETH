@@ -26,7 +26,7 @@
  * SOFTWARE.
  */
 
-#include "include/CustomMatchers.h"
+#include "include/MVHandlers.h"
 #include "include/CDAG.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Basic/AttrKinds.h"
@@ -50,7 +50,7 @@ ScopLoc *getScopLoc(StmtWrapper *S, ScopHandler *SL) {
 }
 
 // ---------------------------------------------
-bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
+bool MVHandler::checkIfWithinScop(StmtWrapper *S) {
   auto Scop = getScopLoc(S, this->SL);
   bool NewStmt = false;
   if ((Scop != NULL)) {
@@ -74,7 +74,7 @@ bool IterationHandler::checkIfWithinScop(StmtWrapper *S) {
 }
 
 // ---------------------------------------------
-void IterationHandler::unrollOptions(StmtWrapper *S) {
+void MVHandler::unrollOptions(StmtWrapper *S) {
   auto SLoc = S->getStmt()[0]->getBeginLoc();
   auto Scop = getScopLoc(S, SL);
   assert(Scop != NULL && "Scop not found for these statements");
@@ -123,7 +123,7 @@ void rewriteLoops(StmtWrapper *SWrap, Rewriter *Rewrite) {
 }
 
 // ---------------------------------------------
-void IterationHandler::run(const MatchFinder::MatchResult &Result) {
+void MVHandler::run(const MatchFinder::MatchResult &Result) {
   // Get the info about the loops surrounding this statement
   StmtWrapper *SWrap = new StmtWrapper(Result);
 

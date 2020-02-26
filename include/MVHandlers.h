@@ -50,6 +50,8 @@ using namespace clang::tooling;
 namespace macveth {
 namespace matchers_utils {
 
+/// Auxiliary namespace for declaring prefixes when binding using the clang AST
+/// matchers
 namespace varnames {
 const std::string NameVarInc = "incVar";
 const std::string NameVarIncPos = "incVarPos";
@@ -65,16 +67,19 @@ const std::string NameValInit = "nameValInit";
 const std::string UpperBound = "upperBound";
 } // namespace varnames
 
+/// Max depth in the for loops that can be parsed
+const int MaxDepthForLoops = 6;
+
 // IteartionHandler is called every time we find an assignment like:
 // BinaryOperator(lhs, rhs, "=") inside a loop
-class IterationHandler : public MatchFinder::MatchCallback {
+class MVHandler : public MatchFinder::MatchCallback {
 public:
   /// Basic constructor
-  IterationHandler(Rewriter &R) : Rewrite(R) {}
+  MVHandler(Rewriter &R) : Rewrite(R) {}
   /// Basic constructor with context
-  IterationHandler(Rewriter &R, ASTContext *C) : Rewrite(R), Ctx(C) {}
+  MVHandler(Rewriter &R, ASTContext *C) : Rewrite(R), Ctx(C) {}
   /// Basic constructor with context
-  IterationHandler(Rewriter &R, ASTContext *C, ScopHandler *L)
+  MVHandler(Rewriter &R, ASTContext *C, ScopHandler *L)
       : Rewrite(R), Ctx(C), SL(L) {}
 
   /// Override run method from MatchFinder

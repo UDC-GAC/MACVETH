@@ -125,6 +125,17 @@ unsigned int getMask(int VL, Node *V[]) {
 }
 
 // ---------------------------------------------
+std::list<Node *> detectReductionsAndFuse(std::list<Node *> NL) {
+  std::list<Node *> NewList = NL;
+  NewList.reverse();
+  for (auto N : NL) {
+    // detect reduction
+  }
+  NewList.reverse();
+  return NewList;
+}
+
+// ---------------------------------------------
 VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Init list of unit operands
   this->UOP = (Node **)malloc(sizeof(Node *) * VL);

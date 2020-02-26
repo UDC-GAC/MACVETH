@@ -1,7 +1,7 @@
 #ifndef MACVETH_FRONTEND_H
 #define MACVETH_FRONTEND_H
 
-#include "include/CustomMatchers.h"
+#include "include/MVHandlers.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 
 #ifndef LLVM_VERSION
@@ -31,7 +31,7 @@ private:
   /// Context
   ASTContext *Context;
   /// Handler for matching results in the code
-  IterationHandler Handler;
+  MVHandler Handler;
   MatchFinder MatcherVec;
 };
 
