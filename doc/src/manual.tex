@@ -84,7 +84,25 @@ interested in a small set of operations, so we created basically a wrap for this
 purpose. MVExpr is an abstract class that can be specialized for any type we
 want to represent from the Clang AST. Besides, the idea of this class is to
 provide a set of non-standard transformations for the expressions, e.g.
-unrolling.
+unrolling. Thus, MVExpr are chosen using a factory.
+
+We have implemented the following specializations, which are enough in order to 
+represent any value reference:
+
+\begin{itemize}
+	\item \textbf{MVExprArray}: represents any N-dimensional expression in the 
+	code. It 
+	holds information of the number of dimensions and name or value of the 
+	indices.
+	\item \textbf{MVExprVar}: regardless the type of the variable, this 
+	abstraction 
+	represents, basically, any \texttt{DeclRefExpr} from the Clang AST.
+	\item \textbf{MVExprLiteral}: any integer, float, double, char, etc. value.
+	\item \textbf{MVExprFunc}: this is a recursive abstraction which holds the 
+	name of the function and the parameters it receives. Parameters are also 
+	MVExpr 
+	type.
+\end{itemize}
 
 \section{Three-Address Code IR: TAC}
 The Three-Address Code (TAC) representation used translates any statement ($S$) 
@@ -125,7 +143,7 @@ Corollary~\ref{cor:TAC}).
 \end{algorithm}
 
 \begin{corollary}\label{cor:TAC}
-	Any statement can be represented as a set of TACs:
+	Any statement $S$ can be represented as a set of interconnected TACs:
 	$S = \{TAC\}$
 \end{corollary}
 
@@ -139,8 +157,22 @@ Algorithm~\ref{alg:TACunrolling}.
 
 \begin{algorithm}[H]\label{alg:TACunrolling}
 	\SetAlgoLined
-	\KwIn{Set of TAC, Unrolling factor, Loop nests}
-	\KwResult{Set of TAC}
+	\KwIn{Set of TAC T, Unrolling Factor UF, Loop nests LN}
+	\KwResult{Set of TAC T}
+	TacList = \{\}\;
+	\ForEach{LN} {
+		\For{step = 0; step++ $<$ UF;} {
+			\ForEach{TAC in T} {
+				NewTac = \{\}\;
+				\ForEach{Expr in TAC} {
+					NewExpr $\leftarrow$ unrollExpr(step, LN, Expr)\;
+					NewTac $\leftarrow$ placeExprInTac(NewExpr)\;
+				}
+				TacList $\leftarrow$ add(NewTac)\;
+			}
+		}
+	}
+	return TacList\;
 	\caption{Unrolling set of TAC}
 \end{algorithm}
 
@@ -179,13 +211,13 @@ architectures. Because of this, at this stage there is no fusing operations or
 any other kind of target-specific optimizations. The concrete backend will be in
 charge of doing this.
 
-\chapter{Vector API}
-In order to generate vector operations, the compiler basically generates a set 
-of wrap instructions substituting the original code. These wrap instructions 
-are defined 
+%\chapter{Vector API}
+%In order to generate vector operations, the compiler basically generates a set 
+%of wrap instructions substituting the original code. These wrap instructions 
+%are defined 
 
-\chapter{$\mu$macro-bench}
-Architectures feature different 
+%\chapter{$\mu$macro-bench}
+%Architectures feature different 
 
 \bibliographystyle{unsrt}
 \bibliography{sample}
