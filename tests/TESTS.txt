@@ -23,7 +23,10 @@ version with the suffix "_exp", e.g.:
 Thus, the "_exp" version will be the SIMD-fashion version of the original one,
 which will be compared with the output of MACVETH.
 
-Current test cases (8):
+**IMPORTANT** NOTE:
+These tests are, at the moment, only written for AVX2 in a macro-free fashion.
+
+Current test cases (9):
     * test_1loop_1stmt.c - Stmt to analyze: x[i] = p[i] * 4; simple
       multiplication, analyze the generation of the set, mul and store
       operations.
@@ -33,6 +36,9 @@ Current test cases (8):
       to analyze (besides the commented in the case immediately before):
         * Reuse of the x[i] value in the second statement
         * Generation of the FMA in the second statement
+    * test_1loop_2stmt_packreductions.c - S = S + x[i]; G = G + y[i]; the
+      intention of this test is to ensure the correctness of the reductions
+      fused
     * test_1loop_3stmt.c - x[i] = p[i] * 4; y[i] = p[i] * 4; c[i] = p[i] *4;
       reuse of an operation which is the same in all assignments
     * test_2loop_1stmt.c - x[i] =* 4 + p[i]; analyze how it behaves 2 loops with
@@ -59,14 +65,22 @@ The naming of the tests follow the next pattern:
     test_Nstmt_DIMarray[_otherFeatures].c - where N is a number and DIM
     represents the dimensions of the arrays used
 
-Current test cases (12):
+Current test cases (21):
 
     * test_1d2d3darray.c - A[i][j][k] = x[i] * C[i][j] + A[i][j][k]; analyze a
       reduction with 3 loops and different array dimensions
     * test_1d2darray.c - C[i][j] = C[i][j] + x[j] * C[i][j]; analyze a reduction
       with 2 loops and different array dimensions and unrollings
+    * test_1darray_1reduction_1before_1raw.c -
+    * test_1darray_1reduction_1before_1war.c -
+    * test_1darray_1reduction_1raw.c -
+    * test_1darray_1reduction_2raw.c -
+    * test_1darray_2pragmas.c -
+    * test_1darray_2reductions.c -
     * test_1darray.c - x[i] = x[i] * i + 42.3f; analyze the use of variables,
       literals, reduction all together
+    * test_1darray_epilog.c -
+    * test_1darray_reduction.c
     * test_2d3darray_2stmt.c - C[i][j] = C[i][j] + x[j] * C[i][j]; in j and
       A[i][j][k] = x[j] * C[i][j] + A[i][j][k]; in k; analyze different unrollings
       in different points of the ROI
@@ -79,6 +93,7 @@ Current test cases (12):
       Asses the correctness of the ordering of operations using nested loops
     * test_2darray.c - C[i][j] = C[i][j] + X[i][j] * A[i][j]; asses the
       correctness of reductions using only 2d arrays
+    * test_2loop_1darray_epilog.c -
     * test_2stmt_1d2darray.c - C[i][j] = C[i][j] + x[j] * C[i][j];
       x[i] = x[j] * 4.0 + C[i][j]; asses the reuse of arrays between statements
       and the correctness of the operations and ordering
@@ -89,15 +104,12 @@ Current test cases (12):
       reuse
     * test_3darray.c -
     * test_3stmt_1darray.c -
-    * test_dumb_3darray.c -
+    * test_dumb_3darray.c - as its name suggests, dumb tests just for
+      robustness: nothing is computed, only values are set.
 
+** TODO **
 * mustpass (experimental):
 --------------------------
 
 This is a set of the minimum cases where the compiler should always work. We use
 the same approach that fulltest/ tests do.
-
-Current test cases (1):
-
-
-

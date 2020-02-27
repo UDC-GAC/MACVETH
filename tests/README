@@ -41,6 +41,11 @@ Some terms which will be used in this document:
     * Case: certain configuration or setup of a program to evaluate. It can be
       composed of more than one file
 
+* Description:
+--------------
+
+Refer to TESTS file in order to read more details about the tests.
+
 * How to write new tests:
 -------------------------
 
