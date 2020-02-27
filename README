@@ -4,6 +4,8 @@
 *                              HPC applications
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
+Copyright (c) 2019-2020 the Colorado State Univesity.
+
 Contact:
     Marcos Horro Varela <marcos.horro@udc.es>
     Louis-Noël Pouchet <pouchet@colostate.edu>
@@ -15,7 +17,8 @@ MACVETH stands for Multi-Array C-compiler for VEctorization and Translation for
 High-performance computing. Besides, Macbeth, tragedy written by William
 Shakespeare, represents the detrimental effects of human's narcissism and vanity
 when looking for the power for its own benefits. In contraposition, MACVETH is
-composed of many components seeking for a common purpose: optimize vectorization.
+composed of many intermediate representations seeking for a common purpose:
+optmize vectorization.
 Last but not least, the first and last letter of the acronym stand for the name
 of the main author (Marcos Horro).
 
@@ -167,10 +170,15 @@ account when using this compiler:
             }
             #pragma endmacveth
 
+* Versioning:
+-------------
+
+The version number of this compiler follows the Semantic Versioning
+Specification (https://semver.org/spec/v2.0.0.html)
 
 * License:
 ----------
 
-(C) Copyright 2019-2020. Colorado State University.
+(C) Copyright 2019-2020 the Colorado State University.
 
 No warranties. Under development, code disclosed under request.
