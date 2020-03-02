@@ -1,3 +1,10 @@
+/**
+ * File              : PlcmntAlgo.h
+ * Author            : Marcos Horro <marcos.horro@udc.gal>
+ * Date              : Lun 02 Mar 2020 15:29:56 CET
+ * Last Modified Date: Lun 02 Mar 2020 16:56:51 CET
+ * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ */
 #ifndef MACVETH_PLCMNTALGO_H
 #define MACVETH_PLCMNTALGO_H
 
@@ -10,6 +17,13 @@ namespace macveth {
 
 class PlcmntAlgo {
 public:
+  /// Detect reductions in the list of input nodes
+  static Node::NodeListType detectReductions(Node::NodeListType *NL);
+
+  /// Fuse reductions. Input **MUST** contain reductions in order to operate
+  /// properly, in any other way it will not generate anything at all.
+  static Node::NodeListType fuseReductions(Node::NodeListType NL);
+
   /// Set the placement from the input file
   static void setPlcmtFromFile(Node::NodeListType NL);
 

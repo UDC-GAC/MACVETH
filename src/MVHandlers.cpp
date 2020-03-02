@@ -1,8 +1,8 @@
 /**
- * File              : CustomMatchers.cpp
+ * File              : MVHandlers.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 15 Nov 2019 09:23:38 MST
- * Last Modified Date: Mar 14 Xan 2020 12:10:46 MST
+ * Last Modified Date: Xov 27 Feb 2020 10:18:27 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -90,7 +90,7 @@ void rewriteLoops(StmtWrapper *SWrap, Rewriter *Rewrite) {
   std::list<std::string> DimsDeclared = {};
   // Rewrite loop header
   for (auto Loop : SWrap->getLoopInfo()) {
-    Utils::printDebug("CustomMatchers", "Rewriting loop = " + Loop.Dim);
+    Utils::printDebug("MVHandlers", "Rewriting loop = " + Loop.Dim);
     // Rewrite headers
     Rewrite->ReplaceText(Loop.SRVarInit,
                          Loop.Dim + " = " + std::to_string(Loop.InitVal));

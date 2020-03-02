@@ -1,3 +1,10 @@
+/**
+ * File              : PlcmntAlgo.cpp
+ * Author            : Marcos Horro <marcos.horro@udc.gal>
+ * Date              : Sáb 29 Feb 2020 16:55:54 CET
+ * Last Modified Date: Lun 02 Mar 2020 17:53:38 CET
+ * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ */
 #include "include/PlcmntAlgo.h"
 #include "include/MVOptions.h"
 
@@ -24,6 +31,67 @@ void computeFreeSchedule(Node::NodeListType NL) {
 }
 
 // ---------------------------------------------
+Node::NodeListType PlcmntAlgo::fuseReductions(Node::NodeListType NL) {
+  return NL;
+}
+
+// ---------------------------------------------
+Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
+  Node::NodeListType NCopy(*NL);
+  Node::NodeListType LRedux;
+  Node::NodeListType Visited;
+  Node::NodeListType Reduction;
+  bool ReductionFound = false;
+  NCopy.reverse();
+  NL->clear();
+  for (auto R : NCopy) {
+    ReductionFound = false;
+    if (std::find(Visited.begin(), Visited.end(), R) != Visited.end()) {
+      continue;
+    }
+    Visited.push_back(R);
+
+    auto In = R->getInputs().front();
+    int Depth = 1;
+    Reduction.push_front(R);
+  loop:
+    // Since we are checking the inputs of a node, we are do not have to check
+    // if there are any RAW dependencies, because there are. Some conditions we
+    // are checking
+    // 1.- Check if same type (getValue())
+    // 2.- Check if sequential (FreeSched)
+    // Utils::printDebug("PlcmntAlgo",
+    //                  "R = " + R->getValue() + "; " +
+    //                      std::to_string(R->getSchedInfo().FreeSched));
+    // Utils::printDebug("PlcmntAlgo",
+    //                  "In = " + In->getValue() + "; " +
+    //                      std::to_string(In->getSchedInfo().FreeSched -
+    //                      Depth));
+    if ((R->getValue() == In->getValue()) &&
+        (R->getSchedInfo().FreeSched ==
+         (In->getSchedInfo().FreeSched + Depth))) {
+      Utils::printDebug("PlcmntAlgoRedux", In->toString());
+      Depth++;
+      ReductionFound = true;
+      Reduction.push_front(In);
+      Visited.push_back(In);
+      In = In->getInputs().front();
+      goto loop;
+    }
+    if (ReductionFound) {
+      for (auto RNode : Reduction) {
+        LRedux.push_back(RNode);
+      }
+    } else {
+      NL->push_back(R);
+    }
+    Reduction.clear();
+  }
+  NL->reverse();
+  return LRedux;
+}
+
+// ---------------------------------------------
 Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
   computeFreeSchedule(NL);
   if (MVOptions::InCDAGFile != "") {
@@ -44,6 +112,8 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
   CF.open(Utils::getExePath() + MVOptions::InCDAGFile, std::ios_base::in);
   if (CF.is_open()) {
     std::string L;
+    // For each node, read until lines skipping those with comments. Fail if
+    // line with no numbers
     for (auto N : NL) {
       while (getline(CF, L)) {
         if (L.rfind("//", 0) == 0) {

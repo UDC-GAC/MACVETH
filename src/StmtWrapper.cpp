@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Lun 13 Xan 2020 15:09:03 MST
+ * Last Modified Date: Xov 27 Feb 2020 10:19:24 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -157,7 +157,7 @@ StmtWrapper::LoopInfo::getEpilogs(std::list<StmtWrapper::LoopInfo> Dims,
   std::string Epilog = "";
   int Tmp = 0;
   for (auto D : Dims) {
-    Utils::printDebug("CustomMatchers", "Epilog" + D.Dim);
+    Utils::printDebug("StmtWrapper", "Epilog = " + D.Dim);
     // Write new epilogs
     std::string EpiInit =
         D.Dim + " = " +

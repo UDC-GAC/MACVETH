@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Mér 15 Xan 2020 11:28:22 MST
+ * Last Modified Date: Lun 02 Mar 2020 17:07:52 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -31,7 +31,14 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
   Node::NodeListType NL(NList);
 
   // Debugging options
-  for (Node *N : NL) {
+  // for (Node *N : NL) {
+  //  Utils::printDebug("CDAG", N->toString());
+  //}
+
+  // Detect reductions
+  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  Utils::printDebug("CDAG", "Nodes of reductions found:");
+  for (Node *N : NRedux) {
     Utils::printDebug("CDAG", N->toString());
   }
 
@@ -44,7 +51,8 @@ repeat:
   while (!NL.empty()) {
     // Consume the first one
     VOps[Cursor] = NL.front();
-    Utils::printDebug("CDAG", "Node selected =>\n" + VOps[Cursor]->toString());
+    // Utils::printDebug("CDAG", "Node selected =>\n" +
+    // VOps[Cursor]->toString());
     // FIXME: how do you solve this? I mean, for reductions, for instance,
     // you will have different Plcmnts, something like: 1,2,3,4; but this
     // algorithm should be able to select them. So maybe when selecting
@@ -150,8 +158,9 @@ no_output:
 
 // ---------------------------------------------
 CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
+  // Literally create a new CDAG
   CDAG *G = new CDAG();
-  // Be clean
+  // Restarting numbering of nodes
   Node::restart();
   for (TAC T : TL) {
     // TACs are of the form a = b op c, so if we create a Node for each TAC
