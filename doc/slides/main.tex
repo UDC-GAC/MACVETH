@@ -1,0 +1,607 @@
+% This template has been adapted from LIM Lian Tze's version
+%
+% Universidade da Coruña. 2016
+% Marcos Horro Varela
+
+\documentclass[xcolor=table,hideothersubsections,aspectratio=1610]{beamer}
+\usetheme{Gelugor}
+
+% Packages
+\usepackage[utf8]{inputenc}
+%\usepackage[spanish]{babel}
+\usepackage{helvet}
+\usepackage[compatibility=false]{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{svg}
+\setbeamercolor{block title alerted}{fg=white,bg=UDCpurple}
+\usepackage{pdfpages}
+\usepackage{fancyvrb}
+
+%% Personal data
+%\title[CSU Internship]{\color{white}\textbf{Platform-independent code synthesis techniques to generate platform-specific implementations}}
+\title[CSU Internship]{\color{white}\textbf{Framework for Random Vector Packing}}
+
+%\title[CSU Internship]{\color{white}\textbf{Characterizing codes in different architectures and developing a compiler for best-effort vectorization}}
+%\subtitle{\color{white}Conceptos Básicos}
+\subtitle{\color{white}}
+\author[Marcos Horro]{
+	Marcos Horro, Louis-Noël Pouchet\\
+	University of A Coruña\\
+	Colorado State University
+} % Your name
+\date{}
+
+\begin{document}
+
+% Cover frame
+\begin{frame}[plain,t]
+\titlepage
+\end{frame}
+
+\begin{frame}[plain]
+\tableofcontents[hideallsubsections]
+\end{frame}
+
+% About me
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[plain]
+\textbf{Marcos Horro Varela}, PhD student at University of A Coruña in the Computer Architecture Group (GAC). My research lines are in the scope of high-performance computing (HPC), mainly: heterogeneous memory systems, hardware design exploration, computer architecture.
+
+ \begin{itemize}
+     \item gac.udc.es/\~{}marcos.horro
+     \item marcos.horro@udc.gal
+     \item github.com/markoshorro
+     \item @markoshorro
+ \end{itemize}
+\end{frame}
+
+% Introduction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Motivation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\frametitle{Motivation}
+\begin{frame}{Motivation}
+\begin{block}{Known issues}
+\begin{itemize}
+    \item Compilers' limitations regarding auto-vectorization for sparse codes: bad performance
+    \item Need of characterize new architectures with non-disclosed information regarding SIMD performance (e.g. Microsoft Brainwave)
+\end{itemize}
+
+\end{block}
+\begin{itemize}
+    \item \textbf{Vectorization of irregular strides} is complex: compilers may not perform any action or have a detrimental impact $\rightarrow$ automation
+
+        \item \textbf{Assessment of codes} may be tedious and complex: influence of dimensions (loop bounds, strides; data size, alignment) are not always clear $\rightarrow$ automation
+        \item Different ISAs, different applications, different costs: in some cases we will want to vectorize in a certain way or just to not vectorize (\textbf{portability}) $\rightarrow$ automation
+    %\item Implement a source-to-source compiler able to implement and use \textbf{trace scheduling techniques}, \textbf{architecture-independent} but \textbf{ISA-enriched}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Objectives}
+\begin{itemize}
+    \item \textbf{Automate Benchmarking and Reverse-engineering with ML} $\rightarrow$ mini-framework written in Python for compiling, executing, measuring and analyzing (using WEKA) input codes and the dimensions of interest
+    \item \textbf{Source-to-source SIMD compiler} $\rightarrow$ code synthesizer profile-based, using information collected with the framework commented before
+\end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+\frametitle{Complexity of irregular codes}
+\begin{columns}
+\small
+\begin{column}{0.45\textwidth}
+\begin{verbatim}
+for (int i = 0; i < N; ++i) {
+    sum += x[i] * 42.3f
+}
+--------
+for (int i = 0; i < N; i+=4) {
+  vop0 = vset(42.3, ..., 42.3);
+  vop1 = vload(&x[i]);
+  vop2 = vmul(vop1, vop0);
+  vop3 = vpermute(vop2, mask);
+  vop4 = vadd(vop3, vop2);
+  vop5 = vpermute(vop4, vop4,\ 
+                        mask);
+  vop6 = vadd(vop5, vop4);
+  vstore(&sum, mask, vop6);
+}
+
+
+
+
+\end{verbatim}
+\end{column}
+\begin{column}{0.45\textwidth}  %%<--- here
+\begin{verbatim}
+for (int i = 0; i < N; ++i) {
+    sum += x[4*i + 7] * 42.3f
+}
+--------
+for (int i = 0; i < N; i+=4) {
+  vop0 = vset(42.3, ..., 42.3);\end{verbatim}
+{
+\color{red}{
+\vspace{-.6cm}
+\begin{verbatim}  idx = (x*i+7, x*(i+1)+7,\
+         x*(i+2)+7, x*(i+3)+7);
+  // this is a wrap of 4 vload(op)
+  vop1 = vgather(& x[i], idx);
+\end{verbatim}
+}}
+\vspace{-.55cm}
+\begin{verbatim}
+  vop3 = vpermute(vop2, mask);
+  vop4 = vadd(vop3, vop2);
+  vop5 = vpermute(vop4, vop4,\ 
+                        mask);
+  vop6 = vadd(vop5, vop4);
+  vstore(&sum, mask, vop6);
+}
+
+
+\end{verbatim}
+
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{High-level algorithm}
+\begin{verbatim}
+INPUT: AST a
+OUTPUT: AST w/SIMD intrinsics
+
+  a_out <- clone(a)
+  a_u   <- unrollAndJam(a, size)
+  c     <- createCDAG(a_u)
+  c     <- assignPlcmtToOps(c)
+  {n}   <- groupNodesByPlace(c)
+  forall node in {n} do
+     cn <- packingNodesInVectorAndComputeCost(node, c)
+     an <- SIMDSynthesis(cn)
+     aout <- mergeReplace(au, an, aout)
+  done
+\end{verbatim}
+    
+\end{frame}
+
+
+%% High level picture of the algorithm of the compiler
+
+%% Unrolling
+%% CDAG creation
+%% Placement
+%% Vector packing and cost computation or analysis
+%% SIMD synthesis
+
+
+
+
+% MACVETH compiler
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{MACVETH Compiler}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\frametitle{MACVETH Compiler}
+\begin{frame}{MACVETH Compiler [WIP]}
+\begin{block}{Definition}
+Multi-dimensional Array C-compiler for VEctorization and Translation in HPC applications: source-to-source compiler from C/C++ to SIMD intrinsics
+\end{block}
+\begin{itemize}
+    \item Clang Tool (LLVM project), C/C++ ($\approx$ 3 KLOC)
+    \item Pragma recognition (\texttt{\#pragma macveth}) to delimitate ROI
+    \item Cost model computation: profile based
+    \item Flexible instruction scheduling: interchangeable algorithms (Trace scheduling implementation (WIP))
+    \item Different IR: TAC, CDAG, VectorIR, SIMD Generator $\rightarrow$ Vector API
+    \item Abstract Vector API $\neq$ skeleton-based
+\end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{MACVETH: Vector IR}
+\begin{figure}
+    \centering
+    \includegraphics[scale=.37]{img/CDAGVEC2.pdf}
+    %\caption{CDAG from code}
+\end{figure}
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Architecture}
+\begin{frame}{MACVETH Architecture}
+\begin{figure}
+    \centering
+    \includegraphics[scale=.775]{img/MACVETH.pdf}
+\end{figure}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{MACVETH: frontend}
+\begin{block}{Clang Tool}
+Clang Tools allows to create out-of-tree tools
+\end{block}
+\begin{itemize}
+    \item Input code is parsed using the Clang AST
+    \item Detection of region of interest by creating a subclass of \texttt{clang::PragmaHandler}
+    \item Matching the loops and expressions within the region using Clang AST Matchers
+\end{itemize}
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{TAC}
+\begin{frame}{MACVETH: TAC}
+\begin{block}{Three-Address Code (TAC)}
+This format is used for converting each statement in the region-of-interest to Single-Statement Assignment (SSA). It is represented as quadruples:
+\begin{center}
+    \texttt{a = b OP c}
+\end{center}
+\texttt{c} can be \texttt{NULL} if \texttt{OP} is unary
+\end{block}
+
+\begin{itemize}
+    \item Extended use in compilers
+    \item Suitable for optimizations, e.g. fuse multiply-accumulate
+    \item `Direct' translation onto graph (CDAG in our case)
+\end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{Three-Address Code examples}
+
+\begin{verbatim}
+a[i] = a[i] + b[i] * c[i]  ->    t1 = b[i] * c[i]
+                               a[i] = a[i] + t1
+                                
+\end{verbatim}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{CDAG}
+\begin{frame}{MACVETH: CDAG}
+\begin{block}{Control Directered Acyclic Graph (CDAG)}
+CDAG represents the dependencies between the statements (if any) by connecting nodes. CDAG handles two types of nodes: memory nodes and operational nodes.
+\end{block}
+\begin{itemize}
+    \item \textbf{Memory nodes}: represent data that can be loaded (memory addresses) or set (literals, variables)
+    \item \textbf{Operational nodes}: have at least one input node (up to two, any kind) and they represent an operation; they also hold a result value (that can also be a store to memory)
+\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{MACVETH: CDAG}
+\begin{verbatim}
+a[i] = a[i] + b[i] * c[i]  ->    t1 = b[i] * c[i]
+                               a[i] = a[i] + t1
+                                
+\end{verbatim}
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=.615]{img/CDAG.pdf}
+\end{figure}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{MACVETH: CDAG}
+The potential utility of this representation is the ordering of the nodes:
+\begin{itemize}
+    \item Each node holds information regarding its \textbf{topological order} (or free scheduling)
+    \item Trace scheduling (or any other algorithm/heuristic) can be used to \textbf{reorder the operations} in the program, e.g. potential improvements in vectorization by improving temporal and spatial locality (best use of vector operands)
+    \item The CDAG is also responsible for computing the computational cost of the model
+    \item Packing into vectors from different statements
+    \item Implicitly parallel representation
+\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Vector IR}
+\begin{frame}{MACVETH: Vector IR}
+\begin{block}{Vector IR}
+Intermediate representation which wraps operations and operands respecting a imposed order by the CDAG, e.g. free scheduling
+\end{block}
+
+\begin{itemize}
+    \item Intermediate layer between the middle-end and the backend of the compiler to simplify the implementation of the Vector API
+    \item Represents an architecture-agnostic set of vector operands and operations
+    \item Hide the implementation of the CDAG nodes to the Vector API/SIMD generator
+\end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{MACVETH: Vector IR}
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\begin{verbatim}
+Unrolled code:
+a[i] = a[i] + b[i] * c[i]
+a[i+1] = a[i+1] + b[i+1] * c[i+1]
+a[i+2] = a[i+1] + b[i+2] * c[i+2]
+a[i+3] = a[i+1] + b[i+3] * c[i+3]
+\end{verbatim}
+\end{column}
+\begin{column}{0.35\textwidth}  %%<--- here
+\begin{verbatim}
+
+TAC: 
+t1 = b[i] * c[i]
+a[i] = a[i] + t1
+t2 = b[i+1] * c[i+1]
+a[i+1] = a[i+1] + t2
+t3 = b[i+2] * c[i+2]
+a[i+2] = a[i+2] + t3
+t4 = b[i+3] * c[i+3]
+a[i+3] = a[i+3] + t4
+\end{verbatim}
+
+\end{column}
+\end{columns}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{MACVETH: CDAG and Vector IR}
+\begin{figure}
+    \centering
+    \includegraphics[scale=.4]{img/FULLCDAG.pdf}
+    %\caption{CDAG from code}
+\end{figure}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{MACVETH: CDAG and Vector IR}
+\begin{figure}
+    \centering
+    \includegraphics[scale=.37]{img/CDAGVEC1.pdf}
+    %\caption{CDAG from code}
+\end{figure}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{MACVETH: CDAG and Vector IR}
+\begin{figure}
+    \centering
+    \includegraphics[scale=.37]{img/CDAGVEC2.pdf}
+    %\caption{CDAG from code}
+\end{figure}
+\end{frame}
+
+
+\subsection{CDAG Placement Algorithm}
+\begin{frame}{CDAG Placement Algorithm}
+\begin{block}{Key idea}
+Iterative algorithm which computes the cost of a set of nodes in the CDAG \textbf{minimizing the total cost of the operations} and \textbf{maximizing the vector occupancy of the operands}
+\end{block}
+
+\begin{itemize}
+    \item Naïve approach: ensure correctness of CDAG built $\rightarrow$ topological order
+    \item Upcoming approaches: example-guided
+\end{itemize}
+
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Vector API / SIMD Generator}
+\begin{frame}{MACVETH: Vector API}
+\begin{block}{Vector API}
+Abstract interface for implementing vector operations by the backend, e.g.\textit{ vpack(data)}, \textit{vmul(op1, op2)}, \textit{vreduce(reduction, op)}
+\end{block}
+\begin{itemize}
+    \item \textbf{Macro-based approach and ad-hoc approach}
+    \item \textit{`Ease'} to implement complex operations as reductions more efficiently
+    \item Trigonometric functions (such as inverse hyperbolic tangents) can be also synthesized as SIMD instructions
+\end{itemize}
+\end{frame}
+
+
+% Characterizing affine codes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Characterizing affine codes}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\frametitle{Characterizing affine codes}
+\begin{frame}{Characterizing affine codes}
+\begin{block}{Idea: $\mu$bench (ubench or microbench)}
+Framework for the automation of compiling, executing programs and analyzing the performance results, with regard to a set of dimensions of interest.
+\end{block}
+
+\begin{itemize}
+    \item Code not disclosed yet: Python 3, Makefile, YAML ($<$ 1 KLOC)
+    \item Compile and execute a given code, which has a explicit region of interest (PolyBench style)
+    \item A configuration file sets the dimensions of interest to be analyzed (e.g. ASM instructions, size of data, compiler flags, etc.)
+    \item WEKA analyzes performance parameter with regard to the dimensions of interest by creating a decision tree (DT)
+\end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Architecture}
+\begin{frame}{High-level architecture}
+\begin{figure}
+    \centering
+    \includegraphics[scale=.775]{img/ubencharch.pdf}
+\end{figure}
+\end{frame}
+
+\subsection{microbench.py}
+\begin{frame}{High-level architecture: microbench.py}
+\begin{figure}
+    \centering
+    \includegraphics[scale=.6]{img/ubench.pdf}
+\end{figure}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{microbench.py config file}
+\begin{verbatim}
+- general:
+    input: code.c
+    flags: -O3 -S ...
+    sizes: 512 1024 2048 # -DN=<value>
+    dimensions: I J K FLOPs Cycles
+    init_val: 0 1 2 3 # -DINITVAL_<DIM>=<value>
+    stride: 1 2 3 5 7 8 11 # -DSTRIDE_<DIM>=<value>
+\end{verbatim}
+\end{frame}
+
+
+\subsection{weka.py}
+\begin{frame}{High-level architecture: weka.py}
+\begin{figure}
+    \centering
+    \includegraphics[scale=.6]{img/weka.pdf}
+\end{figure}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{weka.py config file}
+\begin{verbatim}
+- general:
+    input: test_data/data.csv
+    ...
+- prepare_data:
+    cols: I J It Jt Is Js Jters Iters NELEMS
+    rows: Vec_x=1
+    pred: FLOPSs
+    norm: ..
+    cats: num: 10 ..
+    dt_settings: ..
+    min_acc: 0.8
+- recommender:
+    pred: FLOPSs
+    interest_dim:
+        value: 6.5 .. -> MAX_PERF
+    dim: I J It Jt Is Js Jters Iters NELEMS
+\end{verbatim}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{Example output}
+\begin{verbatim}
+[step 1] filtering csv... (test_data/data.csv)
+[step 2] converting csv to arff format...
+[step 3] creating training and testing sets... (nsets = 0)
+[step 4] running experiments...
+    [J48] train... 
+    [J48] produce classfied outputs... 
+    [J48] produce tester stats... 
+[wrapper] displaying summary of results
+summary of results: 
+Correctly Classified Instances       16939         88.224  %
+Mean absolute error                      0.0348
+Relative absolute error                 19.6593 %
+Size of the tree : 	301
+
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example output}
+\begin{verbatim}
+Jters < 1.5 ...
+|   |   |   |   Iters < 5
+|   |   |   |   |   Iters < 3.5 : I-0.844-1.425 (10/0) [0/0]
+|   |   |   |   |   Iters >= 3.5
+|   |   |   |   |   |   Is < 2.5 : I-2.005-2.586 (7/0) [3/0]
+|   |   |   |   |   |   Is >= 2.5
+|   |   |   |   |   |   |   Is < 3.5 : I-0.844-1.425 (7/0) [3/0]
+|   |   |   |   |   |   |   Is >= 3.5 : I-2.005-2.586 (7/0) [3/0]
+Jters >= 1.5 ...
+|   |   |   Iters < 7
+|   |   |   |   Iters < 2.5 : I-3.747-4.328 (15/10) [5/2]
+|   |   |   |   Iters >= 2.5 : I-4.328-4.908 (42/20) [8/3]
+|   |   |   Iters >= 7
+|   |   |   |   Iters < 10 : I-4.908-5.489 (7/0) [3/0]
+|   |   |   |   Iters >= 10 : MAX_PERF (6/2) [4/0]
+|   |   Jters >= 5 ...
+|   |   |   Jters < 7
+|   |   |   |   Is < 2.5 : I-4.908-5.489 (16/7) [4/1]
+|   |   |   |   Is >= 2.5 : I-4.328-4.908 (14/5) [2/0]
+|   |   |   Jters >= 7 : I-4.908-5.489 (57/30) [15/8]
+
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example output}
+\begin{verbatim}
+[wrapper] executing recommender.py
+cond 0: Is<=1.0 & Iters<=3.0 & I<=0.0 & Jters>4.0 & NELEMS>6.0 
+cond 1: Jters>8.0 & It<=8.0 & It>4.0 & Iters<=4.0 & Iters>3.0 ...
+cond 2: Jters>8.0 & Is<=4.0 & It>12.0 & Iters<=4.0 & Iters>3.0 ...
+[recommender] false positives: 12/291 (4.12%)
+	diff with cat I-4.804-5.419 is [2] (2)
+    I  J It  Jt Is Js Jters Iters NELEMS
+30  0  0  3  12  1  1    12     3     36
+40  0  0  3  16  1  1    16     3     48
+	diff with cat I-5.419-6.035 is [1] (10)
+      I   J It  Jt Is Js Jters Iters NELEMS
+20    0   0  3   8  1  1     8     3     24
+...
+
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example output}
+\begin{verbatim}
+[recommender] false negative: 147 
+        I   J  It  Jt  Is  Js  Jters  Iters  NELEMS     FLOPSs
+175     0   0   8   8   2   1      8      4      32  MAX_PERF
+195     0   0   8  12   2   1     12      4      48  MAX_PERF
+215     0   0   8  16   2   1     16      4      64  MAX_PERF
+216     0   0   8  16   2   2      8      4      32  MAX_PERF
+440     0   0  16   8   4   1      8      4      32  MAX_PERF
+...    ..  ..  ..  ..  ..  ..    ...    ...     ...            ...
+18111  16   7  16  16   4   2      8      4      32  MAX_PERF
+18376  16  15   8  16   2   2      8      4      32  MAX_PERF
+18600  16  15  16   8   4   1      8      4      32  MAX_PERF
+18651  16  15  16  16   4   2      8      4      32  MAX_PERF
+19140  16  16  16   8   4   1      8      4      32  MAX_PERF
+
+
+\end{verbatim}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% Future work
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Upcoming work}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\frametitle{Upcoming work}
+\begin{frame}{Upcoming work}
+\begin{itemize}
+    \item Outperform placement algorithms in the CDAG
+    \item Development of new backends such as AVX512: improve portability
+    \item Provide a clean interface between MACVETH and $\mu$bench
+\end{itemize}
+\end{frame}
+
+% Cover frame
+\begin{frame}[plain,t]
+\titlepage
+\end{frame}
+
+\end{document}

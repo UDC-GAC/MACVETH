@@ -1,0 +1,219 @@
+% Gelugor (Universiti Sains Malaysia) presentation theme for beamer
+%
+% LIM Lian Tze <liantze@gmail.com>, 2011
+% http://liantze.penguinattack.org/latextypesetting
+%
+% Marcos Horro Varela
+% Universidade da Coruña. 2016
+% 
+% Changelog:
+%
+% Version 1.0:
+%   First public version.
+%
+% Version 2.0:
+%   Version adapted to Universidade da Coruña
+
+\ProvidesPackage{beamerthemeGelugor}[2011/09/20]
+
+%\definecolor{UDCpink}{RGB}{214,13,140}
+\definecolor{UDCpink}{RGB}{173,164,90}
+%\definecolor{UDCpurple}{RGB}{93,48,134}
+\definecolor{UDCpurple}{RGB}{37,95,53}
+\definecolor{UDCwhite}{RGB}{255,255,255}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Outer theme
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\useoutertheme[width=.15\paperwidth]{sidebar}
+\setlength{\beamer@headheight}{.185\paperheight}
+\pgfdeclareimage[width=.1\paperwidth]{small-logo}{udc/udcsc}
+%\pgfdeclareimage[width=.4\paperwidth]{type-logo}{udc/udcslc}
+\pgfdeclareimage[width=.55\paperwidth]{type-logo}{udc/CSUSIG}
+\pgfdeclareimage[width=.35\paperwidth]{gac-logo}{udc/logogac}
+\pgfdeclareimage[width=.06\paperwidth]{labs-logo}{udc/logo-labs}
+\pgfdeclareimage[width=.18\paperwidth]{gpul-logo}{udc/logo_gpul}
+\pgfdeclareimage[width=.15\paperwidth]{faculty-logo}{udc/fic}
+\pgfdeclareimage[width=.7\paperwidth]{department-logo}{udc/logogac}
+\pgfdeclareimage[height=\beamer@headheight]{small-corner}{udc/small-corner}
+\setbeamertemplate{sidebar left}{%
+\vskip7pt
+\insertverticalnavigation{\beamer@sidebarwidth}%
+}
+
+%\setbeamertemplate{footline}[text line]{%
+%\insertshortauthor\strut\hfill\insertshorttitle\hfill\insertshortdate\hspace{1em}\insertframenumber/\inserttotalframenumber}
+
+\setbeamercolor{section in head/foot}{bg=blue!0!black,fg=white}
+
+%\setbeamerfont{footline}{size=\fontsize{6}{6}\selectfont}
+\setbeamercolor{section in foot}{fg=white, bg=UDCpink}
+\setbeamercolor{subsection in foot}{fg=UDCpurple, bg=white}
+\setbeamertemplate{footline}
+{
+ \hbox{%
+  \begin{beamercolorbox}[wd=.25\paperwidth,ht=1.9ex,dp=1ex,center]{section in foot}%
+    \usebeamerfont{section in foot}\insertshortauthor
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.4\paperwidth,ht=1.9ex,dp=1ex,center]{section in foot}%
+    \usebeamerfont{section in foot}\insertsubtitle
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.35\paperwidth,ht=1.8ex,dp=1ex,center]{subsection in foot}%
+    \usebeamerfont{section in foot}12 Set 2019\hspace{1em}\insertframenumber/\inserttotalframenumber
+  \end{beamercolorbox}}%
+
+  \vskip0pt%
+}
+
+\addtobeamertemplate{frametitle}{}{%
+\begin{pgfpicture}
+\pgf@relevantforpicturesizefalse
+\pgftransformxshift{-\Gm@lmargin}
+\pgftransformyshift{\beamer@headheight+18pt}
+\pgftext[at=\pgfpoint{\paperwidth}{-\beamer@headheight},right,base]{\pgfuseimage{small-corner}}
+\pgfpathmoveto{\pgfpoint{.15\paperwidth}{0pt}}
+\pgfpathlineto{\pgfpoint{.15\paperwidth}{-\beamer@headheight}}
+\pgfsetlinewidth{3.5pt}
+\pgfsetinnerlinewidth{1pt}
+\pgfsetinnerstrokecolor{white}
+\pgfsetcolor{UDCpink}
+\pgfusepath{stroke}
+\pgfpathmoveto{\pgfpoint{.15\paperwidth}{-.23\paperheight}}
+\pgfpathlineto{\pgfpoint{.15\paperwidth}{-.97\paperheight}}
+\pgfsetlinewidth{1pt}
+\pgfsetinnerlinewidth{0pt}
+\pgfsetcolor{UDCpink}
+\pgfusepath{stroke}
+\pgftext[at=\pgfpoint{.075\paperwidth}{-.955\paperheight},center,base]{\pgfuseimage{small-logo}}
+\end{pgfpicture}%
+\vskip-25pt%
+}
+
+\addtobeamertemplate{title page}{%
+\usebeamertemplate{title background}%
+\pgfsetcolor{white}%
+\vskip .2\paperheight%
+}
+{}
+
+\newcommand\DoPurpleBackground{%
+\pgfpathmoveto{\pgfpointorigin}
+\pgfpathrectanglecorners{\pgfpoint{0pt}{0pt}}{\pgfpoint{\paperwidth}{-\paperheight}}
+\pgfsetfillcolor{UDCpurple}
+\pgfusepath{fill}
+}
+
+\setbeamertemplate{title background}{%
+\begin{pgfpicture}
+\pgf@relevantforpicturesizefalse
+\pgftransformxshift{-\Gm@lmargin}
+\pgftransformyshift{5.5pt}
+\DoPurpleBackground
+
+% White bar across top
+\pgfpathmoveto{\pgfpointorigin}
+\pgfpathrectanglecorners{\pgfpoint{0pt}{0pt}}{\pgfpoint{\paperwidth}{-.25\paperheight}}
+\pgfsetfillcolor{white}
+\pgfusepath{fill}
+
+% Logo
+\pgftext[at=\pgfpoint{.031\paperwidth}{-.185\paperheight},left,base]{\pgfuseimage{type-logo}}
+%\pgftext[at=\pgfpoint{.48\paperwidth}{-.175\paperheight},left,base]{\pgfuseimage{labs-logo}}
+%\pgftext[at=\pgfpoint{.55\paperwidth}{-.19\paperheight},left,base]{\pgfuseimage{gac-logo}}
+\pgftext[at=\pgfpoint{.635\paperwidth}{-.215\paperheight},left,base]{\pgfuseimage{gac-logo}}
+
+% Purple short bar on left
+\pgfpathrectanglecorners{\pgfpoint{0pt}{-.19\paperheight}}{\pgfpoint{.15\paperwidth}{-.24\paperheight}}
+\pgfsetfillcolor{UDCpurple}
+\pgfusepath{fill}
+
+\pgfpathrectanglecorners{\pgfpoint{.15\paperwidth}{-.19\paperheight}}{\pgfpoint{\paperwidth}{-.24\paperheight}}
+\pgfsetfillcolor{UDCpink}
+\pgfusepath{fill}
+
+% A stroke down the middle
+\pgfpathmoveto{\pgfpoint{.15\paperwidth}{-.19\paperheight}}
+\pgfpathlineto{\pgfpoint{.15\paperwidth}{-.24\paperheight}}
+\pgfsetlinewidth{3.5pt}
+\pgfsetinnerlinewidth{1pt}
+\pgfsetinnerstrokecolor{white}
+\pgfsetrectcap
+\pgfsetcolor{white}
+\pgfusepath{stroke}
+
+\pgfpathmoveto{\pgfpoint{.15\paperwidth}{-.25\paperheight}}
+\pgfpathlineto{\pgfpoint{.15\paperwidth}{-1\paperheight}}
+\pgfsetlinewidth{3.5pt}
+\pgfsetinnerlinewidth{1pt}
+\pgfsetinnerstrokecolor{white}
+\pgfsetrectcap
+\pgfsetcolor{white}
+\pgfusepath{stroke}
+
+% \pgfpathmoveto{\pgfpoint{.15\paperwidth}{-.62\paperheight}}
+% \pgfpathlineto{\pgfpoint{.15\paperwidth}{-.8\paperheight}}
+% \pgfsetlinewidth{1pt}
+% \pgfsetcolor{white}
+% \pgfusepath{stroke}
+
+% \pgfpathmoveto{\pgfpoint{.15\paperwidth}{-.9\paperheight}}
+% \pgfpathlineto{\pgfpoint{.15\paperwidth}{-.94\paperheight}}
+% \pgfsetlinewidth{1pt}
+% \pgfsetcolor{white}
+% \pgfusepath{stroke}
+
+%\pgftext[at=\pgfpoint{.16\paperwidth}{-.92\paperheight},left,base]{\tiny www.udc.gal}
+\end{pgfpicture}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inner Theme
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\useinnertheme{rectangles}
+\setbeamertemplate{navigation symbols}{}
+
+\setlength{\leftmargini}{.5em}
+\setlength{\leftmarginii}{1.0em}
+\setlength{\leftmarginiii}{1.5em}
+\setlength{\leftmarginiv}{2.0em}
+\setlength{\leftmarginv}{2.5em}
+\setlength{\leftmarginvi}{3.0em}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Colours
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usecolortheme[named=UDCpink]{structure}
+\usecolortheme{rose}
+\setbeamercolor{title page}{fg=white}
+\setbeamercolor{logo}{bg=UDCpink}
+\setbeamercolor{frametitle}{fg=UDCwhite,bg=UDCpurple}
+\setbeamercolor{section in sidebar}{fg=UDCpink}
+\setbeamerfont{section in sidebar}{series=\bfseries}
+\setbeamercolor{block title}{bg=UDCpurple!28!white,fg=white}
+\setbeamercolor{block body}{bg=UDCpink!15!white}
+
+\newcommand\ThankYouFrame{
+\begin{frame}[plain,t]
+\begin{pgfpicture}
+\pgf@relevantforpicturesizefalse
+\pgftransformxshift{-\Gm@lmargin}
+\pgftransformyshift{5.5pt}
+\pgftext[at=\pgfpoint{.5\paperwidth}{-.8\paperheight},center,center]{\pgfuseimage{department-logo}}
+%\pgftext[at=\pgfpoint{.5\paperwidth}{-.7\paperheight},center,center]{\pgfuseimage{faculty-logo}}
+\pgftext[at=\pgfpoint{.5\paperwidth}{-.65\paperheight},center,center]{\huge\structure{\textbf{!`Gracias!}}}
+\pgftext[at=\pgfpoint{.5\paperwidth}{-.15\paperheight},center,center]{\Large\structure{\textbf{Control de Versi\'ons empregando git}}}
+\pgftext[at=\pgfpoint{.5\paperwidth}{-.21\paperheight},center,center]{\Large\structure{Curso de introduci\'on a ferramentas}
+%\pgftext[at=\pgfpoint{.5\paperwidth}{-.15\paperheight},center,center]{\Large\structure{\textbf{Modelizaci\'on y Exploraci\'on}}}
+%\pgftext[at=\pgfpoint{.5\paperwidth}{-.21\paperheight},center,center]{\Large\structure{\textbf{Arquitectural con el Procesador Intel}}}
+%\pgftext[at=\pgfpoint{.5\paperwidth}{-.27\paperheight},center,center]{\Large\structure{\textbf{Knights Landing y el Simulador Tejas}}}
+\pgftext[at=\pgfpoint{.5\paperwidth}{-.38\paperheight},center,center]{\normalsize\structure{Marcos Horro Varela}}
+%\pgftext[at=\pgfpoint{.5\paperwidth}{-.46\paperheight},center,center]{\normalsize\structure{Gabriel Rodr\'iguez \'Alvarez}}
+%\pgftext[at=\pgfpoint{.5\paperwidth}{-.51\paperheight},center,center]{\normalsize\structure{Juan Touri\~no Dom\'inguez}}
+
+\end{pgfpicture}
+\end{frame}
+}
+
+\setbeamercolor{title}{fg=white}
