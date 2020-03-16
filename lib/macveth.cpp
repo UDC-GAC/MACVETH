@@ -1,8 +1,8 @@
 /**
- * File              : macveth_translator.cpp
+ * File              : macveth.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mar 14 Xan 2020 10:21:38 MST
+ * Last Modified Date: Ven 13 Mar 2020 12:28:15 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -27,8 +27,8 @@
  * SOFTWARE.
  */
 
-#include "include/MVHandlers.h"
 #include "include/MVFrontend.h"
+#include "include/MVHandlers.h"
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
@@ -150,5 +150,5 @@ int main(int argc, const char **argv) {
   // Runs ToolAction over all files specified in the cmd line
   // newFrontendActionFactory returns a new FrontendActionFactory for
   // a given type, in this case our FrontendAction, declared above
-  return Tool.run(newFrontendActionFactory<MACVETHFrontendAction>().get());
+  return Tool.run(newFrontendActionFactory<MVFrontendAction>().get());
 }

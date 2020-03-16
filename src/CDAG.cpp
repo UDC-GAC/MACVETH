@@ -2,7 +2,7 @@
  * File              : CDAG.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Lun 02 Mar 2020 17:07:52 CET
+ * Last Modified Date: Mér 04 Mar 2020 16:30:00 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -29,11 +29,6 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
 
   // Working with a copy
   Node::NodeListType NL(NList);
-
-  // Debugging options
-  // for (Node *N : NL) {
-  //  Utils::printDebug("CDAG", N->toString());
-  //}
 
   // Detect reductions
   Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);

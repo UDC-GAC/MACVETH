@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Xov 27 Feb 2020 10:19:24 CET
+ * Last Modified Date: Mér 04 Mar 2020 16:18:25 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -75,13 +75,9 @@ StmtWrapper::getLoopList(const MatchFinder::MatchResult &Result) {
         varnames::NameVarInit + std::to_string(n));
     const DeclRefExpr *VN;
     Loop.Declared = (V != nullptr);
-    Utils::printDebug("LoopInfo", std::to_string(Loop.Declared) + " and " +
-                                      std::to_string((V == nullptr)));
     if (Loop.Declared) {
-      Utils::printDebug("LoopInfo", V->getNameAsString());
       Loop.Dim = V->getNameAsString();
     } else {
-      Utils::printDebug("LoopInfo", "value got from DeclRefExpr = " + Loop.Dim);
       VN = Result.Nodes.getNodeAs<DeclRefExpr>(
           varnames::NameVarInitNotDeclared + std::to_string(n));
       Loop.Dim = Utils::getStringFromExpr(VN);

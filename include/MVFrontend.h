@@ -1,3 +1,10 @@
+/**
+ * File              : MVFrontend.h
+ * Author            : Marcos Horro <marcos.horro@udc.gal>
+ * Date              : Ven 13 Mar 2020 12:27:21 CET
+ * Last Modified Date: Lun 16 Mar 2020 17:58:22 CET
+ * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ */
 #ifndef MACVETH_FRONTEND_H
 #define MACVETH_FRONTEND_H
 
@@ -19,28 +26,28 @@ using namespace macveth::matchers_utils;
 /// Implementation of the ASTConsumer interface for reading an AST produced
 /// by the Clang parser. It registers a couple of matchers and runs them on
 /// the AST.
-class MACVETHConsumer : public ASTConsumer {
+class MVConsumer : public ASTConsumer {
 public:
-  MACVETHConsumer(Rewriter &R, ASTContext *C, ScopHandler *L)
+  MVConsumer(Rewriter &R, ASTContext *C, ScopHandler *L)
       : Handler(R, C, L), Context(C) {}
 
+  virtual bool HandleTopLevelDecl(DeclGroupRef dg) override;
   /// Apply matchers to the AST
-  void HandleTranslationUnit(ASTContext &Context) override;
+  // void HandleTranslationUnit(ASTContext &Context) override;
 
 private:
   /// Context
   ASTContext *Context;
   /// Handler for matching results in the code
   MVHandler Handler;
-  MatchFinder MatcherVec;
 };
 
 /// MACVETH Frontend which is in charge of creating the AST consumer and to
 /// write the changes to the output file
-class MACVETHFrontendAction : public ASTFrontendAction {
+class MVFrontendAction : public ASTFrontendAction {
 public:
   /// Empty constructor
-  MACVETHFrontendAction() {}
+  MVFrontendAction() {}
 
   /// This routine is called in BeginSourceFile(), from
   /// CreateWrapperASTConsumer.

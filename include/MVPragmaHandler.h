@@ -2,7 +2,7 @@
  * File              : MVPragmaHandler.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Mar 14 Xan 2020 12:04:51 MST
+ * Last Modified Date: Lun 16 Mar 2020 17:40:10 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -30,6 +30,7 @@ struct ScopLoc {
   /// End location of the pragma
   clang::SourceLocation EndScop;
   unsigned StartLine;
+  unsigned EndLine;
   unsigned Start;
   unsigned End;
   std::list<std::string> DimVisited = {};
@@ -46,15 +47,33 @@ struct ScopLoc {
 
 /// List of pairs of #pragma macveth and #pragma macvethend Locations.
 struct ScopHandler {
-  std::vector<ScopLoc> List;
+  static std::vector<ScopLoc> List;
 
   /// Empty constructor
   ScopHandler(){};
 
   /// Return a SourceLocation for Line "Line", column "col" of file "FID".
-  SourceLocation translateLineCol(SourceManager &SM, FileID FID, unsigned Line,
-                                  unsigned col) {
+  static SourceLocation translateLineCol(SourceManager &SM, FileID FID,
+                                         unsigned Line, unsigned col) {
     return SM.translateLineCol(FID, Line, col);
+  }
+
+  /// Get ROI of a concrete function
+  static std::vector<ScopLoc> funcGetScops(FunctionDecl *fd) {
+    SourceManager &SM = fd->getParentASTContext().getSourceManager();
+    unsigned int StartFD = SM.getExpansionLineNumber(fd->getBeginLoc());
+    unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
+    std::vector<ScopLoc> SList;
+    for (ScopLoc SL : ScopHandler::List) {
+      if ((StartFD >= SL.StartLine) && (EndFD <= SL.EndLine))
+        SList.push_back(SL);
+    }
+    return SList;
+  }
+
+  /// Determine whether a function has or not ROI within
+  static bool funcHasROI(FunctionDecl *fd) {
+    return (funcGetScops(fd).size() > 0);
   }
 
   /// Add a new Start (#pragma macveth) Location to the list.
@@ -90,15 +109,18 @@ struct ScopHandler {
     int Line = SM.getExpansionLineNumber(End);
     End = translateLineCol(SM, SM.getFileID(End), Line + 1, 1);
     List[List.size() - 1].End = SM.getFileOffset(End);
+    List[List.size() - 1].EndLine = Line;
   }
 };
 
+/// Get IdentifierInfo from Token
 static IdentifierInfo *getValue(Token &token) {
   if (token.isNot(tok::identifier))
     return NULL;
   return token.getIdentifierInfo();
 }
 
+/// Parse arguments using the preprocessor
 static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
   ScopLoc::PragmaArgs PA;
   IdentifierInfo *II;
@@ -118,7 +140,8 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
 ///  #pragma macveth
 ///
 /// In particular, store the Location of the line containing
-/// the pragma in the list "Scops".
+/// the pragma in the list "Scops". The intention of this pragma is to tell the
+/// compiler where the ROI starts.
 struct PragmaScopHandler : public PragmaHandler {
   ScopHandler *Scops;
 
@@ -138,7 +161,8 @@ struct PragmaScopHandler : public PragmaHandler {
 ///  #pragma endmacveth
 ///
 /// In particular, store the Location of the line following the one containing
-/// the pragma in the list "Scops".
+/// the pragma in the list "Scops". The intention of this pragma is to tell the
+/// compiler where the ROI ends.
 struct PragmaEndScopHandler : public PragmaHandler {
   ScopHandler *Scops;
 

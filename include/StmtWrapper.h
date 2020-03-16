@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 13 Xan 2020 19:16:12 MST
+ * Last Modified Date: Lun 16 Mar 2020 17:43:37 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -118,6 +118,15 @@ public:
   /// Full constructor that parses the loop hierarchy
   StmtWrapper(const MatchFinder::MatchResult &Result) {
     auto E = Result.Nodes.getNodeAs<clang::CompoundStmt>("ROI");
+    /// Get loop information
+    this->LoopL = getLoopList(Result);
+    /// Conver the expression to a set of TACs
+    this->TacToStmt =
+        TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->ListOfTAC,
+                       &this->S, &this->TacList);
+  }
+
+  StmtWrapper(clang::CompoundStmt CS, ScopLoc SL) {
     /// Get loop information
     this->LoopL = getLoopList(Result);
     /// Conver the expression to a set of TACs
