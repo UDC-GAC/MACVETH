@@ -2,7 +2,7 @@
  * File              : MVFrontend.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 13 Mar 2020 12:28:45 CET
- * Last Modified Date: Mar 17 Mar 2020 19:10:05 CET
+ * Last Modified Date: Mar 17 Mar 2020 20:11:51 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2020 Marcos Horro <marcos.horro@udc.gal>
@@ -194,12 +194,23 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
     llvm::llvm_unreachable_internal();
   }
 
+  Utils::printDebug("MVConsumer", "scanScops");
+
   // For each scop in the function
   for (auto Scop : ScopHandler::funcGetScops(fd)) {
     // Check if ST is within the ROI or not
+    Utils::printDebug("MVConsumer", "scop = " + std::to_string(Scop.StartLine));
     for (auto ST : CS->body()) {
+      Utils::printDebug("MVConsumer", ST->getStmtClassName());
+      auto Body = dyn_cast<CompoundStmt>(ST);
+      if (!Body) {
+        continue;
+      }
+      Utils::printDebug("MVConsumer", "Stmt");
       // Get the info about the loops surrounding this statement
-      StmtWrapper *SWrap = new StmtWrapper(dyn_cast<CompoundStmt>(ST), &Scop);
+      StmtWrapper *SWrap = new StmtWrapper(Body, &Scop);
+
+      Utils::printDebug("MVConsumer", "SWrap passed");
 
       // If this pragma has been already visited, then we skip the analysis.
       // This may happen because of the implementatio of the AST finders and
@@ -272,6 +283,8 @@ bool MVConsumer::HandleTopLevelDecl(DeclGroupRef dg) {
       continue;
     if (!ScopHandler::funcHasROI(fd))
       continue;
+    Utils::printDebug("MVConsumer",
+                      "func = " + fd->getNameInfo().getAsString());
 
     // If the function has scops to parse, then scan them
     this->scanScops(fd);

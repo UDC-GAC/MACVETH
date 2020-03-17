@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Mar 17 Mar 2020 18:37:15 CET
+ * Last Modified Date: Mar 17 Mar 2020 19:55:43 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -122,11 +122,17 @@ public:
   /// Constructor
   StmtWrapper(clang::CompoundStmt *CS, ScopLoc *SL) {
     /// Get loop information
+    if (!CS) {
+      Utils::printDebug("StmtWrapper", "UNREACHABLE");
+    }
     for (auto ST : CS->body()) {
+      Utils::printDebug("StmtWrapper", ST->getStmtClassName());
       unsigned int Start =
           Utils::getSourceMgr()->getExpansionLineNumber(ST->getBeginLoc());
       unsigned int End =
           Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
+      Utils::printDebug("StmtWrapper", "start = " + std::to_string(Start));
+      Utils::printDebug("StmtWrapper", "end = " + std::to_string(End));
       if (auto Loop = dyn_cast<ForStmt>(ST)) {
         if ((SL->StartLine <= Start) && (SL->EndLine >= End)) {
           this->LoopL.push_back(getLoopList(Loop));

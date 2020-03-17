@@ -2,7 +2,7 @@
  * File              : MVPragmaHandler.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Mar 17 Mar 2020 19:12:26 CET
+ * Last Modified Date: Mar 17 Mar 2020 19:36:16 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -65,7 +65,7 @@ struct ScopHandler {
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
     std::vector<ScopLoc> SList;
     for (ScopLoc SL : List) {
-      if ((StartFD >= SL.StartLine) && (EndFD <= SL.EndLine))
+      if ((StartFD <= SL.StartLine) && (EndFD >= SL.EndLine))
         SList.push_back(SL);
     }
     return SList;
