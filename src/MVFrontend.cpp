@@ -2,7 +2,7 @@
  * File              : MVFrontend.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 13 Mar 2020 12:28:45 CET
- * Last Modified Date: Lun 16 Mar 2020 18:00:58 CET
+ * Last Modified Date: Mar 17 Mar 2020 19:10:05 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2020 Marcos Horro <marcos.horro@udc.gal>
@@ -27,10 +27,11 @@
  */
 
 #include "include/MVFrontend.h"
-#include "include/MVHandlers.h"
+#include "include/CDAG.h"
 #include "include/MVOptions.h"
-#include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
+//#include "include/TAC.h"
+//#include "include/Utils.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
@@ -39,31 +40,34 @@
 #include <llvm-10/llvm/Support/ErrorHandling.h>
 
 // ---------------------------------------------
-ScopLoc *getScopLoc(StmtWrapper *S, ScopHandler *SL) {
+ScopLoc *getScopLoc(StmtWrapper *S) {
   auto SLoc = S->getStmt()[0]->getBeginLoc();
-  for (int n = 0; n < SL->List.size(); ++n) {
-    if ((SLoc >= SL->List[n].Scop) && (SLoc <= SL->List[n].EndScop)) {
-      return &SL->List[n];
+  for (int n = 0; n < ScopHandler::List.size(); ++n) {
+    if ((SLoc >= ScopHandler::List[n].Scop) &&
+        (SLoc <= ScopHandler::List[n].EndScop)) {
+      return &ScopHandler::List[n];
     }
   }
   return NULL;
 }
 
 // ---------------------------------------------
-bool MVHandler::checkIfWithinScop(StmtWrapper *S) {
-  auto Scop = getScopLoc(S, this->SL);
+bool MVConsumer::checkIfWithinScop(StmtWrapper *S) {
+  auto Scop = getScopLoc(S);
   bool NewStmt = false;
   if ((Scop != NULL)) {
-    for (auto L : S->getLoopInfo()) {
-      if (std::find(Scop->DimVisited.begin(), Scop->DimVisited.end(), L.Dim) ==
-          Scop->DimVisited.end()) {
-        if (Scop->DimVisited.size() == 0) {
-          // Clearing mapping
-          StmtWrapper::LoopInfo::DimDeclared.clear();
+    for (auto Loops : S->getLoopInfo()) {
+      for (auto L : Loops) {
+        if (std::find(Scop->DimVisited.begin(), Scop->DimVisited.end(),
+                      L.Dim) == Scop->DimVisited.end()) {
+          if (Scop->DimVisited.size() == 0) {
+            // Clearing mapping
+            StmtWrapper::LoopInfo::DimDeclared.clear();
+          }
+          Scop->DimVisited.push_back(L.Dim);
+          // New dimension
+          NewStmt = true;
         }
-        Scop->DimVisited.push_back(L.Dim);
-        // New dimension
-        NewStmt = true;
       }
     }
     // The scop is not recognized
@@ -74,9 +78,9 @@ bool MVHandler::checkIfWithinScop(StmtWrapper *S) {
 }
 
 // ---------------------------------------------
-void MVHandler::unrollOptions(StmtWrapper *S) {
+void MVConsumer::unrollOptions(StmtWrapper *S) {
   auto SLoc = S->getStmt()[0]->getBeginLoc();
-  auto Scop = getScopLoc(S, SL);
+  auto Scop = getScopLoc(S);
   assert(Scop != NULL && "Scop not found for these statements");
   if (Scop->PA.UnrollAndJam) {
     S->unrollAndJam(Scop->PA.UnrollFactor);
@@ -89,98 +93,103 @@ void rewriteLoops(StmtWrapper *SWrap, Rewriter *Rewrite) {
   std::list<StmtWrapper::LoopInfo> Dims = {};
   std::list<std::string> DimsDeclared = {};
   // Rewrite loop header
-  for (auto Loop : SWrap->getLoopInfo()) {
-    Utils::printDebug("MVHandlers", "Rewriting loop = " + Loop.Dim);
-    // Rewrite headers
-    Rewrite->ReplaceText(Loop.SRVarInit,
-                         Loop.Dim + " = " + std::to_string(Loop.InitVal));
-    // IMPORTANT: need to put ";" at the end since the range is calculated as
-    // the -1 offset of the location of the increment. This is done like this
-    // because the SourceLocation of the UpperBound could be a macro variable
-    // located in another place. This happens, for instance, with the loop
-    // bounds in PolyBench suite
-    Rewrite->ReplaceText(Loop.SRVarCond,
-                         "(" + Loop.Dim + " + " + std::to_string(Loop.Step) +
-                             ") <= " + Loop.StrUpperBound + ";");
-    Rewrite->ReplaceText(Loop.SRVarInc,
-                         Loop.Dim + " += " + std::to_string(Loop.Step));
-    if (Loop.Declared) {
-      std::list<std::string> L = StmtWrapper::LoopInfo::DimDeclared;
-      if (!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) {
-        StmtWrapper::LoopInfo::DimDeclared.push_back(Loop.Dim);
-        DimsDeclared.push_back(Loop.Dim);
+  for (auto Loops : SWrap->getLoopInfo()) {
+    for (auto Loop : Loops) {
+      Utils::printDebug("MVConsumers", "Rewriting loop = " + Loop.Dim);
+      // Rewrite headers
+      Rewrite->ReplaceText(Loop.SRVarInit,
+                           Loop.Dim + " = " + std::to_string(Loop.InitVal));
+      // IMPORTANT: need to put ";" at the end since the range is calculated
+      // as the -1 offset of the location of the increment. This is done like
+      // this because the SourceLocation of the UpperBound could be a macro
+      // variable located in another place. This happens, for instance, with
+      // the loop bounds in PolyBench suite
+      Rewrite->ReplaceText(Loop.SRVarCond,
+                           "(" + Loop.Dim + " + " + std::to_string(Loop.Step) +
+                               ") <= " + Loop.StrUpperBound + ";");
+      Rewrite->ReplaceText(Loop.SRVarInc,
+                           Loop.Dim + " += " + std::to_string(Loop.Step));
+      if (Loop.Declared) {
+        std::list<std::string> L = StmtWrapper::LoopInfo::DimDeclared;
+        if (!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) {
+          StmtWrapper::LoopInfo::DimDeclared.push_back(Loop.Dim);
+          DimsDeclared.push_back(Loop.Dim);
+        }
       }
+      Dims.push_front(Loop);
+      std::string Epilog =
+          StmtWrapper::LoopInfo::getEpilogs(Dims, SWrap->getStmt());
+      Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
     }
-    Dims.push_front(Loop);
-    std::string Epilog =
-        StmtWrapper::LoopInfo::getEpilogs(Dims, SWrap->getStmt());
-    Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
   }
+  // FIXME
   // Declare variables
-  SourceLocation Loc = SWrap->getLoopInfo().back().BegLoc;
+  SourceLocation Loc = SWrap->getLoopInfo().back().back().BegLoc;
   Rewrite->InsertTextBefore(
       Loc, StmtWrapper::LoopInfo::getDimDeclarations(DimsDeclared));
 }
 
 // ---------------------------------------------
-void MVHandler::run(const MatchFinder::MatchResult &Result) {
-  // Get the info about the loops surrounding this statement
-  StmtWrapper *SWrap = new StmtWrapper(Result);
-
-  // If this pragma has been already visited, then we skip the analysis. This
-  // may happen because of the implementatio of the AST finders and matchers
-  if (!checkIfWithinScop(SWrap)) {
-    return;
-  }
-
-  // Perform unrolling according to the pragmas
-  unrollOptions(SWrap);
-
-  // Debugging purposes
-  for (auto S : SWrap->getTacList()) {
-    S.printTAC();
-  }
-
-  // Creating the CDAG
-  CDAG *G = CDAG::createCDAGfromTAC(SWrap->getTacList());
-
-  // Get SIMD generator according to the option chosen
-  SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
-
-  // Computing the cost model of the CDAG created
-  auto SInfo = CDAG::computeCostModel(G, SIMDGen);
-
-  // FIXME: create epilog as well
-  // Unroll factor applied to the for header
-
-  rewriteLoops(SWrap, &Rewrite);
-
-  // Printing the registers we are going to use
-  for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-    Rewrite.InsertText(SWrap->getStmt()[0]->getBeginLoc(), InsSIMD + "\n", true,
-                       true);
-  }
-  for (auto InsSIMD : SInfo.SIMDList) {
-    Rewrite.InsertText(
-        SWrap->getStmt()[SWrap->getTacToStmt()[InsSIMD.TacID]]->getBeginLoc(),
-        InsSIMD.render() + ";\t// cost = " + std::to_string(InsSIMD.Cost) +
-            "\n",
-        true, true);
-  }
-
-  // Comment statements
-  for (auto S : SWrap->getStmt()) {
-    Rewrite.InsertText(S->getBeginLoc(), "// statement replaced: ", true, true);
-  }
-
-  // Be clean
-  delete SWrap;
-  delete G;
-}
+// void MVConsumer::run(const MatchFinder::MatchResult &Result) {
+//  // Get the info about the loops surrounding this statement
+//  StmtWrapper *SWrap = new StmtWrapper(Result);
+//
+//  // If this pragma has been already visited, then we skip the analysis. This
+//  // may happen because of the implementatio of the AST finders and matchers
+//  if (!checkIfWithinScop(SWrap)) {
+//    return;
+//  }
+//
+//  // Perform unrolling according to the pragmas
+//  unrollOptions(SWrap);
+//
+//  // Debugging purposes
+//  for (auto S : SWrap->getTacList()) {
+//    S.printTAC();
+//  }
+//
+//  // Creating the CDAG
+//  CDAG *G = CDAG::createCDAGfromTAC(SWrap->getTacList());
+//
+//  // Get SIMD generator according to the option chosen
+//  SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
+//
+//  // Computing the cost model of the CDAG created
+//  auto SInfo = CDAG::computeCostModel(G, SIMDGen);
+//
+//  // FIXME: create epilog as well
+//  // Unroll factor applied to the for header
+//
+//  rewriteLoops(SWrap, &Rewrite);
+//
+//  // Printing the registers we are going to use
+//  for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+//    Rewrite.InsertText(SWrap->getStmt()[0]->getBeginLoc(), InsSIMD + "\n",
+//    true,
+//                       true);
+//  }
+//  for (auto InsSIMD : SInfo.SIMDList) {
+//    Rewrite.InsertText(
+//        SWrap->getStmt()[SWrap->getTacToStmt()[InsSIMD.TacID]]->getBeginLoc(),
+//        InsSIMD.render() + ";\t// cost = " + std::to_string(InsSIMD.Cost) +
+//            "\n",
+//        true, true);
+//  }
+//
+//  // Comment statements
+//  for (auto S : SWrap->getStmt()) {
+//    Rewrite.InsertText(S->getBeginLoc(), "// statement replaced: ", true,
+//    true);
+//  }
+//
+//  // Be clean
+//  delete SWrap;
+//  delete G;
+//}
 
 // ---------------------------------------------
-void scanScops(FunctionDecl *fd) {
-  CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd);
+void MVConsumer::scanScops(FunctionDecl *fd) {
+  CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
     llvm::llvm_unreachable_internal();
   }
@@ -189,6 +198,61 @@ void scanScops(FunctionDecl *fd) {
   for (auto Scop : ScopHandler::funcGetScops(fd)) {
     // Check if ST is within the ROI or not
     for (auto ST : CS->body()) {
+      // Get the info about the loops surrounding this statement
+      StmtWrapper *SWrap = new StmtWrapper(dyn_cast<CompoundStmt>(ST), &Scop);
+
+      // If this pragma has been already visited, then we skip the analysis.
+      // This may happen because of the implementatio of the AST finders and
+      // matchers
+      if (!checkIfWithinScop(SWrap)) {
+        return;
+      }
+
+      // Perform unrolling according to the pragmas
+      unrollOptions(SWrap);
+
+      // Debugging purposes
+      for (auto S : SWrap->getTacList()) {
+        S.printTAC();
+      }
+
+      // Creating the CDAG
+      CDAG *G = CDAG::createCDAGfromTAC(SWrap->getTacList());
+
+      // Get SIMD generator according to the option chosen
+      SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
+
+      // Computing the cost model of the CDAG created
+      auto SInfo = CDAG::computeCostModel(G, SIMDGen);
+
+      // FIXME: create epilog as well
+      // Unroll factor applied to the for header
+
+      rewriteLoops(SWrap, &Rewrite);
+
+      // Printing the registers we are going to use
+      for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+        Rewrite.InsertText(SWrap->getStmt()[0]->getBeginLoc(), InsSIMD + "\n",
+                           true, true);
+      }
+      for (auto InsSIMD : SInfo.SIMDList) {
+        Rewrite.InsertText(
+            SWrap->getStmt()[SWrap->getTacToStmt()[InsSIMD.TacID]]
+                ->getBeginLoc(),
+            InsSIMD.render() + ";\t// cost = " + std::to_string(InsSIMD.Cost) +
+                "\n",
+            true, true);
+      }
+
+      // Comment statements
+      for (auto S : SWrap->getStmt()) {
+        Rewrite.InsertText(S->getBeginLoc(), "// statement replaced: ", true,
+                           true);
+      }
+
+      // Be clean
+      delete SWrap;
+      delete G;
     }
   }
 
@@ -199,6 +263,7 @@ void scanScops(FunctionDecl *fd) {
 bool MVConsumer::HandleTopLevelDecl(DeclGroupRef dg) {
   DeclGroupRef::iterator it;
 
+  // Iterate over all the functions in the file
   for (it = dg.begin(); it != dg.end(); ++it) {
     FunctionDecl *fd = dyn_cast<clang::FunctionDecl>(*it);
     if (!fd)
@@ -208,7 +273,8 @@ bool MVConsumer::HandleTopLevelDecl(DeclGroupRef dg) {
     if (!ScopHandler::funcHasROI(fd))
       continue;
 
-    scanScops(fd);
+    // If the function has scops to parse, then scan them
+    this->scanScops(fd);
   }
 
   return true;
@@ -226,16 +292,16 @@ MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
   Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
                  &CI.getASTContext());
   Preprocessor &PP = CI.getPreprocessor();
-  ScopHandler *scops = new ScopHandler();
-  PP.AddPragmaHandler(new PragmaScopHandler(scops));
-  PP.AddPragmaHandler(new PragmaEndScopHandler(scops));
+  ScopHandler *Scops = new ScopHandler();
+  PP.AddPragmaHandler(new PragmaScopHandler(Scops));
+  PP.AddPragmaHandler(new PragmaEndScopHandler(Scops));
 
   // std::make_unique is C++14, while LLVM 9 is written in C++11, this
   // is the reason of this custom implementation
 #if LLVM_VERSION > 9
-  return std::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), scops);
+  return std::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), Scops);
 #else
-  return llvm::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), scops);
+  return llvm::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), Scops);
 #endif
 }
 

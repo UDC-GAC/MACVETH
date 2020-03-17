@@ -2,7 +2,7 @@
  * File              : MVPragmaHandler.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Lun 16 Mar 2020 17:40:10 CET
+ * Last Modified Date: Mar 17 Mar 2020 19:12:26 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -47,7 +47,7 @@ struct ScopLoc {
 
 /// List of pairs of #pragma macveth and #pragma macvethend Locations.
 struct ScopHandler {
-  static std::vector<ScopLoc> List;
+  static inline std::vector<ScopLoc> List;
 
   /// Empty constructor
   ScopHandler(){};
@@ -64,7 +64,7 @@ struct ScopHandler {
     unsigned int StartFD = SM.getExpansionLineNumber(fd->getBeginLoc());
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
     std::vector<ScopLoc> SList;
-    for (ScopLoc SL : ScopHandler::List) {
+    for (ScopLoc SL : List) {
       if ((StartFD >= SL.StartLine) && (EndFD <= SL.EndLine))
         SList.push_back(SL);
     }

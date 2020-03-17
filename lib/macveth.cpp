@@ -2,7 +2,7 @@
  * File              : macveth.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Ven 13 Mar 2020 12:28:15 CET
+ * Last Modified Date: Mar 17 Mar 2020 18:58:40 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
@@ -28,7 +28,6 @@
  */
 
 #include "include/MVFrontend.h"
-#include "include/MVHandlers.h"
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
