@@ -2,7 +2,7 @@
  * File              : TAC.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Lun 13 Xan 2020 19:39:54 MST
+ * Last Modified Date: Mér 18 Mar 2020 19:39:06 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -112,6 +112,10 @@ public:
   /// Return list of 3AC from a starting Binary Operator
   static void binaryOperator2TAC(const clang::BinaryOperator *S,
                                  std::list<TAC> *TacList, int Val);
+
+  /// Inserts TACs in the input TacList and outputs the relation between the
+  /// statements and the ordering of the TACs
+  static std::list<TAC> stmtToTAC(clang::Stmt *ST);
 
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs

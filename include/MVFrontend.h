@@ -2,7 +2,7 @@
  * File              : MVFrontend.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 13 Mar 2020 12:27:21 CET
- * Last Modified Date: Mar 17 Mar 2020 13:17:57 CET
+ * Last Modified Date: Mér 18 Mar 2020 15:22:20 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2020 Marcos Horro <marcos.horro@udc.gal>
@@ -57,7 +57,7 @@ public:
 private:
   /// Check scop options regarding unrolling and apply them to the statements
   /// within
-  void unrollOptions(StmtWrapper *S);
+  void unrollOptions(std::list<StmtWrapper *> SL);
   /// Check if stmts are within the scope and/or have been already visited
   bool checkIfWithinScop(StmtWrapper *S);
   /// Main function in charge of scanning scops on each function with scops

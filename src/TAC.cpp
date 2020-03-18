@@ -2,7 +2,7 @@
  * File              : TAC.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Lun 13 Xan 2020 19:56:09 MST
+ * Last Modified Date: Mér 18 Mar 2020 19:38:51 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -58,6 +58,8 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
       dyn_cast<clang::BinaryOperator>(E->IgnoreImpCasts());
   clang::ParenExpr *P = dyn_cast<clang::ParenExpr>(E->IgnoreImpCasts());
   while ((P = dyn_cast<clang::ParenExpr>(E->IgnoreImpCasts()))) {
+    Utils::printDebug("TAC", "getBinOp = " +
+                                 Utils::getStringFromExpr(P->getExprStmt()));
     if ((B = dyn_cast<clang::BinaryOperator>(
              P->getSubExpr()->IgnoreImpCasts()))) {
       break;
@@ -66,6 +68,37 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
   }
 
   return B;
+}
+
+// ---------------------------------------------
+std::list<TAC> TAC::stmtToTAC(clang::Stmt *ST) {
+  // Reset the RegVal in TAC class
+  // TAC::RegVal = 0;
+  clang::Expr *S = dyn_cast<clang::Expr>(ST);
+
+  std::list<TAC> TacList;
+
+  // Check if the expression is binary
+  clang::BinaryOperator *SBin = NULL;
+  bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
+  if (STypeBin) {
+    TacListType TL;
+    binaryOperator2TAC(SBin, &TL, -1);
+    for (auto T : TL) {
+      TacList.push_back(T);
+    }
+    return TacList;
+  }
+
+  // New TAC will look like: TmpA = MVExpr(S) OP NULL; (not binary or unary)
+  MVExpr *TmpA = MVExprFactory::createMVExpr(getNameTempReg(), true);
+  MVExpr *TmpB = MVExprFactory::createMVExpr(S);
+  MVOp OP = TAC::getMVOPfromExpr(TmpB);
+  // Create new TAC
+  TAC NewTac(TmpA, TmpB, NULL, OP);
+  // Push in the front of the TAC list
+  TacList.push_front(NewTac);
+  return TacList;
 }
 
 // ---------------------------------------------
@@ -78,6 +111,7 @@ std::map<int, int> TAC::exprToTAC(clang::CompoundStmt *CS,
   // Return value
   std::map<int, int> M;
   for (auto ST : CS->body()) {
+
     clang::Expr *S = dyn_cast<clang::Expr>(ST);
     // If the Statement can not be converted onto an Expr, then we are not
     // interested on in: maybe it is a loop that will be parsed using the AST
@@ -127,6 +161,8 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
   clang::BinaryOperator *RhsBin = NULL;
   bool LhsTypeBin = (LhsBin = getBinOp(Lhs->IgnoreImpCasts()));
   bool RhsTypeBin = (RhsBin = getBinOp(Rhs->IgnoreImpCasts()));
+
+  Utils::printDebug("TAC", "binOp");
 
   /// Since this is a recursive function, we have to test the first case
   MVExpr *TmpA =

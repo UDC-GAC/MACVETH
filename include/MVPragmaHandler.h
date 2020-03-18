@@ -2,7 +2,7 @@
  * File              : MVPragmaHandler.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Mar 17 Mar 2020 19:36:16 CET
+ * Last Modified Date: Mér 18 Mar 2020 12:00:17 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -34,6 +34,7 @@ struct ScopLoc {
   unsigned Start;
   unsigned End;
   std::list<std::string> DimVisited = {};
+  bool ScopHasBeenScanned = false;
 
   struct PragmaArgs {
     bool Unroll = true;

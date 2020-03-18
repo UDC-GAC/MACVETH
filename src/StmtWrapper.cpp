@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Mar 17 Mar 2020 18:55:07 CET
+ * Last Modified Date: Mér 18 Mar 2020 19:39:51 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -29,10 +29,74 @@
 #include "include/StmtWrapper.h"
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/Stmt.h"
 #include <string>
 
 using namespace clang;
 using namespace macveth;
+
+// ---------------------------------------------
+std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
+                                                   ScopLoc *Scop) {
+  std::list<StmtWrapper *> SList;
+
+  /// Get loop information
+  Scop->ScopHasBeenScanned = true;
+  for (auto StmtWithin : CS->body()) {
+    auto ST = dyn_cast<Stmt>(StmtWithin);
+    if (!ST) {
+      continue;
+    }
+    // Utils::printDebug("StmtWrapper genStmtWraps", ST->getStmtClassName());
+    unsigned int Start =
+        Utils::getSourceMgr()->getExpansionLineNumber(ST->getBeginLoc());
+    unsigned int End =
+        Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
+    if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
+      StmtWrapper(NewStmt);
+      SList.push_back(&NewStmt);
+    }
+  }
+
+  return SList;
+}
+
+// ---------------------------------------------
+StmtWrapper::StmtWrapper(clang::Stmt *S) {
+  this->ClangStmt = S;
+  if (auto Loop = dyn_cast<ForStmt>(S)) {
+    this->LoopL = getLoopList(Loop);
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(Loop->getBody());
+    for (auto S : Body->body()) {
+      this->ListStmt.push_back(new StmtWrapper(S));
+    }
+  } else {
+    this->TacList = TAC::stmtToTAC(S);
+  }
+}
+
+// ---------------------------------------------
+// StmtWrapper::StmtWrapper(clang::CompoundStmt *CS, ScopLoc *SL) {
+//  /// Get loop information
+//  SL->ScopHasBeenScanned = true;
+//  for (auto ST : CS->body()) {
+//    Utils::printDebug("StmtWrapper", ST->getStmtClassName());
+//    unsigned int Start =
+//        Utils::getSourceMgr()->getExpansionLineNumber(ST->getBeginLoc());
+//    unsigned int End =
+//        Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
+//    Utils::printDebug("StmtWrapper", "start = " + std::to_string(Start));
+//    Utils::printDebug("StmtWrapper", "end = " + std::to_string(End));
+//    if (auto Loop = dyn_cast<ForStmt>(ST)) {
+//      if ((SL->StartLine <= Start) && (SL->EndLine >= End)) {
+//        this->LoopL.push_back(getLoopList(Loop));
+//      }
+//    }
+//  }
+//  /// Convert the expression to a set of TACs
+//  this->TacToStmt =
+//      TAC::exprToTAC(CS, &this->ListOfTAC, &this->ListStmt, &this->TacList);
+//}
 
 // ---------------------------------------------
 StmtWrapper::LoopList StmtWrapper::getLoopList(clang::ForStmt *ForLoop) {
@@ -46,16 +110,17 @@ StmtWrapper::LoopList StmtWrapper::getLoopList(clang::ForStmt *ForLoop) {
 
     Utils::printDebug("LoopInfo", "parsing vardecl...");
     // Get init val
-    const DeclRefExpr *NameValInit = dyn_cast<DeclRefExpr>(ForLoop->getInit());
+    const DeclStmt *NameValInit = dyn_cast<DeclStmt>(ForLoop->getInit());
     const BinaryOperator *ValInit;
-    const VarDecl *V;
+    const VarDecl *V = nullptr;
     if (NameValInit != nullptr) {
       Utils::printDebug("LoopInfo", "NameValInt not NULL");
       clang::Expr::EvalResult R;
-      if (NameValInit->EvaluateAsInt(R, *Utils::getCtx())) {
+      V = dyn_cast<VarDecl>(NameValInit->getSingleDecl());
+      if (V->getInit()->EvaluateAsInt(R, *Utils::getCtx())) {
         Loop.InitVal = (long)R.Val.getInt().getExtValue();
       }
-      V = dyn_cast<VarDecl>(NameValInit->getDecl());
+      Loop.Dim = V->getDeclName().getAsString();
     } else {
       Utils::printDebug("LoopInfo", "NameValInt NULL");
       ValInit = dyn_cast<BinaryOperator>(ForLoop->getInit());
@@ -65,16 +130,16 @@ StmtWrapper::LoopList StmtWrapper::getLoopList(clang::ForStmt *ForLoop) {
       }
     }
 
+    Utils::printDebug("LoopInfo", "parsing declrefexpr...");
     // Get name of variable
-    const DeclRefExpr *VN;
+    const DeclRefExpr *VN = nullptr;
     Loop.Declared = (V != nullptr);
-    if (Loop.Declared) {
-      Loop.Dim = V->getNameAsString();
-    } else {
+    if (!Loop.Declared) {
       VN = dyn_cast<DeclRefExpr>(ValInit->getRHS());
       Loop.Dim = Utils::getStringFromExpr(VN);
     }
 
+    Utils::printDebug("LoopInfo", "parsing upperbound...");
     // Get UpperBound
     const BinaryOperator *Cond = dyn_cast<BinaryOperator>(ForLoop->getCond());
     const Expr *UpperBoundExpr = Cond->getRHS();
@@ -83,6 +148,7 @@ StmtWrapper::LoopList StmtWrapper::getLoopList(clang::ForStmt *ForLoop) {
       Loop.UpperBound = Utils::getIntFromExpr(UpperBoundExpr, Utils::getCtx());
     }
 
+    Utils::printDebug("LoopInfo", "parsing increment...");
     // Get step value
     auto IncVarPos = ForLoop->getInc();
     if (dyn_cast<UnaryOperator>(ForLoop->getInc())) {
@@ -121,8 +187,13 @@ StmtWrapper::LoopList StmtWrapper::getLoopList(clang::ForStmt *ForLoop) {
     Utils::printDebug("StmtWrapper", Loop.toString());
 
     // Check if next loop
-    for (auto BodyS : ForLoop->getBody()->children()) {
-      if (auto Next = dyn_cast<ForStmt>(BodyS)) {
+    auto CS = dyn_cast<CompoundStmt>(ForLoop->getBody());
+    ForLoop = nullptr;
+    if (!CS) {
+      break;
+    }
+    for (auto NextS : CS->body()) {
+      if (auto Next = dyn_cast<ForStmt>(CS)) {
         ForLoop = Next;
         break;
       }
@@ -275,14 +346,14 @@ StmtWrapper::LoopInfo::getEpilogs(std::list<StmtWrapper::LoopInfo> Dims,
 
 // ---------------------------------------------
 void StmtWrapper::unrollAndJam(long UnrollFactor, long UpperBoundFallback) {
-  for (auto LoopList : this->LoopL) {
-    // IMPORTANT
-    LoopList.reverse();
-    for (LoopInfo L : LoopList) {
-      long UB = L.UpperBound == -1 ? UpperBoundFallback : L.UpperBound;
-      this->unroll(UnrollFactor, UB, L.Dim);
-    }
-  }
+  // for (auto LoopList : this->LoopL) {
+  //  // IMPORTANT
+  //  LoopList.reverse();
+  //  for (LoopInfo L : LoopList) {
+  //    long UB = L.UpperBound == -1 ? UpperBoundFallback : L.UpperBound;
+  //    this->unroll(UnrollFactor, UB, L.Dim);
+  //  }
+  //}
 }
 
 // ---------------------------------------------

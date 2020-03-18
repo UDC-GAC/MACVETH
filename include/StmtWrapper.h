@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Mar 17 Mar 2020 19:55:43 CET
+ * Last Modified Date: Mér 18 Mar 2020 19:41:38 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -104,45 +104,24 @@ public:
   /// LoopInfo list type
   typedef std::list<LoopInfo> LoopList;
 
+  /// Generate a list of StmtWrapper
+  static std::list<StmtWrapper *> genStmtWraps(CompoundStmt *CS, ScopLoc *Scop);
+
   /// From the result of a matcher it gets the loop hierarchy
   static LoopList getLoopList(const MatchFinder::MatchResult &Result);
 
+  /// Get all the loops given one
   static LoopList getLoopList(clang::ForStmt *ForLoop);
+
+  /// Default destructor
+  ~StmtWrapper(){};
 
   /// Empty constructor
   StmtWrapper(){};
 
-  /// Be clean
-  ~StmtWrapper() {
-    for (Stmt *V : this->ListStmt) {
-      // delete V;
-    }
-  };
-
   /// Constructor
-  StmtWrapper(clang::CompoundStmt *CS, ScopLoc *SL) {
-    /// Get loop information
-    if (!CS) {
-      Utils::printDebug("StmtWrapper", "UNREACHABLE");
-    }
-    for (auto ST : CS->body()) {
-      Utils::printDebug("StmtWrapper", ST->getStmtClassName());
-      unsigned int Start =
-          Utils::getSourceMgr()->getExpansionLineNumber(ST->getBeginLoc());
-      unsigned int End =
-          Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
-      Utils::printDebug("StmtWrapper", "start = " + std::to_string(Start));
-      Utils::printDebug("StmtWrapper", "end = " + std::to_string(End));
-      if (auto Loop = dyn_cast<ForStmt>(ST)) {
-        if ((SL->StartLine <= Start) && (SL->EndLine >= End)) {
-          this->LoopL.push_back(getLoopList(Loop));
-        }
-      }
-    }
-    /// Convert the expression to a set of TACs
-    this->TacToStmt =
-        TAC::exprToTAC(CS, &this->ListOfTAC, &this->ListStmt, &this->TacList);
-  }
+  StmtWrapper(clang::Stmt *S);
+  // StmtWrapper(clang::CompoundStmt *CS, ScopLoc *SL);
 
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
@@ -150,25 +129,27 @@ public:
   /// Unrolls the TAC list in all the possible dimensions
   void unrollAndJam(long UnrollFactor, long UpperBoundFallback = UBFallback);
   /// Get LoopInfo
-  std::vector<LoopList> getLoopInfo() { return this->LoopL; }
+  LoopList getLoopInfo() { return this->LoopL; }
   /// Return the mapping of TAC to Stmt
   std::map<int, int> getTacToStmt() { return this->TacToStmt; }
   /// Get Clang Stmt
-  std::vector<Stmt *> getStmt() { return this->ListStmt; };
+  Stmt *getClangStmt() { return this->ClangStmt; };
   /// Set Clang Stmt
-  void setStmt(std::vector<Stmt *> LS) { this->ListStmt = LS; };
+  // void setStmt(std::vector<Stmt *> LS) { this->ListStmt = LS; };
   /// Get TAC list
   TacListType getTacList() { return this->TacList; };
   /// Set TAC lsit
   void setTacList(TacListType TacList) { this->TacList = TacList; };
 
 private:
-  /// Statement holded
-  std::vector<Stmt *> ListStmt;
+  /// Statements holded if loop
+  std::vector<StmtWrapper *> ListStmt;
+  /// Statement if not loop
+  Stmt *ClangStmt;
   /// Sorted list of TACs
   std::vector<TacListType> ListOfTAC;
   /// Loop list
-  std::vector<LoopList> LoopL;
+  LoopList LoopL;
   /// TAC list with regard to the Statement S
   TacListType TacList;
   /// Map from TacID to Stmt number
