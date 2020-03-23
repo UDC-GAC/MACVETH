@@ -98,8 +98,7 @@ Pragmas to be implemented (soon):
     - tc {>|>=|=|<|<=} [val]: hint regarding the trip count of the loop, i.e.
       the expected number of iterations. Per loop option.
 
-* Limitations/restrictions and assumptions:
--------------------------------------------
+## Limitations/restrictions and assumptions:
 
 This the list of restrictions and assumptions that the user must take into
 account when using this compiler:
