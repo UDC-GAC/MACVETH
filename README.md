@@ -1,7 +1,7 @@
+![MACVETH](https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg)
+
 # MACVETH
 ## Multi-dimensional Array C-compiler VEctorization and Translation for HPC applications
-
-![MACVETH](https://github.com/markoshorro/MACVETH/doc/report/img/MACVETHLOGO.svg)
 
 Copyright (c) 2019-2020 the Colorado State Univesity.
 
@@ -21,21 +21,17 @@ optmize vectorization.
 Last but not least, the first and last letter of the acronym stand for the name
 of the main author (Marcos Horro).
 
-* Main dependencies:
---------------------
-
+## Main dependencies:
 - Clang >=10.0.0
 - CMake >=3.13
 - GNU GCC >=8.3.0
 - Doxygen >=1.8.13
 
-* Getting started:
-------------------
+## Getting started:
 
 Simple guide to get started with the compiler.
 
-** Compilation of the project:
-------------------------------
+### Compilation of the project:
 
 Recommended steps for a clean building of the project:
 
@@ -45,22 +41,20 @@ $> make
 
 This will create an executable in the same folder called 'macveth'
 
-** Executing:
-------------
+### Executing:
 
 User may execute the compiler just typing:
 
-$> ./macveth <input_file.c>
+`$> ./macveth <input_file.c>`
 
 This will generate a macro-fashion SIMD code (if possible) onto a file named
 macveth_output.c/cpp.
 
 For displaying all the available options, type:
 
-$> ./macveth --help
+`$> ./macveth --help`
 
-* CLI Options:
---------------
+## CLI Options:
 
 In this section we will comment in detail all the options available:
 
@@ -80,8 +74,7 @@ In this section we will comment in detail all the options available:
     -o=<output>: Output file, otherwise macveth_output.c
     -p=<path>: Build path
 
-* Region-of-interest in our code:
-----------------------------------
+## Region-of-interest in our code:
 
 The compiler recognizes the region-of-interest (ROI from now on) by the
 delimitation of the pragmas:
@@ -169,14 +162,12 @@ account when using this compiler:
             }
             #pragma endmacveth
 
-* Versioning:
--------------
+## Versioning
 
 The version number of this compiler follows the Semantic Versioning
 Specification (https://semver.org/spec/v2.0.0.html)
 
-* License:
-----------
+## License
 
 (C) Copyright 2019-2020 the Colorado State University.
 
