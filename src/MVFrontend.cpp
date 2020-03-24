@@ -2,7 +2,7 @@
  * File              : MVFrontend.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 13 Mar 2020 12:28:45 CET
- * Last Modified Date: Mér 18 Mar 2020 19:42:12 CET
+ * Last Modified Date: Lun 23 Mar 2020 18:33:47 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2020 Marcos Horro <marcos.horro@udc.gal>
@@ -42,9 +42,9 @@
 ScopLoc *getScopLoc(StmtWrapper *S) {
   auto SLoc = S->getClangStmt()->getBeginLoc();
   for (int n = 0; n < ScopHandler::List.size(); ++n) {
-    if ((SLoc >= ScopHandler::List[n].Scop) &&
-        (SLoc <= ScopHandler::List[n].EndScop)) {
-      return &ScopHandler::List[n];
+    if ((SLoc >= ScopHandler::List[n]->Scop) &&
+        (SLoc <= ScopHandler::List[n]->EndScop)) {
+      return ScopHandler::List[n];
     }
   }
   return NULL;
@@ -76,14 +76,22 @@ bool MVConsumer::checkIfWithinScop(StmtWrapper *S) {
 
 // ---------------------------------------------
 void MVConsumer::unrollOptions(std::list<StmtWrapper *> SL) {
+  bool CouldUnroll = true;
   for (auto S : SL) {
+    assert(CouldUnroll &&
+           "Need to be able to full unroll when having leftovers");
+    if (S->isLeftOver()) {
+      continue;
+    }
     auto SLoc = S->getClangStmt()->getBeginLoc();
     auto Scop = getScopLoc(S);
     assert(Scop != NULL && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
-      S->unrollAndJam(Scop->PA.UnrollFactor);
+      CouldUnroll = S->unrollAndJam(Scop->PA.UnrollFactor);
     }
   }
+  Utils::printDebug("MVConsumer",
+                    "could fully unroll = " + std::to_string(CouldUnroll));
 }
 
 // ---------------------------------------------
@@ -116,8 +124,8 @@ void rewriteLoops(StmtWrapper *SWrap, Rewriter *Rewrite) {
       }
     }
     Dims.push_front(Loop);
-    std::string Epilog =
-        StmtWrapper::LoopInfo::getEpilogs(Dims, SWrap->getClangStmt());
+    std::string Epilog = "";
+    // StmtWrapper::LoopInfo::getEpilogs(Dims, SWrap->getClangStmt());
     Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
     //}
   }
@@ -198,18 +206,27 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
   // For each scop in the function
   for (auto Scop : ScopHandler::funcGetScops(fd)) {
     // Check if ST is within the ROI or not
-    Utils::printDebug("MVConsumer", "scop = " + std::to_string(Scop.StartLine));
+    Utils::printDebug("MVConsumer",
+                      "scop = " + std::to_string(Scop->StartLine));
 
     // Get the info about the loops surrounding this statement
-    std::list<StmtWrapper *> SL = StmtWrapper::genStmtWraps(CS, &Scop);
+    std::list<StmtWrapper *> SL = StmtWrapper::genStmtWraps(CS, Scop);
+
+    Utils::printDebug("MVConsumer", "list of stmt wrappers parsed!");
 
     // Perform unrolling according to the pragmas
     unrollOptions(SL);
 
     TacListType TL;
 
+    Utils::printDebug("MVConsumer",
+                      "number of stmt = " + std::to_string(SL.size()));
+
     // Debugging purposes
     for (auto SWrap : SL) {
+      Utils::printDebug("MVConsumer",
+                        "number of tacs = " +
+                            std::to_string(SWrap->getTacList().size()));
       for (auto S : SWrap->getTacList()) {
         S.printTAC();
         TL.push_back(S);
@@ -225,6 +242,7 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
     // Computing the cost model of the CDAG created
     auto SInfo = CDAG::computeCostModel(G, SIMDGen);
 
+    Utils::printDebug("MVConsumer", "computed cost model");
     // FIXME: create epilog as well
     // Unroll factor applied to the for header
 
@@ -255,6 +273,7 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
     //}
     // delete G;
     ////}
+    Utils::printDebug("MVConsumer", "scop finished!!");
   }
 
   return;
@@ -262,12 +281,11 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
 
 // ---------------------------------------------
 bool areAllScopsScaned() {
-  Utils::printDebug("MVConsumer", "areAllScopsScaned");
   bool Scanned = false;
   for (auto S : ScopHandler::List) {
-    Utils::printDebug("MVConsumer", std::to_string(S.StartLine) + " = " +
-                                        std::to_string(S.ScopHasBeenScanned));
-    if (!S.ScopHasBeenScanned) {
+    Utils::printDebug("MVConsumer", std::to_string(S->StartLine) + " = " +
+                                        std::to_string(S->ScopHasBeenScanned));
+    if (!S->ScopHasBeenScanned) {
       return false;
     } else {
       Scanned = true;
@@ -331,9 +349,12 @@ void MVFrontendAction::EndSourceFileAction() {
   // std::out) the result of applying all changes to the original
   // buffer. Original buffer is modified before calling this function,
   // from the ASTConsumer
+
+  Utils::printDebug("MVConsumer", "endSourceFile");
   SourceManager &SM = TheRewriter.getSourceMgr();
   std::error_code ErrorCode;
   std::string OutFileName = Utils::getExePath() + MVOptions::OutFile;
   llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
+  Utils::printDebug("MVConsumer", "endSourceFile passed");
 }

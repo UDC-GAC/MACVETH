@@ -2,7 +2,7 @@
  * File              : StmtWrapper.cpp
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 25 Nov 2019 13:48:24 MST
- * Last Modified Date: Mér 18 Mar 2020 19:39:51 CET
+ * Last Modified Date: Lun 23 Mar 2020 18:29:59 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -41,20 +41,21 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
   std::list<StmtWrapper *> SList;
 
   /// Get loop information
-  Scop->ScopHasBeenScanned = true;
+  ScopHandler::visitScop(*Scop);
   for (auto StmtWithin : CS->body()) {
     auto ST = dyn_cast<Stmt>(StmtWithin);
     if (!ST) {
       continue;
     }
-    // Utils::printDebug("StmtWrapper genStmtWraps", ST->getStmtClassName());
+    Utils::printDebug("StmtWrapper genStmtWraps", ST->getStmtClassName());
     unsigned int Start =
         Utils::getSourceMgr()->getExpansionLineNumber(ST->getBeginLoc());
     unsigned int End =
         Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
     if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
-      StmtWrapper(NewStmt);
-      SList.push_back(&NewStmt);
+      Utils::printDebug("StmtWrapper genStmtWraps", "new StmtWrapper");
+      StmtWrapper *NewStmt = new StmtWrapper(ST);
+      SList.push_back(NewStmt);
     }
   }
 
@@ -65,12 +66,14 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
 StmtWrapper::StmtWrapper(clang::Stmt *S) {
   this->ClangStmt = S;
   if (auto Loop = dyn_cast<ForStmt>(S)) {
+    Utils::printDebug("StmtWrapper", "parsing loop");
     this->LoopL = getLoopList(Loop);
     CompoundStmt *Body = dyn_cast<CompoundStmt>(Loop->getBody());
     for (auto S : Body->body()) {
       this->ListStmt.push_back(new StmtWrapper(S));
     }
   } else {
+    Utils::printDebug("StmtWrapper", "adding new stmt");
     this->TacList = TAC::stmtToTAC(S);
   }
 }
@@ -135,7 +138,7 @@ StmtWrapper::LoopList StmtWrapper::getLoopList(clang::ForStmt *ForLoop) {
     const DeclRefExpr *VN = nullptr;
     Loop.Declared = (V != nullptr);
     if (!Loop.Declared) {
-      VN = dyn_cast<DeclRefExpr>(ValInit->getRHS());
+      VN = dyn_cast<DeclRefExpr>(ValInit->getLHS());
       Loop.Dim = Utils::getStringFromExpr(VN);
     }
 
@@ -345,30 +348,30 @@ StmtWrapper::LoopInfo::getEpilogs(std::list<StmtWrapper::LoopInfo> Dims,
 }
 
 // ---------------------------------------------
-void StmtWrapper::unrollAndJam(long UnrollFactor, long UpperBoundFallback) {
-  // for (auto LoopList : this->LoopL) {
-  //  // IMPORTANT
-  //  LoopList.reverse();
-  //  for (LoopInfo L : LoopList) {
-  //    long UB = L.UpperBound == -1 ? UpperBoundFallback : L.UpperBound;
-  //    this->unroll(UnrollFactor, UB, L.Dim);
-  //  }
-  //}
+bool StmtWrapper::unrollAndJam(long UnrollFactor, long UpperBoundFallback) {
+  // IMPORTANT
+  LoopL.reverse();
+  bool FullUnroll = true;
+  for (LoopInfo L : LoopL) {
+    FullUnroll = (L.knownBounds()) && FullUnroll;
+    long UB = (L.UpperBound == -1) ? UpperBoundFallback : L.UpperBound;
+    this->unroll(UnrollFactor, UB, L.Dim);
+  }
+  return FullUnroll;
 }
 
 // ---------------------------------------------
-void StmtWrapper::unroll(long UnrollFactor, long UpperBound,
+bool StmtWrapper::unroll(long UnrollFactor, long UpperBound,
                          std::string LoopLevel) {
   TacListType TL;
-  int i = 0;
-  for (auto TempTL : this->ListOfTAC) {
+  for (auto TempTL : this->ListStmt) {
     TacListType StmtTL;
-    for (auto T :
-         TAC::unrollTacList(TempTL, UnrollFactor, UpperBound, LoopLevel)) {
+    for (auto T : TAC::unrollTacList(TempTL->getTacList(), UnrollFactor,
+                                     UpperBound, LoopLevel)) {
       TL.push_back(T);
       StmtTL.push_back(T);
     }
-    this->ListOfTAC[i++] = StmtTL;
   }
   this->setTacList(TL);
+  return true;
 }

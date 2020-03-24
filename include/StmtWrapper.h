@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Mér 18 Mar 2020 19:41:38 CET
+ * Last Modified Date: Lun 23 Mar 2020 18:33:25 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -86,6 +86,9 @@ public:
     /// Empty constructor
     LoopInfo() {}
 
+    /// Known bounds
+    bool knownBounds() { return (UpperBound != -1) && (InitVal != -1); }
+
     /// Get epilogs of given dimensions and
     static std::string getEpilogs(std::list<LoopInfo> Dims,
                                   std::vector<Stmt *> SVec);
@@ -125,9 +128,9 @@ public:
 
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
-  void unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
+  bool unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
   /// Unrolls the TAC list in all the possible dimensions
-  void unrollAndJam(long UnrollFactor, long UpperBoundFallback = UBFallback);
+  bool unrollAndJam(long UnrollFactor, long UpperBoundFallback = UBFallback);
   /// Get LoopInfo
   LoopList getLoopInfo() { return this->LoopL; }
   /// Return the mapping of TAC to Stmt
@@ -140,6 +143,8 @@ public:
   TacListType getTacList() { return this->TacList; };
   /// Set TAC lsit
   void setTacList(TacListType TacList) { this->TacList = TacList; };
+  /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
+  bool isLeftOver() { return ListStmt.empty(); }
 
 private:
   /// Statements holded if loop
@@ -147,7 +152,7 @@ private:
   /// Statement if not loop
   Stmt *ClangStmt;
   /// Sorted list of TACs
-  std::vector<TacListType> ListOfTAC;
+  // std::vector<TacListType> ListOfTAC;
   /// Loop list
   LoopList LoopL;
   /// TAC list with regard to the Statement S

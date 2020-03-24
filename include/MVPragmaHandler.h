@@ -2,7 +2,7 @@
  * File              : MVPragmaHandler.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Mér 18 Mar 2020 12:00:17 CET
+ * Last Modified Date: Ven 20 Mar 2020 10:24:19 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
@@ -48,7 +48,7 @@ struct ScopLoc {
 
 /// List of pairs of #pragma macveth and #pragma macvethend Locations.
 struct ScopHandler {
-  static inline std::vector<ScopLoc> List;
+  static inline std::vector<ScopLoc *> List;
 
   /// Empty constructor
   ScopHandler(){};
@@ -59,14 +59,24 @@ struct ScopHandler {
     return SM.translateLineCol(FID, Line, col);
   }
 
+  /// Update scop to visited
+  static void visitScop(ScopLoc S) {
+    for (auto SV : List) {
+      if (SV->StartLine == S.StartLine) {
+        SV->ScopHasBeenScanned = true;
+        return;
+      }
+    }
+  }
+
   /// Get ROI of a concrete function
-  static std::vector<ScopLoc> funcGetScops(FunctionDecl *fd) {
+  static std::vector<ScopLoc *> funcGetScops(FunctionDecl *fd) {
     SourceManager &SM = fd->getParentASTContext().getSourceManager();
     unsigned int StartFD = SM.getExpansionLineNumber(fd->getBeginLoc());
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
-    std::vector<ScopLoc> SList;
-    for (ScopLoc SL : List) {
-      if ((StartFD <= SL.StartLine) && (EndFD >= SL.EndLine))
+    std::vector<ScopLoc *> SList;
+    for (auto SL : List) {
+      if ((StartFD <= SL->StartLine) && (EndFD >= SL->EndLine))
         SList.push_back(SL);
     }
     return SList;
@@ -83,15 +93,15 @@ struct ScopHandler {
   /// "Start" points to the location of the macveth pragma.
   void addStart(SourceManager &SM, SourceLocation Start,
                 ScopLoc::PragmaArgs PA) {
-    ScopLoc Loc;
+    ScopLoc *Loc = new ScopLoc();
 
-    Loc.PA = PA;
-    Loc.Scop = Start;
+    Loc->PA = PA;
+    Loc->Scop = Start;
     int Line = SM.getExpansionLineNumber(Start);
     Start = translateLineCol(SM, SM.getFileID(Start), Line, 1);
-    Loc.StartLine = Line;
-    Loc.Start = SM.getFileOffset(Start);
-    if (List.size() == 0 || List[List.size() - 1].End != 0) {
+    Loc->StartLine = Line;
+    Loc->Start = SM.getFileOffset(Start);
+    if (List.size() == 0 || List[List.size() - 1]->End != 0) {
       List.push_back(Loc);
     } else {
       List[List.size() - 1] = Loc;
@@ -104,13 +114,13 @@ struct ScopHandler {
   /// is already set, then ignore the spurious #pragma endmacveth.
   /// "end" points to the location of the endmacveth pragma.
   void addEnd(SourceManager &SM, SourceLocation End) {
-    if (List.size() == 0 || List[List.size() - 1].End != 0)
+    if (List.size() == 0 || List[List.size() - 1]->End != 0)
       return;
-    List[List.size() - 1].EndScop = End;
+    List[List.size() - 1]->EndScop = End;
     int Line = SM.getExpansionLineNumber(End);
     End = translateLineCol(SM, SM.getFileID(End), Line + 1, 1);
-    List[List.size() - 1].End = SM.getFileOffset(End);
-    List[List.size() - 1].EndLine = Line;
+    List[List.size() - 1]->End = SM.getFileOffset(End);
+    List[List.size() - 1]->EndLine = Line;
   }
 };
 
