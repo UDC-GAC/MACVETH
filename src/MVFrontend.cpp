@@ -76,10 +76,8 @@ bool MVConsumer::checkIfWithinScop(StmtWrapper *S) {
 
 // ---------------------------------------------
 void MVConsumer::unrollOptions(std::list<StmtWrapper *> SL) {
-  bool CouldUnroll = true;
+  bool CouldFullyUnroll = true;
   for (auto S : SL) {
-    assert(CouldUnroll &&
-           "Need to be able to full unroll when having leftovers");
     if (S->isLeftOver()) {
       continue;
     }
@@ -87,11 +85,11 @@ void MVConsumer::unrollOptions(std::list<StmtWrapper *> SL) {
     auto Scop = getScopLoc(S);
     assert(Scop != NULL && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
-      CouldUnroll = S->unrollAndJam(Scop->PA.UnrollFactor);
+      CouldFullyUnroll = S->unrollAndJam(Scop->PA.UnrollFactor);
     }
   }
-  Utils::printDebug("MVConsumer",
-                    "could fully unroll = " + std::to_string(CouldUnroll));
+  assert(CouldFullyUnroll &&
+         "Need to be able to full unroll when having leftovers");
 }
 
 // ---------------------------------------------
@@ -101,7 +99,6 @@ void rewriteLoops(StmtWrapper *SWrap, Rewriter *Rewrite) {
   std::list<std::string> DimsDeclared = {};
   // Rewrite loop header
   for (auto Loop : SWrap->getLoopInfo()) {
-    // for (auto Loop : Loops) {
     Utils::printDebug("MVConsumers", "Rewriting loop = " + Loop.Dim);
     // Rewrite headers
     Rewrite->ReplaceText(Loop.SRVarInit,
@@ -217,12 +214,8 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
     // Perform unrolling according to the pragmas
     unrollOptions(SL);
 
+    // Get all the TAC from all the Stmts
     TacListType TL;
-
-    Utils::printDebug("MVConsumer",
-                      "number of stmt = " + std::to_string(SL.size()));
-
-    // Debugging purposes
     for (auto SWrap : SL) {
       Utils::printDebug("MVConsumer",
                         "number of tacs = " +
@@ -300,11 +293,15 @@ bool MVConsumer::HandleTopLevelDecl(DeclGroupRef dg) {
 
   // Iterate over all the functions in the file
   for (it = dg.begin(); it != dg.end(); ++it) {
+    // Get function body
     FunctionDecl *fd = dyn_cast<clang::FunctionDecl>(*it);
+    // Continue if found is not a function
     if (!fd)
       continue;
+    // Continue if empty function
     if (!fd->hasBody())
       continue;
+    // Check if pragmas to parse
     if (!ScopHandler::funcHasROI(fd))
       continue;
     Utils::printDebug("MVConsumer",
@@ -314,20 +311,19 @@ bool MVConsumer::HandleTopLevelDecl(DeclGroupRef dg) {
     this->scanScops(fd);
   }
 
+  // While HandleTopLevelDecl returns true, ClangTool will keep parsing the
+  // file, thus, we want to stop when all scops we are interested in (parsed
+  // with the preprocessor) are visited
   return (!areAllScopsScaned());
 }
 
 // ---------------------------------------------
 std::unique_ptr<ASTConsumer>
 MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
-  // setSourceMgr: setter for the Rewriter
-  // * SourceManager: handles loading and caching of source files into
-  // memory. It can be queried for information such as SourceLocation
-  // of objects.
-  // * LangOptions: controls the dialect of C/C++ accepted
   TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
   Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
                  &CI.getASTContext());
+  // Parsing pragmas
   Preprocessor &PP = CI.getPreprocessor();
   ScopHandler *Scops = new ScopHandler();
   PP.AddPragmaHandler(new PragmaScopHandler(Scops));

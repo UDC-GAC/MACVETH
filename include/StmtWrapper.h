@@ -99,7 +99,8 @@ public:
     std::string toString() {
       std::string Str = Dim + "; init val = " + std::to_string(InitVal) +
                         ", upperbound = " + std::to_string(UpperBound) +
-                        "; declared within loop = " + std::to_string(Declared);
+                        ", step = " + std::to_string(Step) +
+                        "; declared = " + std::to_string(Declared);
       return Str;
     }
   };
@@ -129,6 +130,8 @@ public:
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
   bool unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
+  ////
+  void unrollLoop();
   /// Unrolls the TAC list in all the possible dimensions
   bool unrollAndJam(long UnrollFactor, long UpperBoundFallback = UBFallback);
   /// Get LoopInfo
@@ -137,8 +140,6 @@ public:
   std::map<int, int> getTacToStmt() { return this->TacToStmt; }
   /// Get Clang Stmt
   Stmt *getClangStmt() { return this->ClangStmt; };
-  /// Set Clang Stmt
-  // void setStmt(std::vector<Stmt *> LS) { this->ListStmt = LS; };
   /// Get TAC list
   TacListType getTacList() { return this->TacList; };
   /// Set TAC lsit
@@ -151,8 +152,6 @@ private:
   std::vector<StmtWrapper *> ListStmt;
   /// Statement if not loop
   Stmt *ClangStmt;
-  /// Sorted list of TACs
-  // std::vector<TacListType> ListOfTAC;
   /// Loop list
   LoopList LoopL;
   /// TAC list with regard to the Statement S

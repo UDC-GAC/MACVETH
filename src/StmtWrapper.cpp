@@ -30,6 +30,7 @@
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
+#include <llvm-10/llvm/Support/ErrorHandling.h>
 #include <string>
 
 using namespace clang;
@@ -69,8 +70,12 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
     Utils::printDebug("StmtWrapper", "parsing loop");
     this->LoopL = getLoopList(Loop);
     CompoundStmt *Body = dyn_cast<CompoundStmt>(Loop->getBody());
-    for (auto S : Body->body()) {
-      this->ListStmt.push_back(new StmtWrapper(S));
+    if (Body) {
+      for (auto S : Body->body()) {
+        this->ListStmt.push_back(new StmtWrapper(S));
+      }
+    } else {
+      llvm::llvm_unreachable_internal();
     }
   } else {
     Utils::printDebug("StmtWrapper", "adding new stmt");
@@ -353,12 +358,16 @@ bool StmtWrapper::unrollAndJam(long UnrollFactor, long UpperBoundFallback) {
   LoopL.reverse();
   bool FullUnroll = true;
   for (LoopInfo L : LoopL) {
+    Utils::printDebug("StmtWrapper", "unrolling dim = " + L.Dim);
     FullUnroll = (L.knownBounds()) && FullUnroll;
     long UB = (L.UpperBound == -1) ? UpperBoundFallback : L.UpperBound;
     this->unroll(UnrollFactor, UB, L.Dim);
   }
   return FullUnroll;
 }
+
+// ---------------------------------------------
+void StmtWrapper::unrollLoop() {}
 
 // ---------------------------------------------
 bool StmtWrapper::unroll(long UnrollFactor, long UpperBound,

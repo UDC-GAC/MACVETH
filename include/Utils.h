@@ -88,6 +88,16 @@ public:
     }
   }
 
+  static void printDebug(std::string M, std::string Msg, DebugLevel DB) {
+    if (!MVOptions::DLevel) {
+      printDebug(M, Msg);
+      return;
+    }
+    if (DB <= MVOptions::DLevel) {
+      printDebug(M, Msg);
+    }
+  }
+
   /// Truncate file: create or rewrite if already created
   static void initFile(std::string FileName) {
     if (FileName != "") {
