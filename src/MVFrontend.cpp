@@ -27,9 +27,10 @@
  */
 
 #include "include/MVFrontend.h"
-#include "TAC.h"
 #include "include/CDAG.h"
 #include "include/MVOptions.h"
+//#include "include/StmtWrapper.h"
+#include "include/TAC.h"
 #include "include/Utils.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Basic/LangOptions.h"
@@ -51,32 +52,9 @@ ScopLoc *getScopLoc(StmtWrapper *S) {
 }
 
 // ---------------------------------------------
-bool MVConsumer::checkIfWithinScop(StmtWrapper *S) {
-  auto Scop = getScopLoc(S);
-  bool NewStmt = false;
-  if ((Scop != NULL)) {
-    for (auto L : S->getLoopInfo()) {
-      if (std::find(Scop->DimVisited.begin(), Scop->DimVisited.end(), L.Dim) ==
-          Scop->DimVisited.end()) {
-        if (Scop->DimVisited.size() == 0) {
-          // Clearing mapping
-          StmtWrapper::LoopInfo::DimDeclared.clear();
-        }
-        Scop->DimVisited.push_back(L.Dim);
-        // New dimension
-        NewStmt = true;
-      }
-    }
-    // The scop is not recognized
-    return NewStmt;
-  }
-
-  return NewStmt;
-}
-
-// ---------------------------------------------
 void MVConsumer::unrollOptions(std::list<StmtWrapper *> SL) {
   bool CouldFullyUnroll = true;
+  std::list<StmtWrapper::LoopInfo> LI;
   for (auto S : SL) {
     if (S->isLeftOver()) {
       continue;
@@ -85,7 +63,9 @@ void MVConsumer::unrollOptions(std::list<StmtWrapper *> SL) {
     auto Scop = getScopLoc(S);
     assert(Scop != NULL && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
-      CouldFullyUnroll = S->unrollAndJam(Scop->PA.UnrollFactor);
+      // CouldFullyUnroll = S->unrollAndJam(Scop->PA.UnrollFactor);
+      Utils::printDebug("MVConsumer", "unrolling...");
+      CouldFullyUnroll = S->unrollAndJam(LI);
     }
   }
   assert(CouldFullyUnroll &&
@@ -98,37 +78,37 @@ void rewriteLoops(StmtWrapper *SWrap, Rewriter *Rewrite) {
   std::list<StmtWrapper::LoopInfo> Dims = {};
   std::list<std::string> DimsDeclared = {};
   // Rewrite loop header
-  for (auto Loop : SWrap->getLoopInfo()) {
-    Utils::printDebug("MVConsumers", "Rewriting loop = " + Loop.Dim);
-    // Rewrite headers
-    Rewrite->ReplaceText(Loop.SRVarInit,
-                         Loop.Dim + " = " + std::to_string(Loop.InitVal));
-    // IMPORTANT: need to put ";" at the end since the range is calculated
-    // as the -1 offset of the location of the increment. This is done like
-    // this because the SourceLocation of the UpperBound could be a macro
-    // variable located in another place. This happens, for instance, with
-    // the loop bounds in PolyBench suite
-    Rewrite->ReplaceText(Loop.SRVarCond,
-                         "(" + Loop.Dim + " + " + std::to_string(Loop.Step) +
-                             ") <= " + Loop.StrUpperBound + ";");
-    Rewrite->ReplaceText(Loop.SRVarInc,
-                         Loop.Dim + " += " + std::to_string(Loop.Step));
-    if (Loop.Declared) {
-      std::list<std::string> L = StmtWrapper::LoopInfo::DimDeclared;
-      if (!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) {
-        StmtWrapper::LoopInfo::DimDeclared.push_back(Loop.Dim);
-        DimsDeclared.push_back(Loop.Dim);
-      }
-    }
-    Dims.push_front(Loop);
-    std::string Epilog = "";
-    // StmtWrapper::LoopInfo::getEpilogs(Dims, SWrap->getClangStmt());
-    Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
-    //}
-  }
-  // FIXME
-  // Declare variables
-  SourceLocation Loc = SWrap->getLoopInfo().back().BegLoc;
+  // for (auto Loop : SWrap->getLoopInfo()) {
+  //  Utils::printDebug("MVConsumers", "Rewriting loop = " + Loop.Dim);
+  //  // Rewrite headers
+  //  Rewrite->ReplaceText(Loop.SRVarInit,
+  //                       Loop.Dim + " = " + std::to_string(Loop.InitVal));
+  //  // IMPORTANT: need to put ";" at the end since the range is calculated
+  //  // as the -1 offset of the location of the increment. This is done like
+  //  // this because the SourceLocation of the UpperBound could be a macro
+  //  // variable located in another place. This happens, for instance, with
+  //  // the loop bounds in PolyBench suite
+  //  Rewrite->ReplaceText(Loop.SRVarCond,
+  //                       "(" + Loop.Dim + " + " + std::to_string(Loop.Step) +
+  //                           ") <= " + Loop.StrUpperBound + ";");
+  //  Rewrite->ReplaceText(Loop.SRVarInc,
+  //                       Loop.Dim + " += " + std::to_string(Loop.Step));
+  //  if (Loop.Declared) {
+  //    std::list<std::string> L = StmtWrapper::LoopInfo::DimDeclared;
+  //    if (!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) {
+  //      StmtWrapper::LoopInfo::DimDeclared.push_back(Loop.Dim);
+  //      DimsDeclared.push_back(Loop.Dim);
+  //    }
+  //  }
+  //  Dims.push_front(Loop);
+  //  std::string Epilog = "";
+  //  // StmtWrapper::LoopInfo::getEpilogs(Dims, SWrap->getClangStmt());
+  //  Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
+  //  //}
+  //}
+  //// FIXME
+  //// Declare variables
+  SourceLocation Loc = SWrap->getLoopInfo().BegLoc;
   Rewrite->InsertTextBefore(
       Loc, StmtWrapper::LoopInfo::getDimDeclarations(DimsDeclared));
 }

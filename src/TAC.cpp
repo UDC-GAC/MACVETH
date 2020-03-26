@@ -58,8 +58,8 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
       dyn_cast<clang::BinaryOperator>(E->IgnoreImpCasts());
   clang::ParenExpr *P = dyn_cast<clang::ParenExpr>(E->IgnoreImpCasts());
   while ((P = dyn_cast<clang::ParenExpr>(E->IgnoreImpCasts()))) {
-    Utils::printDebug("TAC", "getBinOp = " +
-                                 Utils::getStringFromExpr(P->getExprStmt()));
+    // Utils::printDebug("TAC", "getBinOp = " +
+    //                             Utils::getStringFromExpr(P->getExprStmt()));
     if ((B = dyn_cast<clang::BinaryOperator>(
              P->getSubExpr()->IgnoreImpCasts()))) {
       break;
@@ -161,8 +161,6 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
   clang::BinaryOperator *RhsBin = NULL;
   bool LhsTypeBin = (LhsBin = getBinOp(Lhs->IgnoreImpCasts()));
   bool RhsTypeBin = (RhsBin = getBinOp(Rhs->IgnoreImpCasts()));
-
-  Utils::printDebug("TAC", "binOp");
 
   /// Since this is a recursive function, we have to test the first case
   MVExpr *TmpA =

@@ -58,8 +58,6 @@ private:
   /// Check scop options regarding unrolling and apply them to the statements
   /// within
   void unrollOptions(std::list<StmtWrapper *> SL);
-  /// Check if stmts are within the scope and/or have been already visited
-  bool checkIfWithinScop(StmtWrapper *S);
   /// Main function in charge of scanning scops on each function with scops
   void scanScops(FunctionDecl *fd);
 

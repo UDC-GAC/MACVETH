@@ -76,6 +76,8 @@ public:
     long LeftOver = -1;
     /// Variable declared in the loop creation
     bool Declared = false;
+    /// Unrolling factor
+    int UnrollFactor = 4;
     /// Location of the initialization in the loop
     clang::CharSourceRange SRVarInit;
     /// Location of the condition of the loop
@@ -111,11 +113,8 @@ public:
   /// Generate a list of StmtWrapper
   static std::list<StmtWrapper *> genStmtWraps(CompoundStmt *CS, ScopLoc *Scop);
 
-  /// From the result of a matcher it gets the loop hierarchy
-  static LoopList getLoopList(const MatchFinder::MatchResult &Result);
-
   /// Get all the loops given one
-  static LoopList getLoopList(clang::ForStmt *ForLoop);
+  static LoopInfo getLoop(clang::ForStmt *ForLoop);
 
   /// Default destructor
   ~StmtWrapper(){};
@@ -129,13 +128,11 @@ public:
 
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
-  bool unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
-  ////
-  void unrollLoop();
+  TacListType unroll(LoopInfo L);
   /// Unrolls the TAC list in all the possible dimensions
-  bool unrollAndJam(long UnrollFactor, long UpperBoundFallback = UBFallback);
+  bool unrollAndJam(std::list<LoopInfo> LI);
   /// Get LoopInfo
-  LoopList getLoopInfo() { return this->LoopL; }
+  LoopInfo getLoopInfo() { return this->LoopL; }
   /// Return the mapping of TAC to Stmt
   std::map<int, int> getTacToStmt() { return this->TacToStmt; }
   /// Get Clang Stmt
@@ -146,6 +143,8 @@ public:
   void setTacList(TacListType TacList) { this->TacList = TacList; };
   /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
   bool isLeftOver() { return ListStmt.empty(); }
+  /// Check if it is a loop
+  bool isLoop() { return TacList.empty(); }
 
 private:
   /// Statements holded if loop
@@ -153,7 +152,8 @@ private:
   /// Statement if not loop
   Stmt *ClangStmt;
   /// Loop list
-  LoopList LoopL;
+  // LoopList LoopL;
+  LoopInfo LoopL;
   /// TAC list with regard to the Statement S
   TacListType TacList;
   /// Map from TacID to Stmt number
