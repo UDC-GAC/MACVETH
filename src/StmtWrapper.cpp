@@ -58,6 +58,21 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
       StmtWrapper *NewStmt = new StmtWrapper(ST);
       SList.push_back(NewStmt);
     }
+    auto STLoop = dyn_cast<ForStmt>(StmtWithin);
+    if (!STLoop)
+      continue;
+    auto BodyLoop = dyn_cast<CompoundStmt>(STLoop->getBody());
+    for (auto S : BodyLoop->body()) {
+      unsigned int Start =
+          Utils::getSourceMgr()->getExpansionLineNumber(S->getBeginLoc());
+      unsigned int End =
+          Utils::getSourceMgr()->getExpansionLineNumber(S->getEndLoc());
+      if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
+        Utils::printDebug("StmtWrapper genStmtWraps", "new StmtWrapper");
+        StmtWrapper *NewStmt = new StmtWrapper(S);
+        SList.push_back(NewStmt);
+      }
+    }
   }
 
   return SList;
@@ -186,29 +201,28 @@ StmtWrapper::LoopInfo::getDimDeclarations(std::list<std::string> DimsDeclared) {
 }
 
 // ---------------------------------------------
-std::string
-StmtWrapper::LoopInfo::getEpilogs(std::list<StmtWrapper::LoopInfo> Dims,
-                                  std::vector<Stmt *> SVec) {
+std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   std::string Epilog = "";
   int Tmp = 0;
-  for (auto D : Dims) {
-    Utils::printDebug("StmtWrapper", "Epilog = " + D.Dim);
-    // Write new epilogs
-    std::string EpiInit =
-        D.Dim + " = " +
-        ((Tmp++ == 0) ? "(" + D.StrUpperBound + " / " + std::to_string(D.Step) +
-                            " ) * " + std::to_string(D.Step)
-                      : "0");
-    std::string EpiCond = D.Dim + " < " + D.StrUpperBound;
-    std::string EpiInc = "++" + D.Dim;
-    Epilog += "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";
+  if (SWrap->isLeftOver()) {
+    return Epilog;
   }
+  std::list<StmtWrapper *> SVec = SWrap->ListStmt;
+  LoopInfo Loop = SWrap->getLoopInfo();
+  // Write new epilogs
+  std::string EpiInit = Loop.Dim + " = " +
+                        ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
+                                            std::to_string(Loop.Step) +
+                                            " ) * " + std::to_string(Loop.Step)
+                                      : "0");
+  std::string EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;
+  std::string EpiInc = Loop.Dim + " += " + std::to_string(Loop.Step);
+  Epilog += "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";
   for (auto S : SVec) {
-    Epilog += "\n" + Utils::getStringFromStmt(S) + ";";
+    Epilog += "\n" + Utils::getStringFromStmt(S->getClangStmt()) + ";";
   }
-  for (auto D : Dims) {
-    Epilog += "\n}";
-  }
+  Epilog += "\n}";
+
   return Epilog;
 }
 

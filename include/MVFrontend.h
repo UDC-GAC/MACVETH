@@ -60,6 +60,8 @@ private:
   void unrollOptions(std::list<StmtWrapper *> SL);
   /// Main function in charge of scanning scops on each function with scops
   void scanScops(FunctionDecl *fd);
+  /// Comment those stmts which are replaced
+  void commentReplacedStmts(std::list<StmtWrapper *> SList);
 
   /// Holds information regarding the ROI
   ScopHandler *SL;

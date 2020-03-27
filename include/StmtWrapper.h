@@ -92,8 +92,7 @@ public:
     bool knownBounds() { return (UpperBound != -1) && (InitVal != -1); }
 
     /// Get epilogs of given dimensions and
-    static std::string getEpilogs(std::list<LoopInfo> Dims,
-                                  std::vector<Stmt *> SVec);
+    static std::string getEpilogs(StmtWrapper *SWrap);
 
     static std::string getDimDeclarations(std::list<std::string> DimsDeclared);
 
@@ -124,40 +123,39 @@ public:
 
   /// Constructor
   StmtWrapper(clang::Stmt *S);
-  // StmtWrapper(clang::CompoundStmt *CS, ScopLoc *SL);
 
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
   TacListType unroll(LoopInfo L);
   /// Unrolls the TAC list in all the possible dimensions
   bool unrollAndJam(std::list<LoopInfo> LI);
+  /// Get list of stmts
+  std::list<StmtWrapper *> getListStmt() { return this->ListStmt; }
   /// Get LoopInfo
   LoopInfo getLoopInfo() { return this->LoopL; }
-  /// Return the mapping of TAC to Stmt
-  std::map<int, int> getTacToStmt() { return this->TacToStmt; }
   /// Get Clang Stmt
   Stmt *getClangStmt() { return this->ClangStmt; };
   /// Get TAC list
   TacListType getTacList() { return this->TacList; };
   /// Set TAC lsit
   void setTacList(TacListType TacList) { this->TacList = TacList; };
-  /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
-  bool isLeftOver() { return ListStmt.empty(); }
   /// Check if it is a loop
-  bool isLoop() { return TacList.empty(); }
+  bool isLoop() {
+    auto S = dyn_cast<ForStmt>(this->ClangStmt);
+    return S;
+  }
+  /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
+  bool isLeftOver() { return !this->isLoop(); }
 
 private:
   /// Statements holded if loop
-  std::vector<StmtWrapper *> ListStmt;
+  std::list<StmtWrapper *> ListStmt;
   /// Statement if not loop
   Stmt *ClangStmt;
-  /// Loop list
-  // LoopList LoopL;
+  /// Loop information if needed
   LoopInfo LoopL;
   /// TAC list with regard to the Statement S
   TacListType TacList;
-  /// Map from TacID to Stmt number
-  std::map<int, int> TacToStmt;
 };
 } // namespace macveth
 #endif // MACVETH_STMTWRAPPER_H
