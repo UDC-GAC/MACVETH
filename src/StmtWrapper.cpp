@@ -48,30 +48,15 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
     if (!ST) {
       continue;
     }
-    Utils::printDebug("StmtWrapper genStmtWraps", ST->getStmtClassName());
     unsigned int Start =
         Utils::getSourceMgr()->getExpansionLineNumber(ST->getBeginLoc());
     unsigned int End =
         Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
     if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
-      Utils::printDebug("StmtWrapper genStmtWraps", "new StmtWrapper");
+      Utils::printDebug("StmtWrapper genStmtWraps",
+                        "new StmtWrapper => " + Utils::getStringFromStmt(ST));
       StmtWrapper *NewStmt = new StmtWrapper(ST);
       SList.push_back(NewStmt);
-    }
-    auto STLoop = dyn_cast<ForStmt>(StmtWithin);
-    if (!STLoop)
-      continue;
-    auto BodyLoop = dyn_cast<CompoundStmt>(STLoop->getBody());
-    for (auto S : BodyLoop->body()) {
-      unsigned int Start =
-          Utils::getSourceMgr()->getExpansionLineNumber(S->getBeginLoc());
-      unsigned int End =
-          Utils::getSourceMgr()->getExpansionLineNumber(S->getEndLoc());
-      if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
-        Utils::printDebug("StmtWrapper genStmtWraps", "new StmtWrapper");
-        StmtWrapper *NewStmt = new StmtWrapper(S);
-        SList.push_back(NewStmt);
-      }
     }
   }
 
@@ -108,13 +93,11 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   Loop.BegLoc = ForLoop->getBeginLoc();
   Loop.EndLoc = ForLoop->getEndLoc();
 
-  Utils::printDebug("LoopInfo", "parsing vardecl...");
   // Get init val
   const DeclStmt *NameValInit = dyn_cast<DeclStmt>(ForLoop->getInit());
   const BinaryOperator *ValInit;
   const VarDecl *V = nullptr;
   if (NameValInit != nullptr) {
-    Utils::printDebug("LoopInfo", "NameValInt not NULL");
     clang::Expr::EvalResult R;
     V = dyn_cast<VarDecl>(NameValInit->getSingleDecl());
     if (V->getInit()->EvaluateAsInt(R, *Utils::getCtx())) {
@@ -122,14 +105,12 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     }
     Loop.Dim = V->getDeclName().getAsString();
   } else {
-    Utils::printDebug("LoopInfo", "NameValInt NULL");
     ValInit = dyn_cast<BinaryOperator>(ForLoop->getInit());
     if (ValInit != nullptr) {
       Loop.InitVal = Utils::getIntFromExpr(ValInit->getRHS(), Utils::getCtx());
     }
   }
 
-  Utils::printDebug("LoopInfo", "parsing declrefexpr...");
   // Get name of variable
   const DeclRefExpr *VN = nullptr;
   Loop.Declared = (V != nullptr);
@@ -138,7 +119,6 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     Loop.Dim = Utils::getStringFromExpr(VN);
   }
 
-  Utils::printDebug("LoopInfo", "parsing upperbound...");
   // Get UpperBound
   const BinaryOperator *Cond = dyn_cast<BinaryOperator>(ForLoop->getCond());
   const Expr *UpperBoundExpr = Cond->getRHS();
@@ -147,7 +127,6 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     Loop.UpperBound = Utils::getIntFromExpr(UpperBoundExpr, Utils::getCtx());
   }
 
-  Utils::printDebug("LoopInfo", "parsing increment...");
   // Get step value
   auto IncVarPos = ForLoop->getInc();
   if (dyn_cast<UnaryOperator>(ForLoop->getInc())) {
@@ -182,7 +161,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     // Loop.Step = Loop.UpperBound;
     Loop.LeftOver = 0;
   }
-  Utils::printDebug("StmtWrapper", Loop.toString());
+  Utils::printDebug("LoopInfo", Loop.toString());
   return Loop;
 }
 
@@ -250,7 +229,7 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI) {
 // ---------------------------------------------
 TacListType StmtWrapper::unroll(LoopInfo L) {
   Utils::printDebug("StmtWrapper",
-                    "unrolling stmt = " +
+                    "unrolling dimension " + L.Dim + " stmt = " +
                         Utils::getStringFromStmt(this->getClangStmt()));
   long UB = (L.UpperBound == -1) ? L.UnrollFactor : (L.UpperBound - L.InitVal);
   auto TL = TAC::unrollTacList(this->getTacList(), L.Step, UB, L.Dim);

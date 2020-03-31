@@ -192,7 +192,6 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
       delete SWrap;
     }
     delete G;
-    Utils::printDebug("MVConsumer", "scop finished!!");
   }
 
   return;
@@ -200,16 +199,14 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
 
 // ---------------------------------------------
 bool areAllScopsScaned() {
-  bool Scanned = false;
+  bool Scanned = true;
   for (auto S : ScopHandler::List) {
-    Utils::printDebug("MVConsumer", std::to_string(S->StartLine) + " = " +
-                                        std::to_string(S->ScopHasBeenScanned));
     if (!S->ScopHasBeenScanned) {
+      Utils::printDebug("MVFrontend", "areAllScopsScaned = 0");
       return false;
-    } else {
-      Scanned = true;
     }
   }
+  Utils::printDebug("MVFrontend", "areAllScopsScaned = 1");
   return Scanned;
 }
 
@@ -272,11 +269,9 @@ void MVFrontendAction::EndSourceFileAction() {
   // buffer. Original buffer is modified before calling this function,
   // from the ASTConsumer
 
-  Utils::printDebug("MVConsumer", "endSourceFile");
   SourceManager &SM = TheRewriter.getSourceMgr();
   std::error_code ErrorCode;
   std::string OutFileName = Utils::getExePath() + MVOptions::OutFile;
   llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
-  Utils::printDebug("MVConsumer", "endSourceFile passed");
 }

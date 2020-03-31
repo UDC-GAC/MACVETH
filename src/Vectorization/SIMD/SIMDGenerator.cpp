@@ -259,15 +259,15 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   // Arranging the operation
   switch (V.VT) {
   case VectorIR::VType::MAP:
-    Utils::printDebug("SIMDGen", "map");
+    // Utils::printDebug("SIMDGen", "map");
     mapOperation(V, &IL);
     break;
   case VectorIR::VType::REDUCE:
-    Utils::printDebug("SIMDGen", "reduce");
+    // Utils::printDebug("SIMDGen", "reduce");
     reduceOperation(V, &IL);
     break;
   case VectorIR::VType::SEQ:
-    Utils::printDebug("SIMDGen", "sequential");
+    // Utils::printDebug("SIMDGen", "sequential");
     IL = vseq(V);
     break;
   };

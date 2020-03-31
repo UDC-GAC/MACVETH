@@ -208,11 +208,15 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   int UnrollC = S * UnrollFactor +
                 UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
 
-  TAC *UnrolledTac = new TAC(
-      Tac->getA()->unrollExpr(UnrollA, LoopLevel),
-      Tac->getB()->unrollExpr(UnrollB, LoopLevel),
-      Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL,
-      Tac->getMVOP(), Tac->getTacID());
+  MVExpr *NewA = Tac->getA()->unrollExpr(UnrollA, LoopLevel);
+  MVExpr *NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
+  MVExpr *NewC =
+      Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL;
+  if ((NewA == Tac->getA()) && (NewB == Tac->getB()) && (NewC != NULL) &&
+      (NewC == Tac->getC())) {
+    return NULL;
+  }
+  TAC *UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
   return UnrolledTac;
 }
 
@@ -223,8 +227,10 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
   int Steps = UpperBound / UnrollFactor;
   for (int S = 0; S < Steps; S++) {
     for (TAC Tac : TacList) {
-      TacListOrg.push_back(
-          *(TAC::unroll(&Tac, UnrollFactor, S, 0x000000, LoopLevel)));
+      TAC *NT = (TAC::unroll(&Tac, UnrollFactor, S, 0x000000, LoopLevel));
+      if (NT != NULL) {
+        TacListOrg.push_back(*NT);
+      }
     }
   }
   return TacListOrg;
