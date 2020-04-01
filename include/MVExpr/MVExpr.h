@@ -144,12 +144,12 @@ public:
 
   /// Two expressions are equal if and only if their name or original code
   /// expression is equal, regardless where they appear in code.
-  bool operator==(const MVExpr &MVE) {
+  bool operator==(const MVExpr &MVE) const {
     return !getExprStr().compare(MVE.getExprStr());
   }
   /// Two expressions are not equal if and only if their name or original code
   /// expression is not equal.
-  bool operator!=(const MVExpr &MVE) { return !operator==(MVE); }
+  bool operator!=(MVExpr &MVE) { return !operator==(MVE); }
 
   /// Operators
   virtual int operator-(const MVExpr &MVE) { return -1; }

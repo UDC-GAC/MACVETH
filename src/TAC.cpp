@@ -27,6 +27,7 @@
  */
 
 #include "include/TAC.h"
+#include "MVExpr/MVExprVar.h"
 #include "include/CDAG.h"
 #include "include/MVExpr/MVExprFactory.h"
 #include "clang/AST/Expr.h"
@@ -212,8 +213,17 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   MVExpr *NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
   MVExpr *NewC =
       Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL;
-  if ((NewA == Tac->getA()) && (NewB == Tac->getB()) && (NewC != NULL) &&
-      (NewC == Tac->getC())) {
+
+  auto Tmp = dyn_cast<MVExprVar>(Tac->getC());
+  // No unroll, nothing to be unrolled
+  if ((*NewA == *Tac->getA()) && (*NewB == *Tac->getB()) && (NewC != NULL) &&
+      (Tmp)) {
+    return NULL;
+  }
+  Tmp = dyn_cast<MVExprVar>(Tac->getA());
+  // No unroll, nothing to be unrolled
+  if ((Tmp) && (*NewB == *Tac->getB()) && (NewC != NULL) &&
+      (*NewC == *Tac->getC())) {
     return NULL;
   }
   TAC *UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
@@ -230,6 +240,9 @@ std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
       TAC *NT = (TAC::unroll(&Tac, UnrollFactor, S, 0x000000, LoopLevel));
       if (NT != NULL) {
         TacListOrg.push_back(*NT);
+      }
+      if ((NT == NULL) && (S == 0)) {
+        TacListOrg.push_back(Tac);
       }
     }
   }

@@ -31,11 +31,11 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
   Node::NodeListType NL(NList);
 
   // Detect reductions
-  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  Utils::printDebug("CDAG", "Nodes of reductions found:");
-  for (Node *N : NRedux) {
-    Utils::printDebug("CDAG", N->toString());
-  }
+  // Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  // Utils::printDebug("CDAG", "Nodes of reductions found:");
+  // for (Node *N : NRedux) {
+  //  Utils::printDebug("CDAG", N->toString());
+  //}
 
   // Until the list is empty
   Utils::printDebug("CDAG", "Greedy algorithm: ");

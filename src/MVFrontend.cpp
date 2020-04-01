@@ -176,13 +176,18 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
       Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
                          InsSIMD + "\n", true, true);
     }
-    // for (auto InsSIMD : SInfo.SIMDList) {
-    //  Rewrite.InsertText(
-    //      SWrap->getStmt()[SWrap->getTacToStmt()[InsSIMD.TacID]]->getBeginLoc(),
-    //      InsSIMD.render() + ";\t// cost = " + std::to_string(InsSIMD.Cost) +
-    //          "\n",
-    //      true, true);
-    //}
+
+    for (auto InsSIMD : SInfo.SIMDList) {
+      for (auto S : SL) {
+        if (InsSIMD.TacID == S->getTacList().front().getTacID()) {
+          Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                             InsSIMD.render() + ";\t// cost = " +
+                                 std::to_string(InsSIMD.Cost) + "\n",
+                             true, true);
+          continue;
+        }
+      }
+    }
 
     // Comment statements
     commentReplacedStmts(SL);

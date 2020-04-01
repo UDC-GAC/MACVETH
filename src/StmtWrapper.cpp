@@ -67,7 +67,6 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
 StmtWrapper::StmtWrapper(clang::Stmt *S) {
   this->ClangStmt = S;
   if (auto Loop = dyn_cast<ForStmt>(S)) {
-    Utils::printDebug("StmtWrapper", "parsing loop");
     this->LoopL = getLoop(Loop);
     CompoundStmt *Body = dyn_cast<CompoundStmt>(Loop->getBody());
     if (Body) {
