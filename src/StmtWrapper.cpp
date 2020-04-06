@@ -209,11 +209,11 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI) {
   bool FullUnroll = true;
   if (this->isLoop()) {
     Utils::printDebug("StmtWrapper", "unrollAndJam loop");
-    LI.push_back(this->LoopL);
+    LI.push_front(this->LoopL);
     for (auto S : this->ListStmt) {
       S->unrollAndJam(LI);
       TacListType TL = this->getTacList();
-      TL.splice(TL.begin(), S->getTacList());
+      TL.splice(TL.end(), S->getTacList());
       this->setTacList(TL);
     }
   } else {

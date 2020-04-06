@@ -167,6 +167,8 @@ private:
   clang::Expr *ClangExpr = NULL;
   /// Need to be loaded from mem
   bool NeedsMemLoad = true;
+  /// Dimensiones of the expressions
+  std::list<std::string> Dims;
 };
 
 /// Operators

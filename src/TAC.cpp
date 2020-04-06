@@ -41,6 +41,9 @@ using namespace macveth;
 std::string getNameTempReg() { return "r" + std::to_string(TAC::RegVal); }
 
 // ---------------------------------------------
+std::string getNameTempReg(int Val) { return "r" + std::to_string(Val); }
+
+// ---------------------------------------------
 std::string getCurrentNameTempReg() {
   return "r" + std::to_string(TAC::RegVal++);
 }
@@ -172,7 +175,8 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
   if (LhsTypeBin && RhsTypeBin) {
     // both true
     MVExpr *TmpB = MVExprFactory::createMVExpr(getNameTempReg(), true);
-    MVExpr *TmpC = MVExprFactory::createMVExpr(getNameTempReg());
+    MVExpr *TmpC =
+        MVExprFactory::createMVExpr(getNameTempReg(TAC::RegVal + 1), true);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
 
     TacList->push_front(NewTac);
@@ -209,24 +213,28 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   int UnrollC = S * UnrollFactor +
                 UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
 
+  // MVExprVar::regUnrollDim(Tac->getA(), LoopLevel, UnrollA);
   MVExpr *NewA = Tac->getA()->unrollExpr(UnrollA, LoopLevel);
   MVExpr *NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
   MVExpr *NewC =
       Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL;
 
-  auto Tmp = dyn_cast<MVExprVar>(Tac->getC());
-  // No unroll, nothing to be unrolled
-  if ((*NewA == *Tac->getA()) && (*NewB == *Tac->getB()) && (NewC != NULL) &&
-      (Tmp)) {
-    return NULL;
-  }
-  Tmp = dyn_cast<MVExprVar>(Tac->getA());
-  // No unroll, nothing to be unrolled
-  if ((Tmp) && (*NewB == *Tac->getB()) && (NewC != NULL) &&
-      (*NewC == *Tac->getC())) {
-    return NULL;
-  }
+  // auto Tmp = dyn_cast<MVExprVar>(Tac->getC());
+  //// No unroll, nothing to be unrolled
+  // if ((*NewA == *Tac->getA()) && (*NewB == *Tac->getB()) && (NewC != NULL) &&
+  //    (Tmp)) {
+  //  MVExprVar::regUndoUnrollDim(Tac->getA(), LoopLevel, UnrollA);
+  //  return NULL;
+  //}
+  // Tmp = dyn_cast<MVExprVar>(Tac->getA());
+  //// No unroll, nothing to be unrolled
+  // if ((Tmp) && (*NewB == *Tac->getB()) && (NewC != NULL) &&
+  //    (*NewC == *Tac->getC())) {
+  //  MVExprVar::regUndoUnrollDim(Tac->getA(), LoopLevel, UnrollA);
+  //  return NULL;
+  //}
   TAC *UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
+  Utils::printDebug("TAC", UnrolledTac->toString());
   return UnrolledTac;
 }
 
