@@ -50,7 +50,7 @@ ScopLoc *getScopLoc(StmtWrapper *S) {
 }
 
 // ---------------------------------------------
-void MVConsumer::unrollOptions(std::list<StmtWrapper *> SL) {
+void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
   bool CouldFullyUnroll = true;
   std::list<StmtWrapper::LoopInfo> LI;
   for (auto S : SL) {
@@ -92,7 +92,7 @@ void rewriteLoops(std::list<StmtWrapper *> SList, Rewriter *Rewrite) {
                          "(" + Loop.Dim + " + " + std::to_string(Loop.Step) +
                              ") <= " + Loop.StrUpperBound + ";");
     Rewrite->ReplaceText(Loop.SRVarInc,
-                         Loop.Dim + " += " + std::to_string(Loop.Step));
+                         Loop.Dim + " += " + std::to_string(Loop.StepUnrolled));
     if (Loop.Declared) {
       std::list<std::string> L = StmtWrapper::LoopInfo::DimDeclared;
       if (!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) {
@@ -111,7 +111,7 @@ void rewriteLoops(std::list<StmtWrapper *> SList, Rewriter *Rewrite) {
 }
 
 // ---------------------------------------------
-void MVConsumer::commentReplacedStmts(std::list<StmtWrapper *> SList) {
+void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
   for (auto S : SList) {
     if (S->isLoop()) {
       commentReplacedStmts(S->getListStmt());
@@ -123,8 +123,8 @@ void MVConsumer::commentReplacedStmts(std::list<StmtWrapper *> SList) {
 }
 
 // ---------------------------------------------
-void MVConsumer::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
-                                       std::list<StmtWrapper *> SL) {
+void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
+                                          std::list<StmtWrapper *> SL) {
 
   for (auto S : SL) {
     if (S->isLoop()) {
@@ -144,7 +144,7 @@ void MVConsumer::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
 }
 
 // ---------------------------------------------
-void MVConsumer::scanScops(FunctionDecl *fd) {
+void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
     llvm::llvm_unreachable_internal();
@@ -225,35 +225,51 @@ bool areAllScopsScaned() {
   return Scanned;
 }
 
-// ---------------------------------------------
-bool MVConsumer::HandleTopLevelDecl(DeclGroupRef dg) {
-  DeclGroupRef::iterator it;
+bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
+  Utils::printDebug("MVConsumer", "func = " + F->getNameInfo().getAsString());
+  // Continue if empty function
+  if (!F->hasBody())
+    return true;
+  // Check if pragmas to parse
+  if (!ScopHandler::funcHasROI(F))
+    return true;
 
-  // Iterate over all the functions in the file
-  for (it = dg.begin(); it != dg.end(); ++it) {
-    // Get function body
-    FunctionDecl *fd = dyn_cast<clang::FunctionDecl>(*it);
-    // Continue if found is not a function
-    if (!fd)
-      continue;
-    // Continue if empty function
-    if (!fd->hasBody())
-      continue;
-    // Check if pragmas to parse
-    if (!ScopHandler::funcHasROI(fd))
-      continue;
-    Utils::printDebug("MVConsumer",
-                      "func = " + fd->getNameInfo().getAsString());
-
-    // If the function has scops to parse, then scan them
-    this->scanScops(fd);
-  }
-
-  // While HandleTopLevelDecl returns true, ClangTool will keep parsing the
-  // file, thus, we want to stop when all scops we are interested in (parsed
-  // with the preprocessor) are visited
-  return (!areAllScopsScaned());
+  // If the function has scops to parse, then scan them
+  this->scanScops(F);
+  return true;
 }
+
+// ---------------------------------------------
+// bool MVConsumer::HandleTopLevelDecl(DeclGroupRef dg) {
+//  DeclGroupRef::iterator it;
+//
+//  // Iterate over all the functions in the file
+//  for (it = dg.begin(); it != dg.end(); ++it) {
+//    // Get function body
+//    FunctionDecl *fd = dyn_cast<clang::FunctionDecl>(*it);
+//    Utils::printDebug("MVConsumer",
+//                      "func = " + fd->getNameInfo().getAsString());
+//    // Continue if found is not a function
+//    if (!fd)
+//      continue;
+//    // Continue if empty function
+//    if (!fd->hasBody())
+//      continue;
+//    // Check if pragmas to parse
+//    if (!ScopHandler::funcHasROI(fd))
+//      continue;
+//    Utils::printDebug("MVConsumer",
+//                      "func = " + fd->getNameInfo().getAsString());
+//
+//    // If the function has scops to parse, then scan them
+//    this->scanScops(fd);
+//  }
+//
+//  // While HandleTopLevelDecl returns true, ClangTool will keep parsing the
+//  // file, thus, we want to stop when all scops we are interested in (parsed
+//  // with the preprocessor) are visited
+//  return (!areAllScopsScaned());
+//}
 
 // ---------------------------------------------
 std::unique_ptr<ASTConsumer>

@@ -72,6 +72,8 @@ public:
     std::string StrUpperBound = "";
     /// Stride or step
     long Step = UBFallback;
+    /// Stride or step after unrolling
+    long StepUnrolled = UBFallback;
     /// TODO Leftover values: if Upperbound is -1, then LeftOver as well
     long LeftOver = -1;
     /// Variable declared in the loop creation

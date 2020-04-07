@@ -94,6 +94,7 @@ struct ScopHandler {
   void addStart(SourceManager &SM, SourceLocation Start,
                 ScopLoc::PragmaArgs PA) {
     ScopLoc *Loc = new ScopLoc();
+    Utils::printDebug("MVPragmaHandler", "addStart");
 
     Loc->PA = PA;
     Loc->Scop = Start;

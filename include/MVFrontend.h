@@ -32,6 +32,7 @@
 #include "include/CDAG.h"
 #include "include/MVPragmaHandler.h"
 #include "include/StmtWrapper.h"
+#include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/Tooling.h"
 
@@ -44,16 +45,11 @@ using namespace clang::driver;
 using namespace clang::tooling;
 using namespace llvm;
 
-/// Implementation of the ASTConsumer interface for reading an AST produced
-/// by the Clang parser. It registers a couple of matchers and runs them on
-/// the AST.
-class MVConsumer : public ASTConsumer {
+class MVFuncVisitor : public RecursiveASTVisitor<MVFuncVisitor> {
 public:
-  MVConsumer(Rewriter &R, ASTContext *C, ScopHandler *L)
-      : Context(C), Rewrite(R) {}
-
-  /// Parse from the very beggining
-  virtual bool HandleTopLevelDecl(DeclGroupRef dg) override;
+  explicit MVFuncVisitor(ASTContext *Context, Rewriter &R, ScopHandler *L)
+      : Context(Context), Rewrite(R), SL(L) {}
+  virtual bool VisitFunctionDecl(FunctionDecl *F);
 
 private:
   /// Check scop options regarding unrolling and apply them to the statements
@@ -71,6 +67,22 @@ private:
   ASTContext *Context;
   /// For rewriting code in the output program
   Rewriter &Rewrite;
+};
+
+/// Implementation of the ASTConsumer interface for reading an AST produced
+/// by the Clang parser. It registers a couple of matchers and runs them on
+/// the AST.
+class MVConsumer : public ASTConsumer {
+public:
+  MVConsumer(Rewriter &R, ASTContext *C, ScopHandler *L) : Visitor(C, R, L) {}
+
+  /// Parse from the very beggining
+  virtual void HandleTranslationUnit(clang::ASTContext &Context) override {
+    Visitor.TraverseDecl(Context.getTranslationUnitDecl());
+  }
+
+private:
+  MVFuncVisitor Visitor;
 };
 
 /// MACVETH Frontend which is in charge of creating the AST consumer and to

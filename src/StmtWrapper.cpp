@@ -160,6 +160,13 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     // Loop.Step = Loop.UpperBound;
     Loop.LeftOver = 0;
   }
+
+  Loop.StepUnrolled =
+      (Loop.UpperBound == -1)
+          ? Loop.StepUnrolled
+          : (Loop.UpperBound - Loop.InitVal) -
+                ((Loop.UpperBound - Loop.InitVal) % Loop.UnrollFactor);
+
   Utils::printDebug("LoopInfo", Loop.toString());
   return Loop;
 }
