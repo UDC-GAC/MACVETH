@@ -27,7 +27,6 @@
  */
 
 #include "include/MVFrontend.h"
-#include "include/CDAG.h"
 #include "include/MVOptions.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
@@ -124,6 +123,27 @@ void MVConsumer::commentReplacedStmts(std::list<StmtWrapper *> SList) {
 }
 
 // ---------------------------------------------
+void MVConsumer::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
+                                       std::list<StmtWrapper *> SL) {
+
+  for (auto S : SL) {
+    if (S->isLoop()) {
+      renderSIMDInstInPlace(SI, S->getListStmt());
+    } else {
+      for (auto T : S->getTacList()) {
+        if (SI.TacID == T.getTacID()) {
+          Rewrite.InsertText(
+              S->getClangStmt()->getBeginLoc(),
+              SI.render() + ";\t// cost = " + std::to_string(SI.Cost) + "\n",
+              true, true);
+          return;
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------
 void MVConsumer::scanScops(FunctionDecl *fd) {
   CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
@@ -176,17 +196,9 @@ void MVConsumer::scanScops(FunctionDecl *fd) {
       Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
                          InsSIMD + "\n", true, true);
     }
-
     for (auto InsSIMD : SInfo.SIMDList) {
-      for (auto S : SL) {
-        if (InsSIMD.TacID == S->getTacList().front().getTacID()) {
-          Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                             InsSIMD.render() + ";\t// cost = " +
-                                 std::to_string(InsSIMD.Cost) + "\n",
-                             true, true);
-          continue;
-        }
-      }
+      Utils::printDebug("MVConsumer", InsSIMD.render());
+      renderSIMDInstInPlace(InsSIMD, SL);
     }
 
     // Comment statements
@@ -207,11 +219,9 @@ bool areAllScopsScaned() {
   bool Scanned = true;
   for (auto S : ScopHandler::List) {
     if (!S->ScopHasBeenScanned) {
-      Utils::printDebug("MVFrontend", "areAllScopsScaned = 0");
       return false;
     }
   }
-  Utils::printDebug("MVFrontend", "areAllScopsScaned = 1");
   return Scanned;
 }
 

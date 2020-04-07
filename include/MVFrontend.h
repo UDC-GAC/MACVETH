@@ -29,6 +29,7 @@
 #ifndef MACVETH_FRONTEND_H
 #define MACVETH_FRONTEND_H
 
+#include "include/CDAG.h"
 #include "include/MVPragmaHandler.h"
 #include "include/StmtWrapper.h"
 #include "clang/Rewrite/Core/Rewriter.h"
@@ -62,7 +63,8 @@ private:
   void scanScops(FunctionDecl *fd);
   /// Comment those stmts which are replaced
   void commentReplacedStmts(std::list<StmtWrapper *> SList);
-
+  void renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
+                             std::list<StmtWrapper *> SL);
   /// Holds information regarding the ROI
   ScopHandler *SL;
   /// Context

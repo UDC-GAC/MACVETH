@@ -15,7 +15,6 @@ void MVExprVar::regUnrollDim(MVExpr *MVE, std::string Dim, int UF) {
   if (!M) {
     return;
   }
-  Utils::printDebug("MVExprVar", MVE->getExprStr() + "; " + Dim);
   MVExprVar::RegDimUnrolled[MVE->getExprStr()].push_back(Dim);
 }
 
@@ -30,8 +29,6 @@ void MVExprVar::regUndoUnrollDim(MVExpr *MVE, std::string Dim, int UF) {
     auto it = L->second;
     auto E = std::find(it.begin(), it.end(), Dim);
     if (E != it.end()) {
-      Utils::printDebug("MVExprVar",
-                        "undoing " + MVE->getExprStr() + ", " + Dim);
       it.erase(E);
     }
   }
@@ -42,7 +39,6 @@ bool MVExprVar::hasBeenUnrolled(std::string Reg, std::string Dim) {
   auto it = MVExprVar::RegDimUnrolled.find(Reg);
   if (it != RegDimUnrolled.end()) {
     for (auto D : it->second) {
-      Utils::printDebug("MVExprVar", "hasBeenUnrolled = " + Dim);
       if (D == Dim) {
         return true;
       }
@@ -54,10 +50,9 @@ bool MVExprVar::hasBeenUnrolled(std::string Reg, std::string Dim) {
 //------------------------------------------------
 MVExpr *MVExprVar::unrollExpr(int UF, std::string LL) {
   if (this->getTempInfo() == MVExpr::MVExprInfo::TMP_RES) {
-    //    FIXME
-    //    if (!MVExprVar::hasBeenUnrolled(this->getExprStr(), LL)) {
-    //      return this;
-    //    }
+    // if (!MVExprVar::hasBeenUnrolled(this->getExprStr(), LL)) {
+    //   return this;
+    // }
     MVExprVar *NewExpr = new MVExprVar(this);
     NewExpr->setExprStr(NewExpr->getExprStr() + LL + std::to_string(UF));
     //    Utils::printDebug("MVExprVar",
