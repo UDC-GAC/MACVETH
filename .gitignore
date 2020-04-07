@@ -11,6 +11,7 @@ tmpfiles/
 tests/warn
 tests/macveth_output.c
 tests/test
+results/
 
 # Benchmarking
 ubench
@@ -30,9 +31,10 @@ inputs/
 *.pdf
 *.bbl
 *.blg
-
+*.vrb
 *.swp
 *.swo
+
 # Some folders
 build/
 .clangd/

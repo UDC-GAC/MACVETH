@@ -10,10 +10,53 @@
 #include <string>
 
 //------------------------------------------------
+void MVExprVar::regUnrollDim(MVExpr *MVE, std::string Dim, int UF) {
+  auto M = dyn_cast<MVExprVar>(MVE);
+  if (!M) {
+    return;
+  }
+  MVExprVar::RegDimUnrolled[MVE->getExprStr()].push_back(Dim);
+}
+
+//------------------------------------------------
+void MVExprVar::regUndoUnrollDim(MVExpr *MVE, std::string Dim, int UF) {
+  auto M = dyn_cast<MVExprVar>(MVE);
+  if (!M) {
+    return;
+  }
+  auto L = MVExprVar::RegDimUnrolled.find(MVE->getExprStr());
+  if (L != MVExprVar::RegDimUnrolled.end()) {
+    auto it = L->second;
+    auto E = std::find(it.begin(), it.end(), Dim);
+    if (E != it.end()) {
+      it.erase(E);
+    }
+  }
+}
+
+//------------------------------------------------
+bool MVExprVar::hasBeenUnrolled(std::string Reg, std::string Dim) {
+  auto it = MVExprVar::RegDimUnrolled.find(Reg);
+  if (it != RegDimUnrolled.end()) {
+    for (auto D : it->second) {
+      if (D == Dim) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+//------------------------------------------------
 MVExpr *MVExprVar::unrollExpr(int UF, std::string LL) {
   if (this->getTempInfo() == MVExpr::MVExprInfo::TMP_RES) {
+    // if (!MVExprVar::hasBeenUnrolled(this->getExprStr(), LL)) {
+    //   return this;
+    // }
     MVExprVar *NewExpr = new MVExprVar(this);
     NewExpr->setExprStr(NewExpr->getExprStr() + LL + std::to_string(UF));
+    //    Utils::printDebug("MVExprVar",
+    //                      "new Expr = " + NewExpr->getExprStr() + "; " + LL);
     return NewExpr;
   } else if (this->getExprStr() == LL) {
     // Special case, when unrolling loop variable
@@ -35,13 +78,3 @@ MVExpr *unrollExprString(MVExprVar *V, std::string LL) {
   }
   return V;
 }
-
-//------------------------------------------------
-// MVExpr *MVExprVar::unrollExpr(std::unordered_map<int, std::string> LList) {
-//
-//  std::string Unroll = "";
-//  for (auto X : LList) {
-//    Unroll += X.second + std::to_string(X.first);
-//  }
-//  return unrollExprString(this, Unroll);
-//}

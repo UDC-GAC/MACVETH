@@ -30,9 +30,12 @@ public:
   }
   /// Unroll expression
   virtual MVExpr *unrollExpr(int UF, std::string LL);
-
+  static bool hasBeenUnrolled(std::string Reg, std::string Dim);
+  static void regUnrollDim(MVExpr *MVE, std::string Dim, int UF);
+  static void regUndoUnrollDim(MVExpr *MVE, std::string Dim, int UF);
   /// In order to be able to use RTTI
   static bool classof(const MVExpr *S) { return S->getKind() == MVK_Var; }
+  static inline std::map<std::string, std::list<std::string>> RegDimUnrolled;
 };
 
 } // namespace macveth

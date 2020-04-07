@@ -2,7 +2,7 @@
  * File              : StmtWrapper.h
  * Author            : Marcos Horro <marcos.horro@udc.gal>
  * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 13 Xan 2020 19:16:12 MST
+ * Last Modified Date: Lun 23 Mar 2020 18:33:25 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
@@ -25,10 +25,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 #ifndef MACVETH_STMTWRAPPER_H
 #define MACVETH_STMTWRAPPER_H
 
 #include "include/MVExpr/MVExpr.h"
+#include "include/MVPragmaHandler.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
@@ -70,10 +72,14 @@ public:
     std::string StrUpperBound = "";
     /// Stride or step
     long Step = UBFallback;
+    /// Stride or step after unrolling
+    long StepUnrolled = UBFallback;
     /// TODO Leftover values: if Upperbound is -1, then LeftOver as well
     long LeftOver = -1;
     /// Variable declared in the loop creation
     bool Declared = false;
+    /// Unrolling factor
+    int UnrollFactor = 4;
     /// Location of the initialization in the loop
     clang::CharSourceRange SRVarInit;
     /// Location of the condition of the loop
@@ -84,9 +90,11 @@ public:
     /// Empty constructor
     LoopInfo() {}
 
+    /// Known bounds
+    bool knownBounds() { return (UpperBound != -1) && (InitVal != -1); }
+
     /// Get epilogs of given dimensions and
-    static std::string getEpilogs(std::list<LoopInfo> Dims,
-                                  std::vector<Stmt *> SVec);
+    static std::string getEpilogs(StmtWrapper *SWrap);
 
     static std::string getDimDeclarations(std::list<std::string> DimsDeclared);
 
@@ -94,7 +102,8 @@ public:
     std::string toString() {
       std::string Str = Dim + "; init val = " + std::to_string(InitVal) +
                         ", upperbound = " + std::to_string(UpperBound) +
-                        "; declared within loop = " + std::to_string(Declared);
+                        ", step = " + std::to_string(Step) +
+                        "; declared = " + std::to_string(Declared);
       return Str;
     }
   };
@@ -102,62 +111,53 @@ public:
   /// LoopInfo list type
   typedef std::list<LoopInfo> LoopList;
 
-  /// From the result of a matcher it gets the loop hierarchy
-  static LoopList getLoopList(const MatchFinder::MatchResult &Result);
+  /// Generate a list of StmtWrapper
+  static std::list<StmtWrapper *> genStmtWraps(CompoundStmt *CS, ScopLoc *Scop);
+
+  /// Get all the loops given one
+  static LoopInfo getLoop(clang::ForStmt *ForLoop);
+
+  /// Default destructor
+  ~StmtWrapper(){};
 
   /// Empty constructor
   StmtWrapper(){};
 
-  /// Be clean
-  ~StmtWrapper() {
-    for (Stmt *V : this->S) {
-      // delete V;
-    }
-  };
-
-  /// Full constructor that parses the loop hierarchy
-  StmtWrapper(const MatchFinder::MatchResult &Result) {
-    auto E = Result.Nodes.getNodeAs<clang::CompoundStmt>("ROI");
-    /// Get loop information
-    this->LoopL = getLoopList(Result);
-    /// Conver the expression to a set of TACs
-    this->TacToStmt =
-        TAC::exprToTAC(const_cast<CompoundStmt *>(E), &this->ListOfTAC,
-                       &this->S, &this->TacList);
-  }
+  /// Constructor
+  StmtWrapper(clang::Stmt *S);
 
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
-  void unroll(long UnrollFactor, long UpperBound, std::string LoopLevel);
+  TacListType unroll(LoopInfo L);
   /// Unrolls the TAC list in all the possible dimensions
-  void unrollAndJam(long UnrollFactor, long UpperBoundFallback = UBFallback);
-
+  bool unrollAndJam(std::list<LoopInfo> LI);
+  /// Get list of stmts
+  std::list<StmtWrapper *> getListStmt() { return this->ListStmt; }
   /// Get LoopInfo
-  LoopList getLoopInfo() { return this->LoopL; }
-
-  /// Return the mapping of TAC to Stmt
-  std::map<int, int> getTacToStmt() { return this->TacToStmt; }
-
+  LoopInfo getLoopInfo() { return this->LoopL; }
   /// Get Clang Stmt
-  std::vector<Stmt *> getStmt() { return this->S; };
-  /// Set Clang Stmt
-  void setStmt(std::vector<Stmt *> S) { this->S = S; };
+  Stmt *getClangStmt() { return this->ClangStmt; };
   /// Get TAC list
   TacListType getTacList() { return this->TacList; };
   /// Set TAC lsit
   void setTacList(TacListType TacList) { this->TacList = TacList; };
+  /// Check if it is a loop
+  bool isLoop() {
+    auto S = dyn_cast<ForStmt>(this->ClangStmt);
+    return S;
+  }
+  /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
+  bool isLeftOver() { return !this->isLoop(); }
 
 private:
-  /// Statement holded
-  std::vector<Stmt *> S;
-  /// Sorted list of TACs
-  std::vector<TacListType> ListOfTAC;
-  /// Loop list
-  LoopList LoopL;
+  /// Statements holded if loop
+  std::list<StmtWrapper *> ListStmt;
+  /// Statement if not loop
+  Stmt *ClangStmt;
+  /// Loop information if needed
+  LoopInfo LoopL;
   /// TAC list with regard to the Statement S
   TacListType TacList;
-  /// Map from TacID to Stmt number
-  std::map<int, int> TacToStmt;
 };
 } // namespace macveth
 #endif // MACVETH_STMTWRAPPER_H

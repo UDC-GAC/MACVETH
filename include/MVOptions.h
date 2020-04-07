@@ -69,6 +69,19 @@ static std::map<MVISA, std::list<MVArch>> SupportedISAArch = {
     {AVX2, {Haswell, Broadwell, Skylake, KabyLake, CoffeeLake, CascadeLake}},
     {AVX512, {Skylake, CascadeLake}}};
 
+enum DebugLevel {
+  /// All levels below
+  ALL = 0,
+  /// Very very verbose when creating the CDAG, TACs, etc.
+  LOW = 1,
+  /// Checkpoints such as: TACs created, etc.
+  MID = 2,
+  /// For concrete functions
+  HIGH = 3,
+  /// When you are testing something
+  TEST = 4
+};
+
 /// Parse and hold information regarding CLI arguments
 struct MVOptions {
   /// Name of the output file (-o=<file>)
@@ -85,6 +98,8 @@ struct MVOptions {
   static inline bool FMASupport = false;
   /// Debug
   static inline bool Debug = false;
+  /// Debug
+  static inline DebugLevel DLevel = DebugLevel::ALL;
   /// Generate or not macro-based code
   static inline bool MacroFree = false;
 };
