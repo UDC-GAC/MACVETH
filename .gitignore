@@ -4,6 +4,8 @@ macveth
 *.bin
 *_report.txt
 *.warn
+*.s
+*__tmp*
 
 # Temp files
 tmp/
