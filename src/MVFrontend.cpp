@@ -225,8 +225,8 @@ bool areAllScopsScaned() {
   return Scanned;
 }
 
+// ---------------------------------------------
 bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
-  Utils::printDebug("MVConsumer", "func = " + F->getNameInfo().getAsString());
   // Continue if empty function
   if (!F->hasBody())
     return true;
@@ -238,38 +238,6 @@ bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
   this->scanScops(F);
   return true;
 }
-
-// ---------------------------------------------
-// bool MVConsumer::HandleTopLevelDecl(DeclGroupRef dg) {
-//  DeclGroupRef::iterator it;
-//
-//  // Iterate over all the functions in the file
-//  for (it = dg.begin(); it != dg.end(); ++it) {
-//    // Get function body
-//    FunctionDecl *fd = dyn_cast<clang::FunctionDecl>(*it);
-//    Utils::printDebug("MVConsumer",
-//                      "func = " + fd->getNameInfo().getAsString());
-//    // Continue if found is not a function
-//    if (!fd)
-//      continue;
-//    // Continue if empty function
-//    if (!fd->hasBody())
-//      continue;
-//    // Check if pragmas to parse
-//    if (!ScopHandler::funcHasROI(fd))
-//      continue;
-//    Utils::printDebug("MVConsumer",
-//                      "func = " + fd->getNameInfo().getAsString());
-//
-//    // If the function has scops to parse, then scan them
-//    this->scanScops(fd);
-//  }
-//
-//  // While HandleTopLevelDecl returns true, ClangTool will keep parsing the
-//  // file, thus, we want to stop when all scops we are interested in (parsed
-//  // with the preprocessor) are visited
-//  return (!areAllScopsScaned());
-//}
 
 // ---------------------------------------------
 std::unique_ptr<ASTConsumer>

@@ -147,10 +147,13 @@ public:
   void setTacID(int TacID) { this->SI.TacID = TacID; }
 
   /// Set Plcmnt value
-  void setPlcmt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
+  void setPlcmnt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
 
   /// Check if Node N is already in node list L
   static Node *findOutputNode(std::string NodeName, NodeListType L);
+
+  /// Get Node
+  static Node *findWARDataRace(Node *N, Node::NodeListType NL);
 
   /// Connect a Node as input
   void connectInput(Node *N);
@@ -226,7 +229,7 @@ public:
   int operator-(const Node &N) { return (*MV - *N.MV); }
 
   /// Two nodes are equal if and only if they have the same value. Seems
-  /// pretty straigthforward but it must be defined someway.
+  /// pretty straight forward but it must be defined someway.
   bool operator==(const Node &N) {
     return (getRegisterValue() == N.getRegisterValue());
   }
@@ -236,7 +239,7 @@ public:
   }
 
   /// Two nodes are not equal if and only if they have the same value. Seems
-  /// pretty straigthforward but it must be defined someway.
+  /// pretty straight forward but it must be defined someway.
   bool operator!=(const Node &N) { return !operator==(N); }
 
   /// For sorting lists of nodes
@@ -248,6 +251,13 @@ public:
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
       // return (this->getSchedInfo().TacID < N.SI.TacID);
     }
+  }
+
+  std::string getSchedInfoStr() {
+    return "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
+           "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
+           "; TacID = " + std::to_string(getSchedInfo().TacID) +
+           "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt);
   }
 
 private:

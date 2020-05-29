@@ -15,7 +15,7 @@ int computeMaxDepth(Node *N) {
   if (N->getInputNum() == 0) {
     return 0;
   } else {
-    int Max = 0;
+    int Max = N->getSchedInfo().FreeSched;
     for (Node *T : N->getInputs()) {
       Max = std::max(Max, computeMaxDepth(T));
     }
@@ -24,7 +24,13 @@ int computeMaxDepth(Node *N) {
 }
 
 // ---------------------------------------------
-void computeFreeSchedule(Node::NodeListType NL) {
+void PlcmntAlgo::computeFreeSchedule(Node *N) {
+  N->setFreeSchedInfo(computeMaxDepth(N));
+}
+
+// ---------------------------------------------
+void PlcmntAlgo::computeFreeSchedule(Node::NodeListType NL) {
+  // Compute RAW
   for (Node *N : NL) {
     N->setFreeSchedInfo(computeMaxDepth(N));
   }
@@ -56,11 +62,9 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     Reduction.push_front(R);
   loop:
     // Since we are checking the inputs of a node, we are do not have to check
-    // if there are any RAW dependencies, because there are. Some conditions we
-    // are checking
-    // 1.- Check if same type (getValue())
-    // 2.- Check if sequential (FreeSched)
-    // Utils::printDebug("PlcmntAlgo",
+    // if there are any RAW dependencies, because there are. Some conditions
+    // we are checking 1.- Check if same type (getValue()) 2.- Check if
+    // sequential (FreeSched) Utils::printDebug("PlcmntAlgo",
     //                  "R = " + R->getValue() + "; " +
     //                      std::to_string(R->getSchedInfo().FreeSched));
     // Utils::printDebug("PlcmntAlgo",
@@ -126,11 +130,11 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
           }
           // Clang does not allow to perform any type of exception handling in
           // order to minimize the size of the executable (same reasoning for
-          // not using RTTI), that is why we perform the previous check. On any
-          // case, user should be aware of the format of the file: comments
-          // starting with // are allowed, but each non-comment row must only
-          // contain an integer value
-          N->setPlcmt(std::stoi(L));
+          // not using RTTI), that is why we perform the previous check. On
+          // any case, user should be aware of the format of the file:
+          // comments starting with // are allowed, but each non-comment row
+          // must only contain an integer value
+          N->setPlcmnt(std::stoi(L));
           break;
         }
       }

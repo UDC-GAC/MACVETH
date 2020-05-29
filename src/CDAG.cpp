@@ -30,6 +30,7 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
   // Working with a copy
   Node::NodeListType NL(NList);
 
+  // FIXME
   // Detect reductions
   // Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
   // Utils::printDebug("CDAG", "Nodes of reductions found:");
@@ -87,7 +88,8 @@ repeat:
     Utils::printDebug("CDAG", VOps[n]->getRegisterValue() + " = " +
                                   VLoadA[n]->getRegisterValue() + " " +
                                   VOps[n]->getValue() + " " +
-                                  VLoadB[n]->getRegisterValue());
+                                  VLoadB[n]->getRegisterValue() + "; " +
+                                  VOps[n]->getSchedInfoStr());
   }
 
   // Compute the vector cost
@@ -128,6 +130,22 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
 }
 
 // ---------------------------------------------
+Node *Node::findWARDataRace(Node *N, Node::NodeListType NL) {
+  Node *WarNode = NULL;
+  for (auto Op : NL) {
+    for (auto In : Op->getInputs()) {
+      if ((N->getOutputInfoName() == In->getRegisterValue()) &&
+          ((WarNode == NULL) ||
+           (((WarNode != NULL) && (WarNode->getTacID() < In->getTacID()) &&
+             (In->getTacID() < N->getTacID()))))) {
+        WarNode = In;
+      }
+    }
+  }
+  return WarNode;
+}
+
+// ---------------------------------------------
 Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
   // Special cases are those Nodes which hold an assignment after the operation
   if (T.getMVOP().isAssignment()) {
@@ -138,15 +156,25 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
                         "no output found = " + T.getC()->getExprStr());
       goto no_output;
     }
-    Utils::printDebug("CDAG/NODE", "output found = " + T.getC()->getExprStr());
+    Utils::printDebug("CDAG/NODE", "output found = " + T.getA()->getExprStr());
     N->setOutputName(T.getA()->getExprStr());
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
+    auto WarNode = Node::findWARDataRace(N, this->NLOps);
+    // Node *WarNode = NULL;
+    if (WarNode != NULL) {
+      Utils::printDebug("CDAG/NODE",
+                        "WAR found = " + WarNode->getRegisterValue() + "; " +
+                            WarNode->getSchedInfoStr());
+      N->setFreeSchedInfo(WarNode->getSchedInfo().FreeSched + 1);
+    }
     return nullptr;
   }
 no_output:
   Node *NewNode = new Node(T, L);
-  Utils::printDebug("CDAG/NODE", "new node = " + T.toString());
+  PlcmntAlgo::computeFreeSchedule(NewNode);
+  Utils::printDebug("CDAG/NODE", "new node = " + T.toString() + "; " +
+                                     NewNode->getSchedInfoStr());
   this->NLOps.push_back(NewNode);
   return NewNode;
 }

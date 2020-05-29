@@ -17,6 +17,12 @@ namespace macveth {
 
 class PlcmntAlgo {
 public:
+  /// Calculate free scheduling for a node (in-order)
+  static void computeFreeSchedule(Node *N);
+
+  /// Calculate free scheduling for a list of nodes (in-order)
+  static void computeFreeSchedule(Node::NodeListType NL);
+
   /// Detect reductions in the list of input nodes
   static Node::NodeListType detectReductions(Node::NodeListType *NL);
 
