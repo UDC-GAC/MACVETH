@@ -1,12 +1,17 @@
 ![MACVETH](https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg)
 
 # MACVETH
+
+[![Build Status][travis-badge]][travis-link]
+[![codecov][codecov-badge]][codecov-link]
+
 ## Multi-dimensional Array C-compiler VEctorization and Translation for HPC applications
 
 Copyright (c) 2019-2020 the Colorado State Univesity.
 
 Contact:
-    Marcos Horro Varela <marcos.horro@udc.es>
+
+    Marcos Horro Varela <marcos.horro@udc.es>   
     Louis-Noël Pouchet <pouchet@colostate.edu>
 
 MACVETH is a source-to-source compiler from C/C++ codes to SIMD. It is platform
@@ -22,10 +27,11 @@ Last but not least, the first and last letter of the acronym stand for the name
 of the main author (Marcos Horro).
 
 ## Main dependencies:
-- Clang >=10.0.0
-- CMake >=3.13
-- GNU GCC >=8.3.0
-- Doxygen >=1.8.13
+
+* Clang >=10.0.0
+* CMake >=3.13
+* GNU GCC >=8.3.0
+* Doxygen >=1.8.13
 
 ## Getting started:
 
@@ -45,14 +51,14 @@ This will create an executable in the same folder called 'macveth'
 
 User may execute the compiler just typing:
 
-`$> ./macveth <input_file.c>`
+`$> ./macveth <input_file.c>` 
 
 This will generate a macro-fashion SIMD code (if possible) onto a file named
 macveth_output.c/cpp.
 
 For displaying all the available options, type:
 
-`$> ./macveth --help`
+`$> ./macveth --help` 
 
 ## CLI Options:
 
@@ -86,16 +92,22 @@ delimitation of the pragmas:
 Available options are:
 
     - nounroll: avoid unrolling the code within. This may be useful if we have a
+
       irregular code and we just want to vectorize it
 
 Pragmas to be implemented (soon):
 
     - unroll_factor [val1] [[val2] [...]]: explicitly tell the compiler the unroll
+
       factor of each dimension of the nested loop/s
+
     - hw_alignment [array_name1] [val1] [[array_name2] [val2] [...]]: hint
+
       regarding the alignment factor for an array, e.g. A 64 means that we can
       can assume that A[0] % 64 = 0. Per array option.
+
     - tc {>|>=|=|<|<=} [val]: hint regarding the trip count of the loop, i.e.
+
       the expected number of iterations. Per loop option.
 
 ## Limitations/restrictions and assumptions:
@@ -108,6 +120,7 @@ account when using this compiler:
 
     - Types:
         + Pointers are not allowed at the moment, e.g.:
+
             (*S) = (*S) + A[i];
 
           This may be a common scenario when writing reductions in the code
@@ -115,11 +128,14 @@ account when using this compiler:
           avoid this issue by using a temporal variable.
 
         + Reductions should look like:
+
             S = S + <expr>
           in order to be detected properly
+
     - Loop related:
         + Only "for" loops are supported
         + Declaration of variables within the loop is allowed, e.g.:
+
                 for (int i = 0; ...
           Also declaration outside the loop is allowed, e.g.:
                 int i;
@@ -130,9 +146,12 @@ account when using this compiler:
                 int i;
                 ...
                 for (int i = 0; ...
+
         + There are no increments in the body of the loop of the region of
+
           interest, i.e. the loop condition is only incremented in the for
           statement. Besides, steps must be uniary, i.e.
+
         + One #pragma per set of loop nests, e.g.:
 
             This is correct:
@@ -171,3 +190,8 @@ Specification (https://semver.org/spec/v2.0.0.html)
 (C) Copyright 2019-2020 the Colorado State University.
 
 No warranties. Under development, code disclosed under request.
+
+[travis-badge]:    https://travis-ci.org/markoshorro/MACVETH.svg?branch=master
+[travis-link]:     https://travis-ci.org/markoshorro/MACVETH
+[codecov-badge]:   https://codecov.io/gh/markoshorro/MACVETH/branch/master/graph/badge.svg
+[codecov-link]:    https://codecov.io/gh/markoshorro/MACVETH
