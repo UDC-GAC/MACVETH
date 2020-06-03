@@ -245,7 +245,7 @@ public:
   /// For sorting lists of nodes
   bool operator<(const Node &N) {
     if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
-      return (this->getSchedInfo().NodeID < N.SI.NodeID);
+      return (this->getSchedInfo().TacID < N.SI.TacID);
       // return (this->getSchedInfo().TacID < N.SI.TacID);
     } else {
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);

@@ -6,7 +6,7 @@ macveth
 *.warn
 *.s
 *__tmp*
-
+.vscode/*
 # Temp files
 tmp/
 tmpfiles/

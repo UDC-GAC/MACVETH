@@ -15,11 +15,11 @@ int computeMaxDepth(Node *N) {
   if (N->getInputNum() == 0) {
     return 0;
   } else {
-    int Max = N->getSchedInfo().FreeSched;
+    int Max = 0;
     for (Node *T : N->getInputs()) {
-      Max = std::max(Max, computeMaxDepth(T));
+      Max = std::max(Max, 1 + computeMaxDepth(T));
     }
-    return 1 + Max;
+    return Max;
   }
 }
 
@@ -37,11 +37,6 @@ void PlcmntAlgo::computeFreeSchedule(Node::NodeListType NL) {
 }
 
 // ---------------------------------------------
-Node::NodeListType PlcmntAlgo::fuseReductions(Node::NodeListType NL) {
-  return NL;
-}
-
-// ---------------------------------------------
 Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   Node::NodeListType NCopy(*NL);
   Node::NodeListType LRedux;
@@ -53,6 +48,7 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   for (auto R : NCopy) {
     ReductionFound = false;
     if (std::find(Visited.begin(), Visited.end(), R) != Visited.end()) {
+      Utils::printDebug("PlcmntAlgo", "Visited " + R->getRegisterValue());
       continue;
     }
     Visited.push_back(R);
@@ -68,13 +64,14 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     //                  "R = " + R->getValue() + "; " +
     //                      std::to_string(R->getSchedInfo().FreeSched));
     // Utils::printDebug("PlcmntAlgo",
-    //                  "In = " + In->getValue() + "; " +
-    //                      std::to_string(In->getSchedInfo().FreeSched -
-    //                      Depth));
+    //                   "In = " + In->getRegisterValue() + "; " +
+    //                       std::to_string(In->getSchedInfo().FreeSched -
+    //                       Depth));
+
     if ((R->getValue() == In->getValue()) &&
         (R->getSchedInfo().FreeSched ==
          (In->getSchedInfo().FreeSched + Depth))) {
-      Utils::printDebug("PlcmntAlgoRedux", In->toString());
+      // Utils::printDebug("PlcmntAlgoRedux", In->toString());
       Depth++;
       ReductionFound = true;
       Reduction.push_front(In);

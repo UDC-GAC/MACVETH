@@ -32,13 +32,13 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
 
   // FIXME
   // Detect reductions
-  // Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  // Utils::printDebug("CDAG", "Nodes of reductions found:");
-  // for (Node *N : NRedux) {
-  //  Utils::printDebug("CDAG", N->toString());
-  //}
+  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  Utils::printDebug("CDAG", "Nodes of reductions found:");
+  for (Node *N : NRedux) {
+    Utils::printDebug("CDAG", N->toString());
+  }
 
-  // Until the list is empty
+  // Until the list is empty: this is general and awful but...
   Utils::printDebug("CDAG", "Greedy algorithm: ");
 repeat:
   // Get vector length
@@ -47,15 +47,14 @@ repeat:
   while (!NL.empty()) {
     // Consume the first one
     VOps[Cursor] = NL.front();
-    // Utils::printDebug("CDAG", "Node selected =>\n" +
-    // VOps[Cursor]->toString());
-    // FIXME: how do you solve this? I mean, for reductions, for instance,
+    // NOTE: how do you solve this? I mean, for reductions, for instance,
     // you will have different Plcmnts, something like: 1,2,3,4; but this
     // algorithm should be able to select them. So maybe when selecting
     // operations you should only look at the type of operations, but not at
     // the Plcmnt or schedule.
-    //(VOps[Cursor]->getSchedInfo().Plcmnt !=
-    // VOps[Cursor - 1]->getSchedInfo().Plcmnt) &&
+    // 06/03/2020: I think this is solved by tackling reductions as a non
+    // standard case and, then, detecting them before going onto the general
+    // case.
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
       Utils::printDebug("CDAG", "Full OPS of same type and placement = " +
@@ -92,8 +91,10 @@ repeat:
                                   VOps[n]->getSchedInfoStr());
   }
 
-  // Compute the vector cost
-  VList.push_back(VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB));
+  if (Cursor != 0) {
+    // Compute the vector cost
+    VList.push_back(VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB));
+  }
 
   // Repeat process if list not empty
   if (!NL.empty()) {
@@ -114,6 +115,10 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
 
   // Set placement according to the desired algorithm
   Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
+
+  for (auto N : NL) {
+    Utils::printDebug("CDAG", N->toString());
+  }
 
   // Execute greedy algorithm
   std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(NL, SG);
