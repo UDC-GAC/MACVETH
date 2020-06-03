@@ -122,6 +122,9 @@ AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
   // Fuse operations: find potential and applicable FMADD/FMSUB
   IL = fuseAddSubMult(I);
 
+  // TODO
+  // Fuse reductions
+
   return IL;
 }
 
@@ -148,7 +151,6 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
                      std::string MVFunc, std::list<std::string> MVArgs) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
-
   // Replace fills in pattern
   std::string AVXFunc =
       replacePatterns(Pattern, getMapWidth(V.getWidth()),
@@ -158,7 +160,6 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
 
   SIMDGenerator::SIMDInst I((NameOp == "") ? V.getName() : NameOp, AVXFunc,
                             Args, MVFunc, MVArgs, V.Order);
-
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
   I.SType = SType;
@@ -465,56 +466,46 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vmod(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
+  SIMDGenerator::SIMDInstListType TIL;
   std::string RegType = getRegisterType(V.DT, V.VW);
+  std::string RegAccm = getNextAccmRegister();
+  SIMDGenerator::addRegToDeclare(RegType, RegAccm);
 
-  /// Algorithm overview
-  /// ymm0 = _mm256_loadu_pd(indata);
-  /// ymm1 = _mm256_permute_pd(ymm0, 0x05);
-  /// ymm2 = _mm256_#OP#_pd(ymm0, ymm1);
-  /// ymm3 = _mm256_permute2f128_pd(ymm2, ymm2, 0x01);
-  /// ymm4 = _mm256_#OP#_pd(ymm2, ymm3);
-  /// [OPT] _mm256_storeu_pd(outdata, ymm4);
+  std::string TmpReduxVar = (V.R.Name == V.OpB.Name) ? V.OpA.Name : V.OpB.Name;
+  auto VCopy = V;
+  VCopy.OpA.Name = TmpReduxVar;
+  VCopy.R.Name = RegAccm;
+  VCopy.OpB.Name = RegAccm;
 
-  // FIXME
-  // This is quite ugly but it works for 4 double elements
-
-  // Permutation
-  addSIMDInst(V.R, "permute", "", "", {V.OpB.Name, "0x05"}, SIMDType::VPERM,
-              &IL, "ymm0");
-  SIMDGenerator::addRegToDeclare(RegType, "ymm0");
-
-  // Reduction operation
-  addSIMDInst(V.R, V.VN, "", "", {V.OpB.Name, "ymm0"}, SIMDType::VREDUC, &IL,
-              "ymm1");
-  SIMDGenerator::addRegToDeclare(RegType, "ymm1");
-
-  // Another permutation
-  addSIMDInst(V.R, "permute", "", "2f128", {"ymm1", "ymm1", "0x01"},
-              SIMDType::VPERM, &IL, "ymm2");
-  SIMDGenerator::addRegToDeclare(RegType, "ymm2");
-
-  // Another reduction operation
-  addSIMDInst(V.R, V.VN, "", "", {"ymm2", "ymm1"}, SIMDType::VREDUC, &IL,
-              "ymm3");
-  SIMDGenerator::addRegToDeclare(RegType, "ymm3");
-
-  // FIXME
-  // Set the reduced value
-  std::string Val = getOpName(V.R, false, true);
-  addSIMDInst(V.R, "set", "", "", {Val, Val, Val, Val}, SIMDType::VSET, &IL,
-              "ymm4");
-  SIMDGenerator::addRegToDeclare(RegType, "ymm4");
-
-  // Last reduction and then store
-  addSIMDInst(V.R, V.VN, "", "", {"ymm4", "ymm3"}, SIMDType::VREDUC, &IL,
-              V.R.getName());
-
-  // FIXME: maskstore has higher throughtput than a store; therefore maybe is
-  // better to waste some memory in benefit of cycle performance
-  addSIMDInst(V.R, "store", "mask", "",
-              {getOpName(V.R, true, true),
-               "_mm256_set_epi64x(0,0,0,0xffffffffffffffff)", V.R.getName()},
-              SIMDType::VSTORE, &IL);
+  switch (V.getBinOp()) {
+  case clang::BO_Add:
+    TIL = vadd(VCopy);
+    break;
+  case clang::BO_Sub:
+    TIL = vsub(VCopy);
+    break;
+  case clang::BO_Mul:
+    TIL = vmul(VCopy);
+    break;
+  case clang::BO_Div:
+    TIL = vdiv(VCopy);
+    break;
+  }
+  IL.splice(IL.end(), TIL);
+  std::string ReduxVar =
+      (V.R.Name == V.OpA.Name) ? V.OpA.getRegName() : V.OpB.getRegName();
+  /// New approach: horizontal adds work for AVX2, not sure for AVX512
+  /// a = _mm256_hadd_pd(a,_mm256_permute4x64_pd(a,0x4e));
+  /// a = _mm256_hadd_pd(a,a);
+  /// b = _mm256_cvtsd_f64(a);
+  /// FIXME: this only works for doubles...
+  addSIMDInst(V.R, "hadd", "", "",
+              {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
+              SIMDType::VREDUC, &IL, RegAccm);
+  addSIMDInst(V.R, "hadd", "", "", {RegAccm, RegAccm}, SIMDType::VREDUC, &IL,
+              RegAccm);
+  addSIMDInst(V.R, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+              ReduxVar);
 
   return IL;
 }

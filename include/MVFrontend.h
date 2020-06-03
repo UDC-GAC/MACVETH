@@ -61,6 +61,8 @@ private:
   void commentReplacedStmts(std::list<StmtWrapper *> SList);
   void renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                              std::list<StmtWrapper *> SL);
+  bool renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
+                                std::list<StmtWrapper *> SL);
   /// Holds information regarding the ROI
   ScopHandler *SL;
   /// Context

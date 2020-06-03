@@ -278,6 +278,12 @@ protected:
 
   /// List of registers declared
   inline static std::map<std::string, std::list<std::string>> RegDeclared;
+
+  /// AccmReg numbering for auxiliary operations such as reduce
+  inline static int AccmReg = 0;
+  static std::string getNextAccmRegister() {
+    return "__mv_accm" + std::to_string(SIMDGenerator::AccmReg++);
+  }
 };
 
 } // namespace macveth

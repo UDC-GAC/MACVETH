@@ -29,6 +29,7 @@ void SIMDGenerator::populateTable(MVISA ISA) {
   std::string Arch = MVArchStr[MVOptions::Arch];
   std::ifstream F(PathISA);
   std::string L, W;
+  Utils::printDebug("CostsTable", "PathISA = " + PathISA);
   if (F.is_open()) {
     while (getline(F, L)) {
       if (L.rfind("#", 0) == 0) {
@@ -49,6 +50,11 @@ void SIMDGenerator::populateTable(MVISA ISA) {
       }
     }
     F.close();
+  } else {
+    Utils::printDebug(
+        "SIMDGenerator",
+        "This should never happen: PATH for costs file not found");
+    llvm::llvm_unreachable_internal();
   }
 }
 
@@ -67,6 +73,7 @@ std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
   if (MVOptions::MacroFree) {
+    Utils::printDebug("SIMDGenerator", FuncName);
     std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
                                ? FuncName + "("
                                : Result + " = " + FuncName + "(";
@@ -259,15 +266,15 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   // Arranging the operation
   switch (V.VT) {
   case VectorIR::VType::MAP:
-    // Utils::printDebug("SIMDGen", "map");
+    Utils::printDebug("SIMDGen", "map");
     mapOperation(V, &IL);
     break;
   case VectorIR::VType::REDUCE:
-    // Utils::printDebug("SIMDGen", "reduce");
+    Utils::printDebug("SIMDGen", "reduce");
     reduceOperation(V, &IL);
     break;
   case VectorIR::VType::SEQ:
-    // Utils::printDebug("SIMDGen", "sequential");
+    Utils::printDebug("SIMDGen", "sequential");
     IL = vseq(V);
     break;
   };
@@ -334,4 +341,5 @@ void SIMDGenerator::clearMappings() {
     X.second.clear();
   }
   RegDeclared.clear();
+  AccmReg = 0;
 }
