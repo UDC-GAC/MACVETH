@@ -51,7 +51,7 @@ ScopLoc *getScopLoc(StmtWrapper *S) {
 
 // ---------------------------------------------
 void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
-  bool CouldFullyUnroll = true;
+  bool CouldFullyUnroll = false;
   std::list<StmtWrapper::LoopInfo> LI;
   for (auto S : SL) {
     if (S->isLeftOver()) {
@@ -62,12 +62,15 @@ void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
     assert(Scop != NULL && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
       // CouldFullyUnroll = S->unrollAndJam(Scop->PA.UnrollFactor);
-      Utils::printDebug("MVConsumer", "unrolling...");
-      CouldFullyUnroll = S->unrollAndJam(LI);
+      Utils::printDebug("MVConsumer", "unroll and jam...");
+      CouldFullyUnroll = S->unrollAndJam(LI, Scop);
+      assert(CouldFullyUnroll &&
+             "Need to be able to full unroll when having leftovers");
+    } else if (Scop->PA.Unroll) {
+      Utils::printDebug("MVConsumer", "unroll and jam...");
+      CouldFullyUnroll = S->unrollByDim(LI, Scop);
     }
   }
-  assert(CouldFullyUnroll &&
-         "Need to be able to full unroll when having leftovers");
 }
 
 // ---------------------------------------------

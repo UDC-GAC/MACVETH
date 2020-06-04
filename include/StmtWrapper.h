@@ -79,7 +79,7 @@ public:
     /// Variable declared in the loop creation
     bool Declared = false;
     /// Unrolling factor
-    int UnrollFactor = 4;
+    int UnrollFactor = UBFallback;
     /// Location of the initialization in the loop
     clang::CharSourceRange SRVarInit;
     /// Location of the condition of the loop
@@ -129,7 +129,9 @@ public:
   /// upperbound of the loop
   TacListType unroll(LoopInfo L);
   /// Unrolls the TAC list in all the possible dimensions
-  bool unrollAndJam(std::list<LoopInfo> LI);
+  bool unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop);
+  /// Unrolls the TAC list in the specified dimensions
+  bool unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop);
   /// Get list of stmts
   std::list<StmtWrapper *> getListStmt() { return this->ListStmt; }
   /// Get LoopInfo

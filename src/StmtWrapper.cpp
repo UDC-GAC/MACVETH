@@ -215,13 +215,51 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
 }
 
 // ---------------------------------------------
-bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI) {
+bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
   bool FullUnroll = true;
   if (this->isLoop()) {
     Utils::printDebug("StmtWrapper", "unrollAndJam loop");
+    for (auto D : Scop->PA.UnrollDim) {
+      if (this->LoopL.Dim == std::get<0>(D)) {
+        this->LoopL.UnrollFactor = std::get<1>(D);
+        this->LoopL.StepUnrolled = this->LoopL.Step * this->LoopL.UnrollFactor;
+        break;
+      }
+    }
     LI.push_front(this->LoopL);
     for (auto S : this->ListStmt) {
-      S->unrollAndJam(LI);
+      S->unrollAndJam(LI, Scop);
+      TacListType TL = this->getTacList();
+      TL.splice(TL.end(), S->getTacList());
+      this->setTacList(TL);
+    }
+  } else {
+    for (auto L : LI) {
+      FullUnroll = (L.knownBounds()) && FullUnroll;
+      this->unroll(L);
+    }
+  }
+  return FullUnroll;
+}
+
+// ---------------------------------------------
+bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
+  bool FullUnroll = true;
+  if (this->isLoop()) {
+    Utils::printDebug("StmtWrapper", "unrollAndJam loop");
+    for (auto D : Scop->PA.UnrollDim) {
+      if (this->LoopL.Dim == std::get<0>(D)) {
+        this->LoopL.UnrollFactor = std::get<1>(D);
+        this->LoopL.StepUnrolled = this->LoopL.Step * this->LoopL.UnrollFactor;
+        LI.push_front(this->LoopL);
+        break;
+      } else {
+        this->LoopL.UnrollFactor = 1;
+        this->LoopL.StepUnrolled = this->LoopL.Step * this->LoopL.UnrollFactor;
+      }
+    }
+    for (auto S : this->ListStmt) {
+      S->unrollByDim(LI, Scop);
       TacListType TL = this->getTacList();
       TL.splice(TL.end(), S->getTacList());
       this->setTacList(TL);
@@ -240,7 +278,7 @@ TacListType StmtWrapper::unroll(LoopInfo L) {
   Utils::printDebug("StmtWrapper",
                     "unrolling dimension " + L.Dim + " stmt = " +
                         Utils::getStringFromStmt(this->getClangStmt()));
-  long UB = (L.UpperBound == -1) ? L.UnrollFactor : (L.UpperBound - L.InitVal);
+  long UB = (L.UpperBound == -1) ? L.StepUnrolled : (L.UpperBound - L.InitVal);
   auto TL = TAC::unrollTacList(this->getTacList(), L.Step, UB, L.Dim);
   this->setTacList(TL);
   return TL;

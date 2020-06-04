@@ -17,6 +17,8 @@
 
 using namespace clang;
 
+typedef std::vector<std::tuple<std::string, int>> PragmaTupleDim;
+
 /// The Location of the Scop, as delimited by macveth and endmacveth
 /// pragmas by the user.
 /// "macveth" and "endmacveth" are the source locations of the macveth and
@@ -40,7 +42,7 @@ struct ScopLoc {
     bool Unroll = true;
     int UnrollFactor = 1;
     bool UnrollAndJam = true;
-    std::vector<std::tuple<std::string, int>> UnrollDim;
+    PragmaTupleDim UnrollDim;
   };
 
   PragmaArgs PA;
