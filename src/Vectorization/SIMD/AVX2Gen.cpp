@@ -117,25 +117,68 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
+AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
+  SIMDGenerator::SIMDInstListType IL;
+  std::vector<SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
+  int NumRedux = TIL.size();
+  if (NumRedux == 1) {
+    Utils::printDebug("AVX2Gen", "Only reduction...");
+    std::string RegAccm = VIL[0].Args.front();
+    std::string ReduxVar = VIL[0].Result;
+    VectorIR::VOperand V = VIL[0].VOPResult;
+    addSIMDInst(V, "hadd", "", "",
+                {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
+                SIMDType::VREDUC, &IL, RegAccm);
+    addSIMDInst(V, "hadd", "", "", {RegAccm, RegAccm}, SIMDType::VREDUC, &IL,
+                RegAccm);
+    addSIMDInst(V, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+                ReduxVar);
+  } else if (NumRedux == 2) {
+    Utils::printDebug("AVX2Gen", "Two reductions...");
+  } else if (NumRedux == 3) {
+    Utils::printDebug("AVX2Gen", "Three reductions...");
+
+  } else if (NumRedux == 4) {
+    Utils::printDebug("AVX2Gen", "Four reductions...");
+  }
+  return IL;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
 AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
+  // Copy list
   SIMDGenerator::SIMDInstListType IL(TIL);
-  int MaxFusable = 4;
-  // addSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
-  //             ReduxVar);
-  SIMDGenerator::SIMDInstListType LRedux;
+  // List of reduction candidates to be fused
+  std::map<std::string, SIMDGenerator::SIMDInstListType> LRedux;
   for (auto I : IL) {
     if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
-      LRedux.push_back(I);
-      Utils::printDebug("AVX2Gen", I.render());
-      Utils::printDebug("AVX2Gen", I.VOPResult.toString());
-      Utils::printDebug("AVX2Gen", "Possible candidate to fuse in loop = " +
-                                       I.VOPResult.getOperandLoop());
+      LRedux[I.VOPResult.getOperandLoop()].push_back(I);
     }
+  }
+
+  // If there are no reductions, then do nothing
+  if (LRedux.size() == 0) {
+    return TIL;
+  }
+
+  // For each reduction found, check whether they can be fused together or not:
+  // they can be fused if and only if they are in the same loop dimension/name
+  // and the same loop, basically (because they can have same name but be
+  // different loops). This is important for coherence in the program
+  for (auto const &L : LRedux) { /* this is valid >=C++11 */
+    // FIXME: check if all the reductions within the same loop name are, indeed,
+    // in the same physical loop
+    assert(L.second.size() <= 4 &&
+           "Reductions of more than 4 elements are not supported...");
+    generalReductionFusion(L.second);
   }
 
   std::list<SIMDGenerator::SIMDInstListType> LReduxFused;
 
+  // Reorder SIMDInstructions yet
   for (auto I : IL) {
+    // TODO:
   }
 
   return IL;
@@ -529,13 +572,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   /// FIXME: this only works for doubles...
   addSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
               ReduxVar);
-  // addSIMDInst(V.R, "hadd", "", "",
-  //             {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
-  //             SIMDType::VREDUC, &IL, RegAccm);
-  // addSIMDInst(V.R, "hadd", "", "", {RegAccm, RegAccm}, SIMDType::VREDUC, &IL,
-  //             RegAccm);
-  // addSIMDInst(V.R, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
-  //             ReduxVar);
 
   return IL;
 }

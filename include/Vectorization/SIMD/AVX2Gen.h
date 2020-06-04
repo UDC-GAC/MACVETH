@@ -54,11 +54,9 @@ public:
   virtual SIMDInstListType vmod(VectorIR::VectorOP V) override;
 
   // Reduction operations
-
   virtual SIMDInstListType vreduce(VectorIR::VectorOP V) override;
 
   // Sequential operation
-
   virtual SIMDInstListType vseq(VectorIR::VectorOP V) override;
 
   /// Perform some peephole optimizations after generating SIMD instructions
@@ -67,9 +65,15 @@ public:
   /// One of the optimizations included in AVX2
   SIMDGenerator::SIMDInstListType
   fuseAddSubMult(SIMDGenerator::SIMDInstListType I);
-  /// Peephole optimization for fusing reductions
+
+  SIMDGenerator::SIMDInstListType
+  generalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
+
+  /// Fusing reductions: peephole optimization
   SIMDGenerator::SIMDInstListType
   fuseReductions(SIMDGenerator::SIMDInstListType I);
+
+  /// Peephole optimization for fusing reductions
   SIMDGenerator::SIMDInst genMultAccOp(SIMDGenerator::SIMDInst Mul,
                                        SIMDGenerator::SIMDInst Acc);
 
