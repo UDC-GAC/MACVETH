@@ -100,11 +100,10 @@ public:
 
     /// For debugging purposes
     std::string toString() {
-      std::string Str = Dim + "; init val = " + std::to_string(InitVal) +
-                        ", upperbound = " + std::to_string(UpperBound) +
-                        ", step = " + std::to_string(Step) +
-                        "; declared = " + std::to_string(Declared);
-      return Str;
+      return Dim + "; init val = " + std::to_string(InitVal) +
+             ", upperbound = " + std::to_string(UpperBound) +
+             ", step = " + std::to_string(Step) +
+             "; declared = " + std::to_string(Declared);
     }
   };
 
@@ -142,12 +141,22 @@ public:
   /// Set TAC lsit
   void setTacList(TacListType TacList) { this->TacList = TacList; };
   /// Check if it is a loop
-  bool isLoop() {
-    auto S = dyn_cast<ForStmt>(this->ClangStmt);
-    return S;
-  }
+  bool isLoop() { return dyn_cast<ForStmt>(this->ClangStmt); }
   /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
   bool isLeftOver() { return !this->isLoop(); }
+  /// Set the name of the loop surrounding this Stmt
+  void setInnerLoopName(std::string InnerLoopName) {
+    this->InnerLoopName = InnerLoopName;
+    TacListType NewTac;
+    for (auto T : this->getTacList()) {
+      auto NT = T;
+      NT.setLoopName(InnerLoopName);
+      NewTac.push_back(NT);
+    }
+    this->setTacList(NewTac);
+  }
+  /// Get the name of the loop surrounding this Stmt
+  std::string getInnerLoopName() { return this->InnerLoopName; }
 
 private:
   /// Statements holded if loop
@@ -158,6 +167,8 @@ private:
   LoopInfo LoopL;
   /// TAC list with regard to the Statement S
   TacListType TacList;
+  /// Loop within
+  std::string InnerLoopName = "";
 };
 } // namespace macveth
 #endif // MACVETH_STMTWRAPPER_H

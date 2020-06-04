@@ -58,6 +58,8 @@ public:
   /// Wrap for representing the SIMDInst not just as single strings to print,
   /// but as a set of fields
   struct SIMDInst {
+    /// VOperand result
+    VectorIR::VOperand VOPResult;
     /// Unique identifier generator
     static inline unsigned int UID = 0;
     /// Unique identifier

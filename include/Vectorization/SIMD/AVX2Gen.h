@@ -67,6 +67,9 @@ public:
   /// One of the optimizations included in AVX2
   SIMDGenerator::SIMDInstListType
   fuseAddSubMult(SIMDGenerator::SIMDInstListType I);
+  /// Peephole optimization for fusing reductions
+  SIMDGenerator::SIMDInstListType
+  fuseReductions(SIMDGenerator::SIMDInstListType I);
   SIMDGenerator::SIMDInst genMultAccOp(SIMDGenerator::SIMDInst Mul,
                                        SIMDGenerator::SIMDInst Acc);
 

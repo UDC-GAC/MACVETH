@@ -163,11 +163,28 @@ public:
     /// Return register name
     std::string getRegName() { return this->UOP[0]->getRegisterValue(); }
 
+    /// Get loop where the result is computed
+    std::string getOperandLoop() {
+      std::string Loop = "";
+      if (UOP != nullptr) {
+        Utils::printDebug("VOperand", "UOP not null");
+        if (UOP[0] != nullptr) {
+          Utils::printDebug("VOperand",
+                            "UOP[0] not null = " + UOP[0]->toString());
+          return UOP[0]->getLoopName();
+        }
+      }
+      return Loop;
+    }
+
     /// Printing the vector operand
     std::string toString();
 
     /// Basic constructor
     VOperand(int VL, Node *V[], bool Res);
+
+    /// Empty constructor
+    VOperand();
   };
 
   /// Main component of the VectorIR which wraps the selected DAGs based on
@@ -204,8 +221,7 @@ public:
     /// Render vector operation as string
     std::string toString();
   };
-
-}; // namespace macveth
+};
 
 } // namespace macveth
-#endif
+#endif // MACVETH_VECTORIR_H

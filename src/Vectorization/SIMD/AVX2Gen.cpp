@@ -64,6 +64,7 @@ SIMDGenerator::SIMDInst AVX2Gen::genMultAccOp(SIMDGenerator::SIMDInst Mul,
   // Adding SIMD inst to the list
   Fuse = createSIMDInst(Op, Res, Width, DataType, PrefS, SuffS, Args,
                         SIMDGenerator::SIMDType::VOPT, Acc.TacID);
+  Fuse.VOPResult = Acc.VOPResult;
 
   return Fuse;
 }
@@ -116,14 +117,40 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
+AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
+  SIMDGenerator::SIMDInstListType IL(TIL);
+  int MaxFusable = 4;
+  // addSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
+  //             ReduxVar);
+  SIMDGenerator::SIMDInstListType LRedux;
+  for (auto I : IL) {
+    if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
+      LRedux.push_back(I);
+      Utils::printDebug("AVX2Gen", I.render());
+      Utils::printDebug("AVX2Gen", I.VOPResult.toString());
+      Utils::printDebug("AVX2Gen", "Possible candidate to fuse in loop = " +
+                                       I.VOPResult.getOperandLoop());
+    }
+  }
+
+  std::list<SIMDGenerator::SIMDInstListType> LReduxFused;
+
+  for (auto I : IL) {
+  }
+
+  return IL;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
 AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
-  SIMDGenerator::SIMDInstListType IL;
+  SIMDGenerator::SIMDInstListType IL(I);
 
   // Fuse operations: find potential and applicable FMADD/FMSUB
-  IL = fuseAddSubMult(I);
+  IL = fuseAddSubMult(IL);
 
-  // TODO
   // Fuse reductions
+  IL = fuseReductions(IL);
 
   return IL;
 }
@@ -157,9 +184,9 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
                       getMapType(V.getDataType()), PrefS, SuffS);
 
   // Generate SIMD inst
-
   SIMDGenerator::SIMDInst I((NameOp == "") ? V.getName() : NameOp, AVXFunc,
                             Args, MVFunc, MVArgs, V.Order);
+
   // Retrieving cost of function
   I.Cost += CostTable::getLatency(AVX2Gen::NArch, Op);
   I.SType = SType;
@@ -167,6 +194,7 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
   // Data type and width
   I.DT = V.getDataType();
   I.W = V.getWidth();
+  I.VOPResult = V;
 
   // Adding instruction to the list
   IL->push_back(I);
@@ -499,13 +527,15 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   /// a = _mm256_hadd_pd(a,a);
   /// b = _mm256_cvtsd_f64(a);
   /// FIXME: this only works for doubles...
-  addSIMDInst(V.R, "hadd", "", "",
-              {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
-              SIMDType::VREDUC, &IL, RegAccm);
-  addSIMDInst(V.R, "hadd", "", "", {RegAccm, RegAccm}, SIMDType::VREDUC, &IL,
-              RegAccm);
-  addSIMDInst(V.R, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+  addSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
               ReduxVar);
+  // addSIMDInst(V.R, "hadd", "", "",
+  //             {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
+  //             SIMDType::VREDUC, &IL, RegAccm);
+  // addSIMDInst(V.R, "hadd", "", "", {RegAccm, RegAccm}, SIMDType::VREDUC, &IL,
+  //             RegAccm);
+  // addSIMDInst(V.R, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+  //             ReduxVar);
 
   return IL;
 }

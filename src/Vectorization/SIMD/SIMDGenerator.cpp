@@ -189,9 +189,8 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     return false;
   }
   // Update the list
-  for (auto I : TIL) {
-    IL->push_back(I);
-  }
+  IL->splice(IL->end(), TIL);
+
   return true;
 }
 
@@ -227,14 +226,9 @@ void SIMDGenerator::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
 
   // If there is a store
   if (V.R.IsStore) {
-    for (auto I : vstore(V)) {
-      TIL.push_back(I);
-    }
+    TIL.splice(TIL.end(), vstore(V));
   }
-
-  for (auto I : TIL) {
-    TI->push_back(I);
-  }
+  TI->splice(TI->end(), TIL);
 }
 
 // ---------------------------------------------
@@ -250,10 +244,7 @@ void SIMDGenerator::reduceOperation(VectorIR::VectorOP V,
 
   // Let the magic happens
   TIL = vreduce(V);
-
-  for (auto I : TIL) {
-    TI->push_back(I);
-  }
+  TI->splice(TI->end(), TIL);
 }
 
 // ---------------------------------------------
@@ -291,14 +282,16 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
   SIMDInstListType I;
+
   // Get list of SIMD instructions
   for (VectorIR::VectorOP V : VList) {
     for (SIMDInst Inst : getSIMDfromVectorOP(V)) {
       I.push_back(Inst);
     }
   }
+
   // Then optimizations can be done, for instance, combine operatios such as
-  // addition + multiplication. It will depend on the architecture/ISA
+  // addition + multiplication. It will depend on the architecture/ISA.
   I = peepholeOptimizations(I);
 
   return I;

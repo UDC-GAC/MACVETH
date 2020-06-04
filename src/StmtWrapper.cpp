@@ -71,17 +71,20 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
     CompoundStmt *Body = dyn_cast<CompoundStmt>(Loop->getBody());
     if (Body) {
       for (auto S : Body->body()) {
-        this->ListStmt.push_back(new StmtWrapper(S));
+        StmtWrapper *SW = new StmtWrapper(S);
+        SW->setInnerLoopName(this->getLoopInfo().Dim);
+        this->ListStmt.push_back(SW);
+        Utils::printDebug("StmtWrapper", "adding new stmt, TACs in loop = " +
+                                             this->getLoopInfo().Dim);
+        for (auto T : SW->getTacList()) {
+          T.printTAC();
+        }
       }
     } else {
       llvm::llvm_unreachable_internal();
     }
   } else {
     this->setTacList(TAC::stmtToTAC(S));
-    Utils::printDebug("StmtWrapper", "adding new stmt, TACs: ");
-    for (auto T : this->getTacList()) {
-      T.printTAC();
-    }
   }
 }
 

@@ -43,8 +43,10 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   Node::NodeListType Visited;
   Node::NodeListType Reduction;
   bool ReductionFound = false;
+
   NCopy.reverse();
   NL->clear();
+
   for (auto R : NCopy) {
     ReductionFound = false;
     if (std::find(Visited.begin(), Visited.end(), R) != Visited.end()) {

@@ -148,18 +148,14 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
                                              std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      // auto L = renderSIMDInstAfterPlace(SI, S->getListStmt());
-      auto Loop = loopContainsSIMD(SI, S->getListStmt());
-      // auto SM = Utils::getSourceMgr();
-      if (Loop != NULL) {
+      auto L = renderSIMDInstAfterPlace(SI, S->getListStmt());
+      // auto Loop = loopContainsSIMD(SI, S->getListStmt());
+      if (L) {
         // Utils::printDebug("MVFuncVisitor",
         //                   "Printing reduce after loop = " +
         //                       Utils::getStringFromStmt(S->getClangStmt()));
-        // Utils::printDebug(
-        //     "MVFuncVisitor",
-        //     "endLoc = " + S->getClangStmt()->getEndLoc().printToString(*SM));
         Rewrite.InsertTextAfterToken(
-            Loop->getClangStmt()->getEndLoc(),
+            S->getClangStmt()->getEndLoc(),
             SI.render() + ";\t// cost = " + std::to_string(SI.Cost) + "\n");
       }
       return false;
@@ -177,6 +173,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
 // ---------------------------------------------
 void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
+  // Reduce op
   if (SI.SType == SIMDGenerator::SIMDType::VREDUC) {
     renderSIMDInstAfterPlace(SI, SL);
   } else {

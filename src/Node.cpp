@@ -14,7 +14,7 @@ std::string Node::toString() {
   Str += "name\t\t= " + this->getValue() + "\n";
   Str +=
       "\tFreeSched\t= " + std::to_string(this->getSchedInfo().FreeSched) + "\n";
-  Str += "\tTacID\t= " + std::to_string(this->getSchedInfo().TacID) + "\n";
+  Str += "\tTacID\t\t= " + std::to_string(this->getSchedInfo().TacID) + "\n";
   Str += "\tPlcmnt\t\t= " + std::to_string(this->getSchedInfo().Plcmnt) + "\n";
   Str += "\tNodeID\t\t= " + std::to_string(this->getSchedInfo().NodeID) + "\n";
   Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
@@ -26,6 +26,7 @@ std::string Node::toString() {
          std::to_string(this->getInputs().back()->getSchedInfo().NodeID) +
          "); NODE_MEM = " +
          std::to_string(this->getInputs().back()->T == NODE_MEM) + "\n";
+  Str += "\tLoopName\t= " + this->getLoopName() + "\n";
   Str += "----------------------------------------";
   return Str;
 }

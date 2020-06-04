@@ -90,6 +90,10 @@ public:
   void setTacID(int TacID) { this->TacID = TacID; }
   /// Get that TacID value
   int getTacID() { return this->TacID; }
+  /// Set loop name
+  void setLoopName(std::string LoopName) { this->LoopName = LoopName; }
+  /// Get loop name
+  std::string getLoopName() { return this->LoopName; }
 
   /// Get macveth operation type
   MVOp getMVOP() { return this->MVOP; };
@@ -99,7 +103,7 @@ public:
     std::string Op = this->MVOP.toString();
     Op = "t: " + this->getA()->getExprStr() + ", " +
          this->getB()->getExprStr() + ", " + this->getC()->getExprStr() + ", " +
-         Op;
+         Op + "; (loop = " + this->getLoopName() + ")";
     return Op;
   }
 
@@ -110,8 +114,8 @@ public:
   static MVOp getMVOPfromExpr(MVExpr *E);
 
   /// Return list of 3AC from a starting Binary Operator
-  static void binaryOperator2TAC(const clang::BinaryOperator *S,
-                                 std::list<TAC> *TacList, int Val);
+  static void binaryOperatorToTAC(const clang::BinaryOperator *S,
+                                  std::list<TAC> *TacList, int Val);
 
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs
@@ -145,6 +149,8 @@ private:
   MVExpr *C;
   /// Type of operation
   MVOp MVOP;
+  /// Name of the loop level where the TAC is
+  std::string LoopName = "";
   /// TAC identifier: as TAC may be unrolled, the ID is only meant for
   /// identifying it
   int TacID = -1;
@@ -154,4 +160,4 @@ private:
 typedef std::list<TAC> TacListType;
 
 } // namespace macveth
-#endif
+#endif // MACVETH_TAC_H

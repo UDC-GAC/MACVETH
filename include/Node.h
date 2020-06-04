@@ -101,6 +101,7 @@ public:
     this->SI = rhs.SI;
     this->T = rhs.T;
     this->Value = rhs.Value;
+    this->LoopName = rhs.LoopName;
   }
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
@@ -112,6 +113,7 @@ public:
     this->O = setOutputInfo(T);
     this->SI.NodeID = Node::UUID++;
     this->SI.TacID = T.getTacID();
+    this->LoopName = T.getLoopName();
     connectInput(new Node(T.getB()));
     connectInput(new Node(T.getC()));
     updateIfStore();
@@ -126,6 +128,7 @@ public:
     this->O = setOutputInfo(T);
     this->SI.NodeID = Node::UUID++;
     this->SI.TacID = T.getTacID();
+    this->LoopName = T.getLoopName();
     Node *NB = findOutputNode(T.getB()->getExprStr(), L);
     Node *NC = findOutputNode(T.getC()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);
@@ -210,6 +213,7 @@ public:
 
   /// Returns the string value of the node
   std::string getValue() const { return this->Value; }
+
   /// Returns the variable/register value
   std::string getRegisterValue() const {
     if (this->T != NodeType::NODE_MEM) {
@@ -220,6 +224,9 @@ public:
 
   /// Setting the name of the output value
   void setOutputName(std::string S) { this->O.Name = S; }
+
+  /// Get loop name of the loop
+  std::string getLoopName() { return this->LoopName; }
 
   /// Print node: debugging purposes
   std::string toString();
@@ -246,13 +253,12 @@ public:
   bool operator<(const Node &N) {
     if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
       return (this->getSchedInfo().TacID < N.SI.TacID);
-      // return (this->getSchedInfo().TacID < N.SI.TacID);
     } else {
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
-      // return (this->getSchedInfo().TacID < N.SI.TacID);
     }
   }
 
+  /// For debugging purposes: show information regarding the node
   std::string getSchedInfoStr() {
     return "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
            "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
@@ -276,6 +282,8 @@ private:
   OutputInfo O;
   /// List of output nodes for this node
   NodeListType OutNodes;
+  /// Loop variable where it belongs
+  std::string LoopName = "";
 };
 } // namespace macveth
-#endif
+#endif // MACVETH_NODE_H

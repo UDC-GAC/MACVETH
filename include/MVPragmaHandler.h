@@ -40,7 +40,7 @@ struct ScopLoc {
     bool Unroll = true;
     int UnrollFactor = 1;
     bool UnrollAndJam = true;
-    std::list<std::string> UnrollDim;
+    std::vector<std::tuple<std::string, int>> UnrollDim;
   };
 
   PragmaArgs PA;
@@ -136,20 +136,55 @@ static IdentifierInfo *getValue(Token &token) {
 static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
   ScopLoc::PragmaArgs PA;
   IdentifierInfo *II;
+  IdentifierInfo *IIPrev;
+  bool UnrollOptParsed = false;
+  bool DimensionFound = false;
   Token Tok;
   PP.Lex(Tok);
-  if ((II = getValue(Tok)) != NULL) {
-    if (II->isStr("nounroll")) {
-      PA.Unroll = false;
-      PA.UnrollAndJam = false;
+  while ((II = getValue(Tok)) != NULL) {
+    PP.Lex(Tok);
+    Utils::printDebug("ScopLoc", "Token = " + II->getName().str());
+    if (((II->isStr("nounroll")) || (II->isStr("unroll")) ||
+         (II->isStr("unrollandjam"))) &&
+        (UnrollOptParsed)) {
+      assert(false &&
+             "You can not specify twice unrolling options in the same scop!");
     }
+    // Check if unroll
+    if (II->isStr("nounroll") || II->isStr("unrollandjam") ||
+        II->isStr("unroll")) {
+      PA.Unroll = (II->isStr("unrollandjam") || II->isStr("unroll"));
+      PA.UnrollAndJam = (II->isStr("unrollandjam"));
+      UnrollOptParsed = true;
+      continue;
+    }
+    // Otherwise it will be a unrolling dimension
+    if (!Tok.isLiteral()) {
+      assert(false && "Bad format! Need an integer for the unrolling factor");
+    }
+    auto IINext = Tok.getLiteralData();
+    if (IINext == NULL) {
+      assert(false &&
+             "Bad format: needed a unrolling factor for the dimension");
+    }
+    int UnrollFactor = atoi(IINext);
+    if (UnrollFactor == 0) {
+      assert(false && "Bad value for unrolling factor");
+    }
+    Utils::printDebug("ScopLoc",
+                      "Adding unrolling factor = " + II->getName().str() +
+                          ", " + std::to_string(UnrollFactor));
+    PA.UnrollDim.push_back(
+        std::tuple<std::string, int>(II->getName().str(), UnrollFactor));
+    PP.Lex(Tok);
   }
   return PA;
 }
 
 /// Handle pragmas of the form
 ///
-///  #pragma macveth
+///  #pragma macveth [unroll|nounroll|unrollandjam] [loopIdentifier
+///  unrollFactor]
 ///
 /// In particular, store the Location of the line containing
 /// the pragma in the list "Scops". The intention of this pragma is to tell the

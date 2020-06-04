@@ -18,28 +18,14 @@
 namespace macveth {
 
 //---------------------------------------------
-std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
-                                                  SIMDGenerator *SG) {
-  // Returning list
+std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType NL,
+                                                SIMDGenerator *SG) {
   std::list<VectorIR::VectorOP> VList;
+
   Node *VLoadA[64];
   Node *VLoadB[64];
   Node *VOps[64];
   int Cursor = 0;
-
-  // Working with a copy
-  Node::NodeListType NL(NList);
-
-  // FIXME
-  // Detect reductions
-  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  Utils::printDebug("CDAG", "Nodes of reductions found:");
-  for (Node *N : NRedux) {
-    Utils::printDebug("CDAG", N->toString());
-  }
-
-  // Until the list is empty: this is general and awful but...
-  Utils::printDebug("CDAG", "Greedy algorithm: ");
 repeat:
   // Get vector length
   int VL = SG->getMaxVectorSize();
@@ -104,6 +90,28 @@ repeat:
     }
     goto repeat;
   }
+  return VList;
+}
+
+//---------------------------------------------
+std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
+                                                  SIMDGenerator *SG) {
+  // Returning list
+  std::list<VectorIR::VectorOP> VList;
+
+  // Working with a copy
+  Node::NodeListType NL(NList);
+
+  // Detect reductions
+  // Caveat: reductions are
+  Utils::printDebug("CDAG", "Detecting reductions");
+  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+
+  Utils::printDebug("CDAG", "General case");
+  VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
+  VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
+
+  /// FIXME: reorder VectorOPs by TACID
 
   return VList;
 }

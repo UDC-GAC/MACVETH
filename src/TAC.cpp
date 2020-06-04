@@ -62,8 +62,6 @@ clang::BinaryOperator *getBinOp(clang::Expr *E) {
       dyn_cast<clang::BinaryOperator>(E->IgnoreImpCasts());
   clang::ParenExpr *P = dyn_cast<clang::ParenExpr>(E->IgnoreImpCasts());
   while ((P = dyn_cast<clang::ParenExpr>(E->IgnoreImpCasts()))) {
-    // Utils::printDebug("TAC", "getBinOp = " +
-    //                             Utils::getStringFromExpr(P->getExprStmt()));
     if ((B = dyn_cast<clang::BinaryOperator>(
              P->getSubExpr()->IgnoreImpCasts()))) {
       break;
@@ -85,10 +83,8 @@ std::list<TAC> TAC::stmtToTAC(clang::Stmt *ST) {
   bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
   if (STypeBin) {
     TacListType TL;
-    binaryOperator2TAC(SBin, &TL, -1);
-    for (auto T : TL) {
-      TacList.push_back(T);
-    }
+    binaryOperatorToTAC(SBin, &TL, -1);
+    TacList.splice(TacList.end(), TL);
     return TacList;
   }
 
@@ -130,7 +126,7 @@ std::map<int, int> TAC::exprToTAC(clang::CompoundStmt *CS,
     bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
     if (STypeBin) {
       TacListType TL;
-      binaryOperator2TAC(SBin, &TL, -1);
+      binaryOperatorToTAC(SBin, &TL, -1);
       for (auto T : TL) {
         TacList->push_back(T);
         M[T.getTacID()] = SList->size() - 1;
@@ -155,8 +151,8 @@ std::map<int, int> TAC::exprToTAC(clang::CompoundStmt *CS,
 }
 
 // ---------------------------------------------
-void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
-                             std::list<TAC> *TacList, int Val) {
+void TAC::binaryOperatorToTAC(const clang::BinaryOperator *S,
+                              std::list<TAC> *TacList, int Val) {
   Expr *Lhs = S->getLHS();
   Expr *Rhs = S->getRHS();
   clang::BinaryOperator *LhsBin = NULL;
@@ -178,20 +174,20 @@ void TAC::binaryOperator2TAC(const clang::BinaryOperator *S,
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
 
     TacList->push_front(NewTac);
-    binaryOperator2TAC(RhsBin, TacList, Val + 1);
-    binaryOperator2TAC(LhsBin, TacList, Val + 2);
+    binaryOperatorToTAC(RhsBin, TacList, Val + 1);
+    binaryOperatorToTAC(LhsBin, TacList, Val + 2);
   } else if (!LhsTypeBin && RhsTypeBin) {
     MVExpr *TmpB = MVExprFactory::createMVExpr(Lhs);
     MVExpr *TmpC = MVExprFactory::createMVExpr(getNameTempReg(), true);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
     TacList->push_front(NewTac);
-    binaryOperator2TAC(RhsBin, TacList, Val + 1);
+    binaryOperatorToTAC(RhsBin, TacList, Val + 1);
   } else if (LhsTypeBin && !RhsTypeBin) {
     MVExpr *TmpB = MVExprFactory::createMVExpr(getNameTempReg(), true);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Rhs);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
     TacList->push_front(NewTac);
-    binaryOperator2TAC(LhsBin, TacList, Val + 1);
+    binaryOperatorToTAC(LhsBin, TacList, Val + 1);
   } else {
     MVExpr *TmpB = MVExprFactory::createMVExpr(Lhs);
     MVExpr *TmpC = MVExprFactory::createMVExpr(Rhs);
@@ -233,6 +229,7 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   //  }
   //  MVExprVar::regUnrollDim(Tac->getA(), LoopLevel, UnrollA);
   TAC *UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
+  UnrolledTac->setLoopName(Tac->getLoopName());
   return UnrolledTac;
 }
 

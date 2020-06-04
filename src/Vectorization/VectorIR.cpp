@@ -135,6 +135,8 @@ std::list<Node *> detectReductionsAndFuse(std::list<Node *> NL) {
   return NewList;
 }
 
+VectorIR::VOperand::VOperand(){};
+
 // ---------------------------------------------
 VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Init list of unit operands
