@@ -37,7 +37,7 @@ install:
   # install into cache folder (build binaries+headers only, no sources and do NOT build there)
   - mkdir -p $HOME/.cache
 
-script: sudo -E env "PATH=$PATH" ./build_tests.sh building
+script: sudo chmod +x build_tests.sh && sudo -E env "PATH=$PATH" ./build_tests.sh building
 
 after_success:
   # Create lcov report

@@ -1,5 +1,5 @@
 # Minimum version required
-cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
 # Minimum C++ std
 set(CMAKE_CXX_STANDARD 17)
@@ -175,6 +175,7 @@ target_link_libraries(macveth
     z
     tinfo
     dl
+    stdc++fs # needed in some gcc versions
     )
 
 # tell to compiler MACVETH where to place the binary

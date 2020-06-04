@@ -12,10 +12,14 @@
 #include "include/Vectorization/SIMD/CostTable.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Type.h"
-#include <filesystem>
 #include <regex>
 #include <sstream>
 #include <unistd.h>
+#if __GNUC__ >= 8
+#include <filesystem>
+#else
+#include <experimental/filesystem>
+#endif
 
 using namespace macveth;
 
