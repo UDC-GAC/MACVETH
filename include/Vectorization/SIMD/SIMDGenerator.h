@@ -283,8 +283,13 @@ protected:
 
   /// AccmReg numbering for auxiliary operations such as reduce
   inline static int AccmReg = 0;
-  static std::string getNextAccmRegister() {
-    return "__mv_accm" + std::to_string(SIMDGenerator::AccmReg++);
+  inline static std::map<std::string, int> AccmToReg;
+  static std::string getNextAccmRegister(std::string V) {
+    std::string PREFIX = "__mv_accm";
+    if (AccmToReg.count(V) == 0) {
+      AccmToReg[V] = SIMDGenerator::AccmReg++;
+    }
+    return PREFIX + std::to_string(AccmToReg.at(V));
   }
 };
 

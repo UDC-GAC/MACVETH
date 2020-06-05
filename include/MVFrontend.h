@@ -96,7 +96,7 @@ public:
 
   /// This routine is called in BeginSourceFile(), from
   /// CreateWrapperASTConsumer.
-  /// * CompilterInstance CI: got from getCompilerInstance()
+  /// * CompilerInstance CI: got from getCompilerInstance()
   /// * StringRef file: input file, provided by getCurrentFile()
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef file) override;

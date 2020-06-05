@@ -200,7 +200,7 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   // Write new epilogs
   std::string EpiInit = Loop.Dim + " = " +
                         ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
-                                            std::to_string(Loop.Step) +
+                                            std::to_string(Loop.StepUnrolled) +
                                             " ) * " + std::to_string(Loop.Step)
                                       : "0");
   std::string EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;

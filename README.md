@@ -191,7 +191,7 @@ Specification (https://semver.org/spec/v2.0.0.html)
 
 No warranties. Under development, code disclosed under request.
 
-[travis-badge]:    https://travis-ci.org/markoshorro/MACVETH.svg?branch=master
+[travis-badge]:    https://travis-ci.org/markoshorro/MACVETH.svg?branch=develop
 [travis-link]:     https://travis-ci.org/markoshorro/MACVETH
-[codecov-badge]:   https://codecov.io/gh/markoshorro/MACVETH/branch/master/graph/badge.svg
+[codecov-badge]:   https://codecov.io/gh/markoshorro/MACVETH/branch/develop/graph/badge.svg
 [codecov-link]:    https://codecov.io/gh/markoshorro/MACVETH

@@ -102,10 +102,11 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 
   // Perform replacements if any
   for (auto Inst : I) {
-    // if (Utils::contains(SkipList, Inst)) {
+    // Skip instruction because it was fused
     if (std::find(SkipList.begin(), SkipList.end(), Inst) != SkipList.end()) {
       continue;
     }
+    // Find if this Instruction is to be fused, then put the instruction fused
     if (Fuses.count(Inst) > 0) {
       IL.push_back(Fuses.at(Inst));
       continue;
@@ -135,9 +136,40 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
                 ReduxVar);
   } else if (NumRedux == 2) {
     Utils::printDebug("AVX2Gen", "Two reductions...");
+    std::string RegAccm = VIL[0].Args.front();
+    std::string RegAccm2 = VIL[1].Args.front();
+    std::string ReduxVar = VIL[0].Result;
+    std::string ReduxVar2 = VIL[1].Result;
+    VectorIR::VOperand V = VIL[0].VOPResult;
+    addSIMDInst(V, "hadd", "", "", {RegAccm, RegAccm2}, SIMDType::VREDUC, &IL,
+                RegAccm);
+    addSIMDInst(V, "hadd", "", "",
+                {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
+                SIMDType::VREDUC, &IL, RegAccm);
+    addSIMDInst(V, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+                ReduxVar);
+    // addr2 = _mm_cvtsd_f64(_mm256_extractf128_pd(a,0x1));
+    addSIMDInst(V, "cvtsd", "", "f64",
+                {"_mm256_extractf128_pd(" + RegAccm + ",0x1)"},
+                SIMDType::VREDUC, &IL, ReduxVar2);
   } else if (NumRedux == 3) {
     Utils::printDebug("AVX2Gen", "Three reductions...");
-
+    std::string RegAccm = VIL[0].Args.front();
+    std::string RegAccm2 = VIL[1].Args.front();
+    std::string ReduxVar = VIL[0].Result;
+    std::string ReduxVar2 = VIL[1].Result;
+    VectorIR::VOperand V = VIL[0].VOPResult;
+    addSIMDInst(V, "hadd", "", "", {RegAccm, RegAccm2}, SIMDType::VREDUC, &IL,
+                RegAccm);
+    addSIMDInst(V, "hadd", "", "",
+                {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
+                SIMDType::VREDUC, &IL, RegAccm);
+    addSIMDInst(V, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+                ReduxVar);
+    // addr2 = _mm_cvtsd_f64(_mm256_extractf128_pd(a,0x1));
+    addSIMDInst(V, "cvtsd", "", "f64",
+                {"_mm256_extractf128_pd(" + RegAccm + ",0x1)"},
+                SIMDType::VREDUC, &IL, ReduxVar2);
   } else if (NumRedux == 4) {
     Utils::printDebug("AVX2Gen", "Four reductions...");
   }
@@ -148,10 +180,11 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
 SIMDGenerator::SIMDInstListType
 AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
   // Copy list
-  SIMDGenerator::SIMDInstListType IL(TIL);
+  SIMDGenerator::SIMDInstListType IL;
+  SIMDGenerator::SIMDInstListType SkipList;
   // List of reduction candidates to be fused
   std::map<std::string, SIMDGenerator::SIMDInstListType> LRedux;
-  for (auto I : IL) {
+  for (auto I : TIL) {
     if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
       LRedux[I.VOPResult.getOperandLoop()].push_back(I);
     }
@@ -166,19 +199,36 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
   // they can be fused if and only if they are in the same loop dimension/name
   // and the same loop, basically (because they can have same name but be
   // different loops). This is important for coherence in the program
+  std::map<SIMDGenerator::SIMDInst, SIMDGenerator::SIMDInstListType>
+      ReplaceFusedRedux;
   for (auto const &L : LRedux) { /* this is valid >=C++11 */
-    // FIXME: check if all the reductions within the same loop name are, indeed,
-    // in the same physical loop
-    assert(L.second.size() <= 4 &&
-           "Reductions of more than 4 elements are not supported...");
-    generalReductionFusion(L.second);
+    int MaxFusableRedux =
+        (L.second.front().VOPResult.DType == VectorIR::VDataType::DOUBLE) ? 4
+                                                                          : 8;
+    // FIXME: check if all the reductions within the same loop name are,
+    // indeed, in the same physical loop
+    assert(L.second.size() <= MaxFusableRedux &&
+           "Too many reductions to fuse...");
+    auto FusedRedux = generalReductionFusion(L.second);
+    ReplaceFusedRedux[L.second.back()] = FusedRedux;
+    for (auto SInst : L.second) {
+      if (SInst == L.second.back()) {
+        break;
+      }
+      SkipList.push_back(SInst);
+    }
   }
 
-  std::list<SIMDGenerator::SIMDInstListType> LReduxFused;
-
   // Reorder SIMDInstructions yet
-  for (auto I : IL) {
-    // TODO:
+  for (auto Inst : TIL) {
+    if (std::find(SkipList.begin(), SkipList.end(), Inst) != SkipList.end()) {
+      continue;
+    }
+    if (ReplaceFusedRedux.count(Inst) > 0) {
+      IL.splice(IL.end(), ReplaceFusedRedux.at(Inst));
+      continue;
+    }
+    IL.push_back(Inst);
   }
 
   return IL;
@@ -192,7 +242,7 @@ AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
   // Fuse operations: find potential and applicable FMADD/FMSUB
   IL = fuseAddSubMult(IL);
 
-  // Fuse reductions
+  // Fuse reductions if any and fusable
   IL = fuseReductions(IL);
 
   return IL;
@@ -539,7 +589,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
   SIMDGenerator::SIMDInstListType TIL;
   std::string RegType = getRegisterType(V.DT, V.VW);
-  std::string RegAccm = getNextAccmRegister();
+  std::string RegAccm = getNextAccmRegister(V.R.Name);
   SIMDGenerator::addRegToDeclare(RegType, RegAccm);
 
   std::string TmpReduxVar = (V.R.Name == V.OpB.Name) ? V.OpA.Name : V.OpB.Name;
@@ -565,10 +615,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   IL.splice(IL.end(), TIL);
   std::string ReduxVar =
       (V.R.Name == V.OpA.Name) ? V.OpA.getRegName() : V.OpB.getRegName();
-  /// New approach: horizontal adds work for AVX2, not sure for AVX512
-  /// a = _mm256_hadd_pd(a,_mm256_permute4x64_pd(a,0x4e));
-  /// a = _mm256_hadd_pd(a,a);
-  /// b = _mm256_cvtsd_f64(a);
+
   /// FIXME: this only works for doubles...
   addSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
               ReduxVar);

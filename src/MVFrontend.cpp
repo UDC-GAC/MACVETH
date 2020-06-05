@@ -91,9 +91,10 @@ void rewriteLoops(std::list<StmtWrapper *> SList, Rewriter *Rewrite) {
     // this because the SourceLocation of the UpperBound could be a macro
     // variable located in another place. This happens, for instance, with
     // the loop bounds in PolyBench suite
-    Rewrite->ReplaceText(Loop.SRVarCond,
-                         "(" + Loop.Dim + " + " + std::to_string(Loop.Step) +
-                             ") <= " + Loop.StrUpperBound + ";");
+    Rewrite->ReplaceText(Loop.SRVarCond, "(" + Loop.Dim + " + " +
+                                             std::to_string(Loop.StepUnrolled) +
+                                             ") <= " + Loop.StrUpperBound +
+                                             ";");
     Rewrite->ReplaceText(Loop.SRVarInc,
                          Loop.Dim + " += " + std::to_string(Loop.StepUnrolled));
     if (Loop.Declared) {
@@ -234,28 +235,32 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       }
     }
 
-    // Creating the CDAG
-    CDAG *G = CDAG::createCDAGfromTAC(TL);
+    if (!Scop->PA.SIMDCode) {
+      Utils::printDebug("MVConsumer",
+                        "No SIMD code to generate, just printing the code");
+      // Rewriting loops
+      rewriteLoops(SL, &Rewrite);
 
-    // Get SIMD generator according to the option chosen
-    SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
-
-    // Computing the cost model of the CDAG created
-    auto SInfo = CDAG::computeCostModel(G, SIMDGen);
-
-    // Rewriting loops
-    rewriteLoops(SL, &Rewrite);
-
-    //// Printing the registers we are going to use
-    for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-      Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
-                         InsSIMD + "\n", true, true);
+    } else {
+      // Creating the CDAG
+      CDAG *G = CDAG::createCDAGfromTAC(TL);
+      // Get SIMD generator according to the option chosen
+      SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
+      // Computing the cost model of the CDAG created
+      auto SInfo = CDAG::computeCostModel(G, SIMDGen);
+      // Rewriting loops
+      rewriteLoops(SL, &Rewrite);
+      //// Printing the registers we are going to use
+      for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+        Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
+                           InsSIMD + "\n", true, true);
+      }
+      for (auto InsSIMD : SInfo.SIMDList) {
+        Utils::printDebug("MVConsumer", InsSIMD.render());
+        renderSIMDInstInPlace(InsSIMD, SL);
+      }
+      delete G;
     }
-    for (auto InsSIMD : SInfo.SIMDList) {
-      Utils::printDebug("MVConsumer", InsSIMD.render());
-      renderSIMDInstInPlace(InsSIMD, SL);
-    }
-
     // Comment statements
     commentReplacedStmts(SL);
 
@@ -263,14 +268,13 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     for (auto SWrap : SL) {
       delete SWrap;
     }
-    delete G;
   }
 
   return;
 }
 
 // ---------------------------------------------
-bool areAllScopsScaned() {
+bool areAllScopsScanned() {
   bool Scanned = true;
   for (auto S : ScopHandler::List) {
     if (!S->ScopHasBeenScanned) {

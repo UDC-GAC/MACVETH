@@ -39,12 +39,19 @@ struct ScopLoc {
   bool ScopHasBeenScanned = false;
 
   struct PragmaArgs {
+    /// Generate SIMD code in the region: true by default
+    bool SIMDCode = true;
+    /// General option for unrolling code
     bool Unroll = true;
+    /// Unroll factor (general)
     int UnrollFactor = 1;
+    /// Perform unroll and jam
     bool UnrollAndJam = true;
+    /// Custom option for each loop within the scope
     PragmaTupleDim UnrollDim;
   };
 
+  /// Each scop has its own PragmaArgs, which are parsed at pre-processing time
   PragmaArgs PA;
 };
 
@@ -158,6 +165,11 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
       PA.Unroll = (II->isStr("unrollandjam") || II->isStr("unroll"));
       PA.UnrollAndJam = (II->isStr("unrollandjam"));
       UnrollOptParsed = true;
+      continue;
+    }
+    // Check if no SIMD code
+    if (II->isStr("nosimd")) {
+      PA.SIMDCode = false;
       continue;
     }
     // Otherwise it will be a unrolling dimension

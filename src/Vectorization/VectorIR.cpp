@@ -15,8 +15,6 @@ bool opsAreSequential(int VL, Node *VOps[]) {
   for (int i = 1; i < VL; ++i) {
     if ((VOps[i - 1]->getSchedInfo().FreeSched <
          VOps[i]->getSchedInfo().FreeSched)) {
-      // if ((VOps[i - 1]->getSchedInfo().Plcmnt <
-      // VOps[i]->getSchedInfo().Plcmnt)) {
       return true;
     }
   }
@@ -58,11 +56,14 @@ bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node *V[]) {
 // ---------------------------------------------
 std::string VectorIR::VOperand::toString() {
   std::string Str;
-  Str = Name + "[" + (IsTmpResult ? "TMP," : "") + (IsLoad ? "LD," : "") +
-        (IsStore ? "ST," : "");
-  for (int i = 0; i < this->VSize; ++i) {
-    Str +=
-        (UOP[i]->getRegisterValue()) + ((i == (this->VSize - 1)) ? "" : ", ");
+  Str = Name + "[" + (IsTmpResult ? "TempResult, " : "") +
+        (IsLoad ? "LoadOp, " : "") + (IsStore ? "StoreOp, " : "");
+  if (this->Size < 1) {
+    return Str + "]";
+  }
+  Str += (UOP[0]->getRegisterValue());
+  for (int i = 1; i < this->VSize; ++i) {
+    Str += ", " + (UOP[i]->getRegisterValue());
   }
   Str += "]";
   return Str;
@@ -88,23 +89,20 @@ BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
 
 // ---------------------------------------------
 int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
-  // FIXME
+  // FIXME: is this even possible?
   int64_t *Idx = (int64_t *)malloc(sizeof(int64_t) * VL);
   Idx[0] = 0;
   if (VL <= 1)
     return Idx;
   for (int n = 0; n < VL - 1; ++n) {
     Idx[n + 1] = *V[n + 1] - *V[n];
-    // std::cout << "index " << std::to_string(n) << " = "
-    //          << std::to_string(Idx[n]) << ",";
   }
-  // std::cout << std::endl;
   return Idx;
 }
 
 // ---------------------------------------------
 unsigned int getShuffle(int VL, int Width, Node *V[]) {
-  // TODO
+  // TODO: don't know if this is worthable
   unsigned int Shuffle = 0x0;
   int Bits = Width / 4;
   for (int n = 0; n < VL; ++n) {
@@ -125,17 +123,7 @@ unsigned int getMask(int VL, Node *V[]) {
 }
 
 // ---------------------------------------------
-std::list<Node *> detectReductionsAndFuse(std::list<Node *> NL) {
-  std::list<Node *> NewList = NL;
-  NewList.reverse();
-  for (auto N : NL) {
-    // detect reduction
-  }
-  NewList.reverse();
-  return NewList;
-}
-
-VectorIR::VOperand::VOperand(){};
+VectorIR::VOperand::VOperand(){/* empty constructor */};
 
 // ---------------------------------------------
 VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
@@ -153,8 +141,9 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Check if there is a vector assigned for these operands
   auto VecAssigned = checkIfVectorAssigned(VL, V);
 
-  this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
-                           : "vop" + std::to_string(VID++);
+  // Get name of this operand, otherwise create a custom name
+  this->Name =
+      VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()] : genNewVOpName();
   // It is a temporal result if it has already been assigned
   this->IsTmpResult = VecAssigned;
   // auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
@@ -206,6 +195,9 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   if ((this->EqualVal) && (this->MemOp)) {
     this->DType = VectorIR::VDataType(this->DType + 1);
   }
+
+  // Computin data width
+  this->Width = getWidthFromVDataType(this->VSize, this->DType);
 };
 
 // ---------------------------------------------
@@ -232,6 +224,8 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
   Utils::printDebug("VectorIR", "Atomic_A = " + std::to_string(Atomic_A));
   Utils::printDebug("VectorIR", "Atomic_B = " + std::to_string(Atomic_B));
 
+  // Decide which type of VectorOp it is according to the features of its
+  // VOperands
   if ((Seq) && ((RAW_A) || (RAW_B)) && Atomic_A && Atomic_B) {
     Utils::printDebug("VectorIR", "reduction");
     return VectorIR::VType::REDUCE;

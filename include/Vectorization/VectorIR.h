@@ -35,6 +35,9 @@ public:
     VID = 0;
   }
 
+  /// Prefix for operands
+  static inline const std::string VOP_PREFIX = "__mv_vop";
+
   /// Types of vector operations we distinguish according their scheduling
   enum VType {
     /// No dependencies between operations, so it can be used a unique vector
@@ -93,6 +96,13 @@ public:
       {"int64_t", INT64},
   };
 
+  /// Table of equivalences between the VDataTypes and the number of bits of
+  /// type
+  static inline std::map<VDataType, int> VDataTypeWidthBits = {
+      {DOUBLE, 64}, {FLOAT, 32}, {UINT8, 8},  {UINT16, 16}, {UINT32, 32},
+      {UINT64, 64}, {INT8, 8},   {INT16, 16}, {INT32, 32},  {INT64, 64},
+  };
+
   /// Vector width possible types
   enum VWidth {
     W8 = 8,
@@ -103,6 +113,26 @@ public:
     W256 = 256,
     W512 = 512
   };
+
+  /// Compute the vector width needed from the number of operands and the type
+  /// them
+  static VWidth getWidthFromVDataType(int NOps, VDataType VData) {
+    int Bits = VDataTypeWidthBits[VData] * NOps;
+    if (Bits > 256) {
+      return VWidth::W512;
+    } else if (Bits > 128) {
+      return VWidth::W256;
+    } else if (Bits > 64) {
+      return VWidth::W128;
+    } else if (Bits > 32) {
+      return VWidth::W64;
+    } else if (Bits > 16) {
+      return VWidth::W32;
+    } else if (Bits > 8) {
+      return VWidth::W16;
+    }
+    return VWidth::W8;
+  }
 
   /// Vector operand basically is a wrap of VL (vector lenght) operands in the
   /// original Node
@@ -116,9 +146,9 @@ public:
     /// Array of variable size (Size elements actually) initialized when
     /// creating the object
     Node **UOP = nullptr;
-    /// FIXME Data type
+    /// Data type
     VDataType DType = VDataType::DOUBLE;
-    /// FIXME Width of this operand
+    /// Width of this operand
     VWidth Width = VWidth::W256;
     /// Mask for shuffling if necessary
     int64_t *Idx;
@@ -160,21 +190,20 @@ public:
     /// Return name of VOperand
     std::string getName() { return this->Name; }
 
+    /// Generate a name according to the VID
+    std::string genNewVOpName() { return VOP_PREFIX + std::to_string(VID++); }
+
     /// Return register name
     std::string getRegName() { return this->UOP[0]->getRegisterValue(); }
 
     /// Get loop where the result is computed
     std::string getOperandLoop() {
-      std::string Loop = "";
       if (UOP != nullptr) {
-        Utils::printDebug("VOperand", "UOP not null");
         if (UOP[0] != nullptr) {
-          Utils::printDebug("VOperand",
-                            "UOP[0] not null = " + UOP[0]->toString());
           return UOP[0]->getLoopName();
         }
       }
-      return Loop;
+      return "";
     }
 
     /// Printing the vector operand
