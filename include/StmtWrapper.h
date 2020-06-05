@@ -125,6 +125,9 @@ public:
   /// Constructor
   StmtWrapper(clang::Stmt *S);
 
+  /// Print/render TAC as regular statements
+  std::string renderTacAsStmt();
+
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
   TacListType unroll(LoopInfo L);

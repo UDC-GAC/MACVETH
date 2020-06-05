@@ -242,6 +242,53 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
   return FullUnroll;
 }
 
+std::string replaceTmpTac(std::map<std::string, std::vector<std::string>> T,
+                          std::string K) {
+  if (T.count(K) > 0) {
+    std::vector<std::string> ST = T.at(K);
+    return "(" + replaceTmpTac(T, ST[0]) + " " + ST[2] + " " +
+           replaceTmpTac(T, ST[1]) + ")";
+  } else {
+    return K;
+  }
+}
+
+// ---------------------------------------------
+std::string StmtWrapper::renderTacAsStmt() {
+  std::list<std::string> TmpList;
+  std::map<std::string, std::vector<std::string>> TmpResToReplace;
+  TacListType TCopy(this->getTacList());
+  for (auto T : TCopy) {
+    std::string A = T.getA()->getExprStr();
+    std::string B = T.getB()->getExprStr();
+    std::string C = "";
+    std::string Op = T.getMVOP().toString();
+    if (T.getC() != NULL) {
+      C = T.getC()->getExprStr();
+    }
+    if ((T.getA()->getTempInfo() == MVExpr::MVExprInfo::TMP_RES)) {
+      TmpResToReplace[A] = {B, C, Op};
+    }
+  }
+  TCopy.reverse();
+  std::string FinalStr = "";
+  for (auto T : TCopy) {
+    std::string A = T.getA()->getExprStr();
+    std::string B = T.getB()->getExprStr();
+    std::string C = "";
+    std::string Op = T.getMVOP().toString();
+    if (T.getC() != NULL) {
+      C = T.getC()->getExprStr();
+    }
+    // If this, then it is an assignment (by design)
+    if (A == B) {
+      FinalStr =
+          A + " = " + replaceTmpTac(TmpResToReplace, C) + ";\n" + FinalStr;
+    }
+  }
+  return FinalStr;
+}
+
 // ---------------------------------------------
 bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
   bool FullUnroll = true;

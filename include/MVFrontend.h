@@ -59,8 +59,12 @@ private:
   void scanScops(FunctionDecl *fd);
   /// Comment those stmts which are replaced
   void commentReplacedStmts(std::list<StmtWrapper *> SList);
+  /// Rewrite TAC as regular statements
+  void renderTACInPlace(std::list<StmtWrapper *> SL);
+  /// Render SIMD instructions where they should be (regular map operations)
   void renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                              std::list<StmtWrapper *> SL);
+  /// Render SIMD after a statement (for reductions, for instance)
   bool renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
                                 std::list<StmtWrapper *> SL);
   /// Holds information regarding the ROI

@@ -211,23 +211,6 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   MVExpr *NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
   MVExpr *NewC =
       Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL;
-
-  //  auto Tmp = dyn_cast<MVExprVar>(Tac->getC());
-  //  // No unroll, nothing to be unrolled
-  //  if ((*NewA == *Tac->getA()) && (*NewB == *Tac->getB()) && (NewC != NULL)
-  //  &&
-  //      (Tmp)) {
-  //    MVExprVar::regUndoUnrollDim(Tac->getA(), LoopLevel, UnrollA);
-  //    return NULL;
-  //  }
-  //  Tmp = dyn_cast<MVExprVar>(Tac->getA());
-  //  // No unroll, nothing to be unrolled
-  //  if ((Tmp) && (*NewB == *Tac->getB()) && (NewC != NULL) &&
-  //      (*NewC == *Tac->getC())) {
-  //    MVExprVar::regUndoUnrollDim(Tac->getA(), LoopLevel, UnrollA);
-  //    return NULL;
-  //  }
-  //  MVExprVar::regUnrollDim(Tac->getA(), LoopLevel, UnrollA);
   TAC *UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
   UnrolledTac->setLoopName(Tac->getLoopName());
   return UnrolledTac;

@@ -200,6 +200,18 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
 }
 
 // ---------------------------------------------
+void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL) {
+  for (auto S : SL) {
+    if (S->isLoop()) {
+      renderTACInPlace(S->getListStmt());
+      continue;
+    }
+    Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), S->renderTacAsStmt(),
+                       true, true);
+  }
+}
+
+// ---------------------------------------------
 void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
@@ -238,9 +250,9 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     if (!Scop->PA.SIMDCode) {
       Utils::printDebug("MVConsumer",
                         "No SIMD code to generate, just printing the code");
+      renderTACInPlace(SL);
       // Rewriting loops
       rewriteLoops(SL, &Rewrite);
-
     } else {
       // Creating the CDAG
       CDAG *G = CDAG::createCDAGfromTAC(TL);
