@@ -103,8 +103,8 @@ public:
 
     /// Constructor
     SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
-             std::string MVFN, std::list<std::string> MVArgs, int TacID)
-        : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFN), MVArgs(MVArgs),
+             std::string MVFunc, std::list<std::string> MVArgs, int TacID)
+        : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFunc), MVArgs(MVArgs),
           TacID(TacID) {
       this->SIMD_UID = SIMDInst::UID++;
     }

@@ -61,19 +61,15 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   loop:
     // Since we are checking the inputs of a node, we are do not have to check
     // if there are any RAW dependencies, because there are. Some conditions
-    // we are checking 1.- Check if same type (getValue()) 2.- Check if
-    // sequential (FreeSched) Utils::printDebug("PlcmntAlgo",
-    //                  "R = " + R->getValue() + "; " +
-    //                      std::to_string(R->getSchedInfo().FreeSched));
-    // Utils::printDebug("PlcmntAlgo",
-    //                   "In = " + In->getRegisterValue() + "; " +
-    //                       std::to_string(In->getSchedInfo().FreeSched -
-    //                       Depth));
-
+    // we are checking:
+    // 1.- Check if same type (getValue())
+    // 2.- Check if sequential (FreeSched)
+    Utils::printDebug("PlcmntAlgo", "R: " + R->getValue() + "(" +
+                                        R->getRegisterValue() + ")");
+    Utils::printDebug("PlcmntAlgo", "In: " + In->getValue() + "(" +
+                                        In->getRegisterValue() + ")");
     if ((R->getValue() == In->getValue()) &&
-        (R->getSchedInfo().FreeSched ==
-         (In->getSchedInfo().FreeSched + Depth))) {
-      // Utils::printDebug("PlcmntAlgoRedux", In->toString());
+        (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched))) {
       Depth++;
       ReductionFound = true;
       Reduction.push_front(In);

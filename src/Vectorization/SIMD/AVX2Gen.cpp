@@ -119,6 +119,20 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
 AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
+  // FIXME:
+  // This is quite complex: it is not the same doing reductions of additions
+  // subtractions than multiplications or divisions. This way, we have to
+  // explictly differentiate them. General algorithm (4 doubles) for those
+  // cases:
+  //          DATA IN YMM0
+  //         ymm0 = _mm256_OP_pd(ymm0, _mm256_permute_pd(ymm0, 0x05));
+  //         ymm1 = _mm256_OP_pd(ymm0, _mm256_permute2f128_pd(ymm0, ymm0,
+  //         0x01));
+  //          STORE YMM2
+  // For additions and subtraction it is different: it is based on horizontal
+  // operations
+  // FIXME:
+  // Need to check types in order to generate properly the instructions
   SIMDGenerator::SIMDInstListType IL;
   std::vector<SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
   int NumRedux = TIL.size();
@@ -148,7 +162,6 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
                 SIMDType::VREDUC, &IL, RegAccm);
     addSIMDInst(V, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
                 ReduxVar);
-    // addr2 = _mm_cvtsd_f64(_mm256_extractf128_pd(a,0x1));
     addSIMDInst(V, "cvtsd", "", "f64",
                 {"_mm256_extractf128_pd(" + RegAccm + ",0x1)"},
                 SIMDType::VREDUC, &IL, ReduxVar2);
@@ -298,21 +311,21 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   PrefS += (V.IsPartial) ? "mask" : "";
 
-  // TODO
+  // TODO:
   // Type of load: load/u
   // [1] software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
   // [2] https://stackoverflow.com/questions/36191748/difference-between-\
   // load1-and-broadcast-intrinsics
   std::string Op = "load";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(getOpName(V, true, true));
@@ -326,17 +339,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   PrefS += (V.IsPartial) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "broadcast";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(getOpName(V, true, true));
@@ -354,17 +367,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   PrefS += (V.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "gather";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.UOP[0]->getValue());
@@ -378,15 +391,15 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
 
-  // TODO
+  // TODO:
   std::string Op = "set";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   for (int n = 0; n < V.VSize; n++) {
@@ -403,17 +416,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   // PrefS += (V.R.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "store";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(getOpName(V.R, true, true));
@@ -437,17 +450,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   ////PrefS += (V.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "scatter";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.OpA.getName());
@@ -462,17 +475,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vadd(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   // PrefS += (V.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "add";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.OpA.getName());
@@ -487,17 +500,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vadd(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vmul(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   // PrefS += (V.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "mul";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.OpA.getName());
@@ -512,17 +525,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vmul(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vsub(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   // PrefS += (V.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "sub";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.OpA.getName());
@@ -537,17 +550,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vsub(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vdiv(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   // PrefS += (V.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "div";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.OpA.getName());
@@ -562,17 +575,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vdiv(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vmod(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   // PrefS += (V.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "mod";
 
-  // TODO check
+  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.OpA.getName());
@@ -616,7 +629,10 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   std::string ReduxVar =
       (V.R.Name == V.OpA.Name) ? V.OpA.getRegName() : V.OpB.getRegName();
 
-  /// FIXME: this only works for doubles...
+  /// This is a 'hack': when a reduction is found, instead of generate all the
+  /// instructions needed for it, wait until the peephole optimization says
+  /// if there are any other reductions that can be packed and fused together.
+  /// P.S. creating hacks make me a hacker? lol
   addSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
               ReduxVar);
 
@@ -626,17 +642,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vseq(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO generate preffix
+  // TODO: generate preffix
   std::string PrefS = "";
-  // TODO generate suffix
+  // TODO: generate suffix
   std::string SuffS = "";
   // Mask
   // PrefS += (V.Mask) ? "mask" : "";
 
-  // TODO
+  // TODO:
   std::string Op = "seq";
 
-  // TODO check
+  // TODO:: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.OpA.getName());

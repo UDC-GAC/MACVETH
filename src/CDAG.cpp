@@ -103,16 +103,17 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
   Node::NodeListType NL(NList);
 
   // Detect reductions
-  // Caveat: reductions are
   Utils::printDebug("CDAG", "Detecting reductions");
   Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-
+  if (NRedux.size() == 0) {
+    Utils::printDebug("CDAG", "No reductions detected");
+  }
+  // Consume rest of nodes in a general form
   Utils::printDebug("CDAG", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
   VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
 
   /// FIXME: reorder VectorOPs by TACID
-
   return VList;
 }
 
