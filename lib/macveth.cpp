@@ -103,6 +103,13 @@ static llvm::cl::opt<bool> FMA("fma",
                                llvm::cl::init(false),
                                llvm::cl::cat(MacvethCategory));
 
+/// Disable FMA support flag
+static llvm::cl::opt<bool> DisableFMA(
+    "nofma",
+    llvm::cl::desc("Explicitly tell to not generate FMA instructions even if "
+                   "architecture supports them"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
 /// Debug flag
 static llvm::cl::opt<bool> Debug("debug",
                                  llvm::cl::desc("Print debug information"),
@@ -139,8 +146,13 @@ int main(int argc, const char **argv) {
   MVOptions::ISA = ISA.getValue();
   MVOptions::Arch = Architecture.getValue();
   MVOptions::FMASupport = FMA.getValue();
+  MVOptions::DisableFMA = DisableFMA.getValue();
   MVOptions::Debug = Debug.getValue();
   MVOptions::MacroFree = MacroFree.getValue();
+
+  /// Check incompatible options:
+  assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&
+         "FMA support enabled and disabled at the same time is not possible!");
 
   /// Create needed files
   Utils::initFile(MVOptions::OutFile);

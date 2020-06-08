@@ -266,8 +266,10 @@ AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
   // Fuse reductions if any and fusable
   IL = fuseReductions(IL);
 
-  // Fuse operations: find potential and applicable FMADD/FMSUB
-  IL = fuseAddSubMult(IL);
+  if (!MVOptions::DisableFMA) {
+    // Fuse operations: find potential and applicable FMADD/FMSUB
+    IL = fuseAddSubMult(IL);
+  }
 
   // TODO: eliminate duplicated instructions (?)
   // IL = eliminateDeadIns();

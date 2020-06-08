@@ -23,19 +23,25 @@ public:
   /// Return a specific backend given as input
   static SIMDGenerator *getBackend(MVISA ISA) {
     SIMDGenerator *G;
+    /// TODO: only AVX2 implemented yet...
     switch (ISA) {
-    case NATIVE:
     case SSE:
     case AVX:
-    case AVX2:
     case AVX512:
+      assert(false && "Architecture not implemented yet!");
+    case NATIVE:
+    // FIXME: remove this at some point: native case should be determined at
+    // some point, not to be contemplated exactly here
+    case AVX2:
       G = new AVX2Gen();
       G->clearMappings();
       return G;
     }
+
+    assert(false && "No backend chosen!");
     return nullptr;
   }
 };
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_SIMDGENERATORFACTORY_H */

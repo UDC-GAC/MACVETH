@@ -1,6 +1,8 @@
 #ifndef MACVETH_MVOPTIONS_H
 #define MACVETH_MVOPTIONS_H
 
+#include <algorithm>
+#include <cassert>
 #include <list>
 #include <map>
 #include <string>
@@ -96,13 +98,36 @@ struct MVOptions {
   static inline MVArch Arch = MVArch::AUTODETECT;
   /// FMA support
   static inline bool FMASupport = false;
+  /// Disable FMA support
+  static inline bool DisableFMA = false;
   /// Debug
   static inline bool Debug = false;
   /// Debug
   static inline DebugLevel DLevel = DebugLevel::ALL;
   /// Generate or not macro-based code
   static inline bool MacroFree = false;
+
+  /// Main function to check options of the compiler
+  static void validateOptions() {
+    if (MVOptions::ISA == MVISA::NATIVE) {
+    }
+    if (MVOptions::Arch == MVArch::AUTODETECT) {
+    }
+    checkIfArchISACompatible();
+  }
+
+  /// Dumb method to check compatibility between options
+  static void checkIfArchISACompatible() {
+    if ((MVOptions::ISA == MVISA::NATIVE) ||
+        (MVOptions::Arch == MVArch::AUTODETECT)) {
+      return;
+    }
+    auto LArch = SupportedISAArch[MVOptions::ISA];
+    assert((std::find(LArch.begin(), LArch.end(), MVOptions::Arch) !=
+            LArch.end()) &&
+           "Incompatible architecture and ISA");
+  }
 };
 }; // namespace macveth
 
-#endif
+#endif /* !MACVETH_MVOPTIONS_H */
