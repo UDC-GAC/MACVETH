@@ -111,6 +111,7 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
   // Consume rest of nodes in a general form
   Utils::printDebug("CDAG", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
+  Utils::printDebug("CDAG", "Reductions case");
   VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
 
   /// FIXME: reorder VectorOPs by TACID

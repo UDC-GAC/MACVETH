@@ -11,21 +11,27 @@
 // ---------------------------------------------
 std::string Node::toString() {
   std::string Str;
-  Str += "name\t\t= " + this->getValue() + "\n";
+  Str += "name\t\t= " + this->getValue() +
+         " (reg val = " + this->getRegisterValue() + ")\n";
   Str +=
       "\tFreeSched\t= " + std::to_string(this->getSchedInfo().FreeSched) + "\n";
   Str += "\tTacID\t\t= " + std::to_string(this->getSchedInfo().TacID) + "\n";
   Str += "\tPlcmnt\t\t= " + std::to_string(this->getSchedInfo().Plcmnt) + "\n";
   Str += "\tNodeID\t\t= " + std::to_string(this->getSchedInfo().NodeID) + "\n";
   Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
-  Str += "\tInput1\t\t= " + this->getInputs().front()->getValue() + " (ID = " +
-         std::to_string(this->getInputs().front()->getSchedInfo().NodeID) +
-         "); NODE_MEM = " +
-         std::to_string(this->getInputs().front()->T == NODE_MEM) + "\n";
-  Str += "\tInput2\t\t= " + this->getInputs().back()->getValue() + " (ID = " +
-         std::to_string(this->getInputs().back()->getSchedInfo().NodeID) +
-         "); NODE_MEM = " +
-         std::to_string(this->getInputs().back()->T == NODE_MEM) + "\n";
+  if (this->getInputs().front() != NULL) {
+    Str += "\tInput1\t\t= " + this->getInputs().front()->getValue() +
+           " (ID = " +
+           std::to_string(this->getInputs().front()->getSchedInfo().NodeID) +
+           "); NODE_MEM = " +
+           std::to_string(this->getInputs().front()->T == NODE_MEM) + "\n";
+  }
+  if (this->getInputs().back() != NULL) {
+    Str += "\tInput2\t\t= " + this->getInputs().back()->getValue() + " (ID = " +
+           std::to_string(this->getInputs().back()->getSchedInfo().NodeID) +
+           "); NODE_MEM = " +
+           std::to_string(this->getInputs().back()->T == NODE_MEM) + "\n";
+  }
   Str += "\tLoopName\t= " + this->getLoopName() + "\n";
   Str += "----------------------------------------";
   return Str;

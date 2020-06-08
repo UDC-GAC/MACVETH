@@ -82,6 +82,17 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
     if (Inst.SType == SIMDGenerator::SIMDType::VMUL) {
       PotentialFuse.push_back(Inst);
     }
+    // If after the multiplication, there is a store, then this is not a
+    // potential fuse anymore
+    if (Inst.SType == SIMDGenerator::SIMDType::VSTORE) {
+      SIMDGenerator::SIMDInstListType AuxL;
+      for (auto P : PotentialFuse) {
+        if (Inst.Result != P.Result) {
+          AuxL.push_back(P);
+        }
+      }
+      PotentialFuse = AuxL;
+    }
     // Check if we have any add/sub adding the result of a previous
     // multiplication
     if ((Inst.SType == SIMDGenerator::SIMDType::VADD) ||
@@ -252,11 +263,14 @@ SIMDGenerator::SIMDInstListType
 AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
   SIMDGenerator::SIMDInstListType IL(I);
 
+  // Fuse reductions if any and fusable
+  IL = fuseReductions(IL);
+
   // Fuse operations: find potential and applicable FMADD/FMSUB
   IL = fuseAddSubMult(IL);
 
-  // Fuse reductions if any and fusable
-  IL = fuseReductions(IL);
+  // TODO: eliminate duplicated instructions (?)
+  // IL = eliminateDeadIns();
 
   return IL;
 }

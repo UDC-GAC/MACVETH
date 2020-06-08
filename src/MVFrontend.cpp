@@ -268,7 +268,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
                            InsSIMD + "\n", true, true);
       }
       for (auto InsSIMD : SInfo.SIMDList) {
-        Utils::printDebug("MVConsumer", InsSIMD.render());
         renderSIMDInstInPlace(InsSIMD, SL);
       }
       delete G;

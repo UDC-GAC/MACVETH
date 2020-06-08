@@ -55,27 +55,34 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     }
     Visited.push_back(R);
 
-    auto In = R->getInputs().front();
-    int Depth = 1;
     Reduction.push_front(R);
+    auto S = R->getInputs();
   loop:
-    // Since we are checking the inputs of a node, we are do not have to check
-    // if there are any RAW dependencies, because there are. Some conditions
-    // we are checking:
-    // 1.- Check if same type (getValue())
-    // 2.- Check if sequential (FreeSched)
-    Utils::printDebug("PlcmntAlgo", "R: " + R->getValue() + "(" +
-                                        R->getRegisterValue() + ")");
-    Utils::printDebug("PlcmntAlgo", "In: " + In->getValue() + "(" +
-                                        In->getRegisterValue() + ")");
-    if ((R->getValue() == In->getValue()) &&
-        (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched))) {
-      Depth++;
-      ReductionFound = true;
-      Reduction.push_front(In);
-      Visited.push_back(In);
-      In = In->getInputs().front();
-      goto loop;
+    for (auto In : S) {
+      if (In == nullptr) {
+        Utils::printDebug("PlcmntAlgo", "Skipping");
+        continue;
+      }
+      // Since we are checking the inputs of a node, we are do not have to check
+      // if there are any RAW dependencies, because there are. Some conditions
+      // we are checking:
+      // 1.- Check if same type (getValue())
+      // 2.- Check if sequential (FreeSched)
+      // Utils::printDebug("PlcmntAlgo", "R: " + R->getValue() + "(" +
+      //                                     R->getRegisterValue() + ")");
+      // Utils::printDebug("PlcmntAlgo", "In: " + In->getValue() + "(" +
+      //                                     In->getRegisterValue() + ")");
+      if ((R->getValue() == In->getValue()) &&
+          (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched)) &&
+          (R->getSchedInfo().TacID == (In->getSchedInfo().TacID))) {
+        Utils::printDebug("PlcmntAlgo", "Reduction found!");
+        ReductionFound = true;
+        Reduction.push_front(In);
+        Visited.push_back(In);
+        // In = In->getInputs().front();
+        S = In->getInputs();
+        goto loop;
+      }
     }
     if (ReductionFound) {
       for (auto RNode : Reduction) {
