@@ -68,10 +68,7 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
       // we are checking:
       // 1.- Check if same type (getValue())
       // 2.- Check if sequential (FreeSched)
-      // Utils::printDebug("PlcmntAlgo", "R: " + R->getValue() + "(" +
-      //                                     R->getRegisterValue() + ")");
-      // Utils::printDebug("PlcmntAlgo", "In: " + In->getValue() + "(" +
-      //                                     In->getRegisterValue() + ")");
+      // 3.- Check if they belong to the same TAC (after unrolling)
       if ((R->getValue() == In->getValue()) &&
           (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched)) &&
           (R->getSchedInfo().TacID == (In->getSchedInfo().TacID))) {
@@ -79,7 +76,6 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
         ReductionFound = true;
         Reduction.push_front(In);
         Visited.push_back(In);
-        // In = In->getInputs().front();
         S = In->getInputs();
         goto loop;
       }
@@ -142,6 +138,7 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
       }
     }
   } else {
+    assert(false && "");
     llvm::llvm_unreachable_internal();
   }
   CF.close();
