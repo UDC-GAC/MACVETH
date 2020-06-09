@@ -25,11 +25,10 @@ using namespace macveth;
 
 // ---------------------------------------------
 void SIMDGenerator::populateTable(MVISA ISA) {
-  std::string PathISA = "/src/Vectorization/SIMD/CostsArch/" + MVISAStr[ISA];
-  char buff[PATH_MAX];
-  getcwd(buff, PATH_MAX);
-  std::string cwd(buff);
-  PathISA = cwd + PathISA;
+  std::string PathISA = "/CostsArch/" + MVISAStr[ISA];
+  std::string dir(__FILE__);
+  dir = dir.substr(0, dir.find_last_of("\\/"));
+  PathISA = dir + PathISA;
   std::string Arch = MVArchStr[MVOptions::Arch];
   std::ifstream F(PathISA);
   std::string L, W;
@@ -334,6 +333,7 @@ std::string SIMDGenerator::replacePatterns(std::string Pattern, std::string W,
 
 // ---------------------------------------------
 void SIMDGenerator::clearMappings() {
+  // FIXME:
   for (auto &X : RegDeclared) {
     X.second.clear();
   }
