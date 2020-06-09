@@ -81,6 +81,7 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
         }
       }
     } else {
+      assert(false && "Something went wrong: probably you missed some flags");
       llvm::llvm_unreachable_internal();
     }
   } else {
@@ -198,11 +199,12 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   std::list<StmtWrapper *> SVec = SWrap->ListStmt;
   LoopInfo Loop = SWrap->getLoopInfo();
   // Write new epilogs
-  std::string EpiInit = Loop.Dim + " = " +
-                        ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
-                                            std::to_string(Loop.StepUnrolled) +
-                                            " ) * " + std::to_string(Loop.Step)
-                                      : "0");
+  std::string EpiInit =
+      Loop.Dim + " = " +
+      ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
+                          std::to_string(Loop.StepUnrolled) + " ) * " +
+                          std::to_string(Loop.StepUnrolled)
+                    : "0");
   std::string EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;
   std::string EpiInc = Loop.Dim + " += " + std::to_string(Loop.Step);
   Epilog += "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";

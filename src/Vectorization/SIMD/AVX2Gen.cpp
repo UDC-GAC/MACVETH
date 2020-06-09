@@ -68,6 +68,7 @@ SIMDGenerator::SIMDInst AVX2Gen::genMultAccOp(SIMDGenerator::SIMDInst Mul,
 
   return Fuse;
 }
+
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
 AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
@@ -157,21 +158,21 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
                 SIMDType::VREDUC, &IL, RegAccm);
     addSIMDInst(V, "hadd", "", "", {RegAccm, RegAccm}, SIMDType::VREDUC, &IL,
                 RegAccm);
-    addSIMDInst(V, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+    addSIMDInst(V, "cvtsd", "256", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
                 ReduxVar);
   } else if (NumRedux == 2) {
     Utils::printDebug("AVX2Gen", "Two reductions...");
-    std::string RegAccm = VIL[0].Args.front();
-    std::string RegAccm2 = VIL[1].Args.front();
-    std::string ReduxVar = VIL[0].Result;
-    std::string ReduxVar2 = VIL[1].Result;
+    std::string RegAccm = VIL[1].Args.front();
+    std::string RegAccm2 = VIL[0].Args.front();
+    std::string ReduxVar = VIL[1].Result;
+    std::string ReduxVar2 = VIL[0].Result;
     VectorIR::VOperand V = VIL[0].VOPResult;
     addSIMDInst(V, "hadd", "", "", {RegAccm, RegAccm2}, SIMDType::VREDUC, &IL,
                 RegAccm);
     addSIMDInst(V, "hadd", "", "",
                 {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
                 SIMDType::VREDUC, &IL, RegAccm);
-    addSIMDInst(V, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+    addSIMDInst(V, "cvtsd", "256", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
                 ReduxVar);
     addSIMDInst(V, "cvtsd", "", "f64",
                 {"_mm256_extractf128_pd(" + RegAccm + ",0x1)"},
@@ -188,7 +189,7 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     addSIMDInst(V, "hadd", "", "",
                 {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
                 SIMDType::VREDUC, &IL, RegAccm);
-    addSIMDInst(V, "cvtsd", "", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
+    addSIMDInst(V, "cvtsd", "256", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
                 ReduxVar);
     // addr2 = _mm_cvtsd_f64(_mm256_extractf128_pd(a,0x1));
     addSIMDInst(V, "cvtsd", "", "f64",
@@ -300,6 +301,7 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
                      std::string MVFunc, std::list<std::string> MVArgs) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
+  Utils::printDebug("AVX2Gen", getMapType(V.getDataType()));
   // Replace fills in pattern
   std::string AVXFunc =
       replacePatterns(Pattern, getMapWidth(V.getWidth()),
@@ -354,6 +356,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
+  std::string Op = "broadcast";
   SIMDGenerator::SIMDInstListType IL;
   // TODO: generate preffix
   std::string PrefS = "";
@@ -361,9 +364,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
   std::string SuffS = "";
   // Mask
   PrefS += (V.IsPartial) ? "mask" : "";
-
-  // TODO:
-  std::string Op = "broadcast";
 
   // TODO: check
   // List of parameters
@@ -373,6 +373,9 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
   if (V.getDataType() == VectorIR::VDataType::DOUBLE) {
     V.DType = VectorIR::VDataType::SDOUBLE;
   }
+
+  // FIXME:
+  V.Width = VectorIR::VWidth::W256;
 
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VBCAST, &IL);

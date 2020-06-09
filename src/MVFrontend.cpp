@@ -153,11 +153,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
   for (auto S : SL) {
     if (S->isLoop()) {
       auto L = renderSIMDInstAfterPlace(SI, S->getListStmt());
-      // auto Loop = loopContainsSIMD(SI, S->getListStmt());
       if (L) {
-        // Utils::printDebug("MVFuncVisitor",
-        //                   "Printing reduce after loop = " +
-        //                       Utils::getStringFromStmt(S->getClangStmt()));
         Rewrite.InsertTextAfterToken(
             S->getClangStmt()->getEndLoc(),
             SI.render() + ";\t// cost = " + std::to_string(SI.Cost) + "\n");

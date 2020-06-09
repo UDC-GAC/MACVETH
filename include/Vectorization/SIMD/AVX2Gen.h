@@ -103,10 +103,17 @@ public:
   /// Destructor
   virtual ~AVX2Gen(){};
 
-  /// Constructor
-  AVX2Gen() : SIMDGenerator() { SIMDGenerator::populateTable(MVISA::AVX2); }
+  static SIMDGenerator *getSingleton() {
+    if (AVX2Gen::_instance == 0) {
+      AVX2Gen::_instance = new AVX2Gen();
+    }
+    return AVX2Gen::_instance;
+  };
 
 private:
+  /// Constructor
+  AVX2Gen() : SIMDGenerator() { SIMDGenerator::populateTable(MVISA::AVX2); }
+  static inline SIMDGenerator *_instance = 0;
   /// Auxiliar function for adding the SIMDInst to the list
   SIMDGenerator::SIMDInst
   addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
@@ -118,7 +125,7 @@ private:
   /// Specific instruction for loading data according to the operand
   bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
   /// Max width
-  static inline int MaxWidth = 256;
+  static inline const int MaxWidth = 256;
   /// Mapping the width types with its name in AVX2
   static inline std::map<VectorIR::VWidth, std::string> MapWidth = {
       {VectorIR::VWidth::W128, ""}, {VectorIR::VWidth::W256, "256"}};

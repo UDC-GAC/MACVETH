@@ -71,8 +71,8 @@ public:
   virtual ~MVExpr(){};
 
   /// Empty constructor
-  MVExpr(){};
-  MVExpr(MVExprKind MK) : MK(MK){};
+  // MVExpr(){};
+  // MVExpr(MVExprKind MK) : MK(MK){};
   /// Clone constructor
   MVExpr(MVExpr *TE) {
     this->setExprStr(TE->getExprStr());
@@ -88,7 +88,7 @@ public:
     this->TempInfo = TAC_EXPR;
   }
   /// Create MVExpr from string and set ad-hoc MVExprInfo
-  MVExpr(std::string E, MVExprInfo TI) : ExprStr(E), TempInfo(TI) {}
+  // MVExpr(std::string E, MVExprInfo TI) : ExprStr(E), TempInfo(TI) {}
   /// Create MVExpr from clang::Expr, which sets its inner type/info to
   /// EXPR_CLANG
   MVExpr(MVExprKind K, Expr *E) : MK(K), ClangExpr(E) {

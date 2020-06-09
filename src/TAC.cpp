@@ -89,7 +89,8 @@ std::list<TAC> TAC::stmtToTAC(clang::Stmt *ST) {
   }
 
   // New TAC will look like: TmpA = MVExpr(S) OP NULL; (not binary or unary)
-  MVExpr *TmpA = MVExprFactory::createMVExpr(getNameTempReg(), true);
+  MVExpr *TmpA = MVExprFactory::createMVExpr(getNameTempReg(), true,
+                                             S->getType().getAsString());
   MVExpr *TmpB = MVExprFactory::createMVExpr(S);
   MVOp OP = TAC::getMVOPfromExpr(TmpB);
   // Create new TAC
@@ -136,7 +137,8 @@ std::map<int, int> TAC::exprToTAC(clang::CompoundStmt *CS,
     }
 
     // New TAC will look like: TmpA = MVExpr(S) OP NULL; (not binary or unary)
-    MVExpr *TmpA = MVExprFactory::createMVExpr(getNameTempReg(), true);
+    MVExpr *TmpA = MVExprFactory::createMVExpr(getNameTempReg(), true,
+                                               S->getType().getAsString());
     MVExpr *TmpB = MVExprFactory::createMVExpr(S);
     MVOp OP = TAC::getMVOPfromExpr(TmpB);
     // Create new TAC
@@ -160,17 +162,24 @@ void TAC::binaryOperatorToTAC(const clang::BinaryOperator *S,
   bool LhsTypeBin = (LhsBin = getBinOp(Lhs->IgnoreImpCasts()));
   bool RhsTypeBin = (RhsBin = getBinOp(Rhs->IgnoreImpCasts()));
 
+  std::string T = Lhs->getType().getAsString();
+  // FIXME: Clang performs dynamic casting, even from Integer to double and so
+  assert((Rhs->getType().getAsString() == T) &&
+         "CHECK TYPES OF THE OPERANDS!!!");
+
   /// Since this is a recursive function, we have to test the first case
   MVExpr *TmpA =
-      (Val == -1) ? MVExprFactory::createMVExpr(Lhs)
-                  : MVExprFactory::createMVExpr(getCurrentNameTempReg(), true);
+      (Val == -1)
+          ? MVExprFactory::createMVExpr(Lhs)
+          : MVExprFactory::createMVExpr(getCurrentNameTempReg(), true, T);
 
   // recursive part, to delve deeper into BinaryOperators
   if (LhsTypeBin && RhsTypeBin) {
     // both true
-    MVExpr *TmpB = MVExprFactory::createMVExpr(getNameTempReg(), true);
-    MVExpr *TmpC =
-        MVExprFactory::createMVExpr(getNameTempReg(TAC::RegVal + 1), true);
+    MVExpr *TmpB =
+        MVExprFactory::createMVExpr(getNameTempReg(), true, TmpA->getExprStr());
+    MVExpr *TmpC = MVExprFactory::createMVExpr(getNameTempReg(TAC::RegVal + 1),
+                                               true, TmpA->getExprStr());
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
 
     TacList->push_front(NewTac);
@@ -178,12 +187,14 @@ void TAC::binaryOperatorToTAC(const clang::BinaryOperator *S,
     binaryOperatorToTAC(LhsBin, TacList, Val + 2);
   } else if (!LhsTypeBin && RhsTypeBin) {
     MVExpr *TmpB = MVExprFactory::createMVExpr(Lhs);
-    MVExpr *TmpC = MVExprFactory::createMVExpr(getNameTempReg(), true);
+    MVExpr *TmpC =
+        MVExprFactory::createMVExpr(getNameTempReg(), true, TmpA->getExprStr());
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
     TacList->push_front(NewTac);
     binaryOperatorToTAC(RhsBin, TacList, Val + 1);
   } else if (LhsTypeBin && !RhsTypeBin) {
-    MVExpr *TmpB = MVExprFactory::createMVExpr(getNameTempReg(), true);
+    MVExpr *TmpB =
+        MVExprFactory::createMVExpr(getNameTempReg(), true, TmpA->getExprStr());
     MVExpr *TmpC = MVExprFactory::createMVExpr(Rhs);
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
     TacList->push_front(NewTac);
@@ -194,6 +205,7 @@ void TAC::binaryOperatorToTAC(const clang::BinaryOperator *S,
     TAC NewTac = TAC(TmpA, TmpB, TmpC, MVOp(S->getOpcode()));
     TacList->push_front(NewTac);
   }
+
   return;
 }
 

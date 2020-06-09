@@ -28,10 +28,10 @@ public:
 
   /// Detect the type of MVExpr
   static MVExprType getTempTypeFromExpr(Expr *E);
-
+  /// Create MVExpr from Clang expression
   static MVExpr *createMVExpr(Expr *E);
-  static MVExpr *createMVExpr(std::string E);
-  static MVExpr *createMVExpr(std::string E, bool Temp);
+  /// Create temporal MVExpr (as MVExprVar)
+  static MVExpr *createMVExpr(std::string E, bool Temp, std::string Type);
 };
 } // namespace macveth
 #endif

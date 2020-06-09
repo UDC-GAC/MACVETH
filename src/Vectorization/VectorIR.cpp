@@ -259,6 +259,8 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
 
   // Data type
   this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];
+  this->R.DType = this->DT;
+  // Utils::printDebug("VectorIR", VLoadA[0]->getDataType());
 
   // Ordering
   this->OpA.Order = this->Order;

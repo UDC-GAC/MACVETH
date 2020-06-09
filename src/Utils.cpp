@@ -28,6 +28,8 @@ std::string Utils::getExePath() {
   char result[PATH_MAX];
   ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
   std::size_t found = std::string(result).find_last_of("/");
+  // Utils::printDebug(
+  //     "Utils", "getExePath = " + std::string(result).substr(0, found) + "/");
   return std::string(result).substr(0, found) + "/";
 }
 #endif

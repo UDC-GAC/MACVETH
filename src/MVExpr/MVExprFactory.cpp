@@ -46,9 +46,9 @@ MVExpr *MVExprFactory::createMVExpr(Expr *E) {
 }
 
 //------------------------------------------------
-MVExpr *MVExprFactory::createMVExpr(std::string E) { return new MVExprVar(E); }
-
-//------------------------------------------------
-MVExpr *MVExprFactory::createMVExpr(std::string E, bool Temp) {
-  return new MVExprVar(E, Temp);
+MVExpr *MVExprFactory::createMVExpr(std::string E, bool Temp,
+                                    std::string Type) {
+  MVExprVar *Ex = new MVExprVar(E, Temp);
+  Ex->setTypeStr(Type);
+  return Ex;
 }

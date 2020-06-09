@@ -168,7 +168,7 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     // We will say it is a set if we have to explicity set the values of the
     // vector operand
 
-    // FIXME
+    // FIXME:
     bool EqualVal = equalValues(V.VSize, V.UOP);
     bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
     bool ScatterMem = V.MemOp && !ContMem;

@@ -27,12 +27,14 @@ std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType NL,
   Node *VOps[64];
   int Cursor = 0;
 repeat:
-  // Get vector length
-  int VL = SG->getMaxVectorSize();
   // Consume nodes
+  int VL = 4;
   while (!NL.empty()) {
     // Consume the first one
     VOps[Cursor] = NL.front();
+    // Get vector length
+    Utils::printDebug("CDAG", VOps[Cursor]->getDataType());
+    VL = SG->getMaxVectorSize(VOps[Cursor]->getDataType());
     // NOTE: how do you solve this? I mean, for reductions, for instance,
     // you will have different Plcmnts, something like: 1,2,3,4; but this
     // algorithm should be able to select them. So maybe when selecting

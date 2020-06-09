@@ -253,4 +253,4 @@ public:
 };
 
 } // namespace macveth
-#endif // MACVETH_VECTORIR_H
+#endif /* !MACVETH_VECTORIR_H */

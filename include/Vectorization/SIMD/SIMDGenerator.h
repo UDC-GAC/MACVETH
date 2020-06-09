@@ -251,11 +251,13 @@ public:
               SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
               std::string MVFunc = "", std::list<std::string> MVArgs = {}) = 0;
 
-  /// Get maximum vector operands size
-  virtual int getMaxVectorSize() { return 4; };
-
   /// Clean the list of registers declared
   static void clearMappings();
+
+  /// Get maximum vector operands size
+  virtual int getMaxVectorSize(std::string Type) {
+    return getMaxWidth() / (SizeOf[Type] * 8);
+  };
 
   /// Map data types to their size in bytes
   inline static std::map<std::string, int> SizeOf = {
