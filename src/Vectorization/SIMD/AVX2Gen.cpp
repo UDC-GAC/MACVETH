@@ -301,7 +301,7 @@ AVX2Gen::addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
                      std::string MVFunc, std::list<std::string> MVArgs) {
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
-  Utils::printDebug("AVX2Gen", getMapType(V.getDataType()));
+
   // Replace fills in pattern
   std::string AVXFunc =
       replacePatterns(Pattern, getMapWidth(V.getWidth()),

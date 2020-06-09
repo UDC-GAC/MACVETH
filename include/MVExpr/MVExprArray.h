@@ -31,7 +31,15 @@ public:
             dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
       const Expr *TmpExpr = getArrayBaseExprAndIdxs(ASE, this->Idx);
       this->BaseName = Utils::getStringFromExpr(TmpExpr);
+      return;
     }
+    if (CXXOperatorCallExpr *CXX =
+            dyn_cast<clang::CXXOperatorCallExpr>(E->IgnoreImpCasts())) {
+      const Expr *TmpExpr = getArrayBaseExprAndIdxs(CXX, this->Idx);
+      this->BaseName = Utils::getStringFromExpr(TmpExpr);
+      return;
+    }
+    llvm::llvm_unreachable_internal();
   }
   MVExprArray(MVExprArray *E) : MVExpr(MVK_Array, E->getClangExpr()) {
     this->BaseName = E->BaseName;
@@ -63,6 +71,10 @@ private:
   /// Given a ArraySubscriptExpr, recursively gets the base name and the indexes
   /// from the outermost to the innermost
   const Expr *getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
+                                      IdxVector &Idxs);
+  /// Given a ArraySubscriptExpr, recursively gets the base name and the indexes
+  /// from the outermost to the innermost
+  const Expr *getArrayBaseExprAndIdxs(const CXXOperatorCallExpr *ASE,
                                       IdxVector &Idxs);
 
 private:

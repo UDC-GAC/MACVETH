@@ -175,8 +175,8 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Get data mask
   this->Mask = getMask(VL, V);
 
-  // Determine whether is partial or not
-  if (Mask != ((1 << this->Size) - 1)) {
+  // FIXME: Determine whether is partial or not
+  if (true && (Mask != ((1 << VL) - 1))) {
     this->IsPartial = true;
   }
 

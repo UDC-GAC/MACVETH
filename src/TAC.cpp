@@ -163,9 +163,19 @@ void TAC::binaryOperatorToTAC(const clang::BinaryOperator *S,
   bool RhsTypeBin = (RhsBin = getBinOp(Rhs->IgnoreImpCasts()));
 
   std::string T = Lhs->getType().getAsString();
+  if (isa<clang::TypedefType>(Lhs->getType())) {
+    auto aT = dyn_cast<clang::TypedefType>(Lhs->getType());
+    if (!aT->isSugared()) {
+      llvm::llvm_unreachable_internal();
+    }
+    auto ET = dyn_cast<ElaboratedType>(aT->desugar());
+    auto TT = dyn_cast<TypedefType>(ET->desugar());
+    auto Subs = dyn_cast<SubstTemplateTypeParmType>(TT->desugar());
+    T = Subs->desugar().getAsString();
+  }
   // FIXME: Clang performs dynamic casting, even from Integer to double and so
-  assert((Rhs->getType().getAsString() == T) &&
-         "CHECK TYPES OF THE OPERANDS!!!");
+  // assert((Rhs->getType().getAsString() == T) &&
+  //       "CHECK TYPES OF THE OPERANDS!!!");
 
   /// Since this is a recursive function, we have to test the first case
   MVExpr *TmpA =

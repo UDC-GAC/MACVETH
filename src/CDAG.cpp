@@ -33,7 +33,6 @@ repeat:
     // Consume the first one
     VOps[Cursor] = NL.front();
     // Get vector length
-    Utils::printDebug("CDAG", VOps[Cursor]->getDataType());
     VL = SG->getMaxVectorSize(VOps[Cursor]->getDataType());
     // NOTE: how do you solve this? I mean, for reductions, for instance,
     // you will have different Plcmnts, something like: 1,2,3,4; but this

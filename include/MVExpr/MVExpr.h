@@ -94,7 +94,18 @@ public:
   MVExpr(MVExprKind K, Expr *E) : MK(K), ClangExpr(E) {
     this->TempInfo = MVExprInfo::EXPR_CLANG;
     this->ExprStr = Utils::getStringFromExpr(E);
-    this->setTypeStr(this->getClangExpr()->getType().getAsString());
+    if (isa<clang::TypedefType>(E->getType())) {
+      auto T = dyn_cast<clang::TypedefType>(E->getType());
+      if (!T->isSugared()) {
+        llvm::llvm_unreachable_internal();
+      }
+      auto ET = dyn_cast<ElaboratedType>(T->desugar());
+      auto TT = dyn_cast<TypedefType>(ET->desugar());
+      auto Subs = dyn_cast<SubstTemplateTypeParmType>(TT->desugar());
+      this->setTypeStr(Subs->desugar().getAsString());
+    } else {
+      this->setTypeStr(E->getType().getAsString());
+    }
   }
 
   /// Set info
@@ -169,7 +180,7 @@ private:
   bool NeedsMemLoad = true;
   /// Dimensiones of the expressions
   std::list<std::string> Dims;
-};
+}; // namespace macveth
 
 /// Operators
 MVExpr *operator+(const MVExpr &Lhs, int Rhs);

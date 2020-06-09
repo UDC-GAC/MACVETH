@@ -17,6 +17,10 @@ MVExprFactory::MVExprType MVExprFactory::getTempTypeFromExpr(Expr *E) {
           dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
     return MVExprType::ARRAY;
   }
+  if (CXXOperatorCallExpr *CXX =
+          dyn_cast<clang::CXXOperatorCallExpr>(E->IgnoreImpCasts())) {
+    return MVExprType::ARRAY;
+  }
 
   if (dyn_cast<clang::CallExpr>(E->IgnoreImpCasts())) {
     return MVExprType::FUNC;

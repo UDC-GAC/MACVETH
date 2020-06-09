@@ -32,6 +32,26 @@ const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
 }
 
 //------------------------------------------------
+const Expr *MVExprArray::getArrayBaseExprAndIdxs(const CXXOperatorCallExpr *C,
+                                                 IdxVector &Idxs) {
+  const Expr *BaseE = NULL;
+  if (C->getDirectCallee()->getNameAsString() != "operator[]") {
+    llvm::llvm_unreachable_internal();
+  }
+  // FIXME: WTF this is fucking awful
+  auto E = C->arg_begin();
+  BaseE = (*E);
+  ++E;
+  for (; E != C->arg_end(); ++E) {
+    Idxs.push_back(Utils::getStringFromExpr(*E));
+  }
+  /// FIXME: is this really needed?
+  /// To sort from outermost to innermost
+  Idxs.reverse();
+  return BaseE;
+}
+
+//------------------------------------------------
 void MVExprArray::updateIndex(int UF, std::string LL) {
   auto it = find(this->Idx.begin(), this->Idx.end(), LL);
   if (it != this->Idx.end()) {
