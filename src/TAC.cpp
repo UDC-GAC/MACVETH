@@ -1,11 +1,14 @@
 /**
- * File              : TAC.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 22 Nov 2019 14:18:48 MST
- * Last Modified Date: Mér 18 Mar 2020 19:38:51 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ * File					 : src/TAC.cpp
+ * Author				 : Marcos Horro
+ * Date					 : Wed 03 Jun 2020 04:24 +02:00
  *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
+ * Last Modified : Wed 10 Jun 2020 10:21 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal

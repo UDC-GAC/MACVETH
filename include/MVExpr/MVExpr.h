@@ -1,11 +1,14 @@
 /**
- * File              : MVExpr.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 15 Xan 2020 12:07:57 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ * File					 : include/MVExpr/MVExpr.h
+ * Author				 : Marcos Horro
+ * Date					 : Tue 07 Apr 2020 03:34 +02:00
  *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
+ * Last Modified : Wed 10 Jun 2020 10:26 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal

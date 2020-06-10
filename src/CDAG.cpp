@@ -103,19 +103,23 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
   // Working with a copy
   Node::NodeListType NL(NList);
 
-  // Detect reductions
-  Utils::printDebug("CDAG", "Detecting reductions");
-  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  if (NRedux.size() == 0) {
-    Utils::printDebug("CDAG", "No reductions detected");
-  }
+  // FIXME: Detect reductions. Is this even needed right now? I mean,
+  // Utils::printDebug("CDAG", "Detecting reductions");
+  // Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  // if (NRedux.size() == 0) {
+  //   Utils::printDebug("CDAG", "No reductions detected");
+  // }
+  // NL.splice(NL.end(), NRedux);
+  NL.sort([](Node *A, Node *B) { return A->getTacID() < B->getTacID(); });
   // Consume rest of nodes in a general form
   Utils::printDebug("CDAG", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
-  Utils::printDebug("CDAG", "Reductions case");
-  VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
-
-  /// FIXME: reorder VectorOPs by TACID
+  // Utils::printDebug("CDAG", "Reductions case");
+  // VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
+  // Reordering by TACID
+  VList.sort([](VectorIR::VectorOP OP1, VectorIR::VectorOP OP2) {
+    return OP1.Order < OP2.Order;
+  });
   return VList;
 }
 

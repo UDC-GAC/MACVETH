@@ -1,9 +1,32 @@
 /**
- * File              : AVX2Gen.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 27 Dec 2019 09:00:11 MST
- * Last Modified Date: Mér 15 Xan 2020 11:07:02 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ * File					 : src/Vectorization/SIMD/AVX2Gen.cpp
+ * Author        : Marcos Horro
+ * Date					 : Wed 26 Feb 2020 06:05 +01:00
+ *
+ * Last Modified : Wed 10 Jun 2020 10:26 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 #include "include/Vectorization/SIMD/AVX2Gen.h"
@@ -129,6 +152,14 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 }
 
 // ---------------------------------------------
+std::string AVX2Gen::declareAuxArray(VectorIR::VDataType DT) {
+  std::string Type = VDTypeToCType[DT];
+  std::string AuxArr =
+      getNextArrRegister(Type, VectorIR::VDataTypeWidthBits[DT] / 8);
+  return AuxArr;
+}
+
+// ---------------------------------------------
 SIMDGenerator::SIMDInstListType
 AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   // FIXME:
@@ -143,61 +174,100 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   //          STORE YMM2
   // For additions and subtraction it is different: it is based on horizontal
   // operations
-  // FIXME:
-  // Need to check types in order to generate properly the instructions
   SIMDGenerator::SIMDInstListType IL;
   std::vector<SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
+
+  int NElems = VIL[0].W / VectorIR::VDataTypeWidthBits[VIL[0].DT];
+  int Steps = log2(NElems + (NElems % 2));
   int NumRedux = TIL.size();
-  if (NumRedux == 1) {
-    Utils::printDebug("AVX2Gen", "Only reduction...");
-    std::string RegAccm = VIL[0].Args.front();
-    std::string ReduxVar = VIL[0].Result;
-    VectorIR::VOperand V = VIL[0].VOPResult;
-    addSIMDInst(V, "hadd", "", "",
-                {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
-                SIMDType::VREDUC, &IL, RegAccm);
-    addSIMDInst(V, "hadd", "", "", {RegAccm, RegAccm}, SIMDType::VREDUC, &IL,
-                RegAccm);
-    addSIMDInst(V, "cvtsd", "256", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
-                ReduxVar);
-  } else if (NumRedux == 2) {
-    Utils::printDebug("AVX2Gen", "Two reductions...");
-    std::string RegAccm = VIL[1].Args.front();
-    std::string RegAccm2 = VIL[0].Args.front();
-    std::string ReduxVar = VIL[1].Result;
-    std::string ReduxVar2 = VIL[0].Result;
-    VectorIR::VOperand V = VIL[0].VOPResult;
-    addSIMDInst(V, "hadd", "", "", {RegAccm, RegAccm2}, SIMDType::VREDUC, &IL,
-                RegAccm);
-    addSIMDInst(V, "hadd", "", "",
-                {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
-                SIMDType::VREDUC, &IL, RegAccm);
-    addSIMDInst(V, "cvtsd", "256", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
-                ReduxVar);
-    addSIMDInst(V, "cvtsd", "", "f64",
-                {"_mm256_extractf128_pd(" + RegAccm + ",0x1)"},
-                SIMDType::VREDUC, &IL, ReduxVar2);
-  } else if (NumRedux == 3) {
-    Utils::printDebug("AVX2Gen", "Three reductions...");
-    std::string RegAccm = VIL[0].Args.front();
-    std::string RegAccm2 = VIL[1].Args.front();
-    std::string ReduxVar = VIL[0].Result;
-    std::string ReduxVar2 = VIL[1].Result;
-    VectorIR::VOperand V = VIL[0].VOPResult;
-    addSIMDInst(V, "hadd", "", "", {RegAccm, RegAccm2}, SIMDType::VREDUC, &IL,
-                RegAccm);
-    addSIMDInst(V, "hadd", "", "",
-                {"_mm256_permute4x64_pd(" + RegAccm + ",0x4e)", RegAccm},
-                SIMDType::VREDUC, &IL, RegAccm);
-    addSIMDInst(V, "cvtsd", "256", "f64", {RegAccm}, SIMDType::VREDUC, &IL,
-                ReduxVar);
-    // addr2 = _mm_cvtsd_f64(_mm256_extractf128_pd(a,0x1));
-    addSIMDInst(V, "cvtsd", "", "f64",
-                {"_mm256_extractf128_pd(" + RegAccm + ",0x1)"},
-                SIMDType::VREDUC, &IL, ReduxVar2);
-  } else if (NumRedux == 4) {
-    Utils::printDebug("AVX2Gen", "Four reductions...");
+  if (NumRedux > NElems) {
+    assert(false && "You can not have more reductions than elements in vector");
   }
+  std::vector<std::string> VAccm;
+  std::vector<std::string> VRedux;
+  for (int t = 0; t < NumRedux; ++t) {
+    VAccm.push_back(VIL[t].Args.front());
+    VRedux.push_back(VIL[t].Result);
+  }
+
+  int S = (NumRedux + (NumRedux % 2)) / 2;
+  while (true) {
+    addSIMDInst(VIL[0].VOPResult, "hadd", "", "",
+                {VAccm[0], (NumRedux > 1) ? VAccm[1] : VAccm[0]},
+                SIMDType::VREDUC, &IL, VAccm[0]);
+    if (S > 1) {
+      addSIMDInst(VIL[2].VOPResult, "hadd", "", "",
+                  {VAccm[2], (NumRedux > 3) ? VAccm[3] : VAccm[2]},
+                  SIMDType::VREDUC, &IL, VAccm[2]);
+      VAccm[1] = VAccm[2];
+    }
+    if (S > 2) {
+      addSIMDInst(VIL[4].VOPResult, "hadd", "", "",
+                  {VAccm[4], (NumRedux > 5) ? VAccm[5] : VAccm[4]},
+                  SIMDType::VREDUC, &IL, VAccm[4]);
+      VAccm[3] = VAccm[4];
+    }
+    if (S > 3) {
+      addSIMDInst(VIL[6].VOPResult, "hadd", "", "",
+                  {VAccm[6], (NumRedux > 7) ? VAccm[7] : VAccm[6]},
+                  SIMDType::VREDUC, &IL, VAccm[6]);
+      VAccm[5] = VAccm[6];
+    }
+    S = (S + (S % 2)) / 2;
+    // Final permutation
+    if (S == 1) {
+      std::string PermS = "";
+      std::string Mask = "";
+      std::string PermW = MapWidth[VIL[0].W];
+      if (VIL[0].W == VectorIR::VWidth::W256) {
+        if (VIL[0].DT == VectorIR::VDataType::DOUBLE) {
+          PermS = "4x64";
+          Mask = "0b11011000";
+        } else if (VIL[0].DT == VectorIR::VDataType::FLOAT) {
+          PermS = "var8x32";
+          Mask = genGenericFunc(
+              replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "set"),
+                              PermW, "epi32", "", ""),
+              {"7", "3", "6", "2", "5", "1", "4", "0"});
+        }
+      }
+      std::string Perm =
+          replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "permute"),
+                          PermW, MapType[VIL[0].DT], "", PermS);
+      std::string Op1 = genGenericFunc(Perm, {VAccm[0], Mask});
+      std::string Op2 = VAccm[0];
+      if (NumRedux > 2)
+        Op2 = genGenericFunc(Perm, {VAccm[1], Mask});
+      addSIMDInst(VIL[0].VOPResult, "hadd", "", "", {Op1, Op2},
+                  SIMDType::VREDUC, &IL, VAccm[0]);
+
+      break;
+    }
+  }
+
+  std::string TD = "";
+  std::string TW = "";
+  std::string TSuffix = "";
+  // FIXME: Store approach
+  std::string AuxArray = declareAuxArray(VIL[0].DT);
+  addSIMDInst(VIL[0].VOPResult, "store", "", "u", {"&" + AuxArray, VAccm[0]},
+              SIMDType::VSTORER, &IL);
+  std::vector<int> VIdx;
+  if (VIL[0].DT == VectorIR::VDataType::DOUBLE) {
+    VIdx = {0, 2, 1, 3};
+  }
+  if (VIL[0].DT == VectorIR::VDataType::FLOAT) {
+    VIdx = {0, 1, 4, 5, 2, 3, 6, 7};
+  }
+  for (int R = 0; R < NumRedux; ++R) {
+    std::string Idx = "[" + std::to_string(VIdx[R]) + "]";
+    addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQR, &IL);
+  }
+
+  // Extract value 1
+  // addSIMDInst(VIL[0].VOPResult, "cvt" + TSuffix, TW, TD, {VAccm[0]},
+  //            SIMDType::VREDUC, &IL, VRedux[0]);
+
   return IL;
 }
 
@@ -209,31 +279,47 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
   SIMDGenerator::SIMDInstListType SkipList;
   // List of reduction candidates to be fused
   std::map<std::string, SIMDGenerator::SIMDInstListType> LRedux;
+  std::map<SIMDGenerator::SIMDInst, SIMDGenerator::SIMDInstListType>
+      ReplaceFusedRedux;
   for (auto I : TIL) {
     if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
       LRedux[I.VOPResult.getOperandLoop()].push_back(I);
     }
+    if (LRedux.size() == 0) {
+      continue;
+    }
+    // For each reduction found, check whether they can be fused together or
+    // not:
+    // they can be fused if and only if they are in the same loop dimension/name
+    // and the same loop, basically (because they can have same name but be
+    // different loops). This is important for coherence in the program
+    for (auto const &L : LRedux) { /* this is valid >=C++11 */
+      int MaxFusableRedux =
+          (L.second.front().VOPResult.DType == VectorIR::VDataType::DOUBLE) ? 4
+                                                                            : 8;
+      // Only compute reductions if max found
+      if (MaxFusableRedux > L.second.size()) {
+        continue;
+      }
+      auto FusedRedux = generalReductionFusion(L.second);
+      ReplaceFusedRedux[L.second.back()] = FusedRedux;
+      for (auto SInst : L.second) {
+        if (SInst == L.second.back()) {
+          break;
+        }
+        SkipList.push_back(SInst);
+      }
+      LRedux[L.first].clear();
+    }
   }
 
-  // If there are no reductions, then do nothing
-  if (LRedux.size() == 0) {
-    return TIL;
-  }
-
-  // For each reduction found, check whether they can be fused together or not:
-  // they can be fused if and only if they are in the same loop dimension/name
-  // and the same loop, basically (because they can have same name but be
-  // different loops). This is important for coherence in the program
-  std::map<SIMDGenerator::SIMDInst, SIMDGenerator::SIMDInstListType>
-      ReplaceFusedRedux;
   for (auto const &L : LRedux) { /* this is valid >=C++11 */
     int MaxFusableRedux =
         (L.second.front().VOPResult.DType == VectorIR::VDataType::DOUBLE) ? 4
                                                                           : 8;
-    // FIXME: check if all the reductions within the same loop name are,
-    // indeed, in the same physical loop
-    assert(L.second.size() <= MaxFusableRedux &&
-           "Too many reductions to fuse...");
+    if (L.second.size() == 0) {
+      continue;
+    }
     auto FusedRedux = generalReductionFusion(L.second);
     ReplaceFusedRedux[L.second.back()] = FusedRedux;
     for (auto SInst : L.second) {
@@ -410,24 +496,23 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO: generate preffix
-  std::string PrefS = "";
-  // TODO: generate suffix
   std::string SuffS = "";
-
-  // TODO:
   std::string Op = "set";
 
-  // TODO: check
   // List of parameters
   std::list<std::string> Args;
-  for (int n = 0; n < V.VSize; n++) {
-    Args.push_back((V.UOP[n] != NULL) ? V.UOP[n]->getValue() : "0.0");
+  if (V.EqualVal) {
+    SuffS += "1";
+    Args.push_back((V.UOP[0] != NULL) ? V.UOP[0]->getValue() : "0");
+  } else {
+    for (int n = 0; n < V.VSize; n++) {
+      Args.push_back((V.UOP[n] != NULL) ? V.UOP[n]->getValue() : "0.0");
+    }
+    Args.reverse();
   }
-  Args.reverse();
 
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VSET, &IL);
+  addSIMDInst(V, Op, "", SuffS, Args, SIMDType::VSET, &IL);
 
   return IL;
 }
@@ -440,7 +525,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // TODO: generate suffix
   std::string SuffS = "";
   // Mask
-  // PrefS += (V.R.Mask) ? "mask" : "";
+  PrefS += (V.R.Mask) ? "mask" : "";
 
   // TODO:
   std::string Op = "store";
@@ -450,7 +535,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   std::list<std::string> Args;
   Args.push_back(getOpName(V.R, true, true));
   if (V.R.EqualVal) {
-    // FIXME
+    // FIXME: please...
     PrefS += "mask";
     Args.push_back("_mm256_set_epi64x(0,0,0,0xffffffffffffffff)");
     // Args.push_back(getOpName(V.R, false, false));
@@ -474,7 +559,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VectorOP V) {
   // TODO: generate suffix
   std::string SuffS = "";
   // Mask
-  ////PrefS += (V.Mask) ? "mask" : "";
+  PrefS += (V.R.Mask) ? "mask" : "";
 
   // TODO:
   std::string Op = "scatter";
@@ -498,8 +583,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vadd(VectorIR::VectorOP V) {
   std::string PrefS = "";
   // TODO: generate suffix
   std::string SuffS = "";
-  // Mask
-  // PrefS += (V.Mask) ? "mask" : "";
 
   // TODO:
   std::string Op = "add";
@@ -523,9 +606,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vmul(VectorIR::VectorOP V) {
   std::string PrefS = "";
   // TODO: generate suffix
   std::string SuffS = "";
-  // Mask
-  // PrefS += (V.Mask) ? "mask" : "";
-
   // TODO:
   std::string Op = "mul";
 
@@ -548,8 +628,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vsub(VectorIR::VectorOP V) {
   std::string PrefS = "";
   // TODO: generate suffix
   std::string SuffS = "";
-  // Mask
-  // PrefS += (V.Mask) ? "mask" : "";
 
   // TODO:
   std::string Op = "sub";
@@ -573,9 +651,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vdiv(VectorIR::VectorOP V) {
   std::string PrefS = "";
   // TODO: generate suffix
   std::string SuffS = "";
-  // Mask
-  // PrefS += (V.Mask) ? "mask" : "";
-
   // TODO:
   std::string Op = "div";
 
@@ -598,9 +673,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vmod(VectorIR::VectorOP V) {
   std::string PrefS = "";
   // TODO: generate suffix
   std::string SuffS = "";
-  // Mask
-  // PrefS += (V.Mask) ? "mask" : "";
-
   // TODO:
   std::string Op = "mod";
 
@@ -624,12 +696,20 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   std::string RegAccm = getNextAccmRegister(V.R.Name);
   SIMDGenerator::addRegToDeclare(RegType, RegAccm);
 
+  // Check that the reduction is binary, this should never ever happen
+  if (!V.isBinOp()) {
+    assert(false && "Reduction is not a binary operation!!!");
+  }
+
+  // Some needed values
   std::string TmpReduxVar = (V.R.Name == V.OpB.Name) ? V.OpA.Name : V.OpB.Name;
   auto VCopy = V;
   VCopy.OpA.Name = TmpReduxVar;
   VCopy.R.Name = RegAccm;
   VCopy.OpB.Name = RegAccm;
 
+  // Get type of binary operation, reduction is not the same if
+  // addition/substraction than multiplication or division
   switch (V.getBinOp()) {
   case clang::BO_Add:
     TIL = vadd(VCopy);
@@ -661,24 +741,9 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vseq(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO: generate preffix
-  std::string PrefS = "";
-  // TODO: generate suffix
-  std::string SuffS = "";
-  // Mask
-  // PrefS += (V.Mask) ? "mask" : "";
-
-  // TODO:
-  std::string Op = "seq";
-
-  // TODO:: check
-  // List of parameters
-  std::list<std::string> Args;
-  Args.push_back(V.OpA.getName());
-  Args.push_back(V.OpB.getName());
 
   // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VSEQ, &IL);
+  addNonSIMDInst(V, SIMDType::VSEQ, &IL);
 
   return IL;
 }

@@ -74,29 +74,53 @@ std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
 }
 
 // ---------------------------------------------
+SIMDGenerator::SIMDInst
+SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
+                              SIMDGenerator::SIMDType SType,
+                              SIMDGenerator::SIMDInstListType *IL) {
+  // Generate SIMD inst
+  std::string Rhs;
+  std::string Lhs = OP.R.getName();
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, OP.Order);
+  // Retrieving cost of function
+  I.SType = SType;
+
+  // Adding instruction to the list
+  IL->push_back(I);
+  return I;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInst
+SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
+                              SIMDGenerator::SIMDType SType,
+                              SIMDGenerator::SIMDInstListType *IL) {
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, IL->back().TacID);
+  // Retrieving cost of function
+  I.SType = SType;
+
+  // Adding instruction to the list
+  IL->push_back(I);
+  return I;
+}
+
+// ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
-  if (MVOptions::MacroFree) {
-    Utils::printDebug("SIMDGenerator", FuncName);
-    std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
-                               ? FuncName + "("
-                               : Result + " = " + FuncName + "(";
-    std::list<std::string>::iterator Op;
-    int i = 0;
-    for (Op = Args.begin(); Op != Args.end(); ++Op) {
-      FullFunc += (i++ == (Args.size() - 1)) ? (*Op + ")") : (*Op + ", ");
-    }
+  std::string FN = (MVOptions::MacroFree) ? FuncName : MVFuncName;
+  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
+                          (SType == SIMDType::VSTORER))
+                             ? FN
+                             : Result + " = " + FN;
+  if ((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ) ||
+      (SType == SIMDType::VOPT))
     return FullFunc;
-  } else {
-    std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
-                               ? MVFuncName + "("
-                               : Result + " = " + MVFuncName + "(";
-    std::list<std::string>::iterator Op;
-    int i = 0;
-    for (Op = MVArgs.begin(); Op != MVArgs.end(); ++Op) {
-      FullFunc += (i++ == (MVArgs.size() - 1)) ? (*Op + ")") : (*Op + ", ");
-    }
-    return FullFunc;
+  FullFunc += "(";
+  std::list<std::string>::iterator Op;
+  int i = 0;
+  for (Op = Args.begin(); Op != Args.end(); ++Op) {
+    FullFunc += (i++ == (Args.size() - 1)) ? (*Op + ")") : (*Op + ", ");
   }
+  return FullFunc;
 }
 
 // ---------------------------------------------
@@ -311,6 +335,20 @@ void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name) {
 // ---------------------------------------------
 std::string replacePattern(std::string P, std::regex R, std::string Rep) {
   return std::regex_replace(P, R, Rep);
+}
+
+// ---------------------------------------------
+std::string SIMDGenerator::genGenericFunc(std::string F,
+                                          std::vector<std::string> L) {
+  std::string R = F + "(";
+  if (L.size() == 0) {
+    return R + ")";
+  }
+  R += L[0];
+  for (int i = 1; i < L.size(); ++i) {
+    R += "," + L[i];
+  }
+  return R + ")";
 }
 
 // ---------------------------------------------

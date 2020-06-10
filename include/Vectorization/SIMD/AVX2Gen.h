@@ -122,6 +122,8 @@ private:
               SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
               std::string MVFunc = "",
               std::list<std::string> MVArgs = {}) override;
+
+  std::string declareAuxArray(VectorIR::VDataType DT);
   /// Specific instruction for loading data according to the operand
   bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
   /// Max width

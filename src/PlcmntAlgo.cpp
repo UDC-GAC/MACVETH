@@ -74,7 +74,7 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
           (R->getSchedInfo().TacID == (In->getSchedInfo().TacID))) {
         Utils::printDebug("PlcmntAlgo", "Reduction found!");
         ReductionFound = true;
-        Reduction.push_front(In);
+        Reduction.push_back(In);
         Visited.push_back(In);
         S = In->getInputs();
         goto loop;
@@ -82,7 +82,7 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     }
     if (ReductionFound) {
       for (auto RNode : Reduction) {
-        LRedux.push_back(RNode);
+        LRedux.push_front(RNode);
       }
     } else {
       NL->push_back(R);

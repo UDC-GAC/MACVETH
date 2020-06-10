@@ -174,7 +174,9 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
 void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
   // Reduce op
-  if (SI.SType == SIMDGenerator::SIMDType::VREDUC) {
+  if ((SI.SType == SIMDGenerator::SIMDType::VREDUC) ||
+      (SI.SType == SIMDGenerator::SIMDType::VSTORER) ||
+      (SI.SType == SIMDGenerator::SIMDType::VSEQR)) {
     renderSIMDInstAfterPlace(SI, SL);
   } else {
     for (auto S : SL) {

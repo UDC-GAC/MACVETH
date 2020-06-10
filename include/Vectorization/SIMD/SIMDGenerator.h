@@ -32,6 +32,7 @@ public:
     VSET,
     /// Store values in contiguous memory
     VSTORE,
+    VSTORER,
     /// Store values in a scattered fashion
     VSCATTER,
     /// Multiplication
@@ -50,6 +51,7 @@ public:
     VREDUC,
     /// Sequential operation
     VSEQ,
+    VSEQR,
     /// If the SIMD instruction is the result of an optimization (e.g. fuse
     /// multiply-accumulation) we will call it VOPT
     VOPT
@@ -101,6 +103,11 @@ public:
     /// Empty constructor
     SIMDInst(){};
 
+    /// Constructor for not SIMD code
+    SIMDInst(std::string LHS, std::string RHS, int TacID)
+        : Result(LHS), FuncName(RHS), TacID(TacID) {
+      this->SIMD_UID = SIMDInst::UID++;
+    }
     /// Constructor
     SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
              std::string MVFunc, std::list<std::string> MVArgs, int TacID)
@@ -142,6 +149,18 @@ public:
       std::cout << "-----------------------------------\n";
     }
   };
+
+  /// Generate non SIMD instructions, as we may have sequential operations or
+  /// other type of not vectorized instructions, given a VectorOP
+  SIMDGenerator::SIMDInst addNonSIMDInst(VectorIR::VectorOP OP,
+                                         SIMDGenerator::SIMDType SType,
+                                         SIMDGenerator::SIMDInstListType *IL);
+  /// Generate non SIMD instructions, as we may have sequential operations or
+  /// other type of not vectorized instructions specifying explicitly the LHS
+  /// and the RHS
+  SIMDGenerator::SIMDInst addNonSIMDInst(std::string Lhs, std::string Rhs,
+                                         SIMDGenerator::SIMDType SType,
+                                         SIMDGenerator::SIMDInstListType *IL);
 
   // VectorAPI: instructions to implement by the specific backends
 
@@ -228,6 +247,8 @@ public:
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);
 
+  std::string genGenericFunc(std::string F, std::vector<std::string> L);
+
   /// Auxiliary function for replacing patterns in a string
   static std::string replacePatterns(std::string Pattern, std::string W,
                                      std::string D, std::string P,
@@ -257,6 +278,12 @@ public:
   /// Get maximum vector operands size
   virtual int getMaxVectorSize(std::string Type) {
     return getMaxWidth() / (SizeOf[Type] * 8);
+  };
+
+  /// Table of equivalences between C/C++ basic numeric types and VectorIR's
+  static inline std::map<VectorIR::VDataType, std::string> VDTypeToCType = {
+      {VectorIR::VDataType::DOUBLE, "double"},
+      {VectorIR::VDataType::FLOAT, "float"},
   };
 
   /// Map data types to their size in bytes
@@ -292,6 +319,14 @@ protected:
       AccmToReg[V] = SIMDGenerator::AccmReg++;
     }
     return PREFIX + std::to_string(AccmToReg.at(V));
+  }
+
+  /// Auxiliary array numbering for auxiliary operations such as reduce
+  inline static int AuxArrayReg = 0;
+  static std::string getNextArrRegister(std::string Type, int Size) {
+    std::string Name = "__mv_arr" + std::to_string(AuxArrayReg++);
+    addRegToDeclare(Type, Name + "[" + std::to_string(Size) + "]");
+    return Name;
   }
 };
 
