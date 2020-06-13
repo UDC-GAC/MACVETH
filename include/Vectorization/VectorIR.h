@@ -32,7 +32,7 @@ public:
   static void clearMappigs() {
     VectorIR::MapRegToVReg.clear();
     MapLoads.clear();
-    VID = 0;
+    // VID = 0;
   }
 
   /// Prefix for operands

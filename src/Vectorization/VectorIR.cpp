@@ -227,7 +227,7 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
 VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
                                 Node *VLoadB[]) {
   // Premises of our algorithm
-  // 1.- Check wheter operations are sequential
+  // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
   if (Seq) {
     Utils::printDebug("CDAG", "Ops are sequential");

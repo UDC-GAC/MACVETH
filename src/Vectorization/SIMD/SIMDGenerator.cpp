@@ -111,8 +111,7 @@ std::string SIMDGenerator::SIMDInst::render() {
                           (SType == SIMDType::VSTORER))
                              ? FN
                              : Result + " = " + FN;
-  if ((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ) ||
-      (SType == SIMDType::VOPT))
+  if ((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ))
     return FullFunc;
   FullFunc += "(";
   std::list<std::string>::iterator Op;
@@ -142,11 +141,14 @@ SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
 std::list<std::string> SIMDGenerator::renderSIMDRegister(SIMDInstListType S) {
   std::list<std::string> L;
   // Render register declarations
-  for (auto It = RegDeclared.begin(); It != RegDeclared.end(); ++It) {
-    std::string TypeRegDecl = It->first + " ";
-    int i = 0;
-    for (auto N = It->second.begin(); N != It->second.end(); ++N) {
-      TypeRegDecl += (i++ == (It->second.size() - 1)) ? *N : (*N + ", ");
+  for (auto It : RegDeclared) {
+    std::string TypeRegDecl = It.first + " ";
+    auto VAuxRegs = It.second;
+    TypeRegDecl += std::get<0>(VAuxRegs[0]) + " = {" +
+                   std::to_string(std::get<1>(VAuxRegs[0])) + "}";
+    for (int i = 1; i < VAuxRegs.size(); ++i) {
+      TypeRegDecl += ", " + std::get<0>(VAuxRegs[i]) + " = {" +
+                     std::to_string(std::get<1>(VAuxRegs[0])) + "}";
     }
     L.push_back(TypeRegDecl + ";");
   }
@@ -325,12 +327,38 @@ SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
 }
 
 // ---------------------------------------------
-void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name) {
-  if (!(std::find(RegDeclared[Type].begin(), RegDeclared[Type].end(), Name) !=
-        RegDeclared[Type].end())) {
-    RegDeclared[Type].push_back(Name);
+void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name,
+                                    int InitVal) {
+  for (auto V : RegDeclared[Type]) {
+    if (std::get<0>(V) == Name) {
+      return;
+    }
   }
+  RegDeclared[Type].push_back(std::make_tuple(Name, InitVal));
 }
+
+// // ---------------------------------------------
+// template <>
+// void SIMDGenerator::addRegToDeclare<double>(std::string Type, std::string
+// Name,
+//                                             std::vector<double> InitVals) {
+//   if (!(std::find(RegDeclared[Type].begin(), RegDeclared[Type].end(), Name)
+//   !=
+//         RegDeclared[Type].end())) {
+//     RegDeclared[Type].push_back(Name);
+//   }
+// }
+
+// // ---------------------------------------------
+// template <>
+// void SIMDGenerator::addRegToDeclare<int>(std::string Type, std::string Name,
+//                                          std::vector<int> InitVals) {
+//   if (!(std::find(RegDeclared[Type].begin(), RegDeclared[Type].end(), Name)
+//   !=
+//         RegDeclared[Type].end())) {
+//     RegDeclared[Type].push_back(Name);
+//   }
+// }
 
 // ---------------------------------------------
 std::string replacePattern(std::string P, std::regex R, std::string Rep) {

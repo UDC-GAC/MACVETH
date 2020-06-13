@@ -1,9 +1,32 @@
 /**
- * File              : CDAG.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Lun 09 Dec 2019 15:10:35 MST
- * Last Modified Date: Mér 04 Mar 2020 16:30:00 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ * File					 : src/CDAG.cpp
+ * Author				 : Marcos Horro
+ * Date					 : Wed 08 Apr 2020 01:00 +02:00
+ *
+ * Last Modified : Thu 11 Jun 2020 11:13 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 #include "include/CDAG.h"
@@ -54,10 +77,10 @@ repeat:
       break;
     }
   }
-  bool IsPartial = (Cursor < VL);
-  if (IsPartial) {
-    Utils::printDebug("CDAG", "isPartial: " + std::to_string(Cursor));
-  }
+  // bool IsPartial = (Cursor < VL);
+  // if (IsPartial) {
+  //   Utils::printDebug("CDAG", "isPartial: " + std::to_string(Cursor));
+  // }
 
   // Compute memory operands for the operations fetched above
   int i = 0;
@@ -105,21 +128,21 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
 
   // FIXME: Detect reductions. Is this even needed right now? I mean,
   // Utils::printDebug("CDAG", "Detecting reductions");
-  // Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  // if (NRedux.size() == 0) {
-  //   Utils::printDebug("CDAG", "No reductions detected");
-  // }
+  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  if (NRedux.size() == 0) {
+    Utils::printDebug("CDAG", "No reductions detected");
+  }
   // NL.splice(NL.end(), NRedux);
-  NL.sort([](Node *A, Node *B) { return A->getTacID() < B->getTacID(); });
+  // NL.sort([](Node *A, Node *B) { return A->getTacID() < B->getTacID(); });
   // Consume rest of nodes in a general form
   Utils::printDebug("CDAG", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
-  // Utils::printDebug("CDAG", "Reductions case");
-  // VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
+  Utils::printDebug("CDAG", "Reductions case");
+  VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
   // Reordering by TACID
-  VList.sort([](VectorIR::VectorOP OP1, VectorIR::VectorOP OP2) {
-    return OP1.Order < OP2.Order;
-  });
+  // VList.sort([](VectorIR::VectorOP OP1, VectorIR::VectorOP OP2) {
+  //   return OP1.Order < OP2.Order;
+  // });
   return VList;
 }
 

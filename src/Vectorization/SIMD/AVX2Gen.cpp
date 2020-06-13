@@ -162,7 +162,7 @@ std::string AVX2Gen::declareAuxArray(VectorIR::VDataType DT) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
 AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
-  // FIXME:
+  // TODO:
   // This is quite complex: it is not the same doing reductions of additions
   // subtractions than multiplications or divisions. This way, we have to
   // explictly differentiate them. General algorithm (4 doubles) for those
@@ -222,7 +222,7 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
       if (VIL[0].W == VectorIR::VWidth::W256) {
         if (VIL[0].DT == VectorIR::VDataType::DOUBLE) {
           PermS = "4x64";
-          Mask = "0b11011000";
+          Mask = "0xd8";
         } else if (VIL[0].DT == VectorIR::VDataType::FLOAT) {
           PermS = "var8x32";
           Mask = genGenericFunc(
@@ -250,7 +250,7 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   std::string TSuffix = "";
   // FIXME: Store approach
   std::string AuxArray = declareAuxArray(VIL[0].DT);
-  addSIMDInst(VIL[0].VOPResult, "store", "", "u", {"&" + AuxArray, VAccm[0]},
+  addSIMDInst(VIL[0].VOPResult, "store", "", "u", {AuxArray, VAccm[0]},
               SIMDType::VSTORER, &IL);
   std::vector<int> VIdx;
   if (VIL[0].DT == VectorIR::VDataType::DOUBLE) {
@@ -477,7 +477,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
   // TODO: generate suffix
   std::string SuffS = "";
   // Mask
-  PrefS += (V.Mask) ? "mask" : "";
+  PrefS += (V.IsPartial) ? "mask" : "";
 
   // TODO:
   std::string Op = "gather";
@@ -503,13 +503,17 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
   std::list<std::string> Args;
   if (V.EqualVal) {
     SuffS += "1";
-    Args.push_back((V.UOP[0] != NULL) ? V.UOP[0]->getValue() : "0");
+    Args.push_back((V.UOP[0] != NULL) ? V.UOP[0]->getRegisterValue() : "0");
   } else {
     for (int n = 0; n < V.VSize; n++) {
       Args.push_back((V.UOP[n] != NULL) ? V.UOP[n]->getValue() : "0.0");
     }
-    Args.reverse();
   }
+  for (int t = V.VSize; t < (V.Width / VectorIR::VDataTypeWidthBits[V.DType]);
+       ++t) {
+    Args.push_back("0");
+  }
+  Args.reverse();
 
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, "", SuffS, Args, SIMDType::VSET, &IL);
@@ -525,7 +529,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // TODO: generate suffix
   std::string SuffS = "";
   // Mask
-  PrefS += (V.R.Mask) ? "mask" : "";
+  PrefS += (V.R.IsPartial) ? "mask" : "";
 
   // TODO:
   std::string Op = "store";
@@ -535,12 +539,11 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   std::list<std::string> Args;
   Args.push_back(getOpName(V.R, true, true));
   if (V.R.EqualVal) {
-    // FIXME: please...
-    PrefS += "mask";
-    Args.push_back("_mm256_set_epi64x(0,0,0,0xffffffffffffffff)");
-    // Args.push_back(getOpName(V.R, false, false));
-    Args.push_back("_mm256_permute4x64_pd(" + getOpName(V.R, false, false) +
-                   ", 0xff)");
+    if (V.R.DType == VectorIR::DOUBLE) {
+      V.R.DType = VectorIR::SDOUBLE;
+    } else if (V.R.DType == VectorIR::FLOAT) {
+      V.R.DType = VectorIR::SFLOAT;
+    }
   } else {
     Args.push_back(getOpName(V.R, false, false));
   }
@@ -559,7 +562,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VectorOP V) {
   // TODO: generate suffix
   std::string SuffS = "";
   // Mask
-  PrefS += (V.R.Mask) ? "mask" : "";
+  PrefS += (V.R.IsPartial) ? "mask" : "";
 
   // TODO:
   std::string Op = "scatter";
@@ -694,7 +697,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType TIL;
   std::string RegType = getRegisterType(V.DT, V.VW);
   std::string RegAccm = getNextAccmRegister(V.R.Name);
-  SIMDGenerator::addRegToDeclare(RegType, RegAccm);
+  SIMDGenerator::addRegToDeclare(RegType, RegAccm, {0});
 
   // Check that the reduction is binary, this should never ever happen
   if (!V.isBinOp()) {

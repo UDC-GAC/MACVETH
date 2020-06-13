@@ -305,10 +305,16 @@ private:
 
 protected:
   /// Add register to declare
-  static void addRegToDeclare(std::string Type, std::string Name);
+  static void addRegToDeclare(std::string Type, std::string Name,
+                              int InitVal = 0);
+  /// Add register to declare with custom values
+  // template <class T>
+  // static void addRegToDeclare(std::string Type, std::string Name,
+  //                             std::vector<T> InitVals);
 
   /// List of registers declared
-  inline static std::map<std::string, std::list<std::string>> RegDeclared;
+  inline static std::map<std::string, std::vector<std::tuple<std::string, int>>>
+      RegDeclared;
 
   /// AccmReg numbering for auxiliary operations such as reduce
   inline static int AccmReg = 0;

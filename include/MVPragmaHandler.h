@@ -27,6 +27,9 @@ typedef std::vector<std::tuple<std::string, int>> PragmaTupleDim;
 struct ScopLoc {
   ScopLoc() : End(0) {}
 
+  /// File identifier of the scop
+  FileID FID;
+
   /// Start location of the pragma
   clang::SourceLocation Scop;
   /// End location of the pragma
@@ -85,7 +88,16 @@ struct ScopHandler {
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
     std::vector<ScopLoc *> SList;
     for (auto SL : List) {
-      if ((StartFD <= SL->StartLine) && (EndFD >= SL->EndLine))
+      if (SL->FID != SM.getFileID(fd->getBeginLoc())) {
+        continue;
+      }
+      unsigned int StartL = SM.getFileOffset(
+          translateLineCol(SM, SM.getFileID(SL->Scop), StartFD, 1));
+      unsigned int EndL = SM.getFileOffset(
+          translateLineCol(SM, SM.getFileID(SL->EndScop), EndFD + 1, 1));
+
+      if (((StartFD <= SL->StartLine) && (EndFD >= SL->EndLine)) &&
+          ((StartL <= SL->Start) && (EndL >= SL->End)))
         SList.push_back(SL);
     }
     return SList;
@@ -104,13 +116,12 @@ struct ScopHandler {
                 ScopLoc::PragmaArgs PA) {
     ScopLoc *Loc = new ScopLoc();
     Utils::printDebug("MVPragmaHandler", "addStart");
-
+    Loc->FID = SM.getFileID(Start);
     Loc->PA = PA;
     Loc->Scop = Start;
     int Line = SM.getExpansionLineNumber(Start);
-    Start = translateLineCol(SM, SM.getFileID(Start), Line, 1);
     Loc->StartLine = Line;
-    Loc->Start = SM.getFileOffset(Start);
+    Loc->Start = SM.getFileOffset(translateLineCol(SM, Loc->FID, Line, 1));
     if (List.size() == 0 || List[List.size() - 1]->End != 0) {
       List.push_back(Loc);
     } else {
