@@ -26,7 +26,7 @@
  * SOFTWARE.
  */
 
-#include "include/StmtWrapper.h" 
+#include "include/StmtWrapper.h"
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
@@ -45,12 +45,8 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
   ScopHandler::visitScop(*Scop);
   for (auto StmtWithin : CS->body()) {
     auto ST = dyn_cast<Stmt>(StmtWithin);
-    StmtWithin->dump();
-    Utils::printDebug("StmtWrapper", "Parsing statement");
     if (!ST) {
       continue;
-    } else {
-      Utils::printDebug("StmtWrapper", "This is not a stmt");
     }
     unsigned int Start =
         Utils::getSourceMgr()->getExpansionLineNumber(ST->getBeginLoc());
@@ -59,6 +55,7 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
     if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
       Utils::printDebug("StmtWrapper genStmtWraps",
                         "new StmtWrapper => " + Utils::getStringFromStmt(ST));
+      ST->dump();
       StmtWrapper *NewStmt = new StmtWrapper(ST);
       SList.push_back(NewStmt);
     }

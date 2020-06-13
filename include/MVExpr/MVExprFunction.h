@@ -8,6 +8,7 @@
 
 #ifndef MACVETH_MVEXPRFUNC_H
 #define MACVETH_MVEXPRFUNC_H
+
 #include "include/MVExpr/MVExpr.h"
 
 using namespace macveth;
@@ -18,7 +19,7 @@ namespace macveth {
 class MVExprFunc : public MVExpr {
 public:
   virtual ~MVExprFunc(){};
-  MVExprFunc(Expr *E) : MVExpr(MVK_Function, E) {}
+  MVExprFunc(Expr *E);
 
   MVExprFunc(MVExprFunc *E) : MVExpr(MVK_Function, E->getClangExpr()) {
     this->FuncName = E->FuncName;
@@ -36,7 +37,7 @@ private:
   /// Name of the function
   std::string FuncName;
   /// Parameters of the funcion
-  std::list<MVExpr> OPS;
+  std::list<MVExpr *> OPS;
 };
 
 } // namespace macveth

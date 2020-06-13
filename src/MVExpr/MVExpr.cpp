@@ -36,22 +36,22 @@ namespace macveth {
 
 /// \deprecated
 /// New definition of operator+ in order to ease the unrolling
-MVExpr *operator+(const MVExpr &Lhs, int Rhs) {
-  MVExpr *NewExpr = new MVExpr(Lhs);
-  MVExpr::MVExprInfo TI = NewExpr->getTempInfo();
-  switch (TI) {
-  case MVExpr::MVExprInfo::TMP_RES:
-    NewExpr->setExprStr("unroll" + std::to_string(Rhs));
-    break;
-  case MVExpr::MVExprInfo::EXPR_CLANG:
-  case MVExpr::MVExprInfo::TAC_EXPR:
-  default:
-    /// FIXME
-    NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs) +
-                        " + offset");
-    break;
-  }
+// MVExpr *operator+(const MVExpr &Lhs, int Rhs) {
+//   MVExpr *NewExpr = new MVExpr(Lhs);
+//   MVExpr::MVExprInfo TI = NewExpr->getTempInfo();
+//   switch (TI) {
+//   case MVExpr::MVExprInfo::TMP_RES:
+//     NewExpr->setExprStr("unroll" + std::to_string(Rhs));
+//     break;
+//   case MVExpr::MVExprInfo::EXPR_CLANG:
+//   case MVExpr::MVExprInfo::TAC_EXPR:
+//   default:
+//     /// FIXME
+//     NewExpr->setExprStr(NewExpr->getExprStr() + " + " + std::to_string(Rhs) +
+//                         " + offset");
+//     break;
+//   }
 
-  return NewExpr;
-}
+//   return NewExpr;
+// }
 } // namespace macveth
