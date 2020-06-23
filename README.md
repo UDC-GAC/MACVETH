@@ -5,22 +5,21 @@
 [![Build Status][travis-badge]][travis-link]
 [![codecov][codecov-badge]][codecov-link]
 
-## Multi-dimensional Array C-compiler VEctorization and Translation for HPC applications
+## Multi-dimensional Array C-compiler for VEctorizating Tensors in HPC 
 
 Copyright (c) 2019-2020 the Colorado State University.
 
 Marcos Horro Varela (marcos.horro@udc.es)
-Louis-Noël Pouchet (pouchet@colostate.edu)
+Dr. Louis-Noël Pouchet (pouchet@colostate.edu)
 
 MACVETH is a source-to-source compiler from C/C++ codes to SIMD. It is platform
 or ISA and architecture dependent.
 
-MACVETH stands for Multi-Array C-compiler for VEctorization and Translation for
-High-performance computing. Besides, Macbeth, tragedy written by William
-Shakespeare, represents the detrimental effects of human's narcissism and vanity
-when looking for the power for its own benefits. In contraposition, MACVETH is
-composed of many intermediate representations seeking for a common purpose:
-optmize vectorization.
+MACVETH stands for Multi-Array C-compiler for VEctorizating Tensors in HPC
+apps. Besides, Macbeth, tragedy written by William Shakespeare, represents the 
+detrimental effects of human's narcissism and vanity when looking for the power
+for its own benefits. In contraposition, MACVETH is composed of many 
+intermediate representations seeking for a common purpose: optmize vectorization.
 Last but not least, the first and last letter of the acronym stand for the name
 of the main author (Marcos Horro).
 
@@ -46,10 +45,11 @@ Recommended steps for a clean building of the project:
 ``` 
 $> mkdir -p build && cd build
 $> CXX=[C++ compiler] CC=[C compiler] cmake -G "Unix Makefiles" ..
-$> make -j4
+$> make -j4 && sudo ln -sf $PWD/macveth /usr/local/bin/macveth
 ```
 
-This will create an executable in the same folder called 'macveth'
+This will create an executable in the same folder called 'macveth', and also
+will create a symbolic link to its executable. 
 
 ### Executing:
 
@@ -63,6 +63,13 @@ macveth_output.c/cpp.
 For displaying all the available options, type:
 
 `$> ./macveth --help` 
+
+## Documentation
+
+MACVETH is documented using Doxygen. Configuration file can be found in `doc/`
+directory. Besides, in this folder there are additional resources for
+understanding the intermediate representations created and used in this compiler.
+
 
 ## CLI Options:
 
@@ -121,6 +128,9 @@ Pragmas to be implemented (soon):
 This the list of restrictions and assumptions that the user must take into
 account when using this compiler:
 
+    - Languages:
+        + C/C++ files *only* have been tested.
+
     - ISA support:
         + Currently only working for AVX2 ISA architectures
 
@@ -136,19 +146,50 @@ account when using this compiler:
         + Reductions should look like:
 
             S = S + <expr>
-          in order to be detected properly
+          
+          in order to be detected properly (FIXME)
+
+    - Declarations within scop:
+        + Not permitted any kind or type of declaration within, e.g. int var = 42;
+        + Assignments are permitted, e.g. var = 42;
+
+    - Statements:
+        + Must be binary, i.e. all statements should be contained in the following 
+        grammar, in a Backus-Naur Form fashion:
+            
+            Syntax ::= <Statement>
+
+            Statement ::= (non-terminal)
+                | <expr> = <S>
+
+            S ::= (non-terminal)
+                | <S> op <S>
+                | <S> op
+                | <expr> 
+
+            expr ::= (terminal)
+                | array
+                | literal
+                | var
+
+        "op" may be a function (with two arguments) or a binary operation. This 
+        limitation imposes that either functions and operations must be binary.
 
     - Loop related:
         + Only "for" loops are supported
         + Declaration of variables within the loop is allowed, e.g.:
 
                 for (int i = 0; ...
+
           Also declaration outside the loop is allowed, e.g.:
+
                 int i;
                 ...
                 for (i = 0; ...
+
           Nonetheless, some compilers may allow declarations in both sides,
           MACVETH does not, e.g.:
+
                 int i;
                 ...
                 for (int i = 0; ...
@@ -156,6 +197,10 @@ account when using this compiler:
         + There are no increments in the body of the loop of the region of
         interest, i.e. the loop condition is only incremented in the for
         statement. Besides, steps must be unary, i.e.
+
+## Testing
+
+Refer to `tests/README`.
 
 ## Versioning
 

@@ -30,23 +30,25 @@
  */
 
 #include "include/MVExpr/MVExprFactory.h"
+#include "include/MVExpr/MVExprArray.h"
+#include "include/MVExpr/MVExprLiteral.h"
+#include "include/MVExpr/MVExprVar.h"
 #include "clang/AST/Expr.h"
 
 //------------------------------------------------
 MVExprFactory::MVExprType MVExprFactory::getTempTypeFromExpr(Expr *E) {
-  if (E == NULL)
+  if (E == NULL) {
     return MVExprType::VARIABLE;
+  }
+
   if (ArraySubscriptExpr *ASE =
           dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
     return MVExprType::ARRAY;
   }
+
   if (CXXOperatorCallExpr *CXX =
           dyn_cast<clang::CXXOperatorCallExpr>(E->IgnoreImpCasts())) {
     return MVExprType::ARRAY;
-  }
-
-  if (dyn_cast<clang::CallExpr>(E->IgnoreImpCasts())) {
-    return MVExprType::FUNC;
   }
 
   if (Utils::isNumericValue(E)) {
@@ -58,12 +60,9 @@ MVExprFactory::MVExprType MVExprFactory::getTempTypeFromExpr(Expr *E) {
 
 //------------------------------------------------
 MVExpr *MVExprFactory::createMVExpr(Expr *E) {
-  MVExprFactory::MVExprType T = MVExprFactory::getTempTypeFromExpr(E);
-  switch (T) {
+  switch (MVExprFactory::getTempTypeFromExpr(E)) {
   case MVExprFactory::MVExprType::ARRAY:
     return new MVExprArray(E);
-  case MVExprFactory::MVExprType::FUNC:
-    return new MVExprFunc(E);
   case MVExprFactory::MVExprType::LITERAL:
     return new MVExprLiteral(E);
   case MVExprFactory::MVExprType::VARIABLE:

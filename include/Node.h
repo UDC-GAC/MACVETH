@@ -8,9 +8,9 @@
 #ifndef MACVETH_NODE_H
 #define MACVETH_NODE_H
 
-#include "MVExpr/MVExprVar.h"
 #include "include/MVExpr/MVExpr.h"
 #include "include/MVExpr/MVExprLiteral.h"
+#include "include/MVExpr/MVExprVar.h"
 #include "include/StmtWrapper.h"
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
@@ -196,11 +196,6 @@ public:
 
   /// Is OP
   bool needsMemLoad() {
-    //    if (dyn_cast<MVExprVar>(this->MV)) {
-    //      return (dyn_cast<MVExprVar>(this->MV)->getTempInfo() ==
-    //              MVExpr::MVExprInfo::EXPR_CLANG);
-    //    }
-    // return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)));
     return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)) &&
             (this->MV->needsToBeLoaded()));
   }

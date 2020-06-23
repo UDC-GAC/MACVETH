@@ -31,14 +31,15 @@
 
 #include "include/CDAG.h"
 #include "include/PlcmntAlgo.h"
-#include "include/Vectorization/SIMD/AVX2Gen.h"
+#include "include/Utils.h"
+#include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
 #include "include/Vectorization/VectorIR.h"
 #include "clang/AST/Expr.h"
 #include <llvm-10/llvm/Support/ErrorHandling.h>
 #include <llvm-10/llvm/Support/raw_ostream.h>
 #include <stdexcept>
 
-namespace macveth {
+using namespace macveth;
 
 //---------------------------------------------
 std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType NL,
@@ -77,10 +78,6 @@ repeat:
       break;
     }
   }
-  // bool IsPartial = (Cursor < VL);
-  // if (IsPartial) {
-  //   Utils::printDebug("CDAG", "isPartial: " + std::to_string(Cursor));
-  // }
 
   // Compute memory operands for the operations fetched above
   int i = 0;
@@ -190,7 +187,8 @@ Node *Node::findWARDataRace(Node *N, Node::NodeListType NL) {
 
 // ---------------------------------------------
 Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
-  // Special cases are those Nodes which hold an assignment after the operation
+  // Special cases are those Nodes which hold an assignment after the
+  // operation
   if (T.getMVOP().isAssignment()) {
     // Assumption: a = b op c, c is always the "connector"
     Node *N = Node::findOutputNode(T.getC()->getExprStr(), L);
@@ -239,4 +237,3 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
   }
   return G;
 }
-} // namespace macveth

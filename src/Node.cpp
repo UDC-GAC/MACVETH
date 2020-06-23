@@ -56,7 +56,7 @@ bool Node::isTerminal() { return !(this->hasOutNodes()); }
 Node *Node::findOutputNode(std::string NodeName, NodeListType L) {
   NodeListType CL(L);
   CL.reverse();
-  for (Node *NL : CL) {
+  for (auto NL : CL) {
     if (NodeName == NL->getOutputInfoName()) {
       return NL;
     }

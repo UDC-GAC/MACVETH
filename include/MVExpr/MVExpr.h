@@ -41,6 +41,7 @@
 #include <string>
 
 using namespace clang;
+using namespace macveth;
 
 namespace macveth {
 
@@ -60,7 +61,9 @@ public:
     /// Defined in MVExprFunc
     MVK_Function,
     /// Defined in MVExprVar
-    MVK_Var
+    MVK_Var,
+    /// Other
+    MVK_Other
   };
 
   /// A MVExpr can be created from a clang::Expr or from a string, it can be an
@@ -73,9 +76,6 @@ public:
   /// Destructor
   virtual ~MVExpr(){};
 
-  /// Empty constructor
-  // MVExpr(){};
-  // MVExpr(MVExprKind MK) : MK(MK){};
   /// Clone constructor
   MVExpr(MVExpr *TE) {
     this->setExprStr(TE->getExprStr());
@@ -90,8 +90,7 @@ public:
   MVExpr(MVExprKind K, std::string E) : MK(K), ExprStr(E) {
     this->TempInfo = TAC_EXPR;
   }
-  /// Create MVExpr from string and set ad-hoc MVExprInfo
-  // MVExpr(std::string E, MVExprInfo TI) : ExprStr(E), TempInfo(TI) {}
+
   /// Create MVExpr from clang::Expr, which sets its inner type/info to
   /// EXPR_CLANG
   MVExpr(MVExprKind K, Expr *E) : MK(K), ClangExpr(E) {
@@ -174,19 +173,16 @@ private:
   /// Type of MVExpr
   MVExprInfo TempInfo = TMP_RES;
   /// Type of data in string
-  std::string TypeStr = "double";
-  /// Expression as string
-  std::string ExprStr = "";
+  std::string TypeStr = "";
   /// Expresion as Clang's
   clang::Expr *ClangExpr = NULL;
+  /// Expression as string
+  std::string ExprStr = "";
   /// Need to be loaded from mem
   bool NeedsMemLoad = true;
   /// Dimensiones of the expressions
   std::list<std::string> Dims;
-}; // namespace macveth
-
-/// Operators
-MVExpr *operator+(const MVExpr &Lhs, int Rhs);
+};
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_MVEXPR_H */

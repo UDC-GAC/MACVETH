@@ -7,6 +7,7 @@
  */
 #ifndef MACVETH_MVEXPRVAR_H
 #define MACVETH_MVEXPRVAR_H
+
 #include "include/MVExpr/MVExpr.h"
 #include <unordered_map>
 
@@ -39,4 +40,4 @@ public:
 };
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_MVEXPRVAR_H */

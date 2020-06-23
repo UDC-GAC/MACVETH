@@ -30,6 +30,7 @@
 #include "include/MVOptions.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
+#include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"

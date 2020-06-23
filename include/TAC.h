@@ -111,22 +111,15 @@ public:
   void printTAC() { Utils::printDebug("TAC", this->toString()); }
 
   /// Discover the equivalent MVOp given a clang::Expr
-  static MVOp getMVOPfromExpr(MVExpr *E);
+  // static MVOp getMVOPfromExpr(MVExpr *E);
 
-  /// Return list of 3AC from a starting Binary Operator
-  static void binaryOperatorToTAC(const clang::BinaryOperator *S,
-                                  std::list<TAC> *TacList, int Val);
+  // /// Return list of 3AC from a starting Binary Operator
+  // static void binaryOperatorToTAC(const clang::BinaryOperator *S,
+  //                                 std::list<TAC> *TacList, int Val);
 
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs
   static std::list<TAC> stmtToTAC(clang::Stmt *ST);
-
-  /// Inserts TACs in the input TacList and outputs the relation between the
-  /// statements and the ordering of the TACs
-  static std::map<int, int> exprToTAC(clang::CompoundStmt *CS,
-                                      std::vector<std::list<TAC>> *ListStmtTAC,
-                                      std::vector<Stmt *> *SList,
-                                      std::list<TAC> *TacList);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
@@ -160,4 +153,4 @@ private:
 typedef std::list<TAC> TacListType;
 
 } // namespace macveth
-#endif // MACVETH_TAC_H
+#endif /* !MACVETH_TAC_H */
