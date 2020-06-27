@@ -1,15 +1,14 @@
 ![MACVETH](https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg)
 
-# MACVETH
+# MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors in HPC 
 
 [![Build Status][travis-badge]][travis-link]
 [![codecov][codecov-badge]][codecov-link]
 
-## Multi-dimensional Array C-compiler for VEctorizating Tensors in HPC 
-
 Copyright (c) 2019-2020 the Colorado State University.
 
 Marcos Horro Varela (marcos.horro@udc.es)
+
 Dr. Louis-Noël Pouchet (pouchet@colostate.edu)
 
 MACVETH is a source-to-source compiler from C/C++ codes to SIMD. It is platform
@@ -80,9 +79,8 @@ In this section we will comment in detail all the options available:
 
     --input-cdag=<file>: Input file with placements for the CDAG created as IR
 
-    --macro-free: The backend will generate intrinsics and will not use the
-                  Vector API for generating SIMD code. This flag is needed right
-                  now because the VectorAPI is not implemented yet.
+    --macro-code: TODO yet, generate code using a macro fashion code, not ad-hoc 
+        intrinsics code.
 
     --march=<arch>: Target architecture (not implemented yet)
     --misa=<isa>: Target ISA (only AVX2 right now)
@@ -120,8 +118,10 @@ Pragmas to be implemented (soon):
     assume that A[0] % 64 = 0. Per array option.
 
     - tc {>|>=|=|<|<=} [val]: hint regarding the trip count of the loop, i.e.
-
       the expected number of iterations. Per loop option.
+
+    - li val1 val2 [val21 val22 [...]]: loop interchange, interchanges the val1
+        with val2, and so on.
 
 ## Limitations/restrictions and assumptions:
 
@@ -164,8 +164,12 @@ account when using this compiler:
 
             S ::= (non-terminal)
                 | <S> op <S>
-                | <S> op
-                | <expr> 
+                | f(<S>,<S>)
+                | f(<S>)
+                | <expr>
+
+            op ::= (terminal)
+                | +,-,/,*,%
 
             expr ::= (terminal)
                 | array
