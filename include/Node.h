@@ -149,6 +149,9 @@ public:
     }
   }
 
+  /// Get MVExpr
+  MVExpr *getMVExpr() { return this->MV; }
+
   /// Schedule info is needed for the algorithms to perform permutations in
   /// nodes
   void setFreeSchedInfo(int FS) { this->SI.FreeSched = FS; }

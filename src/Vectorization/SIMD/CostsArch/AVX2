@@ -25,7 +25,9 @@ UNDEF,gather,10,5,1,_mm#W_#Pgather#S_#D
 UNDEF,broadcast,10,1,1,_mm#W_#Pbroadcast#S_#D
 UNDEF,set,1,1,1,_mm#W_#Pset#S_#D
 UNDEF,hadd,6,_mm#W_hadd_#D
+UNDEF,hsub,6,_mm#W_hsub_#D
 UNDEF,cvtsd,1,_mm#P_cvtsd_#S
+UNDEF,exp,1,_mm#W_exp_#D
 # Multiplication
 Skylake,mul,4,_mm#W_#Pmul#S_#D
 Skylake,*,4,_mm#W_#Pmul#S_#D

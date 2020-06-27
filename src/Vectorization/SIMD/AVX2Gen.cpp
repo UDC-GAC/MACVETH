@@ -155,7 +155,7 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 std::string AVX2Gen::declareAuxArray(VectorIR::VDataType DT) {
   std::string Type = VDTypeToCType[DT];
   std::string AuxArr =
-      getNextArrRegister(Type, VectorIR::VDataTypeWidthBits[DT] / 8);
+      getNextArrRegister(Type, 256 / VectorIR::VDataTypeWidthBits[DT]);
   return AuxArr;
 }
 
@@ -190,25 +190,29 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     VRedux.push_back(VIL[t].Result);
   }
 
+  // FIXME:
+  auto OP = (VIL[0].FuncName == ("add") || VIL[0].FuncName == ("+")) ? "hsub"
+                                                                     : "hadd";
+
   int S = (NumRedux + (NumRedux % 2)) / 2;
   while (true) {
-    addSIMDInst(VIL[0].VOPResult, "hadd", "", "",
+    addSIMDInst(VIL[0].VOPResult, OP, "", "",
                 {VAccm[0], (NumRedux > 1) ? VAccm[1] : VAccm[0]},
                 SIMDType::VREDUC, &IL, VAccm[0]);
     if (S > 1) {
-      addSIMDInst(VIL[2].VOPResult, "hadd", "", "",
+      addSIMDInst(VIL[2].VOPResult, OP, "", "",
                   {VAccm[2], (NumRedux > 3) ? VAccm[3] : VAccm[2]},
                   SIMDType::VREDUC, &IL, VAccm[2]);
       VAccm[1] = VAccm[2];
     }
     if (S > 2) {
-      addSIMDInst(VIL[4].VOPResult, "hadd", "", "",
+      addSIMDInst(VIL[4].VOPResult, OP, "", "",
                   {VAccm[4], (NumRedux > 5) ? VAccm[5] : VAccm[4]},
                   SIMDType::VREDUC, &IL, VAccm[4]);
       VAccm[3] = VAccm[4];
     }
     if (S > 3) {
-      addSIMDInst(VIL[6].VOPResult, "hadd", "", "",
+      addSIMDInst(VIL[6].VOPResult, OP, "", "",
                   {VAccm[6], (NumRedux > 7) ? VAccm[7] : VAccm[6]},
                   SIMDType::VREDUC, &IL, VAccm[6]);
       VAccm[5] = VAccm[6];
@@ -238,8 +242,8 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
       std::string Op2 = VAccm[0];
       if (NumRedux > 2)
         Op2 = genGenericFunc(Perm, {VAccm[1], Mask});
-      addSIMDInst(VIL[0].VOPResult, "hadd", "", "", {Op1, Op2},
-                  SIMDType::VREDUC, &IL, VAccm[0]);
+      addSIMDInst(VIL[0].VOPResult, OP, "", "", {Op1, Op2}, SIMDType::VREDUC,
+                  &IL, VAccm[0]);
 
       break;
     }
@@ -263,10 +267,6 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     std::string Idx = "[" + std::to_string(VIdx[R]) + "]";
     addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQR, &IL);
   }
-
-  // Extract value 1
-  // addSIMDInst(VIL[0].VOPResult, "cvt" + TSuffix, TW, TD, {VAccm[0]},
-  //            SIMDType::VREDUC, &IL, VRedux[0]);
 
   return IL;
 }
@@ -367,6 +367,11 @@ AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
 // ---------------------------------------------
 std::string AVX2Gen::getRegisterType(VectorIR::VDataType DT,
                                      VectorIR::VWidth W) {
+  auto Width = W;
+  assert((W != 512) && "Width not permitted in AVX2!!");
+  if (W < 256) {
+    Width = VectorIR::VWidth::W128;
+  }
   std::string Suffix = "";
   if (DT == VectorIR::VDataType::DOUBLE) {
     Suffix = "d";
@@ -375,7 +380,7 @@ std::string AVX2Gen::getRegisterType(VectorIR::VDataType DT,
   } else {
     Suffix = "i";
   }
-  return "__m" + std::to_string(W) + Suffix;
+  return "__m" + std::to_string(Width) + Suffix;
 }
 
 // ---------------------------------------------
@@ -418,13 +423,14 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
   // TODO: generate preffix
   std::string PrefS = "";
   // TODO: generate suffix
-  std::string SuffS = "";
+  std::string SuffS = "u";
   // Mask
   PrefS += (V.IsPartial) ? "mask" : "";
 
   // TODO:
   // Type of load: load/u
-  // [1] software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
+  // [1]
+  // https://software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
   // [2] https://stackoverflow.com/questions/36191748/difference-between-\
   // load1-and-broadcast-intrinsics
   std::string Op = "load";
@@ -461,7 +467,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
   }
 
   // FIXME:
-  V.Width = VectorIR::VWidth::W256;
+  // V.Width = VectorIR::VWidth::W256;
 
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VBCAST, &IL);
@@ -546,6 +552,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
     }
   } else {
     Args.push_back(getOpName(V.R, false, false));
+    // Use unaligned whenever it is possible
+    SuffS = "u";
   }
 
   // Adding SIMD inst to the list
@@ -631,7 +639,6 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vsub(VectorIR::VectorOP V) {
   std::string PrefS = "";
   // TODO: generate suffix
   std::string SuffS = "";
-
   // TODO:
   std::string Op = "sub";
 
@@ -692,6 +699,30 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vmod(VectorIR::VectorOP V) {
 }
 
 // ---------------------------------------------
+SIMDGenerator::SIMDInstListType AVX2Gen::vfunc(VectorIR::VectorOP V) {
+  SIMDGenerator::SIMDInstListType IL;
+  // TODO: generate preffix
+  std::string PrefS = "";
+  // TODO: generate suffix
+  std::string SuffS = "";
+  // TODO:
+  std::string Op = V.getMVOp().toString();
+
+  // TODO: check
+  // List of parameters
+  std::list<std::string> Args;
+  Args.push_back(V.OpA.getName());
+  if (V.OpB.getName() != "") {
+    Args.push_back(V.OpB.getName());
+  }
+
+  // Adding SIMD inst to the list
+  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VFUNC, &IL);
+
+  return IL;
+}
+
+// ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
   SIMDGenerator::SIMDInstListType TIL;
@@ -726,6 +757,9 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   case clang::BO_Div:
     TIL = vdiv(VCopy);
     break;
+  default:
+    assert(false && "Reduction must be from an addition, substraction, "
+                    "multiplication or division");
   }
   IL.splice(IL.end(), TIL);
   std::string ReduxVar =
@@ -735,8 +769,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   /// instructions needed for it, wait until the peephole optimization says
   /// if there are any other reductions that can be packed and fused together.
   /// P.S. creating hacks make me a hacker? lol
-  addSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
-              ReduxVar);
+  addSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL, ReduxVar,
+              V.getMVOp().toString());
 
   return IL;
 }

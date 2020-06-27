@@ -106,7 +106,7 @@ SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
 
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
-  std::string FN = (MVOptions::MacroFree) ? FuncName : MVFuncName;
+  std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
   std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
                           (SType == SIMDType::VSTORER))
                              ? FN
@@ -142,7 +142,7 @@ std::list<std::string> SIMDGenerator::renderSIMDRegister(SIMDInstListType S) {
   std::list<std::string> L;
   // Render register declarations
   for (auto It : RegDeclared) {
-    std::string TypeRegDecl = It.first + " ";
+    auto TypeRegDecl = It.first + " ";
     auto VAuxRegs = It.second;
     TypeRegDecl += std::get<0>(VAuxRegs[0]) + " = {" +
                    std::to_string(std::get<1>(VAuxRegs[0])) + "}";
@@ -159,8 +159,8 @@ std::list<std::string> SIMDGenerator::renderSIMDRegister(SIMDInstListType S) {
 std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
   std::list<std::string> L;
   // Render instructions
-  for (SIMDInst I : S) {
-    std::string Inst = I.render() + ";\t// cost = " + std::to_string(I.Cost);
+  for (auto I : S) {
+    auto Inst = I.render() + ";\t// latency = " + std::to_string(I.Cost);
     L.push_back(Inst);
   }
   return L;
@@ -191,14 +191,20 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     // We will say it is a gather if we have to use an index to retrieve data
     // from memory (not contiguous)
     //
-    // We will say it is a set if we have to explicity set the values of the
+    // We will say it is a set if we have to explicitly set the values of the
     // vector operand
 
-    // FIXME:
     bool EqualVal = equalValues(V.VSize, V.UOP);
-    bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
+    bool ContMem = V.MemOp && !(V.Contiguous);
     bool ScatterMem = V.MemOp && !ContMem;
     bool ExpVal = !V.MemOp;
+
+    Utils::printDebug("SIMDGenerator",
+                      "V = " + V.Name +
+                          "; EqualVal = " + std::to_string(EqualVal) +
+                          "; ContMem =" + std::to_string(ContMem) +
+                          "; ScatterMem = " + std::to_string(ScatterMem) +
+                          "; ExpVal = " + std::to_string(ExpVal));
 
     // 0, 1, 0, 0
     if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
@@ -251,6 +257,8 @@ void SIMDGenerator::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
     }
   } else {
     // TODO decide what todo when we have the custom operations
+    Utils::printDebug("SIMDGenerator", "it is not a binary operation");
+    TIL = vfunc(V);
   }
 
   // If there is a store
@@ -337,29 +345,6 @@ void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name,
   RegDeclared[Type].push_back(std::make_tuple(Name, InitVal));
 }
 
-// // ---------------------------------------------
-// template <>
-// void SIMDGenerator::addRegToDeclare<double>(std::string Type, std::string
-// Name,
-//                                             std::vector<double> InitVals) {
-//   if (!(std::find(RegDeclared[Type].begin(), RegDeclared[Type].end(), Name)
-//   !=
-//         RegDeclared[Type].end())) {
-//     RegDeclared[Type].push_back(Name);
-//   }
-// }
-
-// // ---------------------------------------------
-// template <>
-// void SIMDGenerator::addRegToDeclare<int>(std::string Type, std::string Name,
-//                                          std::vector<int> InitVals) {
-//   if (!(std::find(RegDeclared[Type].begin(), RegDeclared[Type].end(), Name)
-//   !=
-//         RegDeclared[Type].end())) {
-//     RegDeclared[Type].push_back(Name);
-//   }
-// }
-
 // ---------------------------------------------
 std::string replacePattern(std::string P, std::regex R, std::string Rep) {
   return std::regex_replace(P, R, Rep);
@@ -368,7 +353,7 @@ std::string replacePattern(std::string P, std::regex R, std::string Rep) {
 // ---------------------------------------------
 std::string SIMDGenerator::genGenericFunc(std::string F,
                                           std::vector<std::string> L) {
-  std::string R = F + "(";
+  auto R = F + "(";
   if (L.size() == 0) {
     return R + ")";
   }
@@ -399,7 +384,6 @@ std::string SIMDGenerator::replacePatterns(std::string Pattern, std::string W,
 
 // ---------------------------------------------
 void SIMDGenerator::clearMappings() {
-  // FIXME:
   for (auto &X : RegDeclared) {
     X.second.clear();
   }

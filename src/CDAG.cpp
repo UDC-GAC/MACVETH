@@ -45,14 +45,15 @@ using namespace macveth;
 std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType NL,
                                                 SIMDGenerator *SG) {
   std::list<VectorIR::VectorOP> VList;
-
   Node *VLoadA[64];
   Node *VLoadB[64];
   Node *VOps[64];
   int Cursor = 0;
 repeat:
+  bool IsUnary = false;
   // Consume nodes
   int VL = 4;
+  // This is where magic should happen
   while (!NL.empty()) {
     // Consume the first one
     VOps[Cursor] = NL.front();
@@ -66,13 +67,15 @@ repeat:
     // 06/03/2020: I think this is solved by tackling reductions as a non
     // standard case and, then, detecting them before going onto the general
     // case.
+    // 06/25/2020: not sure if reductions should be handled that way...
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
       Utils::printDebug("CDAG", "Full OPS of same type and placement = " +
                                     VOps[Cursor - 1]->getValue());
       break;
     }
-    NL.pop_front();
+    // NL.pop_front();
+    NL.erase(NL.begin());
     if (++Cursor == VL) {
       Utils::printDebug("CDAG", "VL OPS achieved");
       break;
@@ -82,25 +85,35 @@ repeat:
   // Compute memory operands for the operations fetched above
   int i = 0;
   while ((i < Cursor) && (VOps[i] != nullptr)) {
-    Node::NodeListType Aux = VOps[i]->getInputs();
-    VLoadA[i] = Aux.front();
-    Aux.pop_front();
-    VLoadB[i++] = Aux.front();
-    Aux.pop_front();
+    auto Aux = VOps[i]->getInputs();
+    VLoadA[i] = Aux[0];
+    if (Aux[1] != nullptr) {
+      VLoadB[i] = Aux[1];
+      Aux.erase(Aux.begin());
+      IsUnary = false;
+    } else {
+      IsUnary = true;
+    }
+    i++;
   }
 
   // Debugging
   for (int n = 0; n < Cursor; ++n) {
+    std::string B = IsUnary ? "" : VLoadB[n]->getRegisterValue() + "; ";
     Utils::printDebug("CDAG", VOps[n]->getRegisterValue() + " = " +
                                   VLoadA[n]->getRegisterValue() + " " +
-                                  VOps[n]->getValue() + " " +
-                                  VLoadB[n]->getRegisterValue() + "; " +
+                                  VOps[n]->getValue() + " " + B +
                                   VOps[n]->getSchedInfoStr());
   }
 
   if (Cursor != 0) {
     // Compute the vector cost
-    VList.push_back(VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB));
+    auto NewVectInst =
+        VectorIR::VectorOP(Cursor, VOps, VLoadA, (IsUnary) ? nullptr : VLoadB);
+    if (NewVectInst.isSequential()) {
+      // TODO: Emit TAC "as it is"
+    }
+    VList.push_back(NewVectInst);
   }
 
   // Repeat process if list not empty

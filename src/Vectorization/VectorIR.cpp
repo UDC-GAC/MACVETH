@@ -30,6 +30,7 @@
  */
 
 #include "include/Vectorization/VectorIR.h"
+#include "include/MVExpr/MVExprArray.h"
 #include "include/Utils.h"
 #include <algorithm>
 
@@ -117,13 +118,12 @@ MVOp VectorIR::VectorOP::getMVOp() {
 
 // ---------------------------------------------
 int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
-  // FIXME: is this even possible?
   int64_t *Idx = (int64_t *)malloc(sizeof(int64_t) * VL);
-  Idx[0] = 0;
-  if (VL <= 1)
-    return Idx;
-  for (int n = 0; n < VL - 1; ++n) {
-    Idx[n + 1] = *V[n + 1] - *V[n];
+  for (int i = 0; i < VL; ++i) {
+    auto MV = dyn_cast<MVExprArray>(V[i]->getMVExpr());
+    if (!MV) {
+      return nullptr;
+    }
   }
   return Idx;
 }
@@ -213,6 +213,15 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   if (this->MemOp) {
     // Get Memory index
     this->Idx = getMemIdx(VL, V, this->Mask);
+    if (this->Idx != nullptr) {
+      auto T = true;
+      if (VL > 1) {
+        for (int i = 1; i < VL; ++i) {
+          T &= ((Idx[i] - 1) == Idx[i - 1]);
+        }
+      }
+      this->Contiguous = T;
+    }
 
     // Get shuffle index
     this->Shuffle = getShuffle(VL, this->getWidth(), V);

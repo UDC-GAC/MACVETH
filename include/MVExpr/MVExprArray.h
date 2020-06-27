@@ -19,11 +19,102 @@ namespace macveth {
 /// Abstraction of arrays for simplicity
 class MVExprArray : public MVExpr {
 public:
-  struct MVExprArrIdx {
-    int Dim = 0;
-    std::string Name;
+  /// Abstraction to handle affine indices in MACVETH
+  struct MVAffineIndex {
+    /// Left part of the expression, if it has
+    MVAffineIndex *LHS;
+    /// Right part of the expression, if it has
+    MVAffineIndex *RHS;
+    /// Value of the expression (we do not care of its type, we handle strings)
+    std::string Val = "";
+    /// Unrolled
+    std::map<std::string, bool> Unrolled;
+    /// BinaryOperator of the expression if it has any
+    clang::BinaryOperator::Opcode OP;
+
+    /// Check if index is terminal or not (has real Val)
+    bool isTerminal() {
+      return ((Val != "") && (LHS == nullptr) && (RHS == nullptr));
+    }
+
+    // Destructor
+    // ~MVAffineIndex() {
+    //   if (this->RHS != nullptr) {
+    //     delete this->RHS;
+    //   }
+    //   if (this->LHS != nullptr) {
+    //     delete this->LHS;
+    //   }
+    // }
+
+    /// Main constructor
+    MVAffineIndex(const Expr *E) {
+      if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
+          dyn_cast<IntegerLiteral>(E->IgnoreImpCasts())) {
+        this->Val = Utils::getStringFromExpr(E);
+        this->LHS = nullptr;
+        this->RHS = nullptr;
+      }
+      if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
+        this->LHS = new MVAffineIndex(Op->getLHS());
+        this->RHS = new MVAffineIndex(Op->getRHS());
+        this->OP = Op->getOpcode();
+        this->Val = "";
+      }
+    }
+
+    /// Constructor when given only a string
+    MVAffineIndex(std::string S) {
+      this->LHS = nullptr;
+      this->RHS = nullptr;
+      this->Val = S;
+      this->Unrolled[S] = true;
+    }
+
+    /// Update index recursively
+    bool updateIndex(int UF, std::string LL) {
+      if ((isTerminal()) && (LL != this->Val)) {
+        return false;
+      }
+
+      if ((isTerminal()) && (LL == this->Val) && !Unrolled[LL]) {
+        this->Val = "";
+        this->LHS = new MVAffineIndex(LL);
+        this->LHS->Unrolled[LL] = true;
+        this->RHS = new MVAffineIndex(std::to_string(UF));
+        this->RHS->Unrolled[LL] = true;
+        this->OP = BinaryOperator::Opcode::BO_Add;
+        this->Unrolled[LL] = true;
+        return false;
+      }
+      if (Unrolled[LL]) {
+        return true;
+      }
+      if (this->LHS != nullptr) {
+        if (this->LHS->updateIndex(UF, LL)) {
+          this->LHS->RHS = new MVAffineIndex(std::to_string(UF));
+        }
+      }
+      if (this->RHS != nullptr) {
+        if (this->RHS->updateIndex(UF, LL)) {
+          this->RHS->RHS = new MVAffineIndex(std::to_string(UF));
+        }
+      }
+      return false;
+    }
+
+    /// Convert to string recursively
+    std::string toString() {
+      if (isTerminal()) {
+        return this->Val;
+      } else {
+        return ("(" + this->LHS->toString() + " " +
+                BinaryOperator::getOpcodeStr(this->OP).str() + " " +
+                this->RHS->toString() + ")");
+      }
+    }
   };
-  typedef std::list<std::string> IdxVector;
+  typedef std::list<MVAffineIndex> IdxVector;
 
   virtual ~MVExprArray(){};
   MVExprArray(Expr *E) : MVExpr(MVK_Array, E) {
@@ -43,7 +134,8 @@ public:
   }
   MVExprArray(MVExprArray *E) : MVExpr(MVK_Array, E->getClangExpr()) {
     this->BaseName = E->BaseName;
-    this->Idx = E->Idx;
+    IdxVector Copy(E->Idx);
+    this->Idx = Copy;
   }
 
   /// Implementation of unrolling for arrays. In this case we will need to
@@ -78,7 +170,9 @@ private:
                                       IdxVector &Idxs);
 
 private:
+  /// Base name of the array
   std::string BaseName;
+  /// Custom array of indices
   IdxVector Idx;
 };
 } // namespace macveth

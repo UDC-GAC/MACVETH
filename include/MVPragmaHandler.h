@@ -165,7 +165,6 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
   PP.Lex(Tok);
   while ((II = getValue(Tok)) != NULL) {
     PP.Lex(Tok);
-    Utils::printDebug("ScopLoc", "Token = " + II->getName().str());
     if (((II->isStr("nounroll")) || (II->isStr("unroll")) ||
          (II->isStr("unrollandjam"))) &&
         (UnrollOptParsed)) {
@@ -198,9 +197,6 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
     if (UnrollFactor == 0) {
       assert(false && "Bad value for unrolling factor");
     }
-    Utils::printDebug("ScopLoc",
-                      "Adding unrolling factor = " + II->getName().str() +
-                          ", " + std::to_string(UnrollFactor));
     PA.UnrollDim.push_back(
         std::tuple<std::string, int>(II->getName().str(), UnrollFactor));
     PP.Lex(Tok);

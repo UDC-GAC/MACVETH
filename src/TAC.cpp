@@ -169,15 +169,14 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   }
 
   TAC NewTac(TmpA, TmpB, TmpC, Op);
-  // NewTac.printTAC();
   TacList->push_back(NewTac);
 }
 
 // ---------------------------------------------
-std::list<TAC> TAC::stmtToTAC(clang::Stmt *ST) {
+TacListType TAC::stmtToTAC(clang::Stmt *ST) {
   // Reset the RegVal in TAC class
   auto S = dyn_cast<clang::Expr>(ST);
-  std::list<TAC> TacList;
+  TacListType TacList;
 
   // Check if the expression is binary
   clang::BinaryOperator *SBin = NULL;
@@ -207,24 +206,24 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   auto NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
   auto NewC =
       Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL;
-  TAC *UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
+  auto UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
   UnrolledTac->setLoopName(Tac->getLoopName());
   return UnrolledTac;
 }
 
 // ---------------------------------------------
-std::list<TAC> TAC::unrollTacList(std::list<TAC> TacList, int UnrollFactor,
-                                  int UpperBound, std::string LoopLevel) {
-  std::list<TAC> TacListOrg;
+TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
+                               int UpperBound, std::string LoopLevel) {
+  TacListType TacListOrg;
   int Steps = UpperBound / UnrollFactor;
   for (int S = 0; S < Steps; S++) {
-    for (TAC Tac : TacList) {
-      TAC *NT = (TAC::unroll(&Tac, UnrollFactor, S, 0x000000, LoopLevel));
+    for (auto T : TacList) {
+      auto NT = (TAC::unroll(&T, UnrollFactor, S, 0x000000, LoopLevel));
       if (NT != NULL) {
         TacListOrg.push_back(*NT);
       }
       if ((NT == NULL) && (S == 0)) {
-        TacListOrg.push_back(Tac);
+        TacListOrg.push_back(T);
       }
     }
   }
