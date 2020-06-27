@@ -105,6 +105,10 @@ public:
              ", step = " + std::to_string(Step) +
              "; declared = " + std::to_string(Declared);
     }
+
+    static void clearDims() {
+      LoopInfo::DimDeclared.clear();
+    }
   };
 
   /// LoopInfo list type
@@ -176,4 +180,4 @@ private:
   std::string InnerLoopName = "";
 };
 } // namespace macveth
-#endif // MACVETH_STMTWRAPPER_H
+#endif /* !MACVETH_STMTWRAPPER_H */

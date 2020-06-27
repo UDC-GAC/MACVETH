@@ -38,7 +38,8 @@ public:
 
   /// Topological sort, very naive implementation
   static Node::NodeListType topSort(Node::NodeListType NL) {
-    NL.sort([](Node *Lhs, Node *Rhs) { return *Lhs < *Rhs; });
+    std::sort(NL.begin(), NL.end(),
+              [](Node *Lhs, Node *Rhs) { return *Lhs < *Rhs; });
     return NL;
   }
 

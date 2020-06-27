@@ -18,6 +18,7 @@ namespace macveth {
 /// Abstraction of variables for simplicity
 class MVExprVar : public MVExpr {
 public:
+  /// Destructor
   virtual ~MVExprVar(){};
   MVExprVar(MVExprVar *E) : MVExpr(E){};
   MVExprVar(Expr *E) : MVExpr(MVK_Var, E) {}
@@ -31,11 +32,15 @@ public:
   }
   /// Unroll expression
   virtual MVExpr *unrollExpr(int UF, std::string LL);
+  /// Check if this has been unrolled
   static bool hasBeenUnrolled(std::string Reg, std::string Dim);
+  /// Unroll register
   static void regUnrollDim(MVExpr *MVE, std::string Dim, int UF);
+  /// Undo unrolled register
   static void regUndoUnrollDim(MVExpr *MVE, std::string Dim, int UF);
   /// In order to be able to use RTTI
   static bool classof(const MVExpr *S) { return S->getKind() == MVK_Var; }
+  /// Map to register the dimensions unrolled
   static inline std::map<std::string, std::list<std::string>> RegDimUnrolled;
 };
 

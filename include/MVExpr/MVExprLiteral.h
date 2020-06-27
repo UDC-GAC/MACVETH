@@ -34,4 +34,4 @@ public:
 };
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_MVEXPRLITERAL_H */

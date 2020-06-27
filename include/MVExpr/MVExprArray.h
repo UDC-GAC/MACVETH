@@ -82,4 +82,4 @@ private:
   IdxVector Idx;
 };
 } // namespace macveth
-#endif
+#endif /* !MACVETH_MVEXPRARRAY_H */

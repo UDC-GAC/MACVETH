@@ -100,10 +100,11 @@ public:
 
   /// To string method
   std::string toString() {
-    std::string Op = this->MVOP.toString();
+    auto C = (this->getC() != NULL) ? ", " + this->getC()->getExprStr() : "";
+    auto Op = this->MVOP.toString();
     Op = "t: " + this->getA()->getExprStr() + ", " +
-         this->getB()->getExprStr() + ", " + this->getC()->getExprStr() + ", " +
-         Op + "; (loop = " + this->getLoopName() + ")";
+         this->getB()->getExprStr() + C + ", " + Op +
+         "; (loop = " + this->getLoopName() + ")";
     return Op;
   }
 

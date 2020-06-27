@@ -45,6 +45,8 @@ using namespace clang::driver;
 using namespace clang::tooling;
 using namespace llvm;
 
+namespace macveth {
+
 class MVFuncVisitor : public RecursiveASTVisitor<MVFuncVisitor> {
 public:
   explicit MVFuncVisitor(ASTContext *Context, Rewriter &R, ScopHandler *L)
@@ -113,5 +115,5 @@ private:
   /// requests to the low-level RewriteBuffers involved.
   Rewriter TheRewriter;
 };
-
-#endif
+}
+#endif /* !MACVETH_FRONTEND_H */

@@ -113,6 +113,7 @@ void rewriteLoops(std::list<StmtWrapper *> SList, Rewriter *Rewrite) {
   SourceLocation Loc = SList.front()->getClangStmt()->getBeginLoc();
   Rewrite->InsertTextBefore(
       Loc, StmtWrapper::LoopInfo::getDimDeclarations(DimsDeclared));
+  StmtWrapper::LoopInfo::clearDims();
 }
 
 // ---------------------------------------------
@@ -123,10 +124,11 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
       continue;
     }
     Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                       "// statement replaced: ", true, true);
+                       "// statement vectorized: ", true, true);
   }
 }
 
+// --------------------------------------------
 StmtWrapper *loopContainsSIMD(SIMDGenerator::SIMDInst SI,
                               std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
@@ -149,6 +151,7 @@ StmtWrapper *loopContainsSIMD(SIMDGenerator::SIMDInst SI,
   return NULL;
 }
 
+// ---------------------------------------------
 bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
                                              std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
@@ -157,7 +160,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
       if (L) {
         Rewrite.InsertTextAfterToken(
             S->getClangStmt()->getEndLoc(),
-            SI.render() + ";\t// cost = " + std::to_string(SI.Cost) + "\n");
+            SI.render() + ";\t// lantency = " + std::to_string(SI.Cost) + "\n");
       }
       return false;
     } else {
@@ -174,6 +177,17 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
 // ---------------------------------------------
 void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
+
+  // if (SI.SType == SIMDGenerator::SIMDType::VSEQ) {
+  //   for (auto S : SL) {
+  //     for (auto T : S->getTacList()) {
+  //       if (SI.TacID == T.getTacID()) {
+  //         renderTACInPlace({S});
+  //         return;
+  //       }
+  //     }
+  //   }
+  // }
   // Reduce op
   if ((SI.SType == SIMDGenerator::SIMDType::VREDUC) ||
       (SI.SType == SIMDGenerator::SIMDType::VSTORER) ||
@@ -186,10 +200,10 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
       } else {
         for (auto T : S->getTacList()) {
           if (SI.TacID == T.getTacID()) {
-            Rewrite.InsertText(
-                S->getClangStmt()->getBeginLoc(),
-                SI.render() + ";\t// cost = " + std::to_string(SI.Cost) + "\n",
-                true, true);
+            Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                               SI.render() + ";\t// latency = " +
+                                   std::to_string(SI.Cost) + "\n",
+                               true, true);
             return;
           }
         }
@@ -259,8 +273,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
       // Computing the cost model of the CDAG created
       auto SInfo = CDAG::computeCostModel(G, SIMDGen);
-      // Rewriting loops
-      rewriteLoops(SL, &Rewrite);
       //// Printing the registers we are going to use
       for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
         Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
@@ -269,6 +281,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       for (auto InsSIMD : SInfo.SIMDList) {
         renderSIMDInstInPlace(InsSIMD, SL);
       }
+      // Rewriting loops
+      rewriteLoops(SL, &Rewrite);
       delete G;
     }
     // Comment statements

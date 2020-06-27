@@ -19,18 +19,13 @@ std::string Node::toString() {
   Str += "\tPlcmnt\t\t= " + std::to_string(this->getSchedInfo().Plcmnt) + "\n";
   Str += "\tNodeID\t\t= " + std::to_string(this->getSchedInfo().NodeID) + "\n";
   Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
-  if (this->getInputs().front() != NULL) {
-    Str += "\tInput1\t\t= " + this->getInputs().front()->getValue() +
-           " (ID = " +
-           std::to_string(this->getInputs().front()->getSchedInfo().NodeID) +
-           "); NODE_MEM = " +
-           std::to_string(this->getInputs().front()->T == NODE_MEM) + "\n";
-  }
-  if (this->getInputs().back() != NULL) {
-    Str += "\tInput2\t\t= " + this->getInputs().back()->getValue() + " (ID = " +
-           std::to_string(this->getInputs().back()->getSchedInfo().NodeID) +
-           "); NODE_MEM = " +
-           std::to_string(this->getInputs().back()->T == NODE_MEM) + "\n";
+  for (int i = 0; i < this->getInputs().size(); ++i) {
+    if (this->getInputs()[i] != NULL) {
+      Str += "\tInput1\t\t= " + this->getInputs()[i]->getValue() + " (ID = " +
+             std::to_string(this->getInputs()[i]->getSchedInfo().NodeID) +
+             "); NODE_MEM = " +
+             std::to_string(this->getInputs()[i]->T == NODE_MEM) + "\n";
+    }
   }
   Str += "\tLoopName\t= " + this->getLoopName() + "\n";
   Str += "----------------------------------------";
@@ -55,7 +50,7 @@ bool Node::isTerminal() { return !(this->hasOutNodes()); }
 // ---------------------------------------------
 Node *Node::findOutputNode(std::string NodeName, NodeListType L) {
   NodeListType CL(L);
-  CL.reverse();
+  std::reverse(std::begin(CL), std::end(CL));
   for (auto NL : CL) {
     if (NodeName == NL->getOutputInfoName()) {
       return NL;

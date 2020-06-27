@@ -55,7 +55,6 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
     if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
       Utils::printDebug("StmtWrapper genStmtWraps",
                         "new StmtWrapper => " + Utils::getStringFromStmt(ST));
-      ST->dump();
       StmtWrapper *NewStmt = new StmtWrapper(ST);
       SList.push_back(NewStmt);
     }
@@ -245,6 +244,7 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
   return FullUnroll;
 }
 
+// ---------------------------------------------
 std::string replaceTmpTac(std::map<std::string, std::vector<std::string>> T,
                           std::string K) {
   if (T.count(K) > 0) {
@@ -262,10 +262,10 @@ std::string StmtWrapper::renderTacAsStmt() {
   std::map<std::string, std::vector<std::string>> TmpResToReplace;
   TacListType TCopy(this->getTacList());
   for (auto T : TCopy) {
-    std::string A = T.getA()->getExprStr();
-    std::string B = T.getB()->getExprStr();
+    auto A = T.getA()->getExprStr();
+    auto B = T.getB()->getExprStr();
     std::string C = "";
-    std::string Op = T.getMVOP().toString();
+    auto Op = T.getMVOP().toString();
     if (T.getC() != NULL) {
       C = T.getC()->getExprStr();
     }
@@ -276,10 +276,10 @@ std::string StmtWrapper::renderTacAsStmt() {
   TCopy.reverse();
   std::string FinalStr = "";
   for (auto T : TCopy) {
-    std::string A = T.getA()->getExprStr();
-    std::string B = T.getB()->getExprStr();
+    auto A = T.getA()->getExprStr();
+    auto B = T.getB()->getExprStr();
     std::string C = "";
-    std::string Op = T.getMVOP().toString();
+    auto Op = T.getMVOP().toString();
     if (T.getC() != NULL) {
       C = T.getC()->getExprStr();
     }

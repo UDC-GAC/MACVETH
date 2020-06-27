@@ -35,7 +35,7 @@ public:
   static void restart() { Node::UUID = 0; }
 
   /// Definition of NodeListType
-  typedef std::list<Node *> NodeListType;
+  typedef std::vector<Node *> NodeListType;
 
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_STORE, NODE_OP, UNDEF };
@@ -115,7 +115,9 @@ public:
     this->SI.TacID = T.getTacID();
     this->LoopName = T.getLoopName();
     connectInput(new Node(T.getB()));
-    connectInput(new Node(T.getC()));
+    if (T.getC() != NULL) {
+      connectInput(new Node(T.getC()));
+    }
     updateIfStore();
   }
 
@@ -129,13 +131,18 @@ public:
     this->SI.NodeID = Node::UUID++;
     this->SI.TacID = T.getTacID();
     this->LoopName = T.getLoopName();
-    Node *NB = findOutputNode(T.getB()->getExprStr(), L);
-    Node *NC = findOutputNode(T.getC()->getExprStr(), L);
+    auto NB = findOutputNode(T.getB()->getExprStr(), L);
     connectInput(NB == NULL ? new Node(T.getB()) : NB);
-    connectInput(NC == NULL ? new Node(T.getC()) : NC);
+    Node *NC = NULL;
+    if (T.getC() != NULL) {
+      NC = findOutputNode(T.getC()->getExprStr(), L);
+      connectInput(NC == NULL ? new Node(T.getC()) : NC);
+    }
     updateIfStore();
   }
 
+  /// Update output information of the node if the type of the output is a
+  /// memory store
   void updateIfStore() {
     if (this->O.Type == MEM_STORE) {
       this->getInputs().front()->T = NODE_STORE;
@@ -247,7 +254,11 @@ public:
   /// For sorting lists of nodes
   bool operator<(const Node &N) {
     if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
-      return (this->getSchedInfo().TacID < N.SI.TacID);
+      if (this->getSchedInfo().TacID == N.SI.TacID) {
+        return (this->getSchedInfo().NodeID < N.SI.NodeID);
+      } else {
+        return (this->getSchedInfo().TacID < N.SI.TacID);
+      }
     } else {
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
     }
@@ -281,4 +292,4 @@ private:
   std::string LoopName = "";
 };
 } // namespace macveth
-#endif // MACVETH_NODE_H
+#endif /* !MACVETH_NODE_H */

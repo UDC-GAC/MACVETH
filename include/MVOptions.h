@@ -92,7 +92,7 @@ struct MVOptions {
   static inline std::string InCDAGFile = "";
   /// Name of the output debug file (-output-debug=<file>)
   static inline std::string OutDebugFile = "";
-  /// Target architecture
+  /// Target ISA
   static inline MVISA ISA = MVISA::NATIVE;
   /// Target architecture
   static inline MVArch Arch = MVArch::AUTODETECT;
@@ -105,7 +105,7 @@ struct MVOptions {
   /// Debug
   static inline DebugLevel DLevel = DebugLevel::ALL;
   /// Generate or not macro-based code
-  static inline bool MacroFree = false;
+  static inline bool MacroCode = false;
 
   /// Main function to check options of the compiler
   static void validateOptions() {

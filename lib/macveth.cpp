@@ -116,9 +116,9 @@ static llvm::cl::opt<bool> Debug("debug",
                                  llvm::cl::init(false),
                                  llvm::cl::cat(MacvethCategory));
 /// Macro-free code
-static llvm::cl::opt<bool> MacroFree(
-    "macro-free",
-    llvm::cl::desc("If set, do not use macro for generating vectorized code"),
+static llvm::cl::opt<bool> MacroCode(
+    "macro-code",
+    llvm::cl::desc("If set, *do* use macro for generating vectorized code"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
 /// Output debug
@@ -148,7 +148,7 @@ int main(int argc, const char **argv) {
   MVOptions::FMASupport = FMA.getValue();
   MVOptions::DisableFMA = DisableFMA.getValue();
   MVOptions::Debug = Debug.getValue();
-  MVOptions::MacroFree = MacroFree.getValue();
+  MVOptions::MacroCode = MacroCode.getValue();
 
   /// Check incompatible options:
   assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&

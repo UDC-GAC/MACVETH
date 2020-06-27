@@ -58,8 +58,6 @@ public:
     MVK_Array,
     /// Defined in MVExprLiteral
     MVK_Literal,
-    /// Defined in MVExprFunc
-    MVK_Function,
     /// Defined in MVExprVar
     MVK_Var,
     /// Other
@@ -121,7 +119,21 @@ public:
   clang::Expr *getClangExpr() const { return this->ClangExpr; }
 
   /// Set type as a string
-  void setTypeStr(std::string TypeStr) { this->TypeStr = TypeStr; }
+  void setTypeStr(std::string TypeStr) {
+    // This is a fucking hack: treat const as if they are not const...
+    // Thus, typing is easier. Do we really need to know if a variable is
+    // constant or not? I think we do not.
+    auto LastNotNullToken = TypeStr;
+    char *dup = strdup(TypeStr.c_str());
+    auto Tok = strtok(dup, " ");
+    while (Tok != NULL) {
+      LastNotNullToken = Tok;
+      Tok = strtok(NULL, " ");
+    }
+    this->TypeStr = LastNotNullToken;
+    // At least be clean
+    free(dup);
+  }
   /// Get type as a string
   std::string getTypeStr() { return this->TypeStr; }
 

@@ -50,13 +50,8 @@ bool MVExprVar::hasBeenUnrolled(std::string Reg, std::string Dim) {
 //------------------------------------------------
 MVExpr *MVExprVar::unrollExpr(int UF, std::string LL) {
   if (this->getTempInfo() == MVExpr::MVExprInfo::TMP_RES) {
-    // if (!MVExprVar::hasBeenUnrolled(this->getExprStr(), LL)) {
-    //   return this;
-    // }
     MVExprVar *NewExpr = new MVExprVar(this);
     NewExpr->setExprStr(NewExpr->getExprStr() + LL + std::to_string(UF));
-    //    Utils::printDebug("MVExprVar",
-    //                      "new Expr = " + NewExpr->getExprStr() + "; " + LL);
     return NewExpr;
   } else if (this->getExprStr() == LL) {
     // Special case, when unrolling loop variable

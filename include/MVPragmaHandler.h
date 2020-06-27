@@ -17,6 +17,8 @@
 
 using namespace clang;
 
+namespace macveth {
+
 typedef std::vector<std::tuple<std::string, int>> PragmaTupleDim;
 
 /// The Location of the Scop, as delimited by macveth and endmacveth
@@ -209,7 +211,7 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
 /// Handle pragmas of the form
 ///
 ///  #pragma macveth [unroll|nounroll|unrollandjam] [loopIdentifier
-///  unrollFactor]
+///  unrollFactor] [nosimd]
 ///
 /// In particular, store the Location of the line containing
 /// the pragma in the list "Scops". The intention of this pragma is to tell the
@@ -248,5 +250,5 @@ struct PragmaEndScopHandler : public PragmaHandler {
     Scops->addEnd(SM, Sloc);
   }
 };
-
-#endif
+} // namespace macveth
+#endif /* !MACVETH_PRAGMAHANDLER_H */

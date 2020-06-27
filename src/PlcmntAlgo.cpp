@@ -44,7 +44,7 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   Node::NodeListType Reduction;
   bool ReductionFound = false;
 
-  NCopy.reverse();
+  std::reverse(std::begin(NCopy), std::end(NCopy));
   NL->clear();
 
   for (auto R : NCopy) {
@@ -55,7 +55,8 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     }
     Visited.push_back(R);
 
-    Reduction.push_front(R);
+    // Reduction.push_front(R);
+    Reduction.insert(Reduction.begin(), R);
     auto S = R->getInputs();
   loop:
     for (auto In : S) {
@@ -82,14 +83,16 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     }
     if (ReductionFound) {
       for (auto RNode : Reduction) {
-        LRedux.push_front(RNode);
+        // LRedux.push_front(RNode);
+        LRedux.insert(LRedux.begin(), RNode);
       }
     } else {
       NL->push_back(R);
     }
     Reduction.clear();
   }
-  NL->reverse();
+  std::reverse(std::begin(*NL), std::end(*NL));
+  // NL->reverse();
   return LRedux;
 }
 
@@ -98,7 +101,7 @@ Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
   computeFreeSchedule(NL);
   if (MVOptions::InCDAGFile != "") {
     setPlcmtFromFile(NL);
-    NL.sort([](Node *Lhs, Node *Rhs) {
+    std::sort(NL.begin(), NL.end(), [](Node *Lhs, Node *Rhs) {
       return Lhs->getSchedInfo().Plcmnt < Rhs->getSchedInfo().Plcmnt;
     });
     return NL;

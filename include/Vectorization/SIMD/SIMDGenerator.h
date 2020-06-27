@@ -22,6 +22,8 @@ class SIMDGenerator {
 public:
   /// Types of SIMD instructions
   enum SIMDType {
+    /// Custom function
+    VFUNC,
     /// Load, pack memory addresses
     VPACK,
     /// Broadcast values
@@ -195,6 +197,9 @@ public:
   /// Generate modulo operations
   virtual SIMDInstListType vmod(VectorIR::VectorOP V) = 0;
 
+  /// Generate custom functions
+  virtual SIMDInstListType vfunc(VectorIR::VectorOP V) = 0;
+
   // Reduction operations
 
   /// Operations are reduce given a certain condicitons.
@@ -287,8 +292,17 @@ public:
   };
 
   /// Map data types to their size in bytes
-  inline static std::map<std::string, int> SizeOf = {
-      {"double", 8}, {"float", 4}, {"char", 1}, {"unsigned int", 4}};
+  inline static std::map<std::string, int> SizeOf = {{"double", 8},
+                                                     {"float", 4},
+                                                     {"const unsigned long", 8},
+                                                     {"const long", 8},
+                                                     {"const float", 4},
+                                                     {"const double", 8},
+                                                     {"const char", 1},
+                                                     {"char", 1},
+                                                     {"const int", 4},
+                                                     {"const unsigned int", 4},
+                                                     {"unsigned int", 4}};
 
   /// Empty constructor
   SIMDGenerator(){};
@@ -307,10 +321,6 @@ protected:
   /// Add register to declare
   static void addRegToDeclare(std::string Type, std::string Name,
                               int InitVal = 0);
-  /// Add register to declare with custom values
-  // template <class T>
-  // static void addRegToDeclare(std::string Type, std::string Name,
-  //                             std::vector<T> InitVals);
 
   /// List of registers declared
   inline static std::map<std::string, std::vector<std::tuple<std::string, int>>>
@@ -320,7 +330,7 @@ protected:
   inline static int AccmReg = 0;
   inline static std::map<std::string, int> AccmToReg;
   static std::string getNextAccmRegister(std::string V) {
-    std::string PREFIX = "__mv_accm";
+    auto PREFIX = "__mv_accm";
     if (AccmToReg.count(V) == 0) {
       AccmToReg[V] = SIMDGenerator::AccmReg++;
     }
@@ -330,11 +340,11 @@ protected:
   /// Auxiliary array numbering for auxiliary operations such as reduce
   inline static int AuxArrayReg = 0;
   static std::string getNextArrRegister(std::string Type, int Size) {
-    std::string Name = "__mv_arr" + std::to_string(AuxArrayReg++);
+    auto Name = "__mv_arr" + std::to_string(AuxArrayReg++);
     addRegToDeclare(Type, Name + "[" + std::to_string(Size) + "]");
     return Name;
   }
 };
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_SIMDGENERATOR_H */

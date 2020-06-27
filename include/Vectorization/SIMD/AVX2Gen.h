@@ -53,6 +53,9 @@ public:
   /// Modulo operation
   virtual SIMDInstListType vmod(VectorIR::VectorOP V) override;
 
+  /// Generate custom functions
+  virtual SIMDInstListType vfunc(VectorIR::VectorOP V) override;
+
   // Reduction operations
   virtual SIMDInstListType vreduce(VectorIR::VectorOP V) override;
 
@@ -85,7 +88,13 @@ public:
 
   /// Get the traslation between VectorIR data widths and AVX2's
   virtual std::string getMapWidth(VectorIR::VWidth V) override {
-    return MapWidth[V];
+    assert((V != VectorIR::VWidth::W512) &&
+           "Width too wide for AVX2 (512 not supported)!!");
+    if (V < 128) {
+      return MapWidth[VectorIR::VWidth::W128];
+    } else {
+      return MapWidth[VectorIR::VWidth::W256];
+    }
   }
 
   /// Get the traslation between VectorIR data types and AVX2's

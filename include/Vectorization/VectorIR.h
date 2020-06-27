@@ -24,14 +24,16 @@ public:
   /// Keeping track of the correspondence between the registers name and the
   /// new naming
   static inline std::map<std::string, std::string> MapRegToVReg;
-  /// Keeping track of the correspondence between the registers name and the
-  /// new naming
+  /// Keeping track of the loads in the program
   static inline std::list<std::string> MapLoads;
+  /// Keeping track of the stores in the program
+  static inline std::list<std::string> MapStores;
 
   /// Clearing all the mappings
   static void clearMappigs() {
-    VectorIR::MapRegToVReg.clear();
+    MapRegToVReg.clear();
     MapLoads.clear();
+    MapStores.clear();
     // VID = 0;
   }
 
@@ -99,8 +101,9 @@ public:
   /// Table of equivalences between the VDataTypes and the number of bits of
   /// type
   static inline std::map<VDataType, int> VDataTypeWidthBits = {
-      {DOUBLE, 64}, {FLOAT, 32}, {UINT8, 8},  {UINT16, 16}, {UINT32, 32},
-      {UINT64, 64}, {INT8, 8},   {INT16, 16}, {INT32, 32},  {INT64, 64},
+      {DOUBLE, 64}, {FLOAT, 32},  {SDOUBLE, 64}, {SFLOAT, 32},
+      {UINT8, 8},   {UINT16, 16}, {UINT32, 32},  {UINT64, 64},
+      {INT8, 8},    {INT16, 16},  {INT32, 32},   {INT64, 64},
   };
 
   /// Vector width possible types
@@ -234,6 +237,8 @@ public:
     VOperand OpA;
     /// Vector second operand
     VOperand OpB;
+    /// If there is only one operand, then it is unary
+    bool IsUnary = false;
     /// Vector result
     VOperand R;
     /// Order of the vector operation
@@ -244,9 +249,12 @@ public:
     bool isBinOp();
     /// Get the BinaryOperator::Opcode
     BinaryOperator::Opcode getBinOp();
+    /// Get the MVOp
+    MVOp getMVOp();
     /// Constructor from the CDAG
     VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[]);
-
+    /// Check if operation is sequential or not
+    bool isSequential() { return this->VT == VType::SEQ; }
     /// Render vector operation as string
     std::string toString();
   };

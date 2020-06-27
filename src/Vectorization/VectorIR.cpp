@@ -94,9 +94,9 @@ std::string VectorIR::VOperand::toString() {
 
 // ---------------------------------------------
 std::string VectorIR::VectorOP::toString() {
-  std::string Str;
-  Str = "[VectorIR] " + R.toString() + " = " + VN + "(" + OpA.toString() + "," +
-        OpB.toString() + ")";
+  auto B = (IsUnary) ? "" : "," + OpB.toString();
+  auto Str = "[VectorIR] " + R.toString() + " = " + VN + "(" + OpA.toString() +
+             B + ")";
   return Str;
 }
 
@@ -108,6 +108,11 @@ bool VectorIR::VectorOP::isBinOp() {
 // ---------------------------------------------
 BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
   return this->R.UOP[0]->getOutputInfo().MVOP.ClangOP;
+}
+
+// ---------------------------------------------
+MVOp VectorIR::VectorOP::getMVOp() {
+  return this->R.UOP[0]->getOutputInfo().MVOP;
 }
 
 // ---------------------------------------------
@@ -262,16 +267,56 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
 }
 
 // ---------------------------------------------
+VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[]) {
+  // Premises of our algorithm
+  // 1.- Check whether operations are sequential
+  bool Seq = opsAreSequential(VL, VOps);
+  if (Seq) {
+    Utils::printDebug("CDAG", "Ops are sequential");
+  }
+  // 2.- Check if operands have RAW dependencies with output of the operations
+  bool RAW_A = rawDependencies(VL, VOps, VLoadA);
+  // 3.- Check the atomicity of the operands: they can be computed/loaded before
+  //     the operations
+  bool Atomic_A = isAtomic(VL, VOps, VLoadA);
+
+  // Type of VectorOP
+  Utils::printDebug("VectorIR", "Seq = " + std::to_string(Seq));
+  Utils::printDebug("VectorIR", "RAW_A = " + std::to_string(RAW_A));
+  Utils::printDebug("VectorIR", "Atomic_A = " + std::to_string(Atomic_A));
+
+  // Decide which type of VectorOp it is according to the features of its
+  // VOperands
+  if ((Seq) && ((RAW_A) && Atomic_A)) {
+    Utils::printDebug("VectorIR", "reduction");
+    return VectorIR::VType::REDUCE;
+  } else if ((!Seq) && (!RAW_A) && Atomic_A) {
+    Utils::printDebug("VectorIR", "map");
+    return VectorIR::VType::MAP;
+  } else {
+    Utils::printDebug("VectorIR", "sequential");
+    return VectorIR::VType::SEQ;
+  }
+}
+
+// ---------------------------------------------
 VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
                              Node *VLoadB[])
-    : OpA(VL, VLoadA, false), OpB(VL, VLoadB, false), R(VL, VOps, true) {
+    : OpA(VL, VLoadA, false), R(VL, VOps, true) {
+
+  if (VLoadB != nullptr) {
+    this->OpB = VOperand(VL, VLoadB, false);
+    // Vector type will depend on the operations and operations, logically
+    this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
+  } else {
+    this->IsUnary = true;
+    // Vector type will depend on the operations and operations, logically
+    this->VT = getVectorOpType(VL, VOps, VLoadA);
+  }
 
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
-
-  // Vector type will depend on the operations and operations, logically
-  this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
 
   // Name: operation (assuming all operations have the same value, which is a
   // valid assumption)
@@ -283,7 +328,6 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // Data type
   this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];
   this->R.DType = this->DT;
-  // Utils::printDebug("VectorIR", VLoadA[0]->getDataType());
 
   // Ordering
   this->OpA.Order = this->Order;
