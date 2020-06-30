@@ -5,10 +5,11 @@
  * Last Modified Date: Mér 15 Xan 2020 12:07:59 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
+
 #ifndef MACVETH_MVEXPRARRAY_H
 #define MACVETH_MVEXPRARRAY_H
-#include "include/MVExpr/MVExpr.h"
 
+#include "include/MVExpr/MVExpr.h"
 #include <llvm-10/llvm/Support/Casting.h>
 #include <string.h>
 
@@ -36,16 +37,6 @@ public:
     bool isTerminal() {
       return ((Val != "") && (LHS == nullptr) && (RHS == nullptr));
     }
-
-    // Destructor
-    // ~MVAffineIndex() {
-    //   if (this->RHS != nullptr) {
-    //     delete this->RHS;
-    //   }
-    //   if (this->LHS != nullptr) {
-    //     delete this->LHS;
-    //   }
-    // }
 
     /// Main constructor
     MVAffineIndex(const Expr *E) {
@@ -101,7 +92,7 @@ public:
         }
       }
       return false;
-    }
+    } /* !MVAffineIndex */
 
     /// Convert to string recursively
     std::string toString() {

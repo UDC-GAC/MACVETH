@@ -7,6 +7,10 @@ macveth
 *.s
 *__tmp*
 .vscode/*
+
+# Results
+*.csv
+
 # Temp files
 tmp/
 tmpfiles/

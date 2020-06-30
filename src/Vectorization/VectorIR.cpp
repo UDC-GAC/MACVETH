@@ -311,7 +311,7 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[]) {
 // ---------------------------------------------
 VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
                              Node *VLoadB[])
-    : OpA(VL, VLoadA, false), R(VL, VOps, true) {
+    : OpA(VL, VLoadA, false) {
 
   if (VLoadB != nullptr) {
     this->OpB = VOperand(VL, VLoadB, false);
@@ -322,6 +322,11 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
     // Vector type will depend on the operations and operations, logically
     this->VT = getVectorOpType(VL, VOps, VLoadA);
   }
+
+  this->R = VOperand(VL, VOps, true);
+
+  this->OpA.DType = this->R.DType;
+  this->OpB.DType = this->R.DType;
 
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order

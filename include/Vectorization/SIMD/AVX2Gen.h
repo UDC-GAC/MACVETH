@@ -23,6 +23,13 @@ public:
   static inline std::string NArch = "IntelX86";
   /// Name of the ISA
   static inline std::string NISA = "AVX2";
+  /// Name of the headers needed
+  static inline std::list<std::string> Headers = {"immintrin.h"};
+
+  /// Get headers
+  virtual std::list<std::string> getHeadersNeeded() override {
+    return AVX2Gen::Headers;
+  }
 
   // Operand operations
 

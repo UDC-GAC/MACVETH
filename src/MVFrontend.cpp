@@ -75,7 +75,9 @@ void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
 }
 
 // ---------------------------------------------
-void rewriteLoops(std::list<StmtWrapper *> SList, Rewriter *Rewrite) {
+std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
+                                    Rewriter *Rewrite,
+                                    std::list<std::string> DimAlreadyDecl) {
   std::list<std::string> DimsDeclared = {};
   for (auto SWrap : SList) {
     // Rewrite loop header
@@ -100,20 +102,27 @@ void rewriteLoops(std::list<StmtWrapper *> SList, Rewriter *Rewrite) {
                          Loop.Dim + " += " + std::to_string(Loop.StepUnrolled));
     if (Loop.Declared) {
       std::list<std::string> L = StmtWrapper::LoopInfo::DimDeclared;
-      if (!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) {
+      if ((!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) &&
+          (!(std::find(DimsDeclared.begin(), DimsDeclared.end(), Loop.Dim) !=
+             DimsDeclared.end())) &&
+          ((!(std::find(DimAlreadyDecl.begin(), DimAlreadyDecl.end(),
+                        Loop.Dim) != DimAlreadyDecl.end())))) {
         StmtWrapper::LoopInfo::DimDeclared.push_back(Loop.Dim);
         DimsDeclared.push_back(Loop.Dim);
       }
     }
     std::string Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
     Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
-    rewriteLoops(SWrap->getListStmt(), Rewrite);
+    DimsDeclared.splice(
+        DimsDeclared.end(),
+        rewriteLoops(SWrap->getListStmt(), Rewrite, DimAlreadyDecl));
   }
   // Declare variables
   SourceLocation Loc = SList.front()->getClangStmt()->getBeginLoc();
   Rewrite->InsertTextBefore(
       Loc, StmtWrapper::LoopInfo::getDimDeclarations(DimsDeclared));
   StmtWrapper::LoopInfo::clearDims();
+  return DimsDeclared;
 }
 
 // ---------------------------------------------
@@ -178,16 +187,16 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
 void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
 
-  // if (SI.SType == SIMDGenerator::SIMDType::VSEQ) {
-  //   for (auto S : SL) {
-  //     for (auto T : S->getTacList()) {
-  //       if (SI.TacID == T.getTacID()) {
-  //         renderTACInPlace({S});
-  //         return;
-  //       }
-  //     }
-  //   }
-  // }
+  if (SI.SType == SIMDGenerator::SIMDType::VSEQ) {
+    for (auto S : SL) {
+      for (auto T : S->getTacList()) {
+        if (SI.TacID == T.getTacID()) {
+          renderTACInPlace({S});
+          return;
+        }
+      }
+    }
+  }
   // Reduce op
   if ((SI.SType == SIMDGenerator::SIMDType::VREDUC) ||
       (SI.SType == SIMDGenerator::SIMDType::VSTORER) ||
@@ -225,6 +234,15 @@ void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL) {
 }
 
 // ---------------------------------------------
+void MVFuncVisitor::addHeaders(std::list<std::string> S, FileID FID) {
+  auto SM = Utils::getSourceMgr();
+  for (auto I : S) {
+    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
+                       "#include <" + I + ">\n", true, true);
+  }
+}
+
+// ---------------------------------------------
 void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
@@ -232,6 +250,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   }
 
   Utils::printDebug("MVConsumer", "scanScops");
+
+  std::list<std::string> DimsDeclFunc = {};
 
   // For each scop in the function
   for (auto Scop : ScopHandler::funcGetScops(fd)) {
@@ -265,7 +285,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
                         "No SIMD code to generate, just printing the code");
       renderTACInPlace(SL);
       // Rewriting loops
-      rewriteLoops(SL, &Rewrite);
+      DimsDeclFunc.splice(DimsDeclFunc.end(),
+                          rewriteLoops(SL, &Rewrite, DimsDeclFunc));
     } else {
       // Creating the CDAG
       CDAG *G = CDAG::createCDAGfromTAC(TL);
@@ -282,7 +303,17 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         renderSIMDInstInPlace(InsSIMD, SL);
       }
       // Rewriting loops
-      rewriteLoops(SL, &Rewrite);
+      DimsDeclFunc.splice(DimsDeclFunc.end(),
+                          rewriteLoops(SL, &Rewrite, DimsDeclFunc));
+
+      // Add includes if option
+      if (MVOptions::Headers) {
+        addHeaders(SIMDGen->getHeadersNeeded(), Scop->FID);
+      }
+
+      /// Clear mappings
+      SIMDGen->clearMappings();
+
       delete G;
     }
     // Comment statements

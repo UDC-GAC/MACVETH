@@ -280,6 +280,9 @@ public:
   /// Clean the list of registers declared
   static void clearMappings();
 
+  /// Get headers needed (include files)
+  virtual std::list<std::string> getHeadersNeeded() = 0;
+
   /// Get maximum vector operands size
   virtual int getMaxVectorSize(std::string Type) {
     return getMaxWidth() / (SizeOf[Type] * 8);

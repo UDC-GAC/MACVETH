@@ -106,9 +106,7 @@ public:
              "; declared = " + std::to_string(Declared);
     }
 
-    static void clearDims() {
-      LoopInfo::DimDeclared.clear();
-    }
+    static void clearDims() { LoopInfo::DimDeclared.clear(); }
   };
 
   /// LoopInfo list type

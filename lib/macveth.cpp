@@ -4,7 +4,6 @@
  * Date              : Mér 06 Nov 2019 12:29:24 MST
  * Last Modified Date: Mar 17 Mar 2020 18:58:40 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
  *
@@ -121,6 +120,13 @@ static llvm::cl::opt<bool> MacroCode(
     llvm::cl::desc("If set, *do* use macro for generating vectorized code"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
+/// Do not include headers in top of the file
+static llvm::cl::opt<bool> NoHeaders(
+    "no-headers",
+    llvm::cl::desc(
+        "If set, do *not* include header files, such as <immintrin.h>"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
 /// Output debug
 static llvm::cl::opt<std::string>
     DebugFile("debug-file", cl::cat(MacvethCategory),
@@ -149,6 +155,7 @@ int main(int argc, const char **argv) {
   MVOptions::DisableFMA = DisableFMA.getValue();
   MVOptions::Debug = Debug.getValue();
   MVOptions::MacroCode = MacroCode.getValue();
+  MVOptions::Headers = !NoHeaders.getValue();
 
   /// Check incompatible options:
   assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&

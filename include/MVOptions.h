@@ -106,6 +106,8 @@ struct MVOptions {
   static inline DebugLevel DLevel = DebugLevel::ALL;
   /// Generate or not macro-based code
   static inline bool MacroCode = false;
+  /// Include headers (--no-headers)
+  static inline bool Headers = true;
 
   /// Main function to check options of the compiler
   static void validateOptions() {

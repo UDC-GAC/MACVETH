@@ -61,6 +61,8 @@ private:
   void scanScops(FunctionDecl *fd);
   /// Comment those stmts which are replaced
   void commentReplacedStmts(std::list<StmtWrapper *> SList);
+  //// Add includes to files if needed
+  void addHeaders(std::list<std::string> S, FileID FID);
   /// Rewrite TAC as regular statements
   void renderTACInPlace(std::list<StmtWrapper *> SL);
   /// Render SIMD instructions where they should be (regular map operations)
@@ -115,5 +117,5 @@ private:
   /// requests to the low-level RewriteBuffers involved.
   Rewriter TheRewriter;
 };
-}
+} // namespace macveth
 #endif /* !MACVETH_FRONTEND_H */
