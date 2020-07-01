@@ -42,6 +42,12 @@ bool opsAreSequential(int VL, Node *VOps[]) {
       return true;
     }
   }
+  // If there is only one operation, then it is also a sequential operation,
+  // you think?
+  if (VL == 1) {
+    return true;
+  }
+
   return false;
 }
 
@@ -96,8 +102,7 @@ std::string VectorIR::VOperand::toString() {
 // ---------------------------------------------
 std::string VectorIR::VectorOP::toString() {
   auto B = (IsUnary) ? "" : "," + OpB.toString();
-  auto Str = "[VectorIR] " + R.toString() + " = " + VN + "(" + OpA.toString() +
-             B + ")";
+  auto Str = R.toString() + " = " + VN + "(" + OpA.toString() + B + ")";
   return Str;
 }
 
@@ -124,6 +129,8 @@ int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
     if (!MV) {
       return nullptr;
     }
+    /// FIXME:
+    // Idx[i] = i;
   }
   return Idx;
 }
@@ -172,17 +179,34 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Get name of this operand, otherwise create a custom name
   this->Name =
       VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()] : genNewVOpName();
+
+  // Check if this has been already loaded
+  auto AlreadyLoaded = false;
+  for (auto T : MapLoads) {
+    if (std::get<1>(T) == this->getName()) {
+      Utils::printDebug("VectorIR::VOperand",
+                        "name = " + this->getName() +
+                            ", scop = " + std::to_string(V[0]->getScop()));
+      if (V[0]->getScop() == std::get<0>(T)) {
+        Utils::printDebug("VectorIR::VOperand",
+                          "Already loaded name = " + this->getName() +
+                              ", scop = " + std::to_string(V[0]->getScop()));
+        AlreadyLoaded = true;
+        break;
+      }
+    }
+  }
+
   // It is a temporal result if it has already been assigned
-  this->IsTmpResult = VecAssigned;
-  // auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
-  auto AlreadyLoaded = std::find(MapLoads.begin(), MapLoads.end(),
-                                 this->getName()) != MapLoads.end();
-  // So, if it has not been assigned yet, then we added to the list of loads (or
-  // register that we are going to pack somehow)
+  this->IsTmpResult = VecAssigned && AlreadyLoaded;
+
+  // So, if it has not been assigned yet, then we added to the list of loads
+  // (or register that we are going to pack somehow). It can also be a store.
   if (!AlreadyLoaded)
-    MapLoads.push_back(this->getName());
+    MapLoads.push_back(std::make_tuple(V[0]->getScop(), this->getName()));
+
   // So if it has not been packed/loaded yet, then we consider it a load
-  this->IsLoad = !AlreadyLoaded;
+  this->IsLoad = !AlreadyLoaded && !this->IsStore;
 
   // Checking if operands are all memory
   bool IsMemOp = true;
@@ -243,9 +267,7 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
   // Premises of our algorithm
   // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
-  if (Seq) {
-    Utils::printDebug("CDAG", "Ops are sequential");
-  }
+
   // 2.- Check if operands have RAW dependencies with output of the operations
   bool RAW_A = rawDependencies(VL, VOps, VLoadA);
   bool RAW_B = rawDependencies(VL, VOps, VLoadB);
@@ -322,9 +344,10 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
     // Vector type will depend on the operations and operations, logically
     this->VT = getVectorOpType(VL, VOps, VLoadA);
   }
-
+  // Result operand
   this->R = VOperand(VL, VOps, true);
 
+  // Assuming that inputs and outputs have the same type
   this->OpA.DType = this->R.DType;
   this->OpB.DType = this->R.DType;
 

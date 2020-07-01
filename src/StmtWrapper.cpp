@@ -56,6 +56,7 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
       Utils::printDebug("StmtWrapper genStmtWraps",
                         "new StmtWrapper => " + Utils::getStringFromStmt(ST));
       StmtWrapper *NewStmt = new StmtWrapper(ST);
+      TAC::TacScop++;
       SList.push_back(NewStmt);
     }
   }
@@ -68,10 +69,11 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
   this->ClangStmt = S;
   if (auto Loop = dyn_cast<ForStmt>(S)) {
     this->LoopL = getLoop(Loop);
-    CompoundStmt *Body = dyn_cast<CompoundStmt>(Loop->getBody());
+    auto Body = dyn_cast<CompoundStmt>(Loop->getBody());
     if (Body) {
+      TAC::TacScop++;
       for (auto S : Body->body()) {
-        StmtWrapper *SW = new StmtWrapper(S);
+        auto SW = new StmtWrapper(S);
         SW->setInnerLoopName(this->getLoopInfo().Dim);
         this->ListStmt.push_back(SW);
         Utils::printDebug("StmtWrapper", "adding new stmt, TACs in loop = " +
@@ -199,14 +201,13 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   std::list<StmtWrapper *> SVec = SWrap->ListStmt;
   LoopInfo Loop = SWrap->getLoopInfo();
   // Write new epilogs
-  std::string EpiInit =
-      Loop.Dim + " = " +
-      ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
-                          std::to_string(Loop.StepUnrolled) + " ) * " +
-                          std::to_string(Loop.StepUnrolled)
-                    : "0");
-  std::string EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;
-  std::string EpiInc = Loop.Dim + " += " + std::to_string(Loop.Step);
+  auto EpiInit = Loop.Dim + " = " +
+                 ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
+                                     std::to_string(Loop.StepUnrolled) +
+                                     " ) * " + std::to_string(Loop.StepUnrolled)
+                               : "0");
+  auto EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;
+  auto EpiInc = Loop.Dim + " += " + std::to_string(Loop.Step);
   Epilog += "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";
   for (auto S : SVec) {
     Epilog += "\n" + Utils::getStringFromStmt(S->getClangStmt()) + ";";
@@ -220,10 +221,17 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
 bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
   bool FullUnroll = true;
   if (this->isLoop()) {
-    Utils::printDebug("StmtWrapper", "unrollAndJam loop");
+    Utils::printDebug("StmtWrapper", "unrollAndJam loop = " + this->LoopL.Dim);
     for (auto D : Scop->PA.UnrollDim) {
       if (this->LoopL.Dim == std::get<0>(D)) {
-        this->LoopL.UnrollFactor = std::get<1>(D);
+        if (Scop->PA.FullUnroll[this->LoopL.Dim]) {
+          assert(this->LoopL.knownBounds() &&
+                 "Can not full unroll if upperbound is not known");
+          this->LoopL.UnrollFactor = this->LoopL.UpperBound;
+          this->LoopL.FullyUnrolled = true;
+        } else {
+          this->LoopL.UnrollFactor = std::get<1>(D);
+        }
         this->LoopL.StepUnrolled = this->LoopL.Step * this->LoopL.UnrollFactor;
         break;
       }
@@ -231,7 +239,7 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
     LI.push_front(this->LoopL);
     for (auto S : this->ListStmt) {
       S->unrollAndJam(LI, Scop);
-      TacListType TL = this->getTacList();
+      auto TL = this->getTacList();
       TL.splice(TL.end(), S->getTacList());
       this->setTacList(TL);
     }
@@ -245,61 +253,20 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
 }
 
 // ---------------------------------------------
-std::string replaceTmpTac(std::map<std::string, std::vector<std::string>> T,
-                          std::string K) {
-  if (T.count(K) > 0) {
-    std::vector<std::string> ST = T.at(K);
-    return "(" + replaceTmpTac(T, ST[0]) + " " + ST[2] + " " +
-           replaceTmpTac(T, ST[1]) + ")";
-  } else {
-    return K;
-  }
-}
-
-// ---------------------------------------------
-std::string StmtWrapper::renderTacAsStmt() {
-  std::list<std::string> TmpList;
-  std::map<std::string, std::vector<std::string>> TmpResToReplace;
-  TacListType TCopy(this->getTacList());
-  for (auto T : TCopy) {
-    auto A = T.getA()->getExprStr();
-    auto B = T.getB()->getExprStr();
-    std::string C = "";
-    auto Op = T.getMVOP().toString();
-    if (T.getC() != NULL) {
-      C = T.getC()->getExprStr();
-    }
-    if ((T.getA()->getTempInfo() == MVExpr::MVExprInfo::TMP_RES)) {
-      TmpResToReplace[A] = {B, C, Op};
-    }
-  }
-  TCopy.reverse();
-  std::string FinalStr = "";
-  for (auto T : TCopy) {
-    auto A = T.getA()->getExprStr();
-    auto B = T.getB()->getExprStr();
-    std::string C = "";
-    auto Op = T.getMVOP().toString();
-    if (T.getC() != NULL) {
-      C = T.getC()->getExprStr();
-    }
-    // If this, then it is an assignment (by design)
-    if (A == B) {
-      FinalStr =
-          A + " = " + replaceTmpTac(TmpResToReplace, C) + ";\n" + FinalStr;
-    }
-  }
-  return FinalStr;
-}
-
-// ---------------------------------------------
 bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
   bool FullUnroll = true;
   if (this->isLoop()) {
-    Utils::printDebug("StmtWrapper", "unrollAndJam loop");
+    Utils::printDebug("StmtWrapper", "unrollByDim loop");
     for (auto D : Scop->PA.UnrollDim) {
       if (this->LoopL.Dim == std::get<0>(D)) {
-        this->LoopL.UnrollFactor = std::get<1>(D);
+        if (Scop->PA.FullUnroll[this->LoopL.Dim]) {
+          assert(this->LoopL.knownBounds() &&
+                 "Can not full unroll if upperbound is not known");
+          this->LoopL.UnrollFactor = this->LoopL.UpperBound;
+          this->LoopL.FullyUnrolled = true;
+        } else {
+          this->LoopL.UnrollFactor = std::get<1>(D);
+        }
         this->LoopL.StepUnrolled = this->LoopL.Step * this->LoopL.UnrollFactor;
         LI.push_front(this->LoopL);
         break;
@@ -310,7 +277,7 @@ bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
     }
     for (auto S : this->ListStmt) {
       S->unrollByDim(LI, Scop);
-      TacListType TL = this->getTacList();
+      auto TL = this->getTacList();
       TL.splice(TL.end(), S->getTacList());
       this->setTacList(TL);
     }
@@ -328,7 +295,9 @@ TacListType StmtWrapper::unroll(LoopInfo L) {
   Utils::printDebug("StmtWrapper",
                     "unrolling dimension " + L.Dim + " stmt = " +
                         Utils::getStringFromStmt(this->getClangStmt()));
-  long UB = (L.UpperBound == -1) ? L.StepUnrolled : (L.UpperBound - L.InitVal);
+  long UB = ((L.UpperBound != -1) && (L.FullyUnrolled))
+                ? (L.UpperBound - L.InitVal)
+                : L.StepUnrolled;
   auto TL = TAC::unrollTacList(this->getTacList(), L.Step, UB, L.Dim);
   this->setTacList(TL);
   return TL;

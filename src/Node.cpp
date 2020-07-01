@@ -21,7 +21,8 @@ std::string Node::toString() {
   Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
   for (int i = 0; i < this->getInputs().size(); ++i) {
     if (this->getInputs()[i] != NULL) {
-      Str += "\tInput1\t\t= " + this->getInputs()[i]->getValue() + " (ID = " +
+      Str += "\tInput " + std::to_string(i) +
+             "\t\t= " + this->getInputs()[i]->getValue() + " (ID = " +
              std::to_string(this->getInputs()[i]->getSchedInfo().NodeID) +
              "); NODE_MEM = " +
              std::to_string(this->getInputs()[i]->T == NODE_MEM) + "\n";

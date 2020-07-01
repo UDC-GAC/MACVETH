@@ -52,6 +52,8 @@ struct ScopLoc {
     int UnrollFactor = 1;
     /// Perform unroll and jam
     bool UnrollAndJam = true;
+    /// Full unrolling
+    std::map<std::string, bool> FullUnroll;
     /// Custom option for each loop within the scope
     PragmaTupleDim UnrollDim;
   };
@@ -184,15 +186,29 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
       PA.SIMDCode = false;
       continue;
     }
+
     // Otherwise it will be a unrolling dimension
-    if (!Tok.isLiteral()) {
-      assert(false && "Bad format! Need an integer for the unrolling factor");
+    if ((!Tok.isLiteral())) {
+      // assert(false && "Bad format! Need an integer for the unrolling
+      // factor");
+      auto IINext = getValue(Tok);
+      if (IINext->isStr("full")) {
+        PA.FullUnroll[II->getName().str()] = true;
+        PA.UnrollDim.push_back(
+            std::tuple<std::string, int>(II->getName().str(), 1));
+        PP.Lex(Tok);
+        continue;
+      } else {
+        assert(false && "Something went wrong...");
+      }
     }
+
     auto IINext = Tok.getLiteralData();
     if (IINext == NULL) {
       assert(false &&
              "Bad format: needed a unrolling factor for the dimension");
     }
+
     int UnrollFactor = atoi(IINext);
     if (UnrollFactor == 0) {
       assert(false && "Bad value for unrolling factor");

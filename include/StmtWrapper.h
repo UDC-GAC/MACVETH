@@ -80,6 +80,8 @@ public:
     bool Declared = false;
     /// Unrolling factor
     int UnrollFactor = UBFallback;
+    /// Full unroll
+    bool FullyUnrolled = false;
     /// Location of the initialization in the loop
     clang::CharSourceRange SRVarInit;
     /// Location of the condition of the loop
@@ -103,7 +105,9 @@ public:
       return Dim + "; init val = " + std::to_string(InitVal) +
              ", upperbound = " + std::to_string(UpperBound) +
              ", step = " + std::to_string(Step) +
-             "; declared = " + std::to_string(Declared);
+             "; declared = " + std::to_string(Declared) +
+             "; stepunrolled = " + std::to_string(StepUnrolled) +
+             "; knownbounds = " + std::to_string(knownBounds());
     }
 
     static void clearDims() { LoopInfo::DimDeclared.clear(); }
@@ -127,9 +131,6 @@ public:
   /// Constructor
   StmtWrapper(clang::Stmt *S);
 
-  /// Print/render TAC as regular statements
-  std::string renderTacAsStmt();
-
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
   TacListType unroll(LoopInfo L);
@@ -144,8 +145,9 @@ public:
   /// Get Clang Stmt
   Stmt *getClangStmt() { return this->ClangStmt; };
   /// Get TAC list
-  TacListType getTacList() { return this->TacList; };
-  /// Set TAC lsit
+  TacListType getTacList() { return TacList; };
+
+  /// Set TAC list
   void setTacList(TacListType TacList) { this->TacList = TacList; };
   /// Check if it is a loop
   bool isLoop() { return dyn_cast<ForStmt>(this->ClangStmt); }
@@ -164,6 +166,9 @@ public:
   }
   /// Get the name of the loop surrounding this Stmt
   std::string getInnerLoopName() { return this->InnerLoopName; }
+
+  /// Get scop
+  long getScop() { return this->TacList.front().getScop(); }
 
 private:
   /// Statements holded if loop

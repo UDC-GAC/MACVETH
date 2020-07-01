@@ -49,6 +49,8 @@ public:
     int NodeID = -1;
     /// TAC order
     int TacID = 0;
+    /// Scope within program
+    long Scop = 0;
     /// Topological order of this node
     int FreeSched = 0;
     /// TODO this value should be calculated by an algorithm
@@ -84,13 +86,23 @@ public:
     return O;
   }
 
+  /// Setting the scheduling info without any other information
+  void setSchedInfo() { this->SI.NodeID = Node::UUID++; }
+
+  /// Setting the scheduling info without any other information than the TAC
+  void setSchedInfo(TAC T) {
+    this->SI.NodeID = Node::UUID++;
+    this->SI.TacID = T.getTacID();
+    this->SI.Scop = T.getScop();
+  }
+
   /// When creating a Node from a TempExpr, the connections will be created by
   /// the TAC which creates this Node
   Node(MVExpr *TE) {
     this->T = NODE_MEM;
     this->Value = TE->getExprStr();
     this->MV = TE;
-    this->SI.NodeID = Node::UUID++;
+    setSchedInfo();
   }
 
   /// Copy constructor for cloning
@@ -111,8 +123,7 @@ public:
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
-    this->SI.NodeID = Node::UUID++;
-    this->SI.TacID = T.getTacID();
+    setSchedInfo(T);
     this->LoopName = T.getLoopName();
     connectInput(new Node(T.getB()));
     if (T.getC() != NULL) {
@@ -128,15 +139,22 @@ public:
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
-    this->SI.NodeID = Node::UUID++;
-    this->SI.TacID = T.getTacID();
+    setSchedInfo(T);
     this->LoopName = T.getLoopName();
     auto NB = findOutputNode(T.getB()->getExprStr(), L);
-    connectInput(NB == NULL ? new Node(T.getB()) : NB);
+    if (NB == NULL || this->getScop() != NB->getScop()) {
+      connectInput(new Node(T.getB()));
+    } else {
+      connectInput(NB);
+    }
     Node *NC = NULL;
     if (T.getC() != NULL) {
       NC = findOutputNode(T.getC()->getExprStr(), L);
-      connectInput(NC == NULL ? new Node(T.getC()) : NC);
+      if (NC == NULL || this->getScop() != NC->getScop()) {
+        connectInput(new Node(T.getC()));
+      } else {
+        connectInput(NC);
+      }
     }
     updateIfStore();
   }
@@ -170,6 +188,9 @@ public:
 
   /// Connect a Node as input
   void connectInput(Node *N);
+
+  /// Get the scope of the node
+  long getScop() { return this->SI.Scop; }
 
   /// Get the number of inputs in this Node
   int getOutputNum() { return this->OutNodes.size(); }
@@ -272,7 +293,8 @@ public:
     return "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
            "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
            "; TacID = " + std::to_string(getSchedInfo().TacID) +
-           "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt);
+           "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
+           "; Scop = " + std::to_string(getSchedInfo().Scop);
   }
 
 private:

@@ -94,10 +94,12 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
     // this because the SourceLocation of the UpperBound could be a macro
     // variable located in another place. This happens, for instance, with
     // the loop bounds in PolyBench suite
-    Rewrite->ReplaceText(Loop.SRVarCond, "(" + Loop.Dim + " + " +
-                                             std::to_string(Loop.StepUnrolled) +
-                                             ") <= " + Loop.StrUpperBound +
-                                             ";");
+    if (!Loop.FullyUnrolled) {
+      Rewrite->ReplaceText(Loop.SRVarCond,
+                           "(" + Loop.Dim + " + " +
+                               std::to_string(Loop.StepUnrolled) +
+                               ") <= " + Loop.StrUpperBound + ";");
+    }
     Rewrite->ReplaceText(Loop.SRVarInc,
                          Loop.Dim + " += " + std::to_string(Loop.StepUnrolled));
     if (Loop.Declared) {
@@ -111,11 +113,10 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
         DimsDeclared.push_back(Loop.Dim);
       }
     }
+    // If it has been fully unrolled
     std::string Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
     Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
-    DimsDeclared.splice(
-        DimsDeclared.end(),
-        rewriteLoops(SWrap->getListStmt(), Rewrite, DimAlreadyDecl));
+    rewriteLoops(SWrap->getListStmt(), Rewrite, DimAlreadyDecl);
   }
   // Declare variables
   SourceLocation Loc = SList.front()->getClangStmt()->getBeginLoc();
@@ -133,7 +134,7 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
       continue;
     }
     Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                       "// statement vectorized: ", true, true);
+                       "// stmt vectorized: ", true, true);
   }
 }
 
@@ -188,10 +189,11 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
 
   if (SI.SType == SIMDGenerator::SIMDType::VSEQ) {
+    Utils::printDebug("MVFuncVisitor", "wtf = " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
         if (SI.TacID == T.getTacID()) {
-          renderTACInPlace({S});
+          renderTACInPlace({S}, SI.TacID);
           return;
         }
       }
@@ -222,14 +224,17 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL) {
+void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      renderTACInPlace(S->getListStmt());
+      renderTACInPlace(S->getListStmt(), TacID);
       continue;
     }
-    Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), S->renderTacAsStmt(),
-                       true, true);
+    if ((TacID == S->getTacList().back().getTacID()) || (TacID == -1)) {
+      Utils::printDebug("MVFuncVisitor", TAC::renderTacAsStmt(S->getTacList()));
+      Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                         TAC::renderTacAsStmt(S->getTacList()), true, true);
+    }
   }
 }
 
@@ -248,8 +253,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   if (!CS) {
     llvm::llvm_unreachable_internal();
   }
-
-  Utils::printDebug("MVConsumer", "scanScops");
 
   std::list<std::string> DimsDeclFunc = {};
 
@@ -271,19 +274,15 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     // Get all the TAC from all the Stmts
     TacListType TL;
     for (auto SWrap : SL) {
-      Utils::printDebug("MVConsumer",
-                        "number of tacs = " +
-                            std::to_string(SWrap->getTacList().size()));
       for (auto S : SWrap->getTacList()) {
         S.printTAC();
         TL.push_back(S);
       }
     }
-
     if (!Scop->PA.SIMDCode) {
       Utils::printDebug("MVConsumer",
                         "No SIMD code to generate, just printing the code");
-      renderTACInPlace(SL);
+      renderTACInPlace(SL, -1);
       // Rewriting loops
       DimsDeclFunc.splice(DimsDeclFunc.end(),
                           rewriteLoops(SL, &Rewrite, DimsDeclFunc));

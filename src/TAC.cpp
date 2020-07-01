@@ -77,6 +77,54 @@ bool isTerminal(const clang::Stmt *ST) {
 }
 
 // ---------------------------------------------
+std::string replaceTmpTac(std::map<std::string, std::vector<std::string>> T,
+                          std::string K) {
+  if (T.count(K) > 0) {
+    std::vector<std::string> ST = T.at(K);
+    return "(" + replaceTmpTac(T, ST[0]) + " " + ST[2] + " " +
+           replaceTmpTac(T, ST[1]) + ")";
+  } else {
+    return K;
+  }
+}
+
+// ---------------------------------------------
+std::string TAC::renderTacAsStmt(TacListType TL) {
+  std::list<std::string> TmpList;
+  std::map<std::string, std::vector<std::string>> TmpResToReplace;
+  TacListType TCopy(TL);
+  for (auto T : TCopy) {
+    auto A = T.getA()->getExprStr();
+    auto B = T.getB()->getExprStr();
+    std::string C = "";
+    auto Op = T.getMVOP().toString();
+    if (T.getC() != NULL) {
+      C = T.getC()->getExprStr();
+    }
+    if ((T.getA()->getTempInfo() == MVExpr::MVExprInfo::TMP_RES)) {
+      TmpResToReplace[A] = {B, C, Op};
+    }
+  }
+  TCopy.reverse();
+  std::string FinalStr = "";
+  for (auto T : TCopy) {
+    auto A = T.getA()->getExprStr();
+    auto B = T.getB()->getExprStr();
+    std::string C = "";
+    auto Op = T.getMVOP().toString();
+    if (T.getC() != NULL) {
+      C = T.getC()->getExprStr();
+    }
+    // If this, then it is an assignment (by design)
+    if (A == B) {
+      FinalStr =
+          A + " = " + replaceTmpTac(TmpResToReplace, C) + ";\n" + FinalStr;
+    }
+  }
+  return FinalStr;
+}
+
+// ---------------------------------------------
 void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
                         int Val) {
   Expr *S1 = nullptr;
@@ -176,20 +224,18 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
 TacListType TAC::stmtToTAC(clang::Stmt *ST) {
   // Reset the RegVal in TAC class
   auto S = dyn_cast<clang::Expr>(ST);
-  TacListType TacList;
+  TacListType TL;
 
   // Check if the expression is binary
   clang::BinaryOperator *SBin = NULL;
   bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
   if (STypeBin) {
-    TacListType TL;
     stmtToTACRecursive(SBin, &TL, -1);
-    TacList.splice(TacList.end(), TL);
-    return TacList;
+    return TL;
   }
 
   assert(false && "This type of statement is not permitted!!!");
-  return TacList;
+  return TL;
 }
 
 // ---------------------------------------------
@@ -207,6 +253,7 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   auto NewC =
       Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL;
   auto UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
+  UnrolledTac->setScop(Tac->getScop());
   UnrolledTac->setLoopName(Tac->getLoopName());
   return UnrolledTac;
 }

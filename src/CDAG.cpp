@@ -110,9 +110,10 @@ repeat:
     // Compute the vector cost
     auto NewVectInst =
         VectorIR::VectorOP(Cursor, VOps, VLoadA, (IsUnary) ? nullptr : VLoadB);
-    if (NewVectInst.isSequential()) {
-      // TODO: Emit TAC "as it is"
-    }
+    // if (NewVectInst.isSequential()) {
+    //   // TODO: Emit TAC "as it is"
+    //   Utils::printDebug("CDAG", "is sequential");
+    // }
     VList.push_back(NewVectInst);
   }
 
@@ -170,6 +171,11 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
 
   // Execute greedy algorithm
   std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(NL, SG);
+
+  // Order Vector Operations by TAC ID
+  VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {
+    return V1.R.UOP[0]->getTacID() < V2.R.UOP[0]->getTacID();
+  });
 
   // If debug enabled, it will print the VectorOP obtained
   for (auto V : VList) {

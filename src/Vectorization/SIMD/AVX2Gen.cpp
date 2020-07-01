@@ -541,14 +541,16 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(getOpName(V.R, true, true));
+  Args.push_back(getOpName(V.R, false, false));
   if (V.R.EqualVal) {
     if (V.R.DType == VectorIR::DOUBLE) {
       V.R.DType = VectorIR::SDOUBLE;
+      V.R.Width = VectorIR::W64;
     } else if (V.R.DType == VectorIR::FLOAT) {
       V.R.DType = VectorIR::SFLOAT;
+      V.R.Width = VectorIR::W32;
     }
   } else {
-    Args.push_back(getOpName(V.R, false, false));
     // Use unaligned whenever it is possible
     SuffS = "u";
   }

@@ -50,7 +50,6 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   for (auto R : NCopy) {
     ReductionFound = false;
     if (std::find(Visited.begin(), Visited.end(), R) != Visited.end()) {
-      Utils::printDebug("PlcmntAlgo", "Visited " + R->getRegisterValue());
       continue;
     }
     Visited.push_back(R);
@@ -69,11 +68,13 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
       // we are checking:
       // 1.- Check if same type (getValue())
       // 2.- Check if sequential (FreeSched)
-      // 3.- Check if they belong to the same TAC (after unrolling)
+      // 3.- Check if they belong to the same TAC (after unrolling, do not need
+      // to check scope then)
       if ((R->getValue() == In->getValue()) &&
           (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched)) &&
           (R->getSchedInfo().TacID == (In->getSchedInfo().TacID))) {
-        Utils::printDebug("PlcmntAlgo", "Reduction found!");
+        Utils::printDebug("PlcmntAlgo",
+                          "Reduction found for " + In->getRegisterValue());
         ReductionFound = true;
         Reduction.push_back(In);
         Visited.push_back(In);
