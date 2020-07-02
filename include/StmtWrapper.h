@@ -167,6 +167,9 @@ public:
   /// Get the name of the loop surrounding this Stmt
   std::string getInnerLoopName() { return this->InnerLoopName; }
 
+  void setNotVectorized() { this->Vectorized = false; }
+  bool isVectorized() { return this->Vectorized; }
+
   /// Get scop
   long getScop() { return this->TacList.front().getScop(); }
 
@@ -181,6 +184,8 @@ private:
   TacListType TacList;
   /// Loop within
   std::string InnerLoopName = "";
+  /// Has been vectorized or not
+  bool Vectorized = true;
 };
 } // namespace macveth
 #endif /* !MACVETH_STMTWRAPPER_H */

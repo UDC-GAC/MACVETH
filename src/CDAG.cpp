@@ -160,7 +160,7 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
 // ---------------------------------------------
 SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
   // Be clean
-  VectorIR::clearMappigs();
+  // VectorIR::clearMappigs();
 
   // Set placement according to the desired algorithm
   Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
@@ -174,7 +174,7 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
 
   // Order Vector Operations by TAC ID
   VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {
-    return V1.R.UOP[0]->getTacID() < V2.R.UOP[0]->getTacID();
+    return V1.Order < V2.Order;
   });
 
   // If debug enabled, it will print the VectorOP obtained

@@ -30,11 +30,11 @@ public:
   static inline std::list<std::string> MapStores;
 
   /// Clearing all the mappings
-  static void clearMappigs() {
-    MapRegToVReg.clear();
-    MapLoads.clear();
-    MapStores.clear();
-    // VID = 0;
+  static void clear() {
+    VectorIR::MapRegToVReg.clear();
+    VectorIR::MapLoads.clear();
+    VectorIR::MapStores.clear();
+    VectorIR::VID = 0;
   }
 
   /// Prefix for operands

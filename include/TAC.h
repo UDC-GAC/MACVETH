@@ -64,6 +64,15 @@ public:
   /// For generating TACs
   static inline long RegVal = 0;
 
+  static void clear() {
+    /// Unique ID of each TAC
+    TAC::TacUUID = 0;
+    /// Unique ID of each region of each part of the #pragma
+    TAC::TacScop = 0;
+    /// For generating TACs
+    TAC::RegVal = 0;
+  }
+
   /// Empty constructor
   TAC(){};
 

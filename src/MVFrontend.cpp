@@ -133,8 +133,13 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
       commentReplacedStmts(S->getListStmt());
       continue;
     }
-    Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                       "// stmt vectorized: ", true, true);
+    if (S->isVectorized()) {
+      Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                         "// vectorized: ", true, true);
+    } else {
+      Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                         "// replaced: ", true, true);
+    }
   }
 }
 
@@ -170,7 +175,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
       if (L) {
         Rewrite.InsertTextAfterToken(
             S->getClangStmt()->getEndLoc(),
-            SI.render() + ";\t// lantency = " + std::to_string(SI.Cost) + "\n");
+            SI.render() + ";\t// latency = " + std::to_string(SI.Cost) + "\n");
       }
       return false;
     } else {
@@ -189,7 +194,6 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
 
   if (SI.SType == SIMDGenerator::SIMDType::VSEQ) {
-    Utils::printDebug("MVFuncVisitor", "wtf = " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
         if (SI.TacID == T.getTacID()) {
@@ -231,6 +235,7 @@ void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID) {
       continue;
     }
     if ((TacID == S->getTacList().back().getTacID()) || (TacID == -1)) {
+      S->setNotVectorized();
       Utils::printDebug("MVFuncVisitor", TAC::renderTacAsStmt(S->getTacList()));
       Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                          TAC::renderTacAsStmt(S->getTacList()), true, true);
@@ -248,6 +253,15 @@ void MVFuncVisitor::addHeaders(std::list<std::string> S, FileID FID) {
 }
 
 // ---------------------------------------------
+void clearAllMappings() {
+  // Be clean lol
+  // TAC
+  TAC::clear();
+  // VectorIR
+  VectorIR::clear();
+}
+
+// ---------------------------------------------
 void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
@@ -255,6 +269,9 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   }
 
   std::list<std::string> DimsDeclFunc = {};
+
+  // Clear all kind of mappings, since this is a new function
+  clearAllMappings();
 
   // For each scop in the function
   for (auto Scop : ScopHandler::funcGetScops(fd)) {

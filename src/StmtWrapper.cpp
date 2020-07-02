@@ -70,8 +70,8 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
   if (auto Loop = dyn_cast<ForStmt>(S)) {
     this->LoopL = getLoop(Loop);
     auto Body = dyn_cast<CompoundStmt>(Loop->getBody());
+    TAC::TacScop++;
     if (Body) {
-      TAC::TacScop++;
       for (auto S : Body->body()) {
         auto SW = new StmtWrapper(S);
         SW->setInnerLoopName(this->getLoopInfo().Dim);
@@ -83,8 +83,14 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
         }
       }
     } else {
-      assert(false && "Something went wrong: probably you missed some flags");
-      llvm::llvm_unreachable_internal();
+      auto SW = new StmtWrapper(Loop->getBody());
+      SW->setInnerLoopName(this->getLoopInfo().Dim);
+      this->ListStmt.push_back(SW);
+      Utils::printDebug("StmtWrapper", "adding new stmt, TACs in loop = " +
+                                           this->getLoopInfo().Dim);
+      for (auto T : SW->getTacList()) {
+        T.printTAC();
+      }
     }
   } else {
     this->setTacList(TAC::stmtToTAC(S));

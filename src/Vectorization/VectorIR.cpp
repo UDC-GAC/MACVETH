@@ -101,6 +101,9 @@ std::string VectorIR::VOperand::toString() {
 
 // ---------------------------------------------
 std::string VectorIR::VectorOP::toString() {
+  if (this->VT == VectorIR::VType::SEQ) {
+    return "Sequential";
+  }
   auto B = (IsUnary) ? "" : "," + OpB.toString();
   auto Str = R.toString() + " = " + VN + "(" + OpA.toString() + B + ")";
   return Str;
@@ -184,13 +187,7 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   auto AlreadyLoaded = false;
   for (auto T : MapLoads) {
     if (std::get<1>(T) == this->getName()) {
-      Utils::printDebug("VectorIR::VOperand",
-                        "name = " + this->getName() +
-                            ", scop = " + std::to_string(V[0]->getScop()));
       if (V[0]->getScop() == std::get<0>(T)) {
-        Utils::printDebug("VectorIR::VOperand",
-                          "Already loaded name = " + this->getName() +
-                              ", scop = " + std::to_string(V[0]->getScop()));
         AlreadyLoaded = true;
         break;
       }
@@ -332,11 +329,11 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[]) {
 
 // ---------------------------------------------
 VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
-                             Node *VLoadB[])
-    : OpA(VL, VLoadA, false) {
-
+                             Node *VLoadB[]) {
+  // The assumption is that as all operations are the same, then all the
+  // operations have the same TAC order
+  this->Order = VOps[0]->getTacID();
   if (VLoadB != nullptr) {
-    this->OpB = VOperand(VL, VLoadB, false);
     // Vector type will depend on the operations and operations, logically
     this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
   } else {
@@ -344,16 +341,21 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
     // Vector type will depend on the operations and operations, logically
     this->VT = getVectorOpType(VL, VOps, VLoadA);
   }
+
+  if (this->VT == VectorIR::VType::SEQ) {
+    return;
+  }
+
+  this->OpA = VOperand(VL, VLoadA, false);
+  if (VLoadB != nullptr) {
+    this->OpB = VOperand(VL, VLoadB, false);
+  }
   // Result operand
   this->R = VOperand(VL, VOps, true);
 
   // Assuming that inputs and outputs have the same type
   this->OpA.DType = this->R.DType;
   this->OpB.DType = this->R.DType;
-
-  // The assumption is that as all operations are the same, then all the
-  // operations have the same TAC order
-  this->Order = VOps[0]->getTacID();
 
   // Name: operation (assuming all operations have the same value, which is a
   // valid assumption)

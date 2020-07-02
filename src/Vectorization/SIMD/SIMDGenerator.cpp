@@ -289,8 +289,6 @@ SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   SIMDInstListType IL;
 
-  std::string RegType = getRegisterType(V.DT, V.VW);
-
   // Arranging the operation
   switch (V.VT) {
   case VectorIR::VType::MAP:
@@ -303,10 +301,10 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
     break;
   case VectorIR::VType::SEQ:
     Utils::printDebug("SIMDGen", "sequential");
-    IL = vseq(V);
-    break;
+    return vseq(V);
   };
 
+  auto RegType = getRegisterType(V.DT, V.VW);
   // Registers used
   addRegToDeclare(RegType, V.R.getName());
   addRegToDeclare(RegType, V.OpA.getName());
