@@ -62,13 +62,12 @@ void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
     auto Scop = getScopLoc(S);
     assert(Scop != NULL && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
-      // CouldFullyUnroll = S->unrollAndJam(Scop->PA.UnrollFactor);
       Utils::printDebug("MVConsumer", "unroll and jam...");
       CouldFullyUnroll = S->unrollAndJam(LI, Scop);
       assert(CouldFullyUnroll &&
              "Need to be able to full unroll when having leftovers");
     } else if (Scop->PA.Unroll) {
-      Utils::printDebug("MVConsumer", "unroll and jam...");
+      Utils::printDebug("MVConsumer", "unroll by dim...");
       CouldFullyUnroll = S->unrollByDim(LI, Scop);
     }
   }
@@ -175,7 +174,8 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
       if (L) {
         Rewrite.InsertTextAfterToken(
             S->getClangStmt()->getEndLoc(),
-            SI.render() + ";\t// latency = " + std::to_string(SI.Cost) + "\n");
+            SI.render() + ";\t// latency = " + std::to_string(SI.Cost.Latency) +
+                "\n");
       }
       return false;
     } else {
@@ -217,7 +217,7 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
           if (SI.TacID == T.getTacID()) {
             Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                                SI.render() + ";\t// latency = " +
-                                   std::to_string(SI.Cost) + "\n",
+                                   std::to_string(SI.Cost.Latency) + "\n",
                                true, true);
             return;
           }
@@ -297,8 +297,9 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       }
     }
     if (!Scop->PA.SIMDCode) {
-      Utils::printDebug("MVConsumer",
-                        "No SIMD code to generate, just printing the code");
+      MVInfo("[MVConsumer] "
+             "No SIMD code to generate, just writing "
+             "the code with the desired unrolling options");
       renderTACInPlace(SL, -1);
       // Rewriting loops
       DimsDeclFunc.splice(DimsDeclFunc.end(),
@@ -310,30 +311,48 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
       // Computing the cost model of the CDAG created
       auto SInfo = CDAG::computeCostModel(G, SIMDGen);
-      //// Printing the registers we are going to use
-      for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-        Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
-                           InsSIMD + "\n", true, true);
-      }
-      for (auto InsSIMD : SInfo.SIMDList) {
-        renderSIMDInstInPlace(InsSIMD, SL);
-      }
-      // Rewriting loops
-      DimsDeclFunc.splice(DimsDeclFunc.end(),
-                          rewriteLoops(SL, &Rewrite, DimsDeclFunc));
 
-      // Add includes if option
-      if (MVOptions::Headers) {
-        addHeaders(SIMDGen->getHeadersNeeded(), Scop->FID);
+      if (SInfo.TotCost < StmtWrapper::computeSequentialCostStmtWrapper(SL)) {
+        //// Printing the registers we are going to use
+        for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+          Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
+                             InsSIMD + "\n", true, true);
+        }
+        for (auto InsSIMD : SInfo.SIMDList) {
+          renderSIMDInstInPlace(InsSIMD, SL);
+        }
+        // Rewriting loops
+        DimsDeclFunc.splice(DimsDeclFunc.end(),
+                            rewriteLoops(SL, &Rewrite, DimsDeclFunc));
+
+        // Add includes if option
+        if (MVOptions::Headers) {
+          addHeaders(SIMDGen->getHeadersNeeded(), Scop->FID);
+          MVOptions::Headers = false;
+        }
+
+        /// Clear mappings
+        // SIMDGen->clearMappings();
+
+        // Comment statements
+        commentReplacedStmts(SL);
+
+        // FIXME: generate report
+        // SInfo.printCost();
+        MVInfo(
+            "Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
+            "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
+            "; Sequential cost = " +
+            std::to_string(StmtWrapper::computeSequentialCostStmtWrapper(SL)));
+      } else {
+        MVWarn(
+            "Region not vectorized (SCOP = " + std::to_string(Scop->StartLine) +
+            "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
+            "; Sequential cost = " +
+            std::to_string(StmtWrapper::computeSequentialCostStmtWrapper(SL)));
       }
-
-      /// Clear mappings
-      SIMDGen->clearMappings();
-
       delete G;
     }
-    // Comment statements
-    commentReplacedStmts(SL);
 
     // Be clean
     for (auto SWrap : SL) {

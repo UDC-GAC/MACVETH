@@ -35,10 +35,11 @@ void SIMDGenerator::populateTable(MVISA ISA) {
   Utils::printDebug("CostsTable", "PathISA = " + PathISA);
   if (F.is_open()) {
     while (getline(F, L)) {
-      if (L.rfind("#", 0) == 0) {
+      if ((L.rfind("#", 0) == 0) || (L == "")) {
         // Check if line is a comment
         continue;
       }
+
       std::stringstream TMP(L);
       std::vector<std::string> Args;
       while (getline(TMP, W, ',')) {
@@ -50,6 +51,10 @@ void SIMDGenerator::populateTable(MVISA ISA) {
                  (Args.size() == 6)) {
         CostTable::addRow(Arch, Args[1], std::stoi(Args[2]), std::stod(Args[3]),
                           std::stoi(Args[4]), Args[5]);
+      } else if (((Args[0] == Arch) || (Args[0] == "UNDEF")) &&
+                 (Args.size() == 7)) {
+        CostTable::addRow(Arch, Args[1], std::stoi(Args[2]), std::stod(Args[3]),
+                          std::stoi(Args[4]), std::stoi(Args[5]), Args[6]);
       }
     }
     F.close();
@@ -111,7 +116,8 @@ std::string SIMDGenerator::SIMDInst::render() {
                           (SType == SIMDType::VSTORER))
                              ? FN
                              : Result + " = " + FN;
-  if ((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ))
+  if (((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ)) &&
+      (Args.size() == 0))
     return FullFunc;
   FullFunc += "(";
   std::list<std::string>::iterator Op;
@@ -124,14 +130,14 @@ std::string SIMDGenerator::SIMDInst::render() {
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
-  std::map<std::string, long> CostOp;
+  std::map<std::string, SIMDCostInfo> CostOp;
   std::map<std::string, long> NumOp;
   std::list<std::string> L;
   long TotCost = 0;
   for (SIMDInst I : S) {
     CostOp[I.FuncName] = I.Cost;
     NumOp[I.FuncName]++;
-    TotCost += I.Cost;
+    TotCost += I.Cost.Latency;
   }
   SIMDInfo SI(S, CostOp, NumOp, TotCost);
   return SI;
@@ -160,7 +166,8 @@ std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
   std::list<std::string> L;
   // Render instructions
   for (auto I : S) {
-    auto Inst = I.render() + ";\t// latency = " + std::to_string(I.Cost);
+    auto Inst =
+        I.render() + ";\t// latency = " + std::to_string(I.Cost.Latency);
     L.push_back(Inst);
   }
   return L;
@@ -386,5 +393,9 @@ void SIMDGenerator::clearMappings() {
     X.second.clear();
   }
   RegDeclared.clear();
+  AccmToReg.clear();
+  AuxArrayReg = 0;
   AccmReg = 0;
+  AuxRegId = 0;
+  AuxReg.clear();
 }

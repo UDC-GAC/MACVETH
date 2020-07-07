@@ -27,6 +27,7 @@
  */
 
 #include "include/StmtWrapper.h"
+#include "include/MVAssert.h"
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
@@ -37,6 +38,37 @@ using namespace clang;
 using namespace macveth;
 
 // ---------------------------------------------
+long StmtWrapper::getCost() {
+  long Tot = 0;
+  if (this->isLoop()) {
+    for (auto S : this->getListStmt()) {
+      Tot += S->getCost();
+    }
+  } else {
+    for (auto T : this->getTacList()) {
+      // FIXME:
+      Tot += MVOp::getOperationCost(T.getMVOP());
+      Tot += (T.getA()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
+      Tot += (T.getB()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
+      if (T.getC() != NULL) {
+        Tot += (T.getC()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
+      }
+    }
+  }
+  return Tot;
+}
+
+// ---------------------------------------------
+long StmtWrapper::computeSequentialCostStmtWrapper(
+    std::list<StmtWrapper *> SL) {
+  long TotalCost = 0;
+  for (auto S : SL) {
+    TotalCost += S->getCost();
+  }
+  return TotalCost;
+}
+
+// ---------------------------------------------
 std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
                                                    ScopLoc *Scop) {
   std::list<StmtWrapper *> SList;
@@ -45,6 +77,7 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
   ScopHandler::visitScop(*Scop);
   for (auto StmtWithin : CS->body()) {
     auto ST = dyn_cast<Stmt>(StmtWithin);
+    Utils::printDebug("StmtWrapper", "visiting scop");
     if (!ST) {
       continue;
     }
@@ -58,6 +91,31 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
       StmtWrapper *NewStmt = new StmtWrapper(ST);
       TAC::TacScop++;
       SList.push_back(NewStmt);
+    } else {
+      // Could be inside the loop the region of interest
+      auto FL = dyn_cast<ForStmt>(ST);
+      if (FL) {
+        auto B = dyn_cast<CompoundStmt>(FL->getBody());
+        if (B) {
+          SList.splice(SList.end(), StmtWrapper::genStmtWraps(B, Scop));
+        } else {
+          auto B = dyn_cast<Stmt>(FL->getBody());
+          if (B) {
+            unsigned int Start =
+                Utils::getSourceMgr()->getExpansionLineNumber(B->getBeginLoc());
+            unsigned int End =
+                Utils::getSourceMgr()->getExpansionLineNumber(B->getEndLoc());
+            if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
+              Utils::printDebug("StmtWrapper genStmtWraps",
+                                "new StmtWrapper => " +
+                                    Utils::getStringFromStmt(B));
+              StmtWrapper *NewStmt = new StmtWrapper(B);
+              TAC::TacScop++;
+              SList.push_back(NewStmt);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -231,8 +289,8 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
     for (auto D : Scop->PA.UnrollDim) {
       if (this->LoopL.Dim == std::get<0>(D)) {
         if (Scop->PA.FullUnroll[this->LoopL.Dim]) {
-          assert(this->LoopL.knownBounds() &&
-                 "Can not full unroll if upperbound is not known");
+          MVAssert(this->LoopL.knownBounds(),
+                   "Can not full unroll if upperbound is not known");
           this->LoopL.UnrollFactor = this->LoopL.UpperBound;
           this->LoopL.FullyUnrolled = true;
         } else {
@@ -266,8 +324,8 @@ bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
     for (auto D : Scop->PA.UnrollDim) {
       if (this->LoopL.Dim == std::get<0>(D)) {
         if (Scop->PA.FullUnroll[this->LoopL.Dim]) {
-          assert(this->LoopL.knownBounds() &&
-                 "Can not full unroll if upperbound is not known");
+          MVAssert(this->LoopL.knownBounds(),
+                   "Can not full unroll if upperbound is not known");
           this->LoopL.UnrollFactor = this->LoopL.UpperBound;
           this->LoopL.FullyUnrolled = true;
         } else {

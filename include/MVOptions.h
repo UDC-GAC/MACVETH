@@ -51,14 +51,21 @@ enum MVArch {
   CoffeeLake,
   /// Intel Cascade Lake (2019) architecture: AVX512
   CascadeLake,
+  /// AMD Zen architecture: AVX2
+  Zen,
 };
 
-static std::map<MVArch, std::string> MVArchStr = {
-    {Nehalem, "Nehalem"},         {Westmere, "Westmere"},
-    {SandyBridge, "SandyBridge"}, {IvyBridge, "IvyBridge"},
-    {Haswell, "Haswell"},         {Broadwell, "Broadwell"},
-    {Skylake, "Skylake"},         {KabyLake, "KabyLake"},
-    {CoffeeLake, "CoffeeLake"},   {CascadeLake, "CascadeLake"}};
+static std::map<MVArch, std::string> MVArchStr = {{Nehalem, "Nehalem"},
+                                                  {Westmere, "Westmere"},
+                                                  {SandyBridge, "SandyBridge"},
+                                                  {IvyBridge, "IvyBridge"},
+                                                  {Haswell, "Haswell"},
+                                                  {Broadwell, "Broadwell"},
+                                                  {Skylake, "Skylake"},
+                                                  {KabyLake, "KabyLake"},
+                                                  {CoffeeLake, "CoffeeLake"},
+                                                  {CascadeLake, "CascadeLake"},
+                                                  {Zen, "Zen"}};
 
 /// Mapping between the ISA and supported architectures
 static std::map<MVISA, std::list<MVArch>> SupportedISAArch = {
@@ -68,7 +75,8 @@ static std::map<MVISA, std::list<MVArch>> SupportedISAArch = {
     {AVX,
      {SandyBridge, IvyBridge, Haswell, Broadwell, Skylake, KabyLake, CoffeeLake,
       CascadeLake}},
-    {AVX2, {Haswell, Broadwell, Skylake, KabyLake, CoffeeLake, CascadeLake}},
+    {AVX2,
+     {Haswell, Broadwell, Skylake, KabyLake, CoffeeLake, CascadeLake, Zen}},
     {AVX512, {Skylake, CascadeLake}}};
 
 enum DebugLevel {

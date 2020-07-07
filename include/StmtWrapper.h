@@ -131,6 +131,12 @@ public:
   /// Constructor
   StmtWrapper(clang::Stmt *S);
 
+  /// Compute the sequential cost
+  static long computeSequentialCostStmtWrapper(std::list<StmtWrapper *> SL);
+
+  /// Compute the cost of the statments within
+  long getCost();
+
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
   TacListType unroll(LoopInfo L);

@@ -350,6 +350,7 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   if (VLoadB != nullptr) {
     this->OpB = VOperand(VL, VLoadB, false);
   }
+
   // Result operand
   this->R = VOperand(VL, VOps, true);
 

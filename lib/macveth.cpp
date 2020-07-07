@@ -92,9 +92,8 @@ static llvm::cl::opt<MVArch> Architecture(
         clEnumValN(MVArch::CoffeeLake, "coffeelake",
                    "Intel Coffee Lake (2017) architecture (tock): AVX2"),
         clEnumValN(MVArch::CascadeLake, "cascadelake",
-                   "Intel Cascade Lake (2019) architecture (tock): AVX512")
-
-            ));
+                   "Intel Cascade Lake (2019) architecture (tock): AVX512"),
+        clEnumValN(MVArch::Zen, "Zen", "AMD Zen (2019) architecture: AVX2")));
 
 /// FMA support flag
 static llvm::cl::opt<bool> FMA("fma",

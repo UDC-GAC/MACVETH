@@ -81,8 +81,13 @@ std::string replaceTmpTac(std::map<std::string, std::vector<std::string>> T,
                           std::string K) {
   if (T.count(K) > 0) {
     std::vector<std::string> ST = T.at(K);
-    return "(" + replaceTmpTac(T, ST[0]) + " " + ST[2] + " " +
-           replaceTmpTac(T, ST[1]) + ")";
+    if (ST[3] == "BinOp") {
+      return "(" + replaceTmpTac(T, ST[0]) + " " + ST[2] + " " +
+             replaceTmpTac(T, ST[1]) + ")";
+    } else {
+      return ST[2] + "(" + replaceTmpTac(T, ST[0]) + ", " +
+             replaceTmpTac(T, ST[1]) + ")";
+    }
   } else {
     return K;
   }
@@ -98,11 +103,12 @@ std::string TAC::renderTacAsStmt(TacListType TL) {
     auto B = T.getB()->getExprStr();
     std::string C = "";
     auto Op = T.getMVOP().toString();
+    auto TOP = T.getMVOP().T == MVOpType::CLANG_BINOP ? "BinOp" : "Func";
     if (T.getC() != NULL) {
       C = T.getC()->getExprStr();
     }
     if ((T.getA()->getTempInfo() == MVExpr::MVExprInfo::TMP_RES)) {
-      TmpResToReplace[A] = {B, C, Op};
+      TmpResToReplace[A] = {B, C, Op, TOP};
     }
   }
   TCopy.reverse();
@@ -111,7 +117,7 @@ std::string TAC::renderTacAsStmt(TacListType TL) {
     auto A = T.getA()->getExprStr();
     auto B = T.getB()->getExprStr();
     std::string C = "";
-    auto Op = T.getMVOP().toString();
+    // auto Op = T.getMVOP().toString();
     if (T.getC() != NULL) {
       C = T.getC()->getExprStr();
     }

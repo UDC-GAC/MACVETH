@@ -9,6 +9,7 @@
 #ifndef MACVETH_SIMDGENERATOR_H
 #define MACVETH_SIMDGENERATOR_H
 
+#include "include/Vectorization/SIMD/CostTable.h"
 #include "include/Vectorization/VectorIR.h"
 
 using namespace macveth;
@@ -59,6 +60,31 @@ public:
     VOPT
   };
 
+  /// Cost of SIMD
+  struct SIMDCostInfo {
+    /// Number of micro-instructions issued by the SIMD instruction
+    int UOps = 1;
+    /// Number of cycles wasted by the instruction
+    int Latency = 1;
+    /// Issue latency: the lower the better. On Intel architectures it
+    /// represents the velocity of issuing another uop
+    double Throughput = 1;
+    /// TODO: some SIMD instructions may have penalties due to ports or others
+    int Penalty = -1;
+    /// TODO: we may add heuristics for some architectures
+    int Preference = -1;
+    /// Default constructor
+    SIMDCostInfo() {}
+    SIMDCostInfo(int L, float T, int Pen, int Pref, int U)
+        : Latency(L), Throughput(T), Penalty(Pen), Preference(Pref), UOps(U) {}
+    /// Default constructor
+    SIMDCostInfo(CostTable::Row R) {
+      UOps = R.NUops;
+      Latency = R.Latency;
+      Throughput = R.Throughput;
+    }
+  };
+
   /// Wrap for representing the SIMDInst not just as single strings to print,
   /// but as a set of fields
   struct SIMDInst {
@@ -72,6 +98,8 @@ public:
     int TacID = -1;
     /// Result register name
     std::string Result;
+    /// Type of operation
+    MVOp MVOP;
     /// Signature of the function
     std::string FuncName;
     /// Signature of the function (macro approach)
@@ -83,7 +111,7 @@ public:
     /// List of *sorted* arguments of the function (macro approach)
     std::list<std::string> MVArgs;
     /// Cost of the instruction
-    int Cost = 0;
+    SIMDCostInfo Cost;
     /// Data type
     VectorIR::VDataType DT;
     /// Width
@@ -127,28 +155,28 @@ public:
     /// List of SIMD instructions generated
     SIMDInstListType SIMDList;
     /// Cost of operations
-    std::map<std::string, long> CostOp;
+    std::map<std::string, SIMDCostInfo> CostOp;
     /// Number of operations of each type
     std::map<std::string, long> NumOp;
     /// Total cost
     long TotCost;
 
     /// Constructor
-    SIMDInfo(SIMDInstListType S, std::map<std::string, long> CostOp,
+    SIMDInfo(SIMDInstListType S, std::map<std::string, SIMDCostInfo> CostOp,
              std::map<std::string, long> NumOp, long TotCost)
         : SIMDList(S), CostOp(CostOp), NumOp(NumOp), TotCost(TotCost) {}
 
     /// Printing the cost
     void printCost() {
-      std::cout << "---------- COST SIMD --------------\n";
+      std::cout << "---------- SIMD REPORT ----------\n";
       for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {
         std::cout << It->first + "\t=\t" +
-                         std::to_string(NumOp[It->first] * It->second) + "\t(" +
-                         std::to_string(NumOp[It->first]) + ")"
+                         std::to_string(NumOp[It->first] * It->second.Latency) +
+                         "\t(" + std::to_string(NumOp[It->first]) + ")"
                   << std::endl;
       }
-      std::cout << "TOTAL = " + std::to_string(TotCost) << std::endl;
-      std::cout << "-----------------------------------\n";
+      std::cout << " TOTAL = " + std::to_string(TotCost) << std::endl;
+      std::cout << "-------- END SIMD REPORT --------\n";
     }
   };
 
@@ -275,7 +303,8 @@ public:
               std::string SuffS, std::list<std::string> OPS,
               SIMDGenerator::SIMDType SType,
               SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "", std::list<std::string> MVArgs = {}) = 0;
+              std::string MVFunc = "", std::list<std::string> MVArgs = {},
+              MVOp MVOP = MVOp()) = 0;
 
   /// Clean the list of registers declared
   static void clearMappings();
@@ -338,6 +367,21 @@ protected:
       AccmToReg[V] = SIMDGenerator::AccmReg++;
     }
     return PREFIX + std::to_string(AccmToReg.at(V));
+  }
+
+  inline static int AuxRegId = 0;
+  inline static std::map<std::string, int> AuxReg;
+  static std::string getNextAuxRegister(std::string V) {
+    auto PREFIX = "__mv_aux";
+    if (AuxReg.count(V) == 0) {
+      AuxReg[V] = SIMDGenerator::AuxRegId++;
+    }
+    return PREFIX + std::to_string(AuxReg.at(V));
+  }
+
+  /// Check if value has been already been mapped for an accumulator
+  static bool hasAlreadyBeenMapped(std::string V) {
+    return !(AccmToReg.count(V) == 0);
   }
 
   /// Auxiliary array numbering for auxiliary operations such as reduce

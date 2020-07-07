@@ -20,7 +20,7 @@ namespace macveth {
 class AVX2Gen : public SIMDGenerator {
 public:
   /// Name of the architecture
-  static inline std::string NArch = "IntelX86";
+  static inline std::string NArch = "x86";
   /// Name of the ISA
   static inline std::string NISA = "AVX2";
   /// Name of the headers needed
@@ -63,10 +63,10 @@ public:
   /// Generate custom functions
   virtual SIMDInstListType vfunc(VectorIR::VectorOP V) override;
 
-  // Reduction operations
+  /// Reduction operations
   virtual SIMDInstListType vreduce(VectorIR::VectorOP V) override;
 
-  // Sequential operation
+  /// Sequential operation
   virtual SIMDInstListType vseq(VectorIR::VectorOP V) override;
 
   /// Perform some peephole optimizations after generating SIMD instructions
@@ -76,6 +76,11 @@ public:
   SIMDGenerator::SIMDInstListType
   fuseAddSubMult(SIMDGenerator::SIMDInstListType I);
 
+  /// Horizontal reduction approach
+  SIMDGenerator::SIMDInstListType
+  horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
+
+  /// General reduction approach, based on vertical operations
   SIMDGenerator::SIMDInstListType
   generalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
 
@@ -93,11 +98,11 @@ public:
   /// Get name of AVX architecture
   virtual std::string getNISA() override { return AVX2Gen::NISA; }
 
-  /// Get the traslation between VectorIR data widths and AVX2's
+  /// Get the translation between VectorIR data widths and AVX2's
   virtual std::string getMapWidth(VectorIR::VWidth V) override {
     assert((V != VectorIR::VWidth::W512) &&
            "Width too wide for AVX2 (512 not supported)!!");
-    if (V < 128) {
+    if (V <= 128) {
       return MapWidth[VectorIR::VWidth::W128];
     } else {
       return MapWidth[VectorIR::VWidth::W256];
@@ -119,6 +124,7 @@ public:
   /// Destructor
   virtual ~AVX2Gen(){};
 
+  /// Singleton pattern
   static SIMDGenerator *getSingleton() {
     if (AVX2Gen::_instance == 0) {
       AVX2Gen::_instance = new AVX2Gen();
@@ -130,15 +136,36 @@ private:
   /// Constructor
   AVX2Gen() : SIMDGenerator() { SIMDGenerator::populateTable(MVISA::AVX2); }
   static inline SIMDGenerator *_instance = 0;
-  /// Auxiliar function for adding the SIMDInst to the list
+  /// Add SIMD instruction
+  SIMDGenerator::SIMDInst
+  addSIMDInst(std::string Result, std::string Op, std::string PrefS,
+              std::string SuffS, VectorIR::VWidth Width,
+              VectorIR::VDataType Type, std::list<std::string> Args,
+              SIMDGenerator::SIMDType SType,
+              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
+              std::string MVFunc = "", std::list<std::string> MVArgs = {},
+              MVOp MVOP = MVOp());
+  /// Auxiliary function for adding the SIMDInst to the list
   SIMDGenerator::SIMDInst
   addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
               std::string SuffS, std::list<std::string> OPS,
               SIMDGenerator::SIMDType SType,
               SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "",
-              std::list<std::string> MVArgs = {}) override;
+              std::string MVFunc = "", std::list<std::string> MVArgs = {},
+              MVOp MVOP = MVOp()) override;
 
+  /// Shuffle method for reductions
+  std::string shuffleArguments(std::string A1, std::string A2,
+                               VectorIR::VWidth Width,
+                               SIMDGenerator::SIMDInst I, int Pos);
+  /// Shuffle method for reductions
+  std::string permuteArguments(std::string A1, std::string A2,
+                               SIMDGenerator::SIMDInst I, int Pos);
+
+  /// Extract high or low part
+  std::string extractArgument(std::string A, SIMDGenerator::SIMDInst I, int Hi);
+
+  /// Auxiliary method for declaring auxiliary arrays
   std::string declareAuxArray(VectorIR::VDataType DT);
   /// Specific instruction for loading data according to the operand
   bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
@@ -172,4 +199,4 @@ private:
 };
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_AVX2GEN_H */
