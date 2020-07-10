@@ -85,9 +85,13 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
     }
     auto Loop = SWrap->getLoopInfo();
     Utils::printDebug("MVConsumers", "Rewriting loop = " + Loop.Dim);
+
     // Rewrite headers
-    Rewrite->ReplaceText(Loop.SRVarInit,
-                         Loop.Dim + " = " + std::to_string(Loop.InitVal));
+    Rewrite->ReplaceText(Loop.SRVarInit, Loop.Dim + " = " +
+                                             ((Loop.InitVal != -1)
+                                                  ? std::to_string(Loop.InitVal)
+                                                  : Loop.StrInitVal));
+
     // IMPORTANT: need to put ";" at the end since the range is calculated
     // as the -1 offset of the location of the increment. This is done like
     // this because the SourceLocation of the UpperBound could be a macro

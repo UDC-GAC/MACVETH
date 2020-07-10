@@ -24,7 +24,7 @@ static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   int i, j;
 
   for (i = 0; i < n; i++)
-    x[i] = 42;
+    x[i] = 4;
 }
 
 static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
@@ -56,14 +56,19 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-static void kernel_template(int n, double *S, DATA_TYPE POLYBENCH_1D(x, N, n)) {
-  double tmp = (*S);
+static void kernel_template(int n, double *S, double *F,
+                            DATA_TYPE POLYBENCH_1D(x, N, n),
+                            DATA_TYPE POLYBENCH_1D(y, N, n)) {
+  double G = (*S);
+  double H = (*F);
 #pragma macveth
-  for (int i = 0; i < _PB_N; i += 2) {
-    tmp = tmp + x[i];
+  for (int i = 0; i < _PB_N; i++) {
+    G = G * x[i];
+    H = H * y[i];
   }
 #pragma endmacveth
-  (*S) = tmp;
+  (*S) = G;
+  (*F) = H;
 }
 
 int main(int argc, char **argv) {
@@ -72,17 +77,20 @@ int main(int argc, char **argv) {
 
   /* Variable declaration/allocation. */
   POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
+  POLYBENCH_1D_ARRAY_DECL(y, DATA_TYPE, N, n);
 
   /* Initialize array(s). */
   init_1darray(n, POLYBENCH_ARRAY(x));
+  init_1darray(n, POLYBENCH_ARRAY(y));
 
-  double S = 0;
+  double S = 2;
+  double F = 1.1;
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
-  kernel_template(n, &S, POLYBENCH_ARRAY(x));
+  kernel_template(n, &S, &F, POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
@@ -90,11 +98,14 @@ int main(int argc, char **argv) {
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
-  polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
+  // polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
   polybench_prevent_dce(print_value(S));
+  // polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(y)));
+  polybench_prevent_dce(print_value(F));
 
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(x);
+  POLYBENCH_FREE_ARRAY(y);
 
   return 0;
 }

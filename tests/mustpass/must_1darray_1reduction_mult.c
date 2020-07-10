@@ -59,8 +59,8 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 static void kernel_template(int n, double *S, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   double tmp = (*S);
 #pragma macveth
-  for (int i = 0; i < _PB_N; i += 2) {
-    tmp = tmp + x[i];
+  for (int i = 0; i < _PB_N; i++) {
+    tmp = tmp * x[i];
   }
 #pragma endmacveth
   (*S) = tmp;

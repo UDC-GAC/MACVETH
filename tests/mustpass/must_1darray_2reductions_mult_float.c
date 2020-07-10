@@ -19,12 +19,17 @@
 /* Default data type is double, default size is N=1024. */
 #include "definitions.h"
 
+#ifdef DATA_TYPE
+#undef DATA_TYPE
+#define DATA_TYPE float
+#endif
+
 /* Array initialization. */
 static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   int i, j;
 
   for (i = 0; i < n; i++)
-    x[i] = 42;
+    x[i] = 1.5f;
 }
 
 static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
@@ -37,7 +42,7 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
-static void print_value(double S) {
+static void print_value(DATA_TYPE S) {
   fprintf(stderr, DATA_PRINTF_MODIFIER, S);
   fprintf(stderr, "\n");
 }
@@ -56,15 +61,15 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-static void kernel_template(int n, double *S, double *F,
+static void kernel_template(int n, DATA_TYPE *S, DATA_TYPE *F,
                             DATA_TYPE POLYBENCH_1D(x, N, n),
                             DATA_TYPE POLYBENCH_1D(y, N, n)) {
-  double G = (*S);
-  double H = (*F);
-#pragma macveth
+  DATA_TYPE G = (*S);
+  DATA_TYPE H = (*F);
+#pragma macveth i 8
   for (int i = 0; i < _PB_N; i++) {
-    G = G + x[i];
-    H = H + y[i];
+    G = G * x[i];
+    H = H * y[i];
   }
 #pragma endmacveth
   (*S) = G;
@@ -83,8 +88,8 @@ int main(int argc, char **argv) {
   init_1darray(n, POLYBENCH_ARRAY(x));
   init_1darray(n, POLYBENCH_ARRAY(y));
 
-  double S = 0;
-  double F = 0;
+  DATA_TYPE S = 1.0f;
+  DATA_TYPE F = 1.0f;
 
   /* Start timer. */
   polybench_start_instruments;
@@ -98,9 +103,9 @@ int main(int argc, char **argv) {
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
-  polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
+  // polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
   polybench_prevent_dce(print_value(S));
-  polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(y)));
+  // polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(y)));
   polybench_prevent_dce(print_value(F));
 
   /* Be clean. */

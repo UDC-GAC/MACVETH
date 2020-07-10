@@ -72,6 +72,9 @@ public:
   /// Perform some peephole optimizations after generating SIMD instructions
   virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) override;
 
+  /// Set values for registers which need to be initalized
+  virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S);
+
   /// One of the optimizations included in AVX2
   SIMDGenerator::SIMDInstListType
   fuseAddSubMult(SIMDGenerator::SIMDInstListType I);
@@ -101,7 +104,7 @@ public:
   /// Get the translation between VectorIR data widths and AVX2's
   virtual std::string getMapWidth(VectorIR::VWidth V) override {
     assert((V != VectorIR::VWidth::W512) &&
-           "Width too wide for AVX2 (512 not supported)!!");
+           "Width too wide for AVX2 (512 bits not supported)!!");
     if (V <= 128) {
       return MapWidth[VectorIR::VWidth::W128];
     } else {
@@ -109,7 +112,7 @@ public:
     }
   }
 
-  /// Get the traslation between VectorIR data types and AVX2's
+  /// Get the translation between VectorIR data types and AVX2's
   virtual std::string getMapType(VectorIR::VDataType D) override {
     return MapType[D];
   }
@@ -121,6 +124,10 @@ public:
   /// method is abstract because each architecture may have different types.
   virtual std::string getRegisterType(VectorIR::VDataType DT,
                                       VectorIR::VWidth W) override;
+
+  /// Get initial values of a VectorOP
+  virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V);
+
   /// Destructor
   virtual ~AVX2Gen(){};
 

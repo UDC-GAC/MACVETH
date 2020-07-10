@@ -265,7 +265,7 @@ public:
   static void populateTable(MVISA ISA);
 
   /// Generate the declaration of the necessary registers for the operations
-  std::list<std::string> renderSIMDRegister(SIMDInstListType S);
+  virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S) = 0;
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
@@ -276,6 +276,9 @@ public:
 
   /// Just compute the cost of each SIMD inst
   SIMDInfo computeSIMDCost(SIMDInstListType S);
+
+  /// Get initial values of a VectorOP. Must be implemented
+  virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V) = 0;
 
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);
@@ -354,9 +357,19 @@ protected:
   static void addRegToDeclare(std::string Type, std::string Name,
                               int InitVal = 0);
 
+  /// Add register to declare
+  static void addRegToDeclareInitVal(std::string Type, std::string Name,
+                                     std::vector<std::string> InitVal);
+
   /// List of registers declared
-  inline static std::map<std::string, std::vector<std::tuple<std::string, int>>>
+  inline static std::map<
+      std::string,
+      std::vector<std::tuple<std::string, std::vector<std::string>>>>
       RegDeclared;
+
+  /// List of SIMD instructions which represent the initialization of some
+  /// registers
+  inline static SIMDInstListType InitReg;
 
   /// AccmReg numbering for auxiliary operations such as reduce
   inline static int AccmReg = 0;
@@ -369,12 +382,28 @@ protected:
     return PREFIX + std::to_string(AccmToReg.at(V));
   }
 
+  static std::string getAccmReg(std::string V) {
+    auto PREFIX = "__mv_accm";
+    if (AccmToReg.count(V) == 0) {
+      return "";
+    }
+    return PREFIX + std::to_string(AccmToReg.at(V));
+  }
+
   inline static int AuxRegId = 0;
   inline static std::map<std::string, int> AuxReg;
   static std::string getNextAuxRegister(std::string V) {
     auto PREFIX = "__mv_aux";
     if (AuxReg.count(V) == 0) {
       AuxReg[V] = SIMDGenerator::AuxRegId++;
+    }
+    return PREFIX + std::to_string(AuxReg.at(V));
+  }
+
+  static std::string getAuxReg(std::string V) {
+    auto PREFIX = "__mv_aux";
+    if (AuxReg.count(V) == 0) {
+      return "";
     }
     return PREFIX + std::to_string(AuxReg.at(V));
   }

@@ -19,6 +19,11 @@
 /* Default data type is double, default size is N=1024. */
 #include "definitions.h"
 
+#ifdef DATA_TYPE
+#undef DATA_TYPE
+#define DATA_TYPE float
+#endif
+
 /* Array initialization. */
 static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   int i, j;
@@ -37,7 +42,7 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
-static void print_value(double S) {
+static void print_value(DATA_TYPE S) {
   fprintf(stderr, DATA_PRINTF_MODIFIER, S);
   fprintf(stderr, "\n");
 }
@@ -56,11 +61,12 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-static void kernel_template(int n, double *S, DATA_TYPE POLYBENCH_1D(x, N, n)) {
-  double tmp = (*S);
-#pragma macveth
-  for (int i = 0; i < _PB_N; i += 2) {
-    tmp = tmp + x[i];
+static void kernel_template(int n, DATA_TYPE *S,
+                            DATA_TYPE POLYBENCH_1D(x, N, n)) {
+  DATA_TYPE tmp = (*S);
+#pragma macveth i 8
+  for (int i = 0; i < _PB_N; i++) {
+    tmp = tmp * x[i];
   }
 #pragma endmacveth
   (*S) = tmp;
@@ -76,7 +82,7 @@ int main(int argc, char **argv) {
   /* Initialize array(s). */
   init_1darray(n, POLYBENCH_ARRAY(x));
 
-  double S = 0;
+  DATA_TYPE S = 0;
 
   /* Start timer. */
   polybench_start_instruments;

@@ -275,7 +275,7 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     VIdx = {0, 1, 2, 3};
   }
   if (VIL[0].DT == VectorIR::VDataType::FLOAT) {
-    VIdx = {0, 1, 4, 5, 2, 3, 6, 7};
+    VIdx = {0, 1, 2, 3, 4, 5, 6, 7};
   }
   for (int R = 0; R < NumRedux; ++R) {
     std::string Idx = "[" + std::to_string(VIdx[R]) + "]";
@@ -296,6 +296,10 @@ std::string AVX2Gen::shuffleArguments(std::string A1, std::string A2,
     Mask = (Pos == 0) ? "0x44" : "0xee";
   }
 
+  if (Width == VectorIR::VWidth::W128) {
+    Mask = (Pos == 0) ? "0b10001000" : "0b11011101";
+  }
+
   return genGenericFunc(
       replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "shuffle"),
                       getMapWidth(Width), getMapType(I.DT), "", ""),
@@ -305,7 +309,7 @@ std::string AVX2Gen::shuffleArguments(std::string A1, std::string A2,
 // ---------------------------------------------
 std::string AVX2Gen::permuteArguments(std::string A1, std::string A2,
                                       SIMDGenerator::SIMDInst I, int Pos) {
-  std::string Mask = (Pos == 0) ? "0x20" : "0x31";
+  std::string Mask = "0x21";
   std::string PermW = getMapWidth(I.W);
   std::string PermT = getMapType(I.DT);
   return genGenericFunc(
@@ -323,6 +327,31 @@ std::string AVX2Gen::extractArgument(std::string A, SIMDGenerator::SIMDInst I,
       replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "extract"), PermW,
                       PermT, "", "f128"),
       {A, Mask});
+}
+
+// ---------------------------------------------
+std::list<std::string> AVX2Gen::renderSIMDRegister(SIMDInstListType S) {
+  std::list<std::string> L;
+  // Render register declarations
+  for (auto It : RegDeclared) {
+    auto TypeRegDecl = It.first + " ";
+    auto VAuxRegs = It.second;
+    if (std::get<0>(VAuxRegs[0]) != "") {
+      TypeRegDecl += std::get<0>(VAuxRegs[0]);
+    }
+    for (int i = 1; i < VAuxRegs.size(); ++i) {
+      if (std::get<0>(VAuxRegs[i]) != "") {
+        TypeRegDecl += ", " + std::get<0>(VAuxRegs[i]);
+      }
+    }
+    L.push_back(TypeRegDecl + ";");
+  }
+  // "Real" initializations of the vectors (normally with set). This is useful
+  // reductions, mainly
+  for (auto Ins : InitReg) {
+    L.push_back(Ins.render() + ";");
+  }
+  return L;
 }
 
 // ---------------------------------------------
@@ -358,11 +387,10 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     VRedux.push_back(VIL[t].Result);
   }
 
-  auto S = (NumRedux + (NumRedux % 2)) / 2;
   auto OP = OpRedux.toString();
 
-  // Pseudo-algorithm
-  // ----------------
+  // Pseudo-algorithm:
+  // -----------------
   // An = op(shuffle(OPn,mask1), shuffle(OPn+1,mask2))
   // An = op(permute2(An,An+1,mask1), permute2(An,An+1,mask1))
   // if (Nelems < 4)
@@ -370,6 +398,8 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   // else
   //  for each i in [0, nelems)
   //    Vi = op(extract(An), shuffle(extract(An)))
+
+  // IMPORTANT: This approach assumes NumRedux > 1
 
   // Shuffles
   for (int i = 0; i < NumRedux; i += 2) {
@@ -387,9 +417,16 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   }
 
   // Permutations
-  for (int i = 0; i < (NumRedux + (NumRedux % 2)) / 2; i += 2) {
-    auto A0 = permuteArguments(
-        VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i], VIL[i], 0);
+  for (int i = 0; i < NumRedux; i += 4) {
+    std::string W = MapWidth[VIL[0].W];
+    // Operand 1
+    std::string Blend =
+        replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "blend"), W,
+                        MapType[VIL[0].DT], "", "");
+    std::string Mask1 =
+        VIL[0].DT == VectorIR::VDataType::DOUBLE ? "0b1100" : "0b11110000";
+    auto A0 = genGenericFunc(
+        Blend, {VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i], Mask1});
     auto A1 = permuteArguments(
         VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i], VIL[i], 1);
     addSIMDInst(VIL[i].VOPResult, OP, "", "", {A0, A1}, SIMDType::VREDUC, &IL,
@@ -400,34 +437,20 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
 
   // Extract values depending if 4 or 8 elements, different approaches due to
   // intrisics design
-  std::vector<int> VIdx;
-
+  std::vector<int> VIdx = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::string AuxArray = declareAuxArray(VIL[0].DT);
   if (NElems <= 4) {
-    // 4 Elements
-    std::string TD = "";
-    std::string TW = "";
-    std::string TSuffix = "";
     // FIXME: Store approach
-    std::string AuxArray = declareAuxArray(VIL[0].DT);
     addSIMDInst(VIL[0].VOPResult, "store", "", "u", {AuxArray, VAccm[0]},
                 SIMDType::VSTORER, &IL);
-    if (VIL[0].DT == VectorIR::VDataType::DOUBLE) {
-      VIdx = {0, 2, 1, 3};
-    }
-    if (VIL[0].DT == VectorIR::VDataType::FLOAT) {
-      VIdx = {0, 1, 4, 5, 2, 3, 6, 7};
-    }
     for (int R = 0; R < NumRedux; ++R) {
       std::string Idx = "[" + std::to_string(VIdx[R]) + "]";
       addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQR, &IL);
     }
-
     return IL;
   } else {
-    std::string AuxArray = declareAuxArray(VIL[0].DT);
-    VIdx = {0, 1, 2, 3, 4, 5, 6, 7};
     // Need to do the last extraction, shuffle and operation
-    for (int R = 0; R < (NumRedux + (4 - NumRedux % 4)) / 4; ++R) {
+    for (int R = 0; R < NumRedux; R += 4) {
       // op(shuffle(hi,lo,mask), shuffle(hi,lo,mask))
       auto Lo = extractArgument(VAccm[R], VIL[R], 0);
       auto Hi = extractArgument(VAccm[R], VIL[R], 1);
@@ -440,7 +463,8 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
                   SIMDType::VREDUC, &IL);
       if (NumRedux > 1) {
         addSIMDInst(Res, "store", "", "u", VectorIR::VWidth::W128, VIL[R].DT,
-                    {AuxArray, Res}, SIMDType::VSTORER, &IL);
+                    {"&" + AuxArray + "[" + std::to_string(R) + "]", Res},
+                    SIMDType::VSTORER, &IL);
       }
     }
     if (NumRedux == 1) {
@@ -475,7 +499,7 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
       ReplaceFusedRedux;
   for (auto I : TIL) {
     if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
-      LRedux[I.VOPResult.getOperandLoop()].push_back(I);
+      LRedux[I.VOPResult.getOperandLoop() + I.MVOP.toString()].push_back(I);
     }
     if (LRedux.size() == 0) {
       continue;
@@ -540,7 +564,7 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
          (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)) &&
         (L.second.size() > 1)) {
       // Horizontal approach only worth it when we have two or more
-      // reductions
+      // reductions and they are additions or substractions
       Utils::printDebug("AVX2Gen", "Horizontal approach (" +
                                        std::to_string(L.second.size()) + ")");
       FusedRedux = horizontalReductionFusion(L.second);
@@ -991,13 +1015,49 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vfunc(VectorIR::VectorOP V) {
 }
 
 // ---------------------------------------------
+std::vector<std::string> AVX2Gen::getInitValues(VectorIR::VectorOP V) {
+  std::vector<std::string> InitVal;
+  std::string NeutralValue = "0";
+  if (V.isBinOp()) {
+    switch (V.getBinOp()) {
+    case clang::BO_Mul:
+    case clang::BO_Div:
+      NeutralValue = "1";
+      break;
+    }
+  }
+  auto VS = V.R.VSize;
+
+  for (int i = 0; i < VS - 1; ++i) {
+    InitVal.push_back(NeutralValue);
+  }
+  InitVal.push_back(V.R.UOP[0]->getRegisterValue());
+
+  std::list<std::string> InitValList(InitVal.begin(), InitVal.end());
+  std::string Reg = V.R.Name;
+  // Fuck, this is awful...
+  if (getAccmReg(Reg) != "") {
+    Reg = getAccmReg(Reg);
+  } else if (getAuxReg(Reg) != "") {
+    Reg = getAuxReg(Reg);
+  }
+  SIMDInst I =
+      createSIMDInst("set", Reg, getMapWidth(V.R.Width), getMapType(V.R.DType),
+                     "", "", InitValList, SIMDType::VSET, V.Order);
+  InitReg.push_back(I);
+  return InitVal;
+}
+
+// ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
   SIMDGenerator::SIMDInstListType TIL;
   auto RegType = getRegisterType(V.DT, V.VW);
   auto IsANewReduction = !hasAlreadyBeenMapped(V.R.Name);
   auto RegAccm = getNextAccmRegister(V.R.Name);
-  SIMDGenerator::addRegToDeclare(RegType, RegAccm, {0});
+  if (IsANewReduction) {
+    SIMDGenerator::addRegToDeclareInitVal(RegType, RegAccm, getInitValues(V));
+  }
 
   // Some needed values
   auto TmpReduxVar = (V.R.Name == V.OpB.Name) ? V.OpA.Name : V.OpB.Name;

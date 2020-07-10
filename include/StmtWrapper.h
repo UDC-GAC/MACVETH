@@ -65,7 +65,9 @@ public:
     /// Name of dimension
     std::string Dim;
     /// Initial value (-1 if not known)
-    long InitVal = 0;
+    long InitVal = -1;
+    /// Initial value if it can not be evaluated
+    std::string StrInitVal = "";
     /// Upperbound value (-1 if not known)
     long UpperBound = 0;
     /// Upperbound as string

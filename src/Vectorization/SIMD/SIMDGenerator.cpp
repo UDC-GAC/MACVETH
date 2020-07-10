@@ -144,24 +144,6 @@ SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
 }
 
 // ---------------------------------------------
-std::list<std::string> SIMDGenerator::renderSIMDRegister(SIMDInstListType S) {
-  std::list<std::string> L;
-  // Render register declarations
-  for (auto It : RegDeclared) {
-    auto TypeRegDecl = It.first + " ";
-    auto VAuxRegs = It.second;
-    TypeRegDecl += std::get<0>(VAuxRegs[0]) + " = {" +
-                   std::to_string(std::get<1>(VAuxRegs[0])) + "}";
-    for (int i = 1; i < VAuxRegs.size(); ++i) {
-      TypeRegDecl += ", " + std::get<0>(VAuxRegs[i]) + " = {" +
-                     std::to_string(std::get<1>(VAuxRegs[0])) + "}";
-    }
-    L.push_back(TypeRegDecl + ";");
-  }
-  return L;
-}
-
-// ---------------------------------------------
 std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
   std::list<std::string> L;
   // Render instructions
@@ -342,6 +324,19 @@ SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
 // ---------------------------------------------
 void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name,
                                     int InitVal) {
+  for (auto V : RegDeclared[Type]) {
+    if (std::get<0>(V) == Name) {
+      return;
+    }
+  }
+  std::vector<std::string> L;
+  L.push_back(std::to_string(InitVal));
+  RegDeclared[Type].push_back(std::make_tuple(Name, L));
+}
+
+// ---------------------------------------------
+void SIMDGenerator::addRegToDeclareInitVal(std::string Type, std::string Name,
+                                           std::vector<std::string> InitVal) {
   for (auto V : RegDeclared[Type]) {
     if (std::get<0>(V) == Name) {
       return;

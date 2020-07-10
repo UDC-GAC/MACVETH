@@ -24,7 +24,7 @@ static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   int i, j;
 
   for (i = 0; i < n; i++)
-    x[i] = 42;
+    x[i] = 1;
 }
 
 static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
@@ -32,7 +32,7 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
   for (i = 0; i < n; i++)
     for (j = 0; j < n; j++)
-      C[i][j] = 42;
+      C[i][j] = 2;
 }
 
 /* DCE code. Must scan the entire live-out data.
@@ -54,16 +54,31 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
   fprintf(stderr, "\n");
 }
 
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static void print_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
+  int i, j;
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < n; j++) {
+      fprintf(stderr, DATA_PRINTF_MODIFIER, C[i][j]);
+      if (i % 20 == 0)
+        fprintf(stderr, "\n");
+    }
+  fprintf(stderr, "\n");
+}
+
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-static void kernel_template(int n, double *S, DATA_TYPE POLYBENCH_1D(x, N, n)) {
-  double tmp = (*S);
-#pragma macveth
-  for (int i = 0; i < _PB_N; i += 2) {
-    tmp = tmp + x[i];
+static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(redux, N, n),
+                            DATA_TYPE POLYBENCH_2D(A, N, N, n, n)) {
+#pragma macveth i 1 j 4
+  for (int i = 0; i < _PB_N; i++) {
+    for (int j = 0; j < _PB_N; j += 1) {
+      redux[i] = redux[i] + A[i][j];
+    }
   }
 #pragma endmacveth
-  (*S) = tmp;
 }
 
 int main(int argc, char **argv) {
@@ -71,10 +86,11 @@ int main(int argc, char **argv) {
   int n = N;
 
   /* Variable declaration/allocation. */
-  POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
+  POLYBENCH_1D_ARRAY_DECL(redux, DATA_TYPE, N, n);
+  POLYBENCH_2D_ARRAY_DECL(x, DATA_TYPE, N, N, n, n);
 
   /* Initialize array(s). */
-  init_1darray(n, POLYBENCH_ARRAY(x));
+  init_2darray(n, POLYBENCH_ARRAY(x));
 
   double S = 0;
 
@@ -82,7 +98,7 @@ int main(int argc, char **argv) {
   polybench_start_instruments;
 
   /* Run kernel. */
-  kernel_template(n, &S, POLYBENCH_ARRAY(x));
+  kernel_template(n, POLYBENCH_ARRAY(redux), POLYBENCH_ARRAY(x));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
@@ -90,8 +106,8 @@ int main(int argc, char **argv) {
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
-  polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
-  polybench_prevent_dce(print_value(S));
+  polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(redux)));
+  // polybench_prevent_dce(print_value(S));
 
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(x);

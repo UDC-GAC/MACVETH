@@ -166,17 +166,22 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   const DeclStmt *NameValInit = dyn_cast<DeclStmt>(ForLoop->getInit());
   const BinaryOperator *ValInit;
   const VarDecl *V = nullptr;
+  /// FIXME:
   if (NameValInit != nullptr) {
     clang::Expr::EvalResult R;
     V = dyn_cast<VarDecl>(NameValInit->getSingleDecl());
     if (V->getInit()->EvaluateAsInt(R, *Utils::getCtx())) {
       Loop.InitVal = (long)R.Val.getInt().getExtValue();
+    } else {
+      Loop.StrInitVal = Utils::getStringFromStmt(NameValInit);
     }
     Loop.Dim = V->getDeclName().getAsString();
   } else {
     ValInit = dyn_cast<BinaryOperator>(ForLoop->getInit());
     if (ValInit != nullptr) {
       Loop.InitVal = Utils::getIntFromExpr(ValInit->getRHS(), Utils::getCtx());
+    } else {
+      Loop.StrInitVal = Utils::getStringFromStmt(ForLoop->getInit());
     }
   }
 
@@ -234,8 +239,9 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   Loop.StepUnrolled =
       (Loop.UpperBound == -1)
           ? Loop.StepUnrolled
-          : (Loop.UpperBound - Loop.InitVal) -
-                ((Loop.UpperBound - Loop.InitVal) % Loop.UnrollFactor);
+          : (Loop.UpperBound - ((Loop.InitVal == -1) ? 0 : Loop.InitVal)) -
+                ((Loop.UpperBound - ((Loop.InitVal == -1) ? 0 : Loop.InitVal)) %
+                 Loop.UnrollFactor);
 
   Utils::printDebug("LoopInfo", Loop.toString());
   return Loop;
