@@ -92,7 +92,39 @@ public:
         }
       }
       return false;
-    } /* !MVAffineIndex */
+    }
+
+    // This is awful, but should do the job. Recursive functions as a way of
+    // life lol xd
+    int operator-(const MVAffineIndex &M) {
+      if (!this->isTerminal()) {
+        if (M.OP != this->OP) {
+          return INT_MIN;
+        }
+        auto Lhs = ((*M.LHS) - (*this->LHS));
+        auto Rhs = ((*M.RHS) - (*this->RHS));
+        if ((Lhs == INT_MIN + 2) || (Rhs == INT_MIN + 2)) {
+          return INT_MIN;
+        } else {
+          return std::max(Lhs, Rhs);
+        }
+      } else {
+        if (M.Val == this->Val) {
+          return 0;
+        }
+        char *pEnd = NULL;
+        auto I1 = strtol(M.Val.c_str(), &pEnd, 10);
+        if (*pEnd) {
+          return INT_MIN + 2;
+        }
+        auto I0 = strtol(this->Val.c_str(), &pEnd, 10);
+        if (*pEnd) {
+          return INT_MIN + 2;
+        }
+        return abs(I1 - I0);
+      }
+      return INT_MIN;
+    }
 
     /// Convert to string recursively
     std::string toString() {
@@ -104,8 +136,8 @@ public:
                 this->RHS->toString() + ")");
       }
     }
-  };
-  typedef std::list<MVAffineIndex> IdxVector;
+  }; /* !MVAffineIndex */
+  typedef std::vector<MVAffineIndex> IdxVector;
 
   virtual ~MVExprArray(){};
   MVExprArray(Expr *E) : MVExpr(MVK_Array, E) {
@@ -128,6 +160,12 @@ public:
     IdxVector Copy(E->Idx);
     this->Idx = Copy;
   }
+
+  /// Get base name
+  std::string getBaseName() { return this->BaseName; }
+
+  /// Get index
+  IdxVector getIndex() { return this->Idx; }
 
   /// Implementation of unrolling for arrays. In this case we will need to
   /// create a new MVExpr

@@ -104,7 +104,9 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
   // Search replacements
   for (auto Inst : I) {
     // If we find a multiply operation it may be a FMADD
-    if (Inst.SType == SIMDGenerator::SIMDType::VMUL) {
+    if ((Inst.SType == SIMDGenerator::SIMDType::VMUL) &&
+        ((Inst.DT == VectorIR::VDataType::FLOAT) ||
+         (Inst.DT == VectorIR::VDataType::DOUBLE))) {
       PotentialFuse.push_back(Inst);
     }
     // If after the multiplication, there is a store, then this is not a
@@ -162,6 +164,21 @@ std::string AVX2Gen::declareAuxArray(VectorIR::VDataType DT) {
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
+AVX2Gen::horizontalSingleReduction(SIMDGenerator::SIMDInstListType TIL) {
+  // Horizontal operations
+  SIMDGenerator::SIMDInstListType IL;
+  std::vector<SIMDGenerator::SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
+
+  int NElems = VIL[0].W / VectorIR::VDataTypeWidthBits[VIL[0].DT];
+  auto OpRedux = VIL[0].MVOP;
+  auto OpReduxType = OpRedux.getType();
+  auto OpName = VIL[0].MVOP.toString();
+
+  return IL;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
 AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   // Horizontal operations
   SIMDGenerator::SIMDInstListType IL;
@@ -211,48 +228,25 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     S = (S + (S % 2)) / 2;
     // Final permutation
     if (S == 1) {
-      // std::string PermS = "";
-      // std::string Mask = "";
-      // std::string PermW = MapWidth[VIL[0].W];
-      // if (VIL[0].W == VectorIR::VWidth::W256) {
-      //   if (VIL[0].DT == VectorIR::VDataType::DOUBLE) {
-      //     PermS = "4x64";
-      //     Mask = "0xd8";
-      //   } else if (VIL[0].DT == VectorIR::VDataType::FLOAT) {
-      //     PermS = "var8x32";
-      //     Mask = genGenericFunc(
-      //         replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "set"),
-      //                         PermW, "epi32", "", ""),
-      //         {"7", "3", "6", "2", "5", "1", "4", "0"});
-      //   }
-      // }
-      // std::string Perm =
-      //     replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "permute"),
-      //                     PermW, MapType[VIL[0].DT], "", PermS);
-      // std::string Op1 = genGenericFunc(Perm, {VAccm[0], Mask});
-      // std::string Op2 = VAccm[0];
-      // if (NumRedux > 2) {
-      //   Op2 = genGenericFunc(Perm, {VAccm[1], Mask});
-      // }
-
-      // README:
+      // README: for further information
       // https://stackoverflow.com/questions/6996764/fastest-way-to-do-horizontal-sse-vector-sum-or-other-reduction
       // https://stackoverflow.com/questions/49941645/get-sum-of-values-stored-in-m256d-with-sse-avx
-      std::string W = MapWidth[VIL[0].W];
+      auto W = MapWidth[VIL[0].W];
       // Operand 1
-      std::string Blend =
+      auto Blend =
           replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "blend"), W,
                           MapType[VIL[0].DT], "", "");
-      std::string Mask1 = "0b1100";
+      auto Mask1 =
+          VIL[0].DT == VectorIR::VDataType::DOUBLE ? "0b1100" : "0b11110000";
       // Operand 2
-      std::string PermS = "2f128";
-      std::string Mask2 = "0x21";
-      std::string Perm =
+      auto PermS = "2f128";
+      auto Mask2 = "0x21";
+      auto Perm =
           replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "permute"), W,
                           MapType[VIL[0].DT], "", PermS);
-      std::string Op1 = genGenericFunc(
+      auto Op1 = genGenericFunc(
           Blend, {VAccm[0], (NumRedux > 2) ? VAccm[1] : VAccm[0], Mask1});
-      std::string Op2 = genGenericFunc(
+      auto Op2 = genGenericFunc(
           Perm, {VAccm[0], (NumRedux > 2) ? VAccm[1] : VAccm[0], Mask2});
 
       OP = (OP == "hadd") ? "add" : "sub";
@@ -263,11 +257,7 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     }
   }
 
-  std::string TD = "";
-  std::string TW = "";
-  std::string TSuffix = "";
-  // FIXME: Store approach
-  std::string AuxArray = declareAuxArray(VIL[0].DT);
+  auto AuxArray = declareAuxArray(VIL[0].DT);
   addSIMDInst(VIL[0].VOPResult, "store", "", "u", {AuxArray, VAccm[0]},
               SIMDType::VSTORER, &IL);
   std::vector<int> VIdx;
@@ -278,7 +268,7 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     VIdx = {0, 1, 2, 3, 4, 5, 6, 7};
   }
   for (int R = 0; R < NumRedux; ++R) {
-    std::string Idx = "[" + std::to_string(VIdx[R]) + "]";
+    auto Idx = "[" + std::to_string(VIdx[R]) + "]";
     addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQR, &IL);
   }
 
@@ -418,15 +408,14 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
 
   // Permutations
   for (int i = 0; i < NumRedux; i += 4) {
-    std::string W = MapWidth[VIL[0].W];
+    auto W = MapWidth[VIL[0].W];
     // Operand 1
-    std::string Blend =
-        replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "blend"), W,
-                        MapType[VIL[0].DT], "", "");
-    std::string Mask1 =
+    auto Blend = replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "blend"),
+                                 W, MapType[VIL[0].DT], "", "");
+    auto Mask =
         VIL[0].DT == VectorIR::VDataType::DOUBLE ? "0b1100" : "0b11110000";
     auto A0 = genGenericFunc(
-        Blend, {VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i], Mask1});
+        Blend, {VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i], Mask});
     auto A1 = permuteArguments(
         VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i], VIL[i], 1);
     addSIMDInst(VIL[i].VOPResult, OP, "", "", {A0, A1}, SIMDType::VREDUC, &IL,
@@ -710,25 +699,29 @@ SIMDGenerator::SIMDInst AVX2Gen::addSIMDInst(
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO: generate preffix
-  std::string PrefS = "";
-  // TODO: generate suffix
+  // Suffix: we are going to assume that all the load are unaligned.
   std::string SuffS = "u";
   // Mask
-  PrefS += (V.IsPartial) ? "mask" : "";
+  std::string PrefS = (V.IsPartial) ? "mask" : "";
 
-  // TODO:
   // Type of load: load/u
   // [1]
   // https://software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
   // [2] https://stackoverflow.com/questions/36191748/difference-between-\
   // load1-and-broadcast-intrinsics
-  std::string Op = "load";
+  auto Op = "load";
 
-  // TODO: check
+  // FIXME: if line crosses cache boundary consider using lddqu instead of
+  // loadu. Approach only valid for integers... Fuck integers.
+
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(getOpName(V, true, true));
+  if (V.IsPartial) {
+    // TODO: calculate mask
+    std::string MaskLoad = "";
+    Args.push_back(MaskLoad);
+  }
 
   // Adding SIMD inst to the list
   addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VPACK, &IL);
@@ -738,14 +731,14 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
-  std::string Op = "broadcast";
   SIMDGenerator::SIMDInstListType IL;
-  // TODO: generate preffix
-  std::string PrefS = "";
+  auto Op = "broadcast";
+
+  // There are no preffixes for broadcasts operations
   // TODO: generate suffix
-  std::string SuffS = "";
+  auto SuffS = "";
   // Mask
-  PrefS += (V.IsPartial) ? "mask" : "";
+  auto PrefS = (V.IsPartial) ? "mask" : "";
 
   // TODO: check
   // List of parameters
@@ -756,11 +749,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
     V.DType = VectorIR::VDataType::SDOUBLE;
   }
 
-  // FIXME:
-  // V.Width = VectorIR::VWidth::W256;
-
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VBCAST, &IL);
+  addSIMDInst(V, Op, "", SuffS, Args, SIMDType::VBCAST, &IL);
 
   return IL;
 }
@@ -768,23 +758,48 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO: generate preffix
-  std::string PrefS = "";
-  // TODO: generate suffix
-  std::string SuffS = "";
-  // Mask
-  PrefS += (V.IsPartial) ? "mask" : "";
+  auto Op = "gather";
 
-  // TODO:
-  std::string Op = "gather";
-
-  // TODO: check
   // List of parameters
   std::list<std::string> Args;
-  Args.push_back(V.UOP[0]->getValue());
+  Args.push_back("&" + V.UOP[0]->getValue());
+
+  // To gather elements
+  // Generate preffix: must be i32 or i64, depending on the VIndex width
+  std::string Scale = "8";
+  auto VIndexSuffix = "epi64x";
+  std::string PrefS = "i64";
+  if (V.VSize > 4) {
+    PrefS = "i32";
+    VIndexSuffix = "epi32";
+    Scale = std::to_string(4);
+  }
+
+  auto VIndex = "_mm" + std::to_string(V.Width) + "_setr_" + VIndexSuffix + "(";
+  for (auto T = 0; T < V.VSize; ++T) {
+    VIndex += std::to_string(V.Idx[T]) + ((T == (V.VSize - 1)) ? "" : ", ");
+  }
+  for (auto T = 0; T < V.VSize % 4; ++T) {
+    VIndex += std::to_string(0) + ((T == ((V.VSize % 4) - 1)) ? "" : ", ");
+  }
+  VIndex += ")";
+  Args.push_back(VIndex);
+
+  // Generate suffix: there are no suffixes for vgather
+  // Mask
+  if (V.IsPartial) {
+    PrefS += "mask_";
+    // Src
+    Args.push_front("");
+    // Mask
+    Args.push_back("");
+  }
+
+  // Scale can only be: 1, 2, 4, 8
+  Args.push_back(Scale);
 
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VGATHER, &IL);
+  addSIMDInst(V, Op, PrefS, "", Args, SIMDType::VGATHER, &IL);
 
   return IL;
 }

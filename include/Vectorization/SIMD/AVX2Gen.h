@@ -81,6 +81,10 @@ public:
 
   /// Horizontal reduction approach
   SIMDGenerator::SIMDInstListType
+  horizontalSingleReduction(SIMDGenerator::SIMDInstListType TIL);
+
+  /// Horizontal reduction approach
+  SIMDGenerator::SIMDInstListType
   horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
 
   /// General reduction approach, based on vertical operations
@@ -103,8 +107,8 @@ public:
 
   /// Get the translation between VectorIR data widths and AVX2's
   virtual std::string getMapWidth(VectorIR::VWidth V) override {
-    assert((V != VectorIR::VWidth::W512) &&
-           "Width too wide for AVX2 (512 bits not supported)!!");
+    MVAssert((V != VectorIR::VWidth::W512),
+             "Width too wide for AVX2 (512 bits not supported)!!");
     if (V <= 128) {
       return MapWidth[VectorIR::VWidth::W128];
     } else {

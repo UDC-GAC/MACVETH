@@ -182,24 +182,24 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     //
     // We will say it is a set if we have to explicitly set the values of the
     // vector operand
-
     bool EqualVal = equalValues(V.VSize, V.UOP);
-    bool ContMem = V.MemOp && !(V.Contiguous);
+    bool ContMem = V.MemOp && (V.Contiguous);
     bool ScatterMem = V.MemOp && !ContMem;
     bool ExpVal = !V.MemOp;
 
     Utils::printDebug("SIMDGenerator",
                       "V = " + V.Name +
                           "; EqualVal = " + std::to_string(EqualVal) +
-                          "; ContMem =" + std::to_string(ContMem) +
+                          "; ContMem = " + std::to_string(ContMem) +
                           "; ScatterMem = " + std::to_string(ScatterMem) +
+                          "; SameVec = " + std::to_string(V.SameVector) +
                           "; ExpVal = " + std::to_string(ExpVal));
 
     // 0, 1, 0, 0
     if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
       TIL = vpack(V);
       // 0, X, 1
-    } else if ((!EqualVal) && (ScatterMem)) {
+    } else if ((!EqualVal) && (ScatterMem) && (V.SameVector)) {
       TIL = vgather(V);
       // 1, X, 0, 1
     } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {

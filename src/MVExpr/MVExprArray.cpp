@@ -54,7 +54,7 @@ const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
     Idxs.push_back(MVAffineIndex(IdxE));
   }
 
-  Idxs.reverse();
+  std::reverse(Idxs.begin(), Idxs.end());
   return BaseE;
 }
 
@@ -76,6 +76,6 @@ const Expr *MVExprArray::getArrayBaseExprAndIdxs(const CXXOperatorCallExpr *C,
     Idxs.push_back(MVAffineIndex(*E));
   }
 
-  Idxs.reverse();
+  std::reverse(Idxs.begin(), Idxs.end());
   return BaseE;
 }

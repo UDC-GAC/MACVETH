@@ -324,6 +324,10 @@ public:
   static inline std::map<VectorIR::VDataType, std::string> VDTypeToCType = {
       {VectorIR::VDataType::DOUBLE, "double"},
       {VectorIR::VDataType::FLOAT, "float"},
+      {VectorIR::VDataType::INT32, "int"},
+      {VectorIR::VDataType::INT64, "long"},
+      {VectorIR::VDataType::UINT32, "unsigned int"},
+      {VectorIR::VDataType::UINT64, "unsigned long"},
   };
 
   /// Map data types to their size in bytes
@@ -337,7 +341,9 @@ public:
                                                      {"char", 1},
                                                      {"const int", 4},
                                                      {"const unsigned int", 4},
-                                                     {"unsigned int", 4}};
+                                                     {"unsigned int", 4},
+                                                     {"int", 4},
+                                                     {"long", 8}};
 
   /// Empty constructor
   SIMDGenerator(){};
@@ -371,41 +377,50 @@ protected:
   /// registers
   inline static SIMDInstListType InitReg;
 
+  /// Prefix of the auxiliary regsiters
+  inline static const std::string AUX_PREFIX = "__mv_aux";
+  /// Prefix of the auxiliary arrays
+  inline static const std::string ARR_PREFIX = "__mv_arr";
+  /// Prefix of the
+  inline static const std::string VEC_PREFIX = "__mv_accm";
+
   /// AccmReg numbering for auxiliary operations such as reduce
   inline static int AccmReg = 0;
   inline static std::map<std::string, int> AccmToReg;
   static std::string getNextAccmRegister(std::string V) {
-    auto PREFIX = "__mv_accm";
     if (AccmToReg.count(V) == 0) {
       AccmToReg[V] = SIMDGenerator::AccmReg++;
     }
-    return PREFIX + std::to_string(AccmToReg.at(V));
+    return VEC_PREFIX + std::to_string(AccmToReg.at(V));
   }
 
   static std::string getAccmReg(std::string V) {
-    auto PREFIX = "__mv_accm";
     if (AccmToReg.count(V) == 0) {
       return "";
     }
-    return PREFIX + std::to_string(AccmToReg.at(V));
+    return VEC_PREFIX + std::to_string(AccmToReg.at(V));
   }
 
+  /// Auxiliar register unique ID
   inline static int AuxRegId = 0;
+
+  /// Map of auxiliar registers
   inline static std::map<std::string, int> AuxReg;
+
+  /// Get the name of the auxiliar register for a operand and increment
   static std::string getNextAuxRegister(std::string V) {
-    auto PREFIX = "__mv_aux";
     if (AuxReg.count(V) == 0) {
       AuxReg[V] = SIMDGenerator::AuxRegId++;
     }
-    return PREFIX + std::to_string(AuxReg.at(V));
+    return AUX_PREFIX + std::to_string(AuxReg.at(V));
   }
 
+  /// Get the name of the auxiliar register for a operand
   static std::string getAuxReg(std::string V) {
-    auto PREFIX = "__mv_aux";
     if (AuxReg.count(V) == 0) {
       return "";
     }
-    return PREFIX + std::to_string(AuxReg.at(V));
+    return AUX_PREFIX + std::to_string(AuxReg.at(V));
   }
 
   /// Check if value has been already been mapped for an accumulator
@@ -416,7 +431,7 @@ protected:
   /// Auxiliary array numbering for auxiliary operations such as reduce
   inline static int AuxArrayReg = 0;
   static std::string getNextArrRegister(std::string Type, int Size) {
-    auto Name = "__mv_arr" + std::to_string(AuxArrayReg++);
+    auto Name = ARR_PREFIX + std::to_string(AuxArrayReg++);
     addRegToDeclare(Type, Name + "[" + std::to_string(Size) + "]");
     return Name;
   }

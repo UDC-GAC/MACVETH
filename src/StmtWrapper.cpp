@@ -364,7 +364,9 @@ bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
 TacListType StmtWrapper::unroll(LoopInfo L) {
   Utils::printDebug("StmtWrapper",
                     "unrolling dimension " + L.Dim + " stmt = " +
-                        Utils::getStringFromStmt(this->getClangStmt()));
+                        Utils::getStringFromStmt(this->getClangStmt()) +
+                        "; Step = " + std::to_string(L.Step) +
+                        "; StepUnrolled = " + std::to_string(L.StepUnrolled));
   long UB = ((L.UpperBound != -1) && (L.FullyUnrolled))
                 ? (L.UpperBound - L.InitVal)
                 : L.StepUnrolled;

@@ -125,15 +125,41 @@ MVOp VectorIR::VectorOP::getMVOp() {
 }
 
 // ---------------------------------------------
+bool areInSameVector(int VL, Node *V[]) {
+  Utils::printDebug("VectorIR", "areInSameVector");
+  auto A0 = dyn_cast<MVExprArray>(V[0]->getMVExpr());
+  if (!dyn_cast<MVExprArray>(V[0]->getMVExpr())) {
+    return false;
+  }
+  for (auto i = 1; i < VL; ++i) {
+    auto Arr = dyn_cast<MVExprArray>(V[i]->getMVExpr());
+    if (!Arr) {
+      return false;
+    }
+    if (A0->getBaseName() != Arr->getBaseName()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ---------------------------------------------
 int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
-  int64_t *Idx = (int64_t *)malloc(sizeof(int64_t) * VL);
-  for (int i = 0; i < VL; ++i) {
+  int64_t *Idx = (int64_t *)calloc(sizeof(int64_t), VL);
+  Idx[0] = 0;
+  auto Arr0 = dyn_cast<MVExprArray>(V[0]->getMVExpr());
+  auto Idx0 = Arr0->getIndex().back();
+  for (int i = 1; i < VL; ++i) {
     auto MV = dyn_cast<MVExprArray>(V[i]->getMVExpr());
     if (!MV) {
       return nullptr;
     }
-    /// FIXME:
-    // Idx[i] = i;
+    auto IdxI = MV->getIndex().back();
+    Idx[i] = IdxI - Idx0;
+    Utils::printDebug("VectorIR",
+                      "i = " + std::to_string(i) +
+                          "; getMemIdx = " + std::to_string(Idx[i]) +
+                          "; VL = " + std::to_string(VL));
   }
   return Idx;
 }
@@ -232,18 +258,24 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // In case we have to access to memory we are also interested in how we do it:
   // if we have to use an index for it, or if we have to shuffle data
   if (this->MemOp) {
-    // Get Memory index
-    this->Idx = getMemIdx(VL, V, this->Mask);
-    if (this->Idx != nullptr) {
-      auto T = true;
-      if (VL > 1) {
-        for (int i = 1; i < VL; ++i) {
-          T &= ((Idx[i] - 1) == Idx[i - 1]);
+    this->SameVector = areInSameVector(VL, V);
+    if (this->SameVector) {
+      // Get Memory index
+      this->Idx = getMemIdx(VL, V, this->Mask);
+      if (this->Idx != nullptr) {
+        auto T = true;
+        if (VL > 1) {
+          for (int i = 1; i < VL; ++i) {
+            T &= ((Idx[i] - 1) == Idx[i - 1]);
+            Utils::printDebug(
+                "VOperand", "Idx[i]-1 = " + std::to_string((Idx[i] - 1)) +
+                                "; Idx[i-1] = " + std::to_string((Idx[i - 1])));
+          }
         }
+        Utils::printDebug("VOperand", "Contiguous = " + std::to_string(T));
+        this->Contiguous = T;
       }
-      this->Contiguous = T;
     }
-
     // Get shuffle index
     this->Shuffle = getShuffle(VL, this->getWidth(), V);
   }
@@ -251,10 +283,13 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Get data type
   this->DType = CTypeToVDataType[this->UOP[0]->getDataType()];
   if ((this->EqualVal) && (this->MemOp)) {
-    this->DType = VectorIR::VDataType(this->DType + 1);
+    if ((this->DType == VectorIR::VDataType::FLOAT) ||
+        (this->DType == VectorIR::VDataType::DOUBLE)) {
+      this->DType = VectorIR::VDataType(this->DType + 1);
+    }
   }
 
-  // Computin data width
+  // Computing data width
   this->Width = getWidthFromVDataType(this->VSize, this->DType);
 };
 
@@ -346,13 +381,17 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
     return;
   }
 
+  Utils::printDebug("VectorOP", "OpA start");
   this->OpA = VOperand(VL, VLoadA, false);
+  Utils::printDebug("VectorOP", "OpA done");
   if (VLoadB != nullptr) {
+    Utils::printDebug("VectorOP", "OpB start");
     this->OpB = VOperand(VL, VLoadB, false);
   }
 
   // Result operand
   this->R = VOperand(VL, VOps, true);
+  Utils::printDebug("VectorOP", "R done");
 
   // Assuming that inputs and outputs have the same type
   this->OpA.DType = this->R.DType;

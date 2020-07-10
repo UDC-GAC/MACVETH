@@ -54,7 +54,7 @@ public:
     SEQ
   };
 
-  /// Vector data types: most of them are self exaplanatory
+  /// Vector data types: most of them are self explanatory
   enum VDataType {
     /// This is the direct translation to "pd"
     DOUBLE,
@@ -64,29 +64,37 @@ public:
     FLOAT,
     /// This is the direct translation to "ss"
     SFLOAT,
+    /// Unsigned 8-bit integer
     UINT8,
+    /// Unsigned 16-bit integer
     UINT16,
+    /// Unsigned 32-bit integer
     UINT32,
+    /// Unsigned 64-bit integer
     UINT64,
+    /// Signed 8-bit integer
     INT8,
+    /// Signed 16-bit integer
     INT16,
+    /// Signed 32-bit integer
     INT32,
+    /// Signed 64-bit integer
     INT64,
     /// 128 bits, undefined type
     UNDEF128,
     /// 256 bits, undefined type
     UNDEF256,
-    /// Input vector is INT128, output is different
+    /// Input vector is INT128, output can be different
     IN_INT128,
-    /// Input vector is FLOAT128, output is different
+    /// Input vector is FLOAT128, output can be different
     IN_FLOAT128,
-    /// Input vector is DOUBLE128, output is different
+    /// Input vector is DOUBLE128, output can be different
     IN_DOUBLE128,
-    /// Input vector is INT256, output is different
+    /// Input vector is INT256, output can be different
     IN_INT256,
-    /// Input vector is FLOAT256, output is different
+    /// Input vector is FLOAT256, output can be different
     IN_FLOAT256,
-    /// Input vector is DOUBLE256, output is different
+    /// Input vector is DOUBLE256, output can be different
     IN_DOUBLE256
   };
 
@@ -95,7 +103,7 @@ public:
       {"double", DOUBLE},   {"float", FLOAT},     {"uint8_t", UINT8},
       {"uint16_t", UINT16}, {"uint32_t", UINT32}, {"uint64_t", UINT64},
       {"int8_t", INT8},     {"int16_t", INT16},   {"int32_t", INT32},
-      {"int64_t", INT64},
+      {"int64_t", INT64},   {"int", INT32},       {"long", INT64},
   };
 
   /// Table of equivalences between the VDataTypes and the number of bits of
@@ -121,6 +129,7 @@ public:
   /// them
   static VWidth getWidthFromVDataType(int NOps, VDataType VData) {
     int Bits = VDataTypeWidthBits[VData] * NOps;
+    Utils::printDebug("VectorIR", "bits = " + std::to_string(Bits));
     if (Bits > 256) {
       return VWidth::W512;
     } else if (Bits > 128) {
@@ -167,6 +176,8 @@ public:
     bool Contiguous = true;
     /// Is partial (mask is not all 1)
     bool IsPartial = false;
+    /// Values are in the same vector
+    bool SameVector = true;
     /// If the memory addresses cross cache line sizes
     bool OutOfCacheLine = false;
     /// The vector operand is a temporal result if it has already been assigned
