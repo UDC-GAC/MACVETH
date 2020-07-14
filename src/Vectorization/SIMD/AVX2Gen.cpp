@@ -173,6 +173,75 @@ AVX2Gen::horizontalSingleReduction(SIMDGenerator::SIMDInstListType TIL) {
   auto OpRedux = VIL[0].MVOP;
   auto OpReduxType = OpRedux.getType();
   auto OpName = VIL[0].MVOP.toString();
+  auto Type = VIL[0].DT;
+  auto RegType = getRegisterType(Type, VectorIR::VWidth::W128);
+  std::string LoRes = "__mv_lo";
+  std::string HiRes = "__mv_hi";
+  SIMDGenerator::addRegToDeclare(RegType, LoRes, {0});
+  SIMDGenerator::addRegToDeclare(RegType, HiRes, {0});
+  std::string AccmReg = getAccmReg(VIL[0].VOPResult.Name);
+
+  if (Type == VectorIR::VDataType::DOUBLE) {
+    // If 4 elements
+    if (NElems > 2) {
+      // __m128d lo = _mm256_castpd256_pd128(v);
+      addSIMDInst(LoRes, "castpd", "256", "pd128", VectorIR::VWidth::W256, Type,
+                  {AccmReg}, SIMDType::VREDUC, &IL);
+      // __m128d hi = _mm256_extractf128_pd(v,0x1);
+      addSIMDInst(HiRes, "extract", "", "f128", VectorIR::VWidth::W256, Type,
+                  {AccmReg, "0x1"}, SIMDType::VREDUC, &IL);
+      // lo = op(lo,hi);
+      addSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
+                  {LoRes, HiRes}, SIMDType::VREDUC, &IL);
+    } else {
+      LoRes = AccmReg;
+    }
+    // When only 2 elements
+    // hi = _mm_shuffle_pd(lo,lo,0x1);
+    addSIMDInst(HiRes, "shuffle", "", "", VectorIR::VWidth::W128, Type,
+                {LoRes, LoRes, "0x1"}, SIMDType::VREDUC, &IL);
+    // val = _mm_cvtsd_f64(op(lo,hi));
+    addSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
+                {LoRes, HiRes}, SIMDType::VREDUC, &IL);
+    addSIMDInst(VIL[0].Result, "cvtsd", "", "f64", VectorIR::VWidth::W128, Type,
+                {LoRes}, SIMDType::VREDUC, &IL);
+  } else if (Type == VectorIR::VDataType::FLOAT) {
+    // 8 elements
+    if (NElems > 4) {
+      // __m128 lo =
+      addSIMDInst(LoRes, "castps", "256", "ps128", VectorIR::VWidth::W256, Type,
+                  {AccmReg}, SIMDType::VREDUC, &IL);
+      // __m128 lo = cast(v)
+      addSIMDInst(HiRes, "extract", "", "f128", VectorIR::VWidth::W256, Type,
+                  {AccmReg, "0x1"}, SIMDType::VREDUC, &IL);
+
+      // lo = op(lo,hi);
+      addSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
+                  {LoRes, HiRes}, SIMDType::VREDUC, &IL);
+    } else {
+      LoRes = AccmReg;
+    }
+    // 4 elements
+    // hi = movehl(lo);
+    addSIMDInst(HiRes, "move", "", "hl", VectorIR::VWidth::W128, Type,
+                {LoRes, LoRes}, SIMDType::VREDUC, &IL);
+    // lo = op(lo,hi);
+    addSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
+                {LoRes, HiRes}, SIMDType::VREDUC, &IL);
+    // 2 elements
+    // hi = shuffle(lo);
+    addSIMDInst(HiRes, "shuffle", "", "", VectorIR::VWidth::W128, Type,
+                {LoRes, LoRes, "0b00001110"}, SIMDType::VREDUC, &IL);
+    // lo = op(lo,hi);
+    addSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
+                {LoRes, HiRes}, SIMDType::VREDUC, &IL);
+
+    addSIMDInst(VIL[0].Result, "cvtss", "", "f32", VectorIR::VWidth::W128, Type,
+                {LoRes}, SIMDType::VREDUC, &IL);
+  } else {
+    MVErr("Not implemented this approach yet for other types than float or "
+          "doubles");
+  }
 
   return IL;
 }
@@ -203,28 +272,17 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   std::string OP =
       (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "hadd" : "hsub";
 
+  auto Stride = 2;
   while (true) {
-    addSIMDInst(VIL[0].VOPResult, OP, "", "",
-                {VAccm[0], (NumRedux > 1) ? VAccm[1] : VAccm[0]},
-                SIMDType::VREDUC, &IL, VAccm[0]);
-    if (S > 1) {
-      addSIMDInst(VIL[2].VOPResult, OP, "", "",
-                  {VAccm[2], (NumRedux > 3) ? VAccm[3] : VAccm[2]},
-                  SIMDType::VREDUC, &IL, VAccm[2]);
-      VAccm[1] = VAccm[2];
+    for (int i = 0; i < NumRedux; i += Stride) {
+      addSIMDInst(VIL[0].VOPResult, OP, "", "",
+                  {VAccm[i], (NumRedux > 1) ? VAccm[i + 1] : VAccm[i]},
+                  SIMDType::VREDUC, &IL, VAccm[i]);
+      if (i > 0) {
+        VAccm[i - 1] = VAccm[i];
+      }
     }
-    if (S > 2) {
-      addSIMDInst(VIL[4].VOPResult, OP, "", "",
-                  {VAccm[4], (NumRedux > 5) ? VAccm[5] : VAccm[4]},
-                  SIMDType::VREDUC, &IL, VAccm[4]);
-      VAccm[3] = VAccm[4];
-    }
-    if (S > 3) {
-      addSIMDInst(VIL[6].VOPResult, OP, "", "",
-                  {VAccm[6], (NumRedux > 7) ? VAccm[7] : VAccm[6]},
-                  SIMDType::VREDUC, &IL, VAccm[6]);
-      VAccm[5] = VAccm[6];
-    }
+    Stride *= 2;
     S = (S + (S % 2)) / 2;
     // Final permutation
     if (S == 1) {
@@ -244,10 +302,11 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
       auto Perm =
           replacePatterns(CostTable::getPattern(AVX2Gen::NArch, "permute"), W,
                           MapType[VIL[0].DT], "", PermS);
-      auto Op1 = genGenericFunc(
-          Blend, {VAccm[0], (NumRedux > 2) ? VAccm[1] : VAccm[0], Mask1});
-      auto Op2 = genGenericFunc(
-          Perm, {VAccm[0], (NumRedux > 2) ? VAccm[1] : VAccm[0], Mask2});
+      auto V0 = VAccm[0];
+      auto V1 =
+          (NumRedux > 4) ? VAccm[4] : (NumRedux > 2) ? VAccm[2] : VAccm[1];
+      auto Op1 = genGenericFunc(Blend, {V0, V1, Mask1});
+      auto Op2 = genGenericFunc(Perm, {V0, V1, Mask2});
 
       OP = (OP == "hadd") ? "add" : "sub";
       addSIMDInst(VIL[0].VOPResult, OP, "", "", {Op1, Op2}, SIMDType::VREDUC,
@@ -260,15 +319,8 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   auto AuxArray = declareAuxArray(VIL[0].DT);
   addSIMDInst(VIL[0].VOPResult, "store", "", "u", {AuxArray, VAccm[0]},
               SIMDType::VSTORER, &IL);
-  std::vector<int> VIdx;
-  if (VIL[0].DT == VectorIR::VDataType::DOUBLE) {
-    VIdx = {0, 1, 2, 3};
-  }
-  if (VIL[0].DT == VectorIR::VDataType::FLOAT) {
-    VIdx = {0, 1, 2, 3, 4, 5, 6, 7};
-  }
   for (int R = 0; R < NumRedux; ++R) {
-    auto Idx = "[" + std::to_string(VIdx[R]) + "]";
+    auto Idx = "[" + std::to_string(R) + "]";
     addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQR, &IL);
   }
 
@@ -335,11 +387,6 @@ std::list<std::string> AVX2Gen::renderSIMDRegister(SIMDInstListType S) {
       }
     }
     L.push_back(TypeRegDecl + ";");
-  }
-  // "Real" initializations of the vectors (normally with set). This is useful
-  // reductions, mainly
-  for (auto Ins : InitReg) {
-    L.push_back(Ins.render() + ";");
   }
   return L;
 }
@@ -511,17 +558,20 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
       SIMDGenerator::SIMDInstListType FusedRedux;
       // This is the horizontal approach, only valid for AVX2 and additions and
       // subtraction
-      if (((OpReduxType == MVOpType::CLANG_BINOP) &&
-           ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
-            (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub))) &&
-          (L.second.size() > 1)) {
+      if (L.second.size() == 1) {
+        Utils::printDebug("AVX2Gen", "Single reduction approach (" +
+                                         std::to_string(L.second.size()) + ")");
+        FusedRedux = horizontalSingleReduction(L.second);
+      } else if (((OpReduxType == MVOpType::CLANG_BINOP) &&
+                  ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
+                   (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)))) {
         // Horizontal approach only worth it when we have two or more
         // reductions
         Utils::printDebug("AVX2Gen", "Horizontal approach (" +
                                          std::to_string(L.second.size()) + ")");
         FusedRedux = horizontalReductionFusion(L.second);
       } else {
-        Utils::printDebug("AVX2Gen", "General approach approach(" +
+        Utils::printDebug("AVX2Gen", "General approach approach (" +
                                          std::to_string(L.second.size()) + ")");
         FusedRedux = generalReductionFusion(L.second);
       }
@@ -548,17 +598,20 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
     SIMDGenerator::SIMDInstListType FusedRedux;
     // This is the horizontal approach, only valid for AVX2 and additions and
     // subtraction
-    if ((OpReduxType == MVOpType::CLANG_BINOP) &&
-        ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
-         (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)) &&
-        (L.second.size() > 1)) {
+    if (L.second.size() == 1) {
+      Utils::printDebug("AVX2Gen", "Single reduction approach (" +
+                                       std::to_string(L.second.size()) + ")");
+      FusedRedux = horizontalSingleReduction(L.second);
+    } else if (((OpReduxType == MVOpType::CLANG_BINOP) &&
+                ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
+                 (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)))) {
       // Horizontal approach only worth it when we have two or more
-      // reductions and they are additions or substractions
+      // reductions
       Utils::printDebug("AVX2Gen", "Horizontal approach (" +
                                        std::to_string(L.second.size()) + ")");
       FusedRedux = horizontalReductionFusion(L.second);
     } else {
-      Utils::printDebug("AVX2Gen", "General approach approach(" +
+      Utils::printDebug("AVX2Gen", "General approach approach (" +
                                        std::to_string(L.second.size()) + ")");
       FusedRedux = generalReductionFusion(L.second);
     }
@@ -716,11 +769,21 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
 
   // List of parameters
   std::list<std::string> Args;
-  Args.push_back(getOpName(V, true, true));
   if (V.IsPartial) {
     // TODO: calculate mask
     std::string MaskLoad = "";
     Args.push_back(MaskLoad);
+  }
+
+  // Hack: if data type is integer then use the si128/si256 notation instead of
+  // epi
+  if (V.DType > VectorIR::VDataType::SFLOAT) {
+    V.DType = (V.VSize > 4) ? VectorIR::VDataType::UNDEF256
+                            : VectorIR::VDataType::UNDEF128;
+    std::string Cast = getRegisterType(V.DType, V.Width);
+    Args.push_back("(" + Cast + "*)" + getOpName(V, true, true));
+  } else {
+    Args.push_back(getOpName(V, true, true));
   }
 
   // Adding SIMD inst to the list
@@ -767,7 +830,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
   // To gather elements
   // Generate preffix: must be i32 or i64, depending on the VIndex width
   std::string Scale = "8";
-  auto VIndexSuffix = "epi64x";
+  auto VIndexSuffix = (V.Width == VectorIR::VWidth::W128) ? "epi64" : "epi64x";
   std::string PrefS = "i64";
   if (V.VSize > 4) {
     PrefS = "i32";
@@ -775,7 +838,9 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
     Scale = std::to_string(4);
   }
 
-  auto VIndex = "_mm" + std::to_string(V.Width) + "_setr_" + VIndexSuffix + "(";
+  Utils::printDebug("AVX2Gen", "");
+
+  auto VIndex = "_mm" + MapWidth[V.Width] + "_setr_" + VIndexSuffix + "(";
   for (auto T = 0; T < V.VSize; ++T) {
     VIndex += std::to_string(V.Idx[T]) + ((T == (V.VSize - 1)) ? "" : ", ");
   }
@@ -838,7 +903,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // TODO: generate preffix
   std::string PrefS = "";
   // TODO: generate suffix
-  std::string SuffS = "";
+  std::string SuffS = "u";
   // Mask
   PrefS += (V.R.IsPartial) ? "mask" : "";
 
@@ -848,19 +913,27 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // TODO: check
   // List of parameters
   std::list<std::string> Args;
-  Args.push_back(getOpName(V.R, true, true));
-  Args.push_back(getOpName(V.R, false, false));
-  if (V.R.EqualVal) {
-    if (V.R.DType == VectorIR::DOUBLE) {
-      V.R.DType = VectorIR::SDOUBLE;
-      V.R.Width = VectorIR::W64;
-    } else if (V.R.DType == VectorIR::FLOAT) {
-      V.R.DType = VectorIR::SFLOAT;
-      V.R.Width = VectorIR::W32;
-    }
+  // Hack: if data type is integer then use the si128/si256 notation instead of
+  // epi
+  if (V.R.DType > VectorIR::VDataType::SFLOAT) {
+    V.R.DType = (V.R.VSize > 4) ? VectorIR::VDataType::UNDEF256
+                                : VectorIR::VDataType::UNDEF128;
+    std::string Cast = getRegisterType(V.R.DType, V.R.Width);
+    Args.push_back("(" + Cast + "*)" + getOpName(V.R, true, true));
+    Args.push_back(getOpName(V.R, false, false));
   } else {
-    // Use unaligned whenever it is possible
-    SuffS = "u";
+    Args.push_back(getOpName(V.R, true, true));
+    Args.push_back(getOpName(V.R, false, false));
+    if (V.R.EqualVal) {
+      if (V.R.DType == VectorIR::DOUBLE) {
+        V.R.DType = VectorIR::SDOUBLE;
+        V.R.Width = VectorIR::W64;
+      } else if (V.R.DType == VectorIR::FLOAT) {
+        V.R.DType = VectorIR::SFLOAT;
+        V.R.Width = VectorIR::W32;
+      }
+      SuffS = "";
+    }
   }
 
   // Adding SIMD inst to the list
@@ -1058,7 +1131,7 @@ std::vector<std::string> AVX2Gen::getInitValues(VectorIR::VectorOP V) {
   }
   SIMDInst I =
       createSIMDInst("set", Reg, getMapWidth(V.R.Width), getMapType(V.R.DType),
-                     "", "", InitValList, SIMDType::VSET, V.Order);
+                     "", "", InitValList, SIMDType::INIT, V.Order);
   InitReg.push_back(I);
   return InitVal;
 }

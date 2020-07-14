@@ -126,7 +126,6 @@ MVOp VectorIR::VectorOP::getMVOp() {
 
 // ---------------------------------------------
 bool areInSameVector(int VL, Node *V[]) {
-  Utils::printDebug("VectorIR", "areInSameVector");
   auto A0 = dyn_cast<MVExprArray>(V[0]->getMVExpr());
   if (!dyn_cast<MVExprArray>(V[0]->getMVExpr())) {
     return false;
@@ -156,10 +155,6 @@ int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
     }
     auto IdxI = MV->getIndex().back();
     Idx[i] = IdxI - Idx0;
-    Utils::printDebug("VectorIR",
-                      "i = " + std::to_string(i) +
-                          "; getMemIdx = " + std::to_string(Idx[i]) +
-                          "; VL = " + std::to_string(VL));
   }
   return Idx;
 }
@@ -381,17 +376,13 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
     return;
   }
 
-  Utils::printDebug("VectorOP", "OpA start");
   this->OpA = VOperand(VL, VLoadA, false);
-  Utils::printDebug("VectorOP", "OpA done");
   if (VLoadB != nullptr) {
-    Utils::printDebug("VectorOP", "OpB start");
     this->OpB = VOperand(VL, VLoadB, false);
   }
 
   // Result operand
   this->R = VOperand(VL, VOps, true);
-  Utils::printDebug("VectorOP", "R done");
 
   // Assuming that inputs and outputs have the same type
   this->OpA.DType = this->R.DType;

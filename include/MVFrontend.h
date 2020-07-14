@@ -71,6 +71,9 @@ private:
   /// Render SIMD after a statement (for reductions, for instance)
   bool renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
                                 std::list<StmtWrapper *> SL);
+  /// Render SIMD before a statement (for initializing reductions, for instance)
+  bool renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
+                                 std::list<StmtWrapper *> SL);
   /// Holds information regarding the ROI
   ScopHandler *SL;
   /// Context

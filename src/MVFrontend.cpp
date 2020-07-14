@@ -146,27 +146,50 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
   }
 }
 
-// --------------------------------------------
-StmtWrapper *loopContainsSIMD(SIMDGenerator::SIMDInst SI,
-                              std::list<StmtWrapper *> SL) {
+// // --------------------------------------------
+// StmtWrapper *loopContainsSIMD(SIMDGenerator::SIMDInst SI,
+//                               std::list<StmtWrapper *> SL) {
+//   for (auto S : SL) {
+//     if (S->isLoop()) {
+//       for (auto B : S->getListStmt()) {
+//         if (B->isLoop()) {
+//           auto L = loopContainsSIMD(SI, B->getListStmt());
+//           if (L != NULL) {
+//             return B;
+//           }
+//         }
+//         for (auto T : B->getTacList()) {
+//           if (SI.TacID == T.getTacID()) {
+//             return S;
+//           }
+//         }
+//       }
+//     }
+//   }
+//   return NULL;
+// }
+
+// ---------------------------------------------
+bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
+                                              std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      for (auto B : S->getListStmt()) {
-        if (B->isLoop()) {
-          auto L = loopContainsSIMD(SI, B->getListStmt());
-          if (L != NULL) {
-            return B;
-          }
-        }
-        for (auto T : B->getTacList()) {
-          if (SI.TacID == T.getTacID()) {
-            return S;
-          }
+      auto L = renderSIMDInstBeforePlace(SI, S->getListStmt());
+      if (L) {
+        Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                           SI.render() + ";\t// latency = " +
+                               std::to_string(SI.Cost.Latency) + "\n");
+      }
+      return false;
+    } else {
+      for (auto T : S->getTacList()) {
+        if (SI.TacID == T.getTacID()) {
+          return true;
         }
       }
     }
   }
-  return NULL;
+  return false;
 }
 
 // ---------------------------------------------
@@ -207,12 +230,12 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
       }
     }
   }
-  // Reduce op
   if ((SI.SType == SIMDGenerator::SIMDType::VREDUC) ||
       (SI.SType == SIMDGenerator::SIMDType::VSTORER) ||
       (SI.SType == SIMDGenerator::SIMDType::VSEQR)) {
     renderSIMDInstAfterPlace(SI, SL);
   } else {
+    // Rest of SIMD operations
     for (auto S : SL) {
       if (S->isLoop()) {
         renderSIMDInstInPlace(SI, S->getListStmt());
@@ -321,6 +344,9 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
           Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
                              InsSIMD + "\n", true, true);
+        }
+        for (auto InitRedux : SIMDGen->getInitReg()) {
+          renderSIMDInstBeforePlace(InitRedux, SL);
         }
         for (auto InsSIMD : SInfo.SIMDList) {
           renderSIMDInstInPlace(InsSIMD, SL);

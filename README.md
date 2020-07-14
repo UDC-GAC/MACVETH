@@ -163,6 +163,8 @@ account when using this compiler:
                 | <expr> = <S>
 
             S ::= (non-terminal)
+                | for(<expr> = <expr>; <expr> < <expr>; <expr>) { 
+                    <S>; }
                 | <S> op <S>
                 | f(<S>,<S>)
                 | f(<S>)
@@ -200,7 +202,7 @@ account when using this compiler:
 
         + There are no increments in the body of the loop of the region of
         interest, i.e. the loop condition is only incremented in the for
-        statement. Besides, steps must be unary, i.e.
+        statement.
 
 ## Testing
 

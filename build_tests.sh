@@ -20,6 +20,8 @@ cmake --build . --config Debug -- -j2
 # Whether perform testing or not
 if [[ $testing = "testing" ]]; then
     # Test
+    cd ../tests
+    python3 compile.py 
     LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH ctest --output-on-failure
     LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH OMP_NUM_THREADS=1 ctest --rerun-failed
 fi

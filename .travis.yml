@@ -33,21 +33,23 @@ jobs:
       env: COMPILER='g++-8' LLVM_CONFIG='/usr/bin/llvm-config-10' COVERAGE='No' STATIC='No' DEBUG='No' TIDY='No'
 
 install:
-  # (fake) install dependencies (usually involves wget, configure, make, ...)
   # install into cache folder (build binaries+headers only, no sources and do NOT build there)
   - mkdir -p $HOME/.cache
 
-script: sudo chmod +x build_tests.sh && sudo -E env "PATH=$PATH" ./build_tests.sh building
-
+script:
+  # Give permissions to script
+  - sudo chmod +x build_tests.sh
+  # Building project
+  - sudo -E env "PATH=$PATH" ./build_tests.sh building
+  - sudo -E env "PATH=$PATH" ./build_tests.sh testing
 after_success:
-  # Create lcov report
-  # capture coverage info
+  # Create lcov report: capture coverage info
   - lcov --directory . --capture --output-file coverage.info
   # filter out system and extra files.
   # To also not include test code in coverage add them with full path to the patterns: '*/tests/*'
-  # - lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' --output-file coverage.info
+  - lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' --output-file coverage.info
   # output coverage data for debugging (optional)
-  # - lcov --list coverage.info
+  - lcov --list coverage.info
   # Uploading to CodeCov
   # '-f' specifies file(s) to use and disables manual coverage gathering and
   # file search which has already been done above

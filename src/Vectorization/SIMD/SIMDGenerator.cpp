@@ -243,6 +243,8 @@ void SIMDGenerator::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
     case clang::BO_Rem:
       TIL = vmod(V);
       break;
+    default:
+      TIL = vseq(V);
     }
   } else {
     // TODO decide what todo when we have the custom operations

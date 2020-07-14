@@ -271,11 +271,14 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   std::list<StmtWrapper *> SVec = SWrap->ListStmt;
   LoopInfo Loop = SWrap->getLoopInfo();
   // Write new epilogs
-  auto EpiInit = Loop.Dim + " = " +
-                 ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
-                                     std::to_string(Loop.StepUnrolled) +
-                                     " ) * " + std::to_string(Loop.StepUnrolled)
-                               : "0");
+  // auto EpiInit = Loop.Dim + " = " +
+  //                ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
+  //                                    std::to_string(Loop.StepUnrolled) +
+  //                                    " ) * " +
+  //                                    std::to_string(Loop.StepUnrolled)
+  //                              : "0");
+  // We have to assume that the loop variable has not been altered
+  auto EpiInit = Loop.Dim + " = " + Loop.Dim;
   auto EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;
   auto EpiInc = Loop.Dim + " += " + std::to_string(Loop.Step);
   Epilog += "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";

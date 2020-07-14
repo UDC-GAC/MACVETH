@@ -57,7 +57,9 @@ public:
     VSEQR,
     /// If the SIMD instruction is the result of an optimization (e.g. fuse
     /// multiply-accumulation) we will call it VOPT
-    VOPT
+    VOPT,
+    /// Initializing some value, for instance, in reductions
+    INIT
   };
 
   /// Cost of SIMD
@@ -319,6 +321,9 @@ public:
   virtual int getMaxVectorSize(std::string Type) {
     return getMaxWidth() / (SizeOf[Type] * 8);
   };
+
+  /// Get list of initializations
+  SIMDInstListType getInitReg() { return InitReg; }
 
   /// Table of equivalences between C/C++ basic numeric types and VectorIR's
   static inline std::map<VectorIR::VDataType, std::string> VDTypeToCType = {

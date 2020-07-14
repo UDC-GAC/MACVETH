@@ -27,10 +27,14 @@ UNDEF,set,1,1,1,_mm#W_#Pset#S_#D
 UNDEF,hadd,6,_mm#W_hadd_#D
 UNDEF,hsub,6,_mm#W_hsub_#D
 UNDEF,cvtsd,1,_mm#P_cvtsd_#S
+UNDEF,cvtss,1,_mm#P_cvtss_#S
 UNDEF,cvt,1,_mm#W_cvt#D_#S
 UNDEF,exp,1,_mm#W_exp_#D
 UNDEF,extract,3,_mm#W_#Pextract#S_#D
 UNDEF,blend,1,0.33,2,_mm#W_#Pblend#S_#D
+UNDEF,castps,0,0,1,_mm#W_castps#P_#S
+UNDEF,castpd,0,0,1,_mm#W_castpd#P_#S
+UNDEF,move,1,1,1,_mm#W_#Pmove#S_#D
 # Multiplication
 Skylake,mul,4,_mm#W_#Pmul#S_#D
 Skylake,*,4,_mm#W_#Pmul#S_#D
