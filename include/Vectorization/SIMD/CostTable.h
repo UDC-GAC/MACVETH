@@ -16,7 +16,7 @@ namespace macveth {
 /// Auxiliary class which holds the operations equivalences for the
 /// different architectures
 class CostTable {
-private:
+public:
   /// Structure to define the table of costs for the architectures
   struct Row {
     /// Latency of the operation
@@ -27,6 +27,8 @@ private:
     /// Number of units available for executing this type of operation
     /// simultaneously
     unsigned int NUnits = 0;
+    /// Number of micro-instructions issued
+    unsigned int NUops = 1;
     /// Pattern of the instruction
     std::string Pattern = "";
   };
@@ -34,13 +36,17 @@ private:
   /// Each Table identifies an architecture
   typedef std::map<std::string, Row> Table;
 
-public:
   /// This acts like a database using the std::map to identify each arhitecture
   /// and its correspondant Table, which is basically another map where each
   /// operation identifies each Row, that holds information regarding the
   /// latency, througput, number of units, and the pattern
   // static inline std::map<std::string, Table> Tables;
   static inline Table Tables;
+
+  /// Get row of table
+  static CostTable::Row getRow(std::string Arch, std::string Op) {
+    return CostTable::Tables[Op];
+  }
 
   /// Get latency of operation given an architecture and the desired operation
   /// Op
@@ -67,16 +73,23 @@ public:
   /// Add Row to Arch Table but with throughput 1 and number of units 1
   static void addRow(std::string Arch, std::string Op, unsigned int Cost,
                      std::string Pattern) {
-    CostTable::Tables[Op] = {Cost, 0, 0, Pattern};
+    CostTable::Tables[Op] = {Cost, 0, 0, 1, Pattern};
   }
 
-  /// Add Row to Arch Table taking into account all parameters described in the
-  /// Row
+  /// Add Row to Arch Table taking into account all parameters described in
+  /// the Row
   static void addRow(std::string Arch, std::string Op, unsigned int C,
                      double TP, unsigned int NU, std::string Pattern) {
-    CostTable::Tables[Op] = {C, TP, NU, Pattern};
+    CostTable::Tables[Op] = {C, TP, NU, 1, Pattern};
+  }
+  /// Add Row to Arch Table taking into account all parameters described in
+  /// the Row
+  static void addRow(std::string Arch, std::string Op, unsigned int C,
+                     double TP, unsigned int NU, unsigned int NUops,
+                     std::string Pattern) {
+    CostTable::Tables[Op] = {C, TP, NU, NUops, Pattern};
   }
 };
 } // namespace macveth
 
-#endif
+#endif /* !MACVETH_COSTTABLE_H */

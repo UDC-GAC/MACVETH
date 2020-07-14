@@ -8,9 +8,9 @@
 #ifndef MACVETH_NODE_H
 #define MACVETH_NODE_H
 
-#include "MVExpr/MVExprVar.h"
 #include "include/MVExpr/MVExpr.h"
 #include "include/MVExpr/MVExprLiteral.h"
+#include "include/MVExpr/MVExprVar.h"
 #include "include/StmtWrapper.h"
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
@@ -35,7 +35,7 @@ public:
   static void restart() { Node::UUID = 0; }
 
   /// Definition of NodeListType
-  typedef std::list<Node *> NodeListType;
+  typedef std::vector<Node *> NodeListType;
 
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_STORE, NODE_OP, UNDEF };
@@ -49,6 +49,8 @@ public:
     int NodeID = -1;
     /// TAC order
     int TacID = 0;
+    /// Scope within program
+    long Scop = 0;
     /// Topological order of this node
     int FreeSched = 0;
     /// TODO this value should be calculated by an algorithm
@@ -84,13 +86,23 @@ public:
     return O;
   }
 
+  /// Setting the scheduling info without any other information
+  void setSchedInfo() { this->SI.NodeID = Node::UUID++; }
+
+  /// Setting the scheduling info without any other information than the TAC
+  void setSchedInfo(TAC T) {
+    this->SI.NodeID = Node::UUID++;
+    this->SI.TacID = T.getTacID();
+    this->SI.Scop = T.getScop();
+  }
+
   /// When creating a Node from a TempExpr, the connections will be created by
   /// the TAC which creates this Node
   Node(MVExpr *TE) {
     this->T = NODE_MEM;
     this->Value = TE->getExprStr();
     this->MV = TE;
-    this->SI.NodeID = Node::UUID++;
+    setSchedInfo();
   }
 
   /// Copy constructor for cloning
@@ -101,6 +113,7 @@ public:
     this->SI = rhs.SI;
     this->T = rhs.T;
     this->Value = rhs.Value;
+    this->LoopName = rhs.LoopName;
   }
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
@@ -110,10 +123,12 @@ public:
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
-    this->SI.NodeID = Node::UUID++;
-    this->SI.TacID = T.getTacID();
+    setSchedInfo(T);
+    this->LoopName = T.getLoopName();
     connectInput(new Node(T.getB()));
-    connectInput(new Node(T.getC()));
+    if (T.getC() != NULL) {
+      connectInput(new Node(T.getC()));
+    }
     updateIfStore();
   }
 
@@ -124,20 +139,36 @@ public:
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
     this->O = setOutputInfo(T);
-    this->SI.NodeID = Node::UUID++;
-    this->SI.TacID = T.getTacID();
-    Node *NB = findOutputNode(T.getB()->getExprStr(), L);
-    Node *NC = findOutputNode(T.getC()->getExprStr(), L);
-    connectInput(NB == NULL ? new Node(T.getB()) : NB);
-    connectInput(NC == NULL ? new Node(T.getC()) : NC);
+    setSchedInfo(T);
+    this->LoopName = T.getLoopName();
+    auto NB = findOutputNode(T.getB()->getExprStr(), L);
+    if (NB == NULL || this->getScop() != NB->getScop()) {
+      connectInput(new Node(T.getB()));
+    } else {
+      connectInput(NB);
+    }
+    Node *NC = NULL;
+    if (T.getC() != NULL) {
+      NC = findOutputNode(T.getC()->getExprStr(), L);
+      if (NC == NULL || this->getScop() != NC->getScop()) {
+        connectInput(new Node(T.getC()));
+      } else {
+        connectInput(NC);
+      }
+    }
     updateIfStore();
   }
 
+  /// Update output information of the node if the type of the output is a
+  /// memory store
   void updateIfStore() {
     if (this->O.Type == MEM_STORE) {
       this->getInputs().front()->T = NODE_STORE;
     }
   }
+
+  /// Get MVExpr
+  MVExpr *getMVExpr() { return this->MV; }
 
   /// Schedule info is needed for the algorithms to perform permutations in
   /// nodes
@@ -147,13 +178,19 @@ public:
   void setTacID(int TacID) { this->SI.TacID = TacID; }
 
   /// Set Plcmnt value
-  void setPlcmt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
+  void setPlcmnt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
 
   /// Check if Node N is already in node list L
   static Node *findOutputNode(std::string NodeName, NodeListType L);
 
+  /// Get Node
+  static Node *findWARDataRace(Node *N, Node::NodeListType NL);
+
   /// Connect a Node as input
   void connectInput(Node *N);
+
+  /// Get the scope of the node
+  long getScop() { return this->SI.Scop; }
 
   /// Get the number of inputs in this Node
   int getOutputNum() { return this->OutNodes.size(); }
@@ -190,11 +227,6 @@ public:
 
   /// Is OP
   bool needsMemLoad() {
-    //    if (dyn_cast<MVExprVar>(this->MV)) {
-    //      return (dyn_cast<MVExprVar>(this->MV)->getTempInfo() ==
-    //              MVExpr::MVExprInfo::EXPR_CLANG);
-    //    }
-    // return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)));
     return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)) &&
             (this->MV->needsToBeLoaded()));
   }
@@ -207,6 +239,7 @@ public:
 
   /// Returns the string value of the node
   std::string getValue() const { return this->Value; }
+
   /// Returns the variable/register value
   std::string getRegisterValue() const {
     if (this->T != NodeType::NODE_MEM) {
@@ -218,6 +251,9 @@ public:
   /// Setting the name of the output value
   void setOutputName(std::string S) { this->O.Name = S; }
 
+  /// Get loop name of the loop
+  std::string getLoopName() { return this->LoopName; }
+
   /// Print node: debugging purposes
   std::string toString();
 
@@ -226,7 +262,7 @@ public:
   int operator-(const Node &N) { return (*MV - *N.MV); }
 
   /// Two nodes are equal if and only if they have the same value. Seems
-  /// pretty straigthforward but it must be defined someway.
+  /// pretty straight forward but it must be defined someway.
   bool operator==(const Node &N) {
     return (getRegisterValue() == N.getRegisterValue());
   }
@@ -236,18 +272,29 @@ public:
   }
 
   /// Two nodes are not equal if and only if they have the same value. Seems
-  /// pretty straigthforward but it must be defined someway.
+  /// pretty straight forward but it must be defined someway.
   bool operator!=(const Node &N) { return !operator==(N); }
 
   /// For sorting lists of nodes
   bool operator<(const Node &N) {
     if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
-      return (this->getSchedInfo().NodeID < N.SI.NodeID);
-      // return (this->getSchedInfo().TacID < N.SI.TacID);
+      if (this->getSchedInfo().TacID == N.SI.TacID) {
+        return (this->getSchedInfo().NodeID < N.SI.NodeID);
+      } else {
+        return (this->getSchedInfo().TacID < N.SI.TacID);
+      }
     } else {
       return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
-      // return (this->getSchedInfo().TacID < N.SI.TacID);
     }
+  }
+
+  /// For debugging purposes: show information regarding the node
+  std::string getSchedInfoStr() {
+    return "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
+           "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
+           "; TacID = " + std::to_string(getSchedInfo().TacID) +
+           "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
+           "; Scop = " + std::to_string(getSchedInfo().Scop);
   }
 
 private:
@@ -266,6 +313,8 @@ private:
   OutputInfo O;
   /// List of output nodes for this node
   NodeListType OutNodes;
+  /// Loop variable where it belongs
+  std::string LoopName = "";
 };
 } // namespace macveth
-#endif
+#endif /* !MACVETH_NODE_H */

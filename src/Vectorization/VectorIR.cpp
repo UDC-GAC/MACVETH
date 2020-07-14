@@ -1,12 +1,36 @@
 /**
- * File              : VectorIR.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Mar 24 Dec 2019 16:41:08 MST
- * Last Modified Date: Mér 15 Xan 2020 12:32:46 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ * File					 : src/VectorIR.cpp
+ * Author				 : Marcos Horro
+ * Date					 : Wed 03 Jun 2020 04:28 +02:00
+ *
+ * Last Modified : Wed 10 Jun 2020 09:57 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 #include "include/Vectorization/VectorIR.h"
+#include "include/MVExpr/MVExprArray.h"
 #include "include/Utils.h"
 #include <algorithm>
 
@@ -15,11 +39,15 @@ bool opsAreSequential(int VL, Node *VOps[]) {
   for (int i = 1; i < VL; ++i) {
     if ((VOps[i - 1]->getSchedInfo().FreeSched <
          VOps[i]->getSchedInfo().FreeSched)) {
-      // if ((VOps[i - 1]->getSchedInfo().Plcmnt <
-      // VOps[i]->getSchedInfo().Plcmnt)) {
       return true;
     }
   }
+  // If there is only one operation, then it is also a sequential operation,
+  // you think?
+  if (VL == 1) {
+    return true;
+  }
+
   return false;
 }
 
@@ -58,11 +86,14 @@ bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node *V[]) {
 // ---------------------------------------------
 std::string VectorIR::VOperand::toString() {
   std::string Str;
-  Str = Name + "[" + (IsTmpResult ? "TMP," : "") + (IsLoad ? "LD," : "") +
-        (IsStore ? "ST," : "");
-  for (int i = 0; i < this->VSize; ++i) {
-    Str +=
-        (UOP[i]->getRegisterValue()) + ((i == (this->VSize - 1)) ? "" : ", ");
+  Str = Name + "[" + (IsTmpResult ? "TempResult, " : "") +
+        (IsLoad ? "LoadOp, " : "") + (IsStore ? "StoreOp, " : "");
+  if (this->Size < 1) {
+    return Str + "]";
+  }
+  Str += (UOP[0]->getRegisterValue());
+  for (int i = 1; i < this->VSize; ++i) {
+    Str += ", " + (UOP[i]->getRegisterValue());
   }
   Str += "]";
   return Str;
@@ -70,9 +101,11 @@ std::string VectorIR::VOperand::toString() {
 
 // ---------------------------------------------
 std::string VectorIR::VectorOP::toString() {
-  std::string Str;
-  Str = "[VectorIR] " + R.toString() + " = " + VN + "(" + OpA.toString() + "," +
-        OpB.toString() + ")";
+  if (this->VT == VectorIR::VType::SEQ) {
+    return "Sequential";
+  }
+  auto B = (IsUnary) ? "" : "," + OpB.toString();
+  auto Str = R.toString() + " = " + VN + "(" + OpA.toString() + B + ")";
   return Str;
 }
 
@@ -87,24 +120,48 @@ BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
 }
 
 // ---------------------------------------------
-int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
-  // FIXME
-  int64_t *Idx = (int64_t *)malloc(sizeof(int64_t) * VL);
-  Idx[0] = 0;
-  if (VL <= 1)
-    return Idx;
-  for (int n = 0; n < VL - 1; ++n) {
-    Idx[n + 1] = *V[n + 1] - *V[n];
-    // std::cout << "index " << std::to_string(n) << " = "
-    //          << std::to_string(Idx[n]) << ",";
+MVOp VectorIR::VectorOP::getMVOp() {
+  return this->R.UOP[0]->getOutputInfo().MVOP;
+}
+
+// ---------------------------------------------
+bool areInSameVector(int VL, Node *V[]) {
+  auto A0 = dyn_cast<MVExprArray>(V[0]->getMVExpr());
+  if (!dyn_cast<MVExprArray>(V[0]->getMVExpr())) {
+    return false;
   }
-  // std::cout << std::endl;
+  for (auto i = 1; i < VL; ++i) {
+    auto Arr = dyn_cast<MVExprArray>(V[i]->getMVExpr());
+    if (!Arr) {
+      return false;
+    }
+    if (A0->getBaseName() != Arr->getBaseName()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ---------------------------------------------
+int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
+  int64_t *Idx = (int64_t *)calloc(sizeof(int64_t), VL);
+  Idx[0] = 0;
+  auto Arr0 = dyn_cast<MVExprArray>(V[0]->getMVExpr());
+  auto Idx0 = Arr0->getIndex().back();
+  for (int i = 1; i < VL; ++i) {
+    auto MV = dyn_cast<MVExprArray>(V[i]->getMVExpr());
+    if (!MV) {
+      return nullptr;
+    }
+    auto IdxI = MV->getIndex().back();
+    Idx[i] = IdxI - Idx0;
+  }
   return Idx;
 }
 
 // ---------------------------------------------
 unsigned int getShuffle(int VL, int Width, Node *V[]) {
-  // TODO
+  // TODO: don't know if this is worthable
   unsigned int Shuffle = 0x0;
   int Bits = Width / 4;
   for (int n = 0; n < VL; ++n) {
@@ -125,15 +182,7 @@ unsigned int getMask(int VL, Node *V[]) {
 }
 
 // ---------------------------------------------
-std::list<Node *> detectReductionsAndFuse(std::list<Node *> NL) {
-  std::list<Node *> NewList = NL;
-  NewList.reverse();
-  for (auto N : NL) {
-    // detect reduction
-  }
-  NewList.reverse();
-  return NewList;
-}
+VectorIR::VOperand::VOperand(){/* empty constructor */};
 
 // ---------------------------------------------
 VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
@@ -151,19 +200,31 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Check if there is a vector assigned for these operands
   auto VecAssigned = checkIfVectorAssigned(VL, V);
 
-  this->Name = VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()]
-                           : "vop" + std::to_string(VID++);
+  // Get name of this operand, otherwise create a custom name
+  this->Name =
+      VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()] : genNewVOpName();
+
+  // Check if this has been already loaded
+  auto AlreadyLoaded = false;
+  for (auto T : MapLoads) {
+    if (std::get<1>(T) == this->getName()) {
+      if (V[0]->getScop() == std::get<0>(T)) {
+        AlreadyLoaded = true;
+        break;
+      }
+    }
+  }
+
   // It is a temporal result if it has already been assigned
-  this->IsTmpResult = VecAssigned;
-  // auto AlreadyLoaded = Utils::contains(MapLoads, this->getName());
-  auto AlreadyLoaded = std::find(MapLoads.begin(), MapLoads.end(),
-                                 this->getName()) != MapLoads.end();
-  // So, if it has not been assigned yet, then we added to the list of loads (or
-  // register that we are going to pack somehow)
+  this->IsTmpResult = VecAssigned && AlreadyLoaded;
+
+  // So, if it has not been assigned yet, then we added to the list of loads
+  // (or register that we are going to pack somehow). It can also be a store.
   if (!AlreadyLoaded)
-    MapLoads.push_back(this->getName());
+    MapLoads.push_back(std::make_tuple(V[0]->getScop(), this->getName()));
+
   // So if it has not been packed/loaded yet, then we consider it a load
-  this->IsLoad = !AlreadyLoaded;
+  this->IsLoad = !AlreadyLoaded && !this->IsStore;
 
   // Checking if operands are all memory
   bool IsMemOp = true;
@@ -184,17 +245,32 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Get data mask
   this->Mask = getMask(VL, V);
 
-  // Determine whether is partial or not
-  if (Mask != ((1 << this->Size) - 1)) {
+  // FIXME: Determine whether is partial or not
+  if (true && (Mask != ((1 << VL) - 1))) {
     this->IsPartial = true;
   }
 
   // In case we have to access to memory we are also interested in how we do it:
   // if we have to use an index for it, or if we have to shuffle data
   if (this->MemOp) {
-    // Get Memory index
-    this->Idx = getMemIdx(VL, V, this->Mask);
-
+    this->SameVector = areInSameVector(VL, V);
+    if (this->SameVector) {
+      // Get Memory index
+      this->Idx = getMemIdx(VL, V, this->Mask);
+      if (this->Idx != nullptr) {
+        auto T = true;
+        if (VL > 1) {
+          for (int i = 1; i < VL; ++i) {
+            T &= ((Idx[i] - 1) == Idx[i - 1]);
+            Utils::printDebug(
+                "VOperand", "Idx[i]-1 = " + std::to_string((Idx[i] - 1)) +
+                                "; Idx[i-1] = " + std::to_string((Idx[i - 1])));
+          }
+        }
+        Utils::printDebug("VOperand", "Contiguous = " + std::to_string(T));
+        this->Contiguous = T;
+      }
+    }
     // Get shuffle index
     this->Shuffle = getShuffle(VL, this->getWidth(), V);
   }
@@ -202,19 +278,23 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Get data type
   this->DType = CTypeToVDataType[this->UOP[0]->getDataType()];
   if ((this->EqualVal) && (this->MemOp)) {
-    this->DType = VectorIR::VDataType(this->DType + 1);
+    if ((this->DType == VectorIR::VDataType::FLOAT) ||
+        (this->DType == VectorIR::VDataType::DOUBLE)) {
+      this->DType = VectorIR::VDataType(this->DType + 1);
+    }
   }
+
+  // Computing data width
+  this->Width = getWidthFromVDataType(this->VSize, this->DType);
 };
 
 // ---------------------------------------------
 VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
                                 Node *VLoadB[]) {
   // Premises of our algorithm
-  // 1.- Check wheter operations are sequential
+  // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
-  if (Seq) {
-    Utils::printDebug("CDAG", "Ops are sequential");
-  }
+
   // 2.- Check if operands have RAW dependencies with output of the operations
   bool RAW_A = rawDependencies(VL, VOps, VLoadA);
   bool RAW_B = rawDependencies(VL, VOps, VLoadB);
@@ -230,6 +310,8 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
   Utils::printDebug("VectorIR", "Atomic_A = " + std::to_string(Atomic_A));
   Utils::printDebug("VectorIR", "Atomic_B = " + std::to_string(Atomic_B));
 
+  // Decide which type of VectorOp it is according to the features of its
+  // VOperands
   if ((Seq) && ((RAW_A) || (RAW_B)) && Atomic_A && Atomic_B) {
     Utils::printDebug("VectorIR", "reduction");
     return VectorIR::VType::REDUCE;
@@ -243,16 +325,68 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
 }
 
 // ---------------------------------------------
-VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
-                             Node *VLoadB[])
-    : OpA(VL, VLoadA, false), OpB(VL, VLoadB, false), R(VL, VOps, true) {
+VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[]) {
+  // Premises of our algorithm
+  // 1.- Check whether operations are sequential
+  bool Seq = opsAreSequential(VL, VOps);
+  if (Seq) {
+    Utils::printDebug("CDAG", "Ops are sequential");
+  }
+  // 2.- Check if operands have RAW dependencies with output of the operations
+  bool RAW_A = rawDependencies(VL, VOps, VLoadA);
+  // 3.- Check the atomicity of the operands: they can be computed/loaded before
+  //     the operations
+  bool Atomic_A = isAtomic(VL, VOps, VLoadA);
 
+  // Type of VectorOP
+  Utils::printDebug("VectorIR", "Seq = " + std::to_string(Seq));
+  Utils::printDebug("VectorIR", "RAW_A = " + std::to_string(RAW_A));
+  Utils::printDebug("VectorIR", "Atomic_A = " + std::to_string(Atomic_A));
+
+  // Decide which type of VectorOp it is according to the features of its
+  // VOperands
+  if ((Seq) && ((RAW_A) && Atomic_A)) {
+    Utils::printDebug("VectorIR", "reduction");
+    return VectorIR::VType::REDUCE;
+  } else if ((!Seq) && (!RAW_A) && Atomic_A) {
+    Utils::printDebug("VectorIR", "map");
+    return VectorIR::VType::MAP;
+  } else {
+    Utils::printDebug("VectorIR", "sequential");
+    return VectorIR::VType::SEQ;
+  }
+}
+
+// ---------------------------------------------
+VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
+                             Node *VLoadB[]) {
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
+  if (VLoadB != nullptr) {
+    // Vector type will depend on the operations and operations, logically
+    this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
+  } else {
+    this->IsUnary = true;
+    // Vector type will depend on the operations and operations, logically
+    this->VT = getVectorOpType(VL, VOps, VLoadA);
+  }
 
-  // Vector type will depend on the operations and operations, logically
-  this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
+  if (this->VT == VectorIR::VType::SEQ) {
+    return;
+  }
+
+  this->OpA = VOperand(VL, VLoadA, false);
+  if (VLoadB != nullptr) {
+    this->OpB = VOperand(VL, VLoadB, false);
+  }
+
+  // Result operand
+  this->R = VOperand(VL, VOps, true);
+
+  // Assuming that inputs and outputs have the same type
+  this->OpA.DType = this->R.DType;
+  this->OpB.DType = this->R.DType;
 
   // Name: operation (assuming all operations have the same value, which is a
   // valid assumption)
@@ -263,6 +397,7 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
 
   // Data type
   this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];
+  this->R.DType = this->DT;
 
   // Ordering
   this->OpA.Order = this->Order;

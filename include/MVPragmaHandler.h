@@ -17,6 +17,10 @@
 
 using namespace clang;
 
+namespace macveth {
+
+typedef std::vector<std::tuple<std::string, int>> PragmaTupleDim;
+
 /// The Location of the Scop, as delimited by macveth and endmacveth
 /// pragmas by the user.
 /// "macveth" and "endmacveth" are the source locations of the macveth and
@@ -24,6 +28,9 @@ using namespace clang;
 /// "StartLine" is the Line number of the Start position.
 struct ScopLoc {
   ScopLoc() : End(0) {}
+
+  /// File identifier of the scop
+  FileID FID;
 
   /// Start location of the pragma
   clang::SourceLocation Scop;
@@ -37,12 +44,21 @@ struct ScopLoc {
   bool ScopHasBeenScanned = false;
 
   struct PragmaArgs {
+    /// Generate SIMD code in the region: true by default
+    bool SIMDCode = true;
+    /// General option for unrolling code
     bool Unroll = true;
+    /// Unroll factor (general)
     int UnrollFactor = 1;
+    /// Perform unroll and jam
     bool UnrollAndJam = true;
-    std::list<std::string> UnrollDim;
+    /// Full unrolling
+    std::map<std::string, bool> FullUnroll;
+    /// Custom option for each loop within the scope
+    PragmaTupleDim UnrollDim;
   };
 
+  /// Each scop has its own PragmaArgs, which are parsed at pre-processing time
   PragmaArgs PA;
 };
 
@@ -76,7 +92,16 @@ struct ScopHandler {
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
     std::vector<ScopLoc *> SList;
     for (auto SL : List) {
-      if ((StartFD <= SL->StartLine) && (EndFD >= SL->EndLine))
+      if (SL->FID != SM.getFileID(fd->getBeginLoc())) {
+        continue;
+      }
+      unsigned int StartL = SM.getFileOffset(
+          translateLineCol(SM, SM.getFileID(SL->Scop), StartFD, 1));
+      unsigned int EndL = SM.getFileOffset(
+          translateLineCol(SM, SM.getFileID(SL->EndScop), EndFD + 1, 1));
+
+      if (((StartFD <= SL->StartLine) && (EndFD >= SL->EndLine)) &&
+          ((StartL <= SL->Start) && (EndL >= SL->End)))
         SList.push_back(SL);
     }
     return SList;
@@ -95,13 +120,12 @@ struct ScopHandler {
                 ScopLoc::PragmaArgs PA) {
     ScopLoc *Loc = new ScopLoc();
     Utils::printDebug("MVPragmaHandler", "addStart");
-
+    Loc->FID = SM.getFileID(Start);
     Loc->PA = PA;
     Loc->Scop = Start;
     int Line = SM.getExpansionLineNumber(Start);
-    Start = translateLineCol(SM, SM.getFileID(Start), Line, 1);
     Loc->StartLine = Line;
-    Loc->Start = SM.getFileOffset(Start);
+    Loc->Start = SM.getFileOffset(translateLineCol(SM, Loc->FID, Line, 1));
     if (List.size() == 0 || List[List.size() - 1]->End != 0) {
       List.push_back(Loc);
     } else {
@@ -136,20 +160,70 @@ static IdentifierInfo *getValue(Token &token) {
 static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
   ScopLoc::PragmaArgs PA;
   IdentifierInfo *II;
+  IdentifierInfo *IIPrev;
+  bool UnrollOptParsed = false;
+  bool DimensionFound = false;
   Token Tok;
   PP.Lex(Tok);
-  if ((II = getValue(Tok)) != NULL) {
-    if (II->isStr("nounroll")) {
-      PA.Unroll = false;
-      PA.UnrollAndJam = false;
+  while ((II = getValue(Tok)) != NULL) {
+    PP.Lex(Tok);
+    if (((II->isStr("nounroll")) || (II->isStr("unroll")) ||
+         (II->isStr("unrollandjam"))) &&
+        (UnrollOptParsed)) {
+      assert(false &&
+             "You can not specify twice unrolling options in the same scop!");
     }
+    // Check if unroll
+    if (II->isStr("nounroll") || II->isStr("unrollandjam") ||
+        II->isStr("unroll")) {
+      PA.Unroll = (II->isStr("unrollandjam") || II->isStr("unroll"));
+      PA.UnrollAndJam = (II->isStr("unrollandjam"));
+      UnrollOptParsed = true;
+      continue;
+    }
+    // Check if no SIMD code
+    if (II->isStr("nosimd")) {
+      PA.SIMDCode = false;
+      continue;
+    }
+
+    // Otherwise it will be a unrolling dimension
+    if ((!Tok.isLiteral())) {
+      // assert(false && "Bad format! Need an integer for the unrolling
+      // factor");
+      auto IINext = getValue(Tok);
+      if (IINext->isStr("full")) {
+        PA.FullUnroll[II->getName().str()] = true;
+        PA.UnrollDim.push_back(
+            std::tuple<std::string, int>(II->getName().str(), 1));
+        PP.Lex(Tok);
+        continue;
+      } else {
+        assert(false && "Something went wrong...");
+      }
+    }
+
+    auto IINext = Tok.getLiteralData();
+    if (IINext == NULL) {
+      assert(false &&
+             "Bad format: needed a unrolling factor for the dimension");
+    }
+
+    int UnrollFactor = atoi(IINext);
+    if (UnrollFactor == 0) {
+      assert(false && "Bad value for unrolling factor");
+    }
+    PA.UnrollDim.push_back(
+        std::tuple<std::string, int>(II->getName().str(), UnrollFactor));
+    PP.Lex(Tok);
   }
   return PA;
 }
 
 /// Handle pragmas of the form
 ///
-///  #pragma macveth
+///  #pragma macveth [unroll|nounroll|unrollandjam] [loopIdentifier
+///  unrollFactor] [nosimd]
 ///
 /// In particular, store the Location of the line containing
 /// the pragma in the list "Scops". The intention of this pragma is to tell the
@@ -188,5 +262,5 @@ struct PragmaEndScopHandler : public PragmaHandler {
     Scops->addEnd(SM, Sloc);
   }
 };
-
-#endif
+} // namespace macveth
+#endif /* !MACVETH_PRAGMAHANDLER_H */

@@ -40,8 +40,10 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
   int i, j;
 
-  for (i = 0; i < n; i++)
+  for (i = 0; i < 7; i++) {
     fprintf(stderr, DATA_PRINTF_MODIFIER, C[i]);
+    // printf(DATA_PRINTF_MODIFIER, C[i]);
+  }
   if (i % 20 == 0)
     fprintf(stderr, "\n");
   fprintf(stderr, "\n");
@@ -50,7 +52,7 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
 static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
-#pragma macveth
+#pragma macveth i full
   for (int i = 0; i < 7; i++) {
     x[i] = x[i] * i + 42.3f;
   }

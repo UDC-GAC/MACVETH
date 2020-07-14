@@ -12,29 +12,34 @@
 #include "include/Vectorization/SIMD/CostTable.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Type.h"
-#include <filesystem>
 #include <regex>
 #include <sstream>
 #include <unistd.h>
+#if __GNUC__ >= 8
+#include <filesystem>
+#else
+#include <experimental/filesystem>
+#endif
 
 using namespace macveth;
 
 // ---------------------------------------------
 void SIMDGenerator::populateTable(MVISA ISA) {
-  std::string PathISA = "/src/Vectorization/SIMD/CostsArch/" + MVISAStr[ISA];
-  char buff[PATH_MAX];
-  getcwd(buff, PATH_MAX);
-  std::string cwd(buff);
-  PathISA = cwd + PathISA;
+  std::string PathISA = "/CostsArch/" + MVISAStr[ISA];
+  std::string dir(__FILE__);
+  dir = dir.substr(0, dir.find_last_of("\\/"));
+  PathISA = dir + PathISA;
   std::string Arch = MVArchStr[MVOptions::Arch];
   std::ifstream F(PathISA);
   std::string L, W;
+  Utils::printDebug("CostsTable", "PathISA = " + PathISA);
   if (F.is_open()) {
     while (getline(F, L)) {
-      if (L.rfind("#", 0) == 0) {
+      if ((L.rfind("#", 0) == 0) || (L == "")) {
         // Check if line is a comment
         continue;
       }
+
       std::stringstream TMP(L);
       std::vector<std::string> Args;
       while (getline(TMP, W, ',')) {
@@ -46,9 +51,18 @@ void SIMDGenerator::populateTable(MVISA ISA) {
                  (Args.size() == 6)) {
         CostTable::addRow(Arch, Args[1], std::stoi(Args[2]), std::stod(Args[3]),
                           std::stoi(Args[4]), Args[5]);
+      } else if (((Args[0] == Arch) || (Args[0] == "UNDEF")) &&
+                 (Args.size() == 7)) {
+        CostTable::addRow(Arch, Args[1], std::stoi(Args[2]), std::stod(Args[3]),
+                          std::stoi(Args[4]), std::stoi(Args[5]), Args[6]);
       }
     }
     F.close();
+  } else {
+    Utils::printDebug(
+        "SIMDGenerator",
+        "This should never happen: PATH for costs file not found");
+    llvm::llvm_unreachable_internal();
   }
 }
 
@@ -65,66 +79,77 @@ std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
 }
 
 // ---------------------------------------------
+SIMDGenerator::SIMDInst
+SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
+                              SIMDGenerator::SIMDType SType,
+                              SIMDGenerator::SIMDInstListType *IL) {
+  // Generate SIMD inst
+  std::string Rhs;
+  std::string Lhs = OP.R.getName();
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, OP.Order);
+  // Retrieving cost of function
+  I.SType = SType;
+
+  // Adding instruction to the list
+  IL->push_back(I);
+  return I;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInst
+SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
+                              SIMDGenerator::SIMDType SType,
+                              SIMDGenerator::SIMDInstListType *IL) {
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, IL->back().TacID);
+  // Retrieving cost of function
+  I.SType = SType;
+
+  // Adding instruction to the list
+  IL->push_back(I);
+  return I;
+}
+
+// ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
-  if (MVOptions::MacroFree) {
-    std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
-                               ? FuncName + "("
-                               : Result + " = " + FuncName + "(";
-    std::list<std::string>::iterator Op;
-    int i = 0;
-    for (Op = Args.begin(); Op != Args.end(); ++Op) {
-      FullFunc += (i++ == (Args.size() - 1)) ? (*Op + ")") : (*Op + ", ");
-    }
+  std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
+  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
+                          (SType == SIMDType::VSTORER))
+                             ? FN
+                             : Result + " = " + FN;
+  if (((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ)) &&
+      (Args.size() == 0))
     return FullFunc;
-  } else {
-    std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
-                               ? MVFuncName + "("
-                               : Result + " = " + MVFuncName + "(";
-    std::list<std::string>::iterator Op;
-    int i = 0;
-    for (Op = MVArgs.begin(); Op != MVArgs.end(); ++Op) {
-      FullFunc += (i++ == (MVArgs.size() - 1)) ? (*Op + ")") : (*Op + ", ");
-    }
-    return FullFunc;
+  FullFunc += "(";
+  std::list<std::string>::iterator Op;
+  int i = 0;
+  for (Op = Args.begin(); Op != Args.end(); ++Op) {
+    FullFunc += (i++ == (Args.size() - 1)) ? (*Op + ")") : (*Op + ", ");
   }
+  return FullFunc;
 }
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
-  std::map<std::string, long> CostOp;
+  std::map<std::string, SIMDCostInfo> CostOp;
   std::map<std::string, long> NumOp;
   std::list<std::string> L;
   long TotCost = 0;
   for (SIMDInst I : S) {
     CostOp[I.FuncName] = I.Cost;
     NumOp[I.FuncName]++;
-    TotCost += I.Cost;
+    TotCost += I.Cost.Latency;
   }
   SIMDInfo SI(S, CostOp, NumOp, TotCost);
   return SI;
 }
 
 // ---------------------------------------------
-std::list<std::string> SIMDGenerator::renderSIMDRegister(SIMDInstListType S) {
-  std::list<std::string> L;
-  // Render register declarations
-  for (auto It = RegDeclared.begin(); It != RegDeclared.end(); ++It) {
-    std::string TypeRegDecl = It->first + " ";
-    int i = 0;
-    for (auto N = It->second.begin(); N != It->second.end(); ++N) {
-      TypeRegDecl += (i++ == (It->second.size() - 1)) ? *N : (*N + ", ");
-    }
-    L.push_back(TypeRegDecl + ";");
-  }
-  return L;
-}
-
-// ---------------------------------------------
 std::list<std::string> SIMDGenerator::renderSIMDasString(SIMDInstListType S) {
   std::list<std::string> L;
   // Render instructions
-  for (SIMDInst I : S) {
-    std::string Inst = I.render() + ";\t// cost = " + std::to_string(I.Cost);
+  for (auto I : S) {
+    auto Inst =
+        I.render() + ";\t// latency = " + std::to_string(I.Cost.Latency);
     L.push_back(Inst);
   }
   return L;
@@ -155,20 +180,26 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     // We will say it is a gather if we have to use an index to retrieve data
     // from memory (not contiguous)
     //
-    // We will say it is a set if we have to explicity set the values of the
+    // We will say it is a set if we have to explicitly set the values of the
     // vector operand
-
-    // FIXME
     bool EqualVal = equalValues(V.VSize, V.UOP);
-    bool ContMem = V.MemOp && !(V.Shuffle & 0x0);
+    bool ContMem = V.MemOp && (V.Contiguous);
     bool ScatterMem = V.MemOp && !ContMem;
     bool ExpVal = !V.MemOp;
+
+    Utils::printDebug("SIMDGenerator",
+                      "V = " + V.Name +
+                          "; EqualVal = " + std::to_string(EqualVal) +
+                          "; ContMem = " + std::to_string(ContMem) +
+                          "; ScatterMem = " + std::to_string(ScatterMem) +
+                          "; SameVec = " + std::to_string(V.SameVector) +
+                          "; ExpVal = " + std::to_string(ExpVal));
 
     // 0, 1, 0, 0
     if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
       TIL = vpack(V);
       // 0, X, 1
-    } else if ((!EqualVal) && (ScatterMem)) {
+    } else if ((!EqualVal) && (ScatterMem) && (V.SameVector)) {
       TIL = vgather(V);
       // 1, X, 0, 1
     } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {
@@ -182,9 +213,8 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     return false;
   }
   // Update the list
-  for (auto I : TIL) {
-    IL->push_back(I);
-  }
+  IL->splice(IL->end(), TIL);
+
   return true;
 }
 
@@ -213,21 +243,20 @@ void SIMDGenerator::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
     case clang::BO_Rem:
       TIL = vmod(V);
       break;
+    default:
+      TIL = vseq(V);
     }
   } else {
     // TODO decide what todo when we have the custom operations
+    Utils::printDebug("SIMDGenerator", "it is not a binary operation");
+    TIL = vfunc(V);
   }
 
   // If there is a store
   if (V.R.IsStore) {
-    for (auto I : vstore(V)) {
-      TIL.push_back(I);
-    }
+    TIL.splice(TIL.end(), vstore(V));
   }
-
-  for (auto I : TIL) {
-    TI->push_back(I);
-  }
+  TI->splice(TI->end(), TIL);
 }
 
 // ---------------------------------------------
@@ -243,10 +272,7 @@ void SIMDGenerator::reduceOperation(VectorIR::VectorOP V,
 
   // Let the magic happens
   TIL = vreduce(V);
-
-  for (auto I : TIL) {
-    TI->push_back(I);
-  }
+  TI->splice(TI->end(), TIL);
 }
 
 // ---------------------------------------------
@@ -254,24 +280,22 @@ SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   SIMDInstListType IL;
 
-  std::string RegType = getRegisterType(V.DT, V.VW);
-
   // Arranging the operation
   switch (V.VT) {
   case VectorIR::VType::MAP:
-    // Utils::printDebug("SIMDGen", "map");
+    Utils::printDebug("SIMDGen", "map");
     mapOperation(V, &IL);
     break;
   case VectorIR::VType::REDUCE:
-    // Utils::printDebug("SIMDGen", "reduce");
+    Utils::printDebug("SIMDGen", "reduce");
     reduceOperation(V, &IL);
     break;
   case VectorIR::VType::SEQ:
-    // Utils::printDebug("SIMDGen", "sequential");
-    IL = vseq(V);
-    break;
+    Utils::printDebug("SIMDGen", "sequential");
+    return vseq(V);
   };
 
+  auto RegType = getRegisterType(V.DT, V.VW);
   // Registers used
   addRegToDeclare(RegType, V.R.getName());
   addRegToDeclare(RegType, V.OpA.getName());
@@ -284,30 +308,62 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
   SIMDInstListType I;
+
   // Get list of SIMD instructions
   for (VectorIR::VectorOP V : VList) {
     for (SIMDInst Inst : getSIMDfromVectorOP(V)) {
       I.push_back(Inst);
     }
   }
+
   // Then optimizations can be done, for instance, combine operatios such as
-  // addition + multiplication. It will depend on the architecture/ISA
+  // addition + multiplication. It will depend on the architecture/ISA.
   I = peepholeOptimizations(I);
 
   return I;
 }
 
 // ---------------------------------------------
-void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name) {
-  if (!(std::find(RegDeclared[Type].begin(), RegDeclared[Type].end(), Name) !=
-        RegDeclared[Type].end())) {
-    RegDeclared[Type].push_back(Name);
+void SIMDGenerator::addRegToDeclare(std::string Type, std::string Name,
+                                    int InitVal) {
+  for (auto V : RegDeclared[Type]) {
+    if (std::get<0>(V) == Name) {
+      return;
+    }
   }
+  std::vector<std::string> L;
+  L.push_back(std::to_string(InitVal));
+  RegDeclared[Type].push_back(std::make_tuple(Name, L));
+}
+
+// ---------------------------------------------
+void SIMDGenerator::addRegToDeclareInitVal(std::string Type, std::string Name,
+                                           std::vector<std::string> InitVal) {
+  for (auto V : RegDeclared[Type]) {
+    if (std::get<0>(V) == Name) {
+      return;
+    }
+  }
+  RegDeclared[Type].push_back(std::make_tuple(Name, InitVal));
 }
 
 // ---------------------------------------------
 std::string replacePattern(std::string P, std::regex R, std::string Rep) {
   return std::regex_replace(P, R, Rep);
+}
+
+// ---------------------------------------------
+std::string SIMDGenerator::genGenericFunc(std::string F,
+                                          std::vector<std::string> L) {
+  auto R = F + "(";
+  if (L.size() == 0) {
+    return R + ")";
+  }
+  R += L[0];
+  for (int i = 1; i < L.size(); ++i) {
+    R += "," + L[i];
+  }
+  return R + ")";
 }
 
 // ---------------------------------------------
@@ -334,4 +390,9 @@ void SIMDGenerator::clearMappings() {
     X.second.clear();
   }
   RegDeclared.clear();
+  AccmToReg.clear();
+  AuxArrayReg = 0;
+  AccmReg = 0;
+  AuxRegId = 0;
+  AuxReg.clear();
 }

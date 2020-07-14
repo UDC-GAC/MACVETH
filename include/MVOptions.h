@@ -1,6 +1,8 @@
 #ifndef MACVETH_MVOPTIONS_H
 #define MACVETH_MVOPTIONS_H
 
+#include <algorithm>
+#include <cassert>
 #include <list>
 #include <map>
 #include <string>
@@ -49,14 +51,21 @@ enum MVArch {
   CoffeeLake,
   /// Intel Cascade Lake (2019) architecture: AVX512
   CascadeLake,
+  /// AMD Zen architecture: AVX2
+  Zen,
 };
 
-static std::map<MVArch, std::string> MVArchStr = {
-    {Nehalem, "Nehalem"},         {Westmere, "Westmere"},
-    {SandyBridge, "SandyBridge"}, {IvyBridge, "IvyBridge"},
-    {Haswell, "Haswell"},         {Broadwell, "Broadwell"},
-    {Skylake, "Skylake"},         {KabyLake, "KabyLake"},
-    {CoffeeLake, "CoffeeLake"},   {CascadeLake, "CascadeLake"}};
+static std::map<MVArch, std::string> MVArchStr = {{Nehalem, "Nehalem"},
+                                                  {Westmere, "Westmere"},
+                                                  {SandyBridge, "SandyBridge"},
+                                                  {IvyBridge, "IvyBridge"},
+                                                  {Haswell, "Haswell"},
+                                                  {Broadwell, "Broadwell"},
+                                                  {Skylake, "Skylake"},
+                                                  {KabyLake, "KabyLake"},
+                                                  {CoffeeLake, "CoffeeLake"},
+                                                  {CascadeLake, "CascadeLake"},
+                                                  {Zen, "Zen"}};
 
 /// Mapping between the ISA and supported architectures
 static std::map<MVISA, std::list<MVArch>> SupportedISAArch = {
@@ -66,7 +75,8 @@ static std::map<MVISA, std::list<MVArch>> SupportedISAArch = {
     {AVX,
      {SandyBridge, IvyBridge, Haswell, Broadwell, Skylake, KabyLake, CoffeeLake,
       CascadeLake}},
-    {AVX2, {Haswell, Broadwell, Skylake, KabyLake, CoffeeLake, CascadeLake}},
+    {AVX2,
+     {Haswell, Broadwell, Skylake, KabyLake, CoffeeLake, CascadeLake, Zen}},
     {AVX512, {Skylake, CascadeLake}}};
 
 enum DebugLevel {
@@ -90,19 +100,44 @@ struct MVOptions {
   static inline std::string InCDAGFile = "";
   /// Name of the output debug file (-output-debug=<file>)
   static inline std::string OutDebugFile = "";
-  /// Target architecture
+  /// Target ISA
   static inline MVISA ISA = MVISA::NATIVE;
   /// Target architecture
   static inline MVArch Arch = MVArch::AUTODETECT;
   /// FMA support
   static inline bool FMASupport = false;
+  /// Disable FMA support
+  static inline bool DisableFMA = false;
   /// Debug
   static inline bool Debug = false;
   /// Debug
   static inline DebugLevel DLevel = DebugLevel::ALL;
   /// Generate or not macro-based code
-  static inline bool MacroFree = false;
+  static inline bool MacroCode = false;
+  /// Include headers (--no-headers)
+  static inline bool Headers = true;
+
+  /// Main function to check options of the compiler
+  static void validateOptions() {
+    if (MVOptions::ISA == MVISA::NATIVE) {
+    }
+    if (MVOptions::Arch == MVArch::AUTODETECT) {
+    }
+    checkIfArchISACompatible();
+  }
+
+  /// Dumb method to check compatibility between options
+  static void checkIfArchISACompatible() {
+    if ((MVOptions::ISA == MVISA::NATIVE) ||
+        (MVOptions::Arch == MVArch::AUTODETECT)) {
+      return;
+    }
+    auto LArch = SupportedISAArch[MVOptions::ISA];
+    assert((std::find(LArch.begin(), LArch.end(), MVOptions::Arch) !=
+            LArch.end()) &&
+           "Incompatible architecture and ISA");
+  }
 };
 }; // namespace macveth
 
-#endif
+#endif /* !MACVETH_MVOPTIONS_H */

@@ -4,7 +4,6 @@
  * Date              : Mér 06 Nov 2019 12:29:24 MST
  * Last Modified Date: Mar 17 Mar 2020 18:58:40 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- * Original Code     : Eli Bendersky <eliben@gmail.com>
  *
  * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
  *
@@ -93,9 +92,8 @@ static llvm::cl::opt<MVArch> Architecture(
         clEnumValN(MVArch::CoffeeLake, "coffeelake",
                    "Intel Coffee Lake (2017) architecture (tock): AVX2"),
         clEnumValN(MVArch::CascadeLake, "cascadelake",
-                   "Intel Cascade Lake (2019) architecture (tock): AVX512")
-
-            ));
+                   "Intel Cascade Lake (2019) architecture (tock): AVX512"),
+        clEnumValN(MVArch::Zen, "Zen", "AMD Zen (2019) architecture: AVX2")));
 
 /// FMA support flag
 static llvm::cl::opt<bool> FMA("fma",
@@ -103,15 +101,29 @@ static llvm::cl::opt<bool> FMA("fma",
                                llvm::cl::init(false),
                                llvm::cl::cat(MacvethCategory));
 
+/// Disable FMA support flag
+static llvm::cl::opt<bool> DisableFMA(
+    "nofma",
+    llvm::cl::desc("Explicitly tell to not generate FMA instructions even if "
+                   "architecture supports them"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
 /// Debug flag
 static llvm::cl::opt<bool> Debug("debug",
                                  llvm::cl::desc("Print debug information"),
                                  llvm::cl::init(false),
                                  llvm::cl::cat(MacvethCategory));
 /// Macro-free code
-static llvm::cl::opt<bool> MacroFree(
-    "macro-free",
-    llvm::cl::desc("If set, do not use macro for generating vectorized code"),
+static llvm::cl::opt<bool> MacroCode(
+    "macro-code",
+    llvm::cl::desc("If set, *do* use macro for generating vectorized code"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
+/// Do not include headers in top of the file
+static llvm::cl::opt<bool> NoHeaders(
+    "no-headers",
+    llvm::cl::desc(
+        "If set, do *not* include header files, such as <immintrin.h>"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
 /// Output debug
@@ -139,8 +151,14 @@ int main(int argc, const char **argv) {
   MVOptions::ISA = ISA.getValue();
   MVOptions::Arch = Architecture.getValue();
   MVOptions::FMASupport = FMA.getValue();
+  MVOptions::DisableFMA = DisableFMA.getValue();
   MVOptions::Debug = Debug.getValue();
-  MVOptions::MacroFree = MacroFree.getValue();
+  MVOptions::MacroCode = MacroCode.getValue();
+  MVOptions::Headers = !NoHeaders.getValue();
+
+  /// Check incompatible options:
+  assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&
+         "FMA support enabled and disabled at the same time is not possible!");
 
   /// Create needed files
   Utils::initFile(MVOptions::OutFile);

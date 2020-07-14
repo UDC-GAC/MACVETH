@@ -17,22 +17,23 @@ int computeMaxDepth(Node *N) {
   } else {
     int Max = 0;
     for (Node *T : N->getInputs()) {
-      Max = std::max(Max, computeMaxDepth(T));
+      Max = std::max(Max, 1 + computeMaxDepth(T));
     }
-    return 1 + Max;
+    return Max;
   }
 }
 
 // ---------------------------------------------
-void computeFreeSchedule(Node::NodeListType NL) {
+void PlcmntAlgo::computeFreeSchedule(Node *N) {
+  N->setFreeSchedInfo(computeMaxDepth(N));
+}
+
+// ---------------------------------------------
+void PlcmntAlgo::computeFreeSchedule(Node::NodeListType NL) {
+  // Compute RAW
   for (Node *N : NL) {
     N->setFreeSchedInfo(computeMaxDepth(N));
   }
-}
-
-// ---------------------------------------------
-Node::NodeListType PlcmntAlgo::fuseReductions(Node::NodeListType NL) {
-  return NL;
 }
 
 // ---------------------------------------------
@@ -42,8 +43,10 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   Node::NodeListType Visited;
   Node::NodeListType Reduction;
   bool ReductionFound = false;
-  NCopy.reverse();
+
+  std::reverse(std::begin(NCopy), std::end(NCopy));
   NL->clear();
+
   for (auto R : NCopy) {
     ReductionFound = false;
     if (std::find(Visited.begin(), Visited.end(), R) != Visited.end()) {
@@ -51,43 +54,46 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     }
     Visited.push_back(R);
 
-    auto In = R->getInputs().front();
-    int Depth = 1;
-    Reduction.push_front(R);
+    // Reduction.push_front(R);
+    Reduction.insert(Reduction.begin(), R);
+    auto S = R->getInputs();
   loop:
-    // Since we are checking the inputs of a node, we are do not have to check
-    // if there are any RAW dependencies, because there are. Some conditions we
-    // are checking
-    // 1.- Check if same type (getValue())
-    // 2.- Check if sequential (FreeSched)
-    // Utils::printDebug("PlcmntAlgo",
-    //                  "R = " + R->getValue() + "; " +
-    //                      std::to_string(R->getSchedInfo().FreeSched));
-    // Utils::printDebug("PlcmntAlgo",
-    //                  "In = " + In->getValue() + "; " +
-    //                      std::to_string(In->getSchedInfo().FreeSched -
-    //                      Depth));
-    if ((R->getValue() == In->getValue()) &&
-        (R->getSchedInfo().FreeSched ==
-         (In->getSchedInfo().FreeSched + Depth))) {
-      Utils::printDebug("PlcmntAlgoRedux", In->toString());
-      Depth++;
-      ReductionFound = true;
-      Reduction.push_front(In);
-      Visited.push_back(In);
-      In = In->getInputs().front();
-      goto loop;
+    for (auto In : S) {
+      if (In == nullptr) {
+        Utils::printDebug("PlcmntAlgo", "Skipping");
+        continue;
+      }
+      // Since we are checking the inputs of a node, we are do not have to check
+      // if there are any RAW dependencies, because there are. Some conditions
+      // we are checking:
+      // 1.- Check if same type (getValue())
+      // 2.- Check if sequential (FreeSched)
+      // 3.- Check if they belong to the same TAC (after unrolling, do not need
+      // to check scope then)
+      if ((R->getValue() == In->getValue()) &&
+          (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched)) &&
+          (R->getSchedInfo().TacID == (In->getSchedInfo().TacID))) {
+        Utils::printDebug("PlcmntAlgo",
+                          "Reduction found for " + In->getRegisterValue());
+        ReductionFound = true;
+        Reduction.push_back(In);
+        Visited.push_back(In);
+        S = In->getInputs();
+        goto loop;
+      }
     }
     if (ReductionFound) {
       for (auto RNode : Reduction) {
-        LRedux.push_back(RNode);
+        // LRedux.push_front(RNode);
+        LRedux.insert(LRedux.begin(), RNode);
       }
     } else {
       NL->push_back(R);
     }
     Reduction.clear();
   }
-  NL->reverse();
+  std::reverse(std::begin(*NL), std::end(*NL));
+  // NL->reverse();
   return LRedux;
 }
 
@@ -96,7 +102,7 @@ Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
   computeFreeSchedule(NL);
   if (MVOptions::InCDAGFile != "") {
     setPlcmtFromFile(NL);
-    NL.sort([](Node *Lhs, Node *Rhs) {
+    std::sort(NL.begin(), NL.end(), [](Node *Lhs, Node *Rhs) {
       return Lhs->getSchedInfo().Plcmnt < Rhs->getSchedInfo().Plcmnt;
     });
     return NL;
@@ -126,16 +132,17 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
           }
           // Clang does not allow to perform any type of exception handling in
           // order to minimize the size of the executable (same reasoning for
-          // not using RTTI), that is why we perform the previous check. On any
-          // case, user should be aware of the format of the file: comments
-          // starting with // are allowed, but each non-comment row must only
-          // contain an integer value
-          N->setPlcmt(std::stoi(L));
+          // not using RTTI), that is why we perform the previous check. On
+          // any case, user should be aware of the format of the file:
+          // comments starting with // are allowed, but each non-comment row
+          // must only contain an integer value
+          N->setPlcmnt(std::stoi(L));
           break;
         }
       }
     }
   } else {
+    assert(false && "");
     llvm::llvm_unreachable_internal();
   }
   CF.close();

@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# File              : unittest.py
-# Author            : Marcos Horro <marcos.horro@udc.gal>
-# Date              : Mér 15 Xan 2020 15:33:25 MST
-# Last Modified Date: Mér 15 Xan 2020 21:58:58 MST
-# Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 
+
+# Some path declarations
 import os
 import filecmp
 import re
 from utils.utilities import pr_col
 from utils.utilities import colors as c
-
-# Some path declarations
 build_path = "../build"
 unittest_path = "unittest/"
 fulltest_path = "fulltest/"
@@ -75,7 +70,7 @@ def run_test(test, output):
 
 def compile_macveth():
     # Compiling MACVETH
-    out = os.system("make -C %s " % build_path)
+    out = os.system("make -j8 -C %s " % build_path)
     if (out != 0):
         print("Something went wrong compiling MACVETH! Exiting...")
         exit(0)
@@ -85,11 +80,8 @@ def compile_macveth():
 
 def compile_test_with_macveth(org_file, out_file, args=""):
     # Compiling the tests
-    os.system("./macveth -macro-free %s %s -o=%s 2>> macveth_compiler.log" %
+    os.system("./macveth %s %s -o=%s 2>> macveth_compiler.log" %
               (args, org_file, out_file))
-    # FIXME more than urgently
-    # HAHA please remove this ASAP, please
-    os.system("sed -i '1i#include <immintrin.h>' %s" % out_file)
     return True
 
 
@@ -231,10 +223,10 @@ clean_previous_files()
 compile_macveth()
 
 # Unittest
-unittest_suite()
+# unittest_suite()
 
 # Fulltest
-exectest_suite(fulltest_path)
+# exectest_suite(fulltest_path)
 
 # "MUST PASS" tests
 exectest_suite(mustpass_path, "must")

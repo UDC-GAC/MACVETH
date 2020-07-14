@@ -20,9 +20,16 @@ namespace macveth {
 class AVX2Gen : public SIMDGenerator {
 public:
   /// Name of the architecture
-  static inline std::string NArch = "IntelX86";
+  static inline std::string NArch = "x86";
   /// Name of the ISA
   static inline std::string NISA = "AVX2";
+  /// Name of the headers needed
+  static inline std::list<std::string> Headers = {"immintrin.h"};
+
+  /// Get headers
+  virtual std::list<std::string> getHeadersNeeded() override {
+    return AVX2Gen::Headers;
+  }
 
   // Operand operations
 
@@ -53,20 +60,42 @@ public:
   /// Modulo operation
   virtual SIMDInstListType vmod(VectorIR::VectorOP V) override;
 
-  // Reduction operations
+  /// Generate custom functions
+  virtual SIMDInstListType vfunc(VectorIR::VectorOP V) override;
 
+  /// Reduction operations
   virtual SIMDInstListType vreduce(VectorIR::VectorOP V) override;
 
-  // Sequential operation
-
+  /// Sequential operation
   virtual SIMDInstListType vseq(VectorIR::VectorOP V) override;
 
   /// Perform some peephole optimizations after generating SIMD instructions
   virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) override;
 
+  /// Set values for registers which need to be initalized
+  virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S);
+
   /// One of the optimizations included in AVX2
   SIMDGenerator::SIMDInstListType
   fuseAddSubMult(SIMDGenerator::SIMDInstListType I);
+
+  /// Horizontal reduction approach
+  SIMDGenerator::SIMDInstListType
+  horizontalSingleReduction(SIMDGenerator::SIMDInstListType TIL);
+
+  /// Horizontal reduction approach
+  SIMDGenerator::SIMDInstListType
+  horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
+
+  /// General reduction approach, based on vertical operations
+  SIMDGenerator::SIMDInstListType
+  generalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
+
+  /// Fusing reductions: peephole optimization
+  SIMDGenerator::SIMDInstListType
+  fuseReductions(SIMDGenerator::SIMDInstListType I);
+
+  /// Peephole optimization for fusing reductions
   SIMDGenerator::SIMDInst genMultAccOp(SIMDGenerator::SIMDInst Mul,
                                        SIMDGenerator::SIMDInst Acc);
 
@@ -76,12 +105,18 @@ public:
   /// Get name of AVX architecture
   virtual std::string getNISA() override { return AVX2Gen::NISA; }
 
-  /// Get the traslation between VectorIR data widths and AVX2's
+  /// Get the translation between VectorIR data widths and AVX2's
   virtual std::string getMapWidth(VectorIR::VWidth V) override {
-    return MapWidth[V];
+    MVAssert((V != VectorIR::VWidth::W512),
+             "Width too wide for AVX2 (512 bits not supported)!!");
+    if (V <= 128) {
+      return MapWidth[VectorIR::VWidth::W128];
+    } else {
+      return MapWidth[VectorIR::VWidth::W256];
+    }
   }
 
-  /// Get the traslation between VectorIR data types and AVX2's
+  /// Get the translation between VectorIR data types and AVX2's
   virtual std::string getMapType(VectorIR::VDataType D) override {
     return MapType[D];
   }
@@ -93,25 +128,60 @@ public:
   /// method is abstract because each architecture may have different types.
   virtual std::string getRegisterType(VectorIR::VDataType DT,
                                       VectorIR::VWidth W) override;
+
+  /// Get initial values of a VectorOP
+  virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V);
+
   /// Destructor
   virtual ~AVX2Gen(){};
 
-  /// Constructor
-  AVX2Gen() : SIMDGenerator() { SIMDGenerator::populateTable(MVISA::AVX2); }
+  /// Singleton pattern
+  static SIMDGenerator *getSingleton() {
+    if (AVX2Gen::_instance == 0) {
+      AVX2Gen::_instance = new AVX2Gen();
+    }
+    return AVX2Gen::_instance;
+  };
 
 private:
-  /// Auxiliar function for adding the SIMDInst to the list
+  /// Constructor
+  AVX2Gen() : SIMDGenerator() { SIMDGenerator::populateTable(MVISA::AVX2); }
+  static inline SIMDGenerator *_instance = 0;
+  /// Add SIMD instruction
+  SIMDGenerator::SIMDInst
+  addSIMDInst(std::string Result, std::string Op, std::string PrefS,
+              std::string SuffS, VectorIR::VWidth Width,
+              VectorIR::VDataType Type, std::list<std::string> Args,
+              SIMDGenerator::SIMDType SType,
+              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
+              std::string MVFunc = "", std::list<std::string> MVArgs = {},
+              MVOp MVOP = MVOp());
+  /// Auxiliary function for adding the SIMDInst to the list
   SIMDGenerator::SIMDInst
   addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
               std::string SuffS, std::list<std::string> OPS,
               SIMDGenerator::SIMDType SType,
               SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "",
-              std::list<std::string> MVArgs = {}) override;
+              std::string MVFunc = "", std::list<std::string> MVArgs = {},
+              MVOp MVOP = MVOp()) override;
+
+  /// Shuffle method for reductions
+  std::string shuffleArguments(std::string A1, std::string A2,
+                               VectorIR::VWidth Width,
+                               SIMDGenerator::SIMDInst I, int Pos);
+  /// Shuffle method for reductions
+  std::string permuteArguments(std::string A1, std::string A2,
+                               SIMDGenerator::SIMDInst I, int Pos);
+
+  /// Extract high or low part
+  std::string extractArgument(std::string A, SIMDGenerator::SIMDInst I, int Hi);
+
+  /// Auxiliary method for declaring auxiliary arrays
+  std::string declareAuxArray(VectorIR::VDataType DT);
   /// Specific instruction for loading data according to the operand
   bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
   /// Max width
-  static inline int MaxWidth = 256;
+  static inline const int MaxWidth = 256;
   /// Mapping the width types with its name in AVX2
   static inline std::map<VectorIR::VWidth, std::string> MapWidth = {
       {VectorIR::VWidth::W128, ""}, {VectorIR::VWidth::W256, "256"}};
@@ -140,4 +210,4 @@ private:
 };
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_AVX2GEN_H */

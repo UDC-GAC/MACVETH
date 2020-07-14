@@ -5,13 +5,11 @@
  * Last Modified Date: Xov 09 Xan 2020 20:34:12 MST
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
+
 #ifndef MACVETH_MVEXPRFACTORY_H
 #define MACVETH_MVEXPRFACTORY_H
+
 #include "include/MVExpr/MVExpr.h"
-#include "include/MVExpr/MVExprArray.h"
-#include "include/MVExpr/MVExprFunction.h"
-#include "include/MVExpr/MVExprLiteral.h"
-#include "include/MVExpr/MVExprVar.h"
 
 using namespace macveth;
 
@@ -24,14 +22,14 @@ public:
   /// * ARRAY, e.g. a[i], b[i][j]
   /// * LITERAL, e.g. 5.0, 42
   /// * VARIABLE, otherwise
-  enum MVExprType { ARRAY, LITERAL, VARIABLE, FUNC };
+  enum MVExprType { ARRAY, LITERAL, VARIABLE };
 
   /// Detect the type of MVExpr
   static MVExprType getTempTypeFromExpr(Expr *E);
-
+  /// Create MVExpr from Clang expression
   static MVExpr *createMVExpr(Expr *E);
-  static MVExpr *createMVExpr(std::string E);
-  static MVExpr *createMVExpr(std::string E, bool Temp);
+  /// Create temporal MVExpr (as MVExprVar)
+  static MVExpr *createMVExpr(std::string E, bool Temp, std::string Type);
 };
 } // namespace macveth
-#endif
+#endif /* !MACVETH_MVEXPRFACTORY_H */

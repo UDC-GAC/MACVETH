@@ -43,7 +43,10 @@ using namespace macveth;
 namespace macveth {
 
 /// Class TAC: three-address-code. This abstraction is a way of representing the
-/// Single-Statement Assignment (SSA)
+/// Single-Statement Assignment (SSA).
+/// This class is meant to hold structures such as:
+///                  a = b op c
+/// Where a, b and c are Expr and op is an Opcode
 class TAC {
 private:
   constexpr static unsigned int MASK_OP_A = {0xFF0000};
@@ -52,27 +55,37 @@ private:
   constexpr static unsigned int BITS_OP_B = 8;
   constexpr static unsigned int MASK_OP_C = {0x0000FF};
   constexpr static unsigned int BITS_OP_C = 0;
-  /// This class is meant to hold structures such as:
-  ///                  a = b op c
-  /// Where a, b and c are Expr and op is an Opcode
+
 public:
+  /// Unique ID of each TAC
   inline static int TacUUID = 0;
+  /// Unique ID of each region of each part of the #pragma
+  inline static long TacScop = 0;
+  /// For generating TACs
+  static inline long RegVal = 0;
+
+  static void clear() {
+    /// Unique ID of each TAC
+    TAC::TacUUID = 0;
+    /// Unique ID of each region of each part of the #pragma
+    TAC::TacScop = 0;
+    /// For generating TACs
+    TAC::RegVal = 0;
+  }
+
   /// Empty constructor
   TAC(){};
 
   /// Destructor
-  ~TAC() {
-    // delete A;
-    // delete B;
-    // delete C;
-  }
+  ~TAC() {}
 
   /// Constructor when using MVOp for the operator
   TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP)
-      : A(A), B(B), C(C), MVOP(MVOP), TacID(TAC::TacUUID++) {}
+      : A(A), B(B), C(C), MVOP(MVOP), TacID(TAC::TacUUID++),
+        TScop(TAC::TacScop) {}
   /// Constructor given a TAC ID
   TAC(MVExpr *A, MVExpr *B, MVExpr *C, MVOp MVOP, int TacID)
-      : A(A), B(B), C(C), MVOP(MVOP), TacID(TacID) {}
+      : A(A), B(B), C(C), MVOP(MVOP), TacID(TacID), TScop(TAC::TacScop) {}
 
   /// Get first (result) operand of the TAC expression
   MVExpr *getA() { return this->A; };
@@ -88,41 +101,40 @@ public:
   void setC(MVExpr *C) { this->C = C; };
   /// Set TacID value
   void setTacID(int TacID) { this->TacID = TacID; }
+  /// Set scope of the TAC
+  void setScop(long TScop) { this->TScop = TScop; }
+  /// Get the scope of the TAC
+  long getScop() { return this->TScop; }
   /// Get that TacID value
   int getTacID() { return this->TacID; }
+  /// Set loop name
+  void setLoopName(std::string LoopName) { this->LoopName = LoopName; }
+  /// Get loop name
+  std::string getLoopName() { return this->LoopName; }
 
   /// Get macveth operation type
   MVOp getMVOP() { return this->MVOP; };
 
   /// To string method
   std::string toString() {
-    std::string Op = this->MVOP.toString();
+    auto C = (this->getC() != NULL) ? ", " + this->getC()->getExprStr() : "";
+    auto Op = this->MVOP.toString();
     Op = "t: " + this->getA()->getExprStr() + ", " +
-         this->getB()->getExprStr() + ", " + this->getC()->getExprStr() + ", " +
-         Op;
+         this->getB()->getExprStr() + C + ", " + Op +
+         "; (loop = " + this->getLoopName() +
+         "; scop = " + std::to_string(this->getScop()) + ")";
     return Op;
   }
 
   /// Just for debugging purposes
   void printTAC() { Utils::printDebug("TAC", this->toString()); }
 
-  /// Discover the equivalent MVOp given a clang::Expr
-  static MVOp getMVOPfromExpr(MVExpr *E);
-
-  /// Return list of 3AC from a starting Binary Operator
-  static void binaryOperator2TAC(const clang::BinaryOperator *S,
-                                 std::list<TAC> *TacList, int Val);
-
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs
   static std::list<TAC> stmtToTAC(clang::Stmt *ST);
 
-  /// Inserts TACs in the input TacList and outputs the relation between the
-  /// statements and the ordering of the TACs
-  static std::map<int, int> exprToTAC(clang::CompoundStmt *CS,
-                                      std::vector<std::list<TAC>> *ListStmtTAC,
-                                      std::vector<Stmt *> *SList,
-                                      std::list<TAC> *TacList);
+  /// Print/render TAC as regular statements
+  static std::string renderTacAsStmt(std::list<TAC> TL);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
@@ -133,9 +145,6 @@ public:
   static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                      std::string LoopLevel);
 
-  /// For generating TACs
-  static inline long RegVal = 0;
-
 private:
   /// TAC result
   MVExpr *A;
@@ -145,13 +154,17 @@ private:
   MVExpr *C;
   /// Type of operation
   MVOp MVOP;
+  /// Name of the loop level where the TAC is
+  std::string LoopName = "";
   /// TAC identifier: as TAC may be unrolled, the ID is only meant for
   /// identifying it
   int TacID = -1;
+  /// Represents with a unique ID the part of the
+  long TScop = 0;
 };
 
 /// List of TACs
 typedef std::list<TAC> TacListType;
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_TAC_H */

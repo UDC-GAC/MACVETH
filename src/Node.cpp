@@ -11,21 +11,24 @@
 // ---------------------------------------------
 std::string Node::toString() {
   std::string Str;
-  Str += "name\t\t= " + this->getValue() + "\n";
+  Str += "name\t\t= " + this->getValue() +
+         " (reg val = " + this->getRegisterValue() + ")\n";
   Str +=
       "\tFreeSched\t= " + std::to_string(this->getSchedInfo().FreeSched) + "\n";
-  Str += "\tTacID\t= " + std::to_string(this->getSchedInfo().TacID) + "\n";
+  Str += "\tTacID\t\t= " + std::to_string(this->getSchedInfo().TacID) + "\n";
   Str += "\tPlcmnt\t\t= " + std::to_string(this->getSchedInfo().Plcmnt) + "\n";
   Str += "\tNodeID\t\t= " + std::to_string(this->getSchedInfo().NodeID) + "\n";
   Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
-  Str += "\tInput1\t\t= " + this->getInputs().front()->getValue() + " (ID = " +
-         std::to_string(this->getInputs().front()->getSchedInfo().NodeID) +
-         "); NODE_MEM = " +
-         std::to_string(this->getInputs().front()->T == NODE_MEM) + "\n";
-  Str += "\tInput2\t\t= " + this->getInputs().back()->getValue() + " (ID = " +
-         std::to_string(this->getInputs().back()->getSchedInfo().NodeID) +
-         "); NODE_MEM = " +
-         std::to_string(this->getInputs().back()->T == NODE_MEM) + "\n";
+  for (int i = 0; i < this->getInputs().size(); ++i) {
+    if (this->getInputs()[i] != NULL) {
+      Str += "\tInput " + std::to_string(i) +
+             "\t\t= " + this->getInputs()[i]->getValue() + " (ID = " +
+             std::to_string(this->getInputs()[i]->getSchedInfo().NodeID) +
+             "); NODE_MEM = " +
+             std::to_string(this->getInputs()[i]->T == NODE_MEM) + "\n";
+    }
+  }
+  Str += "\tLoopName\t= " + this->getLoopName() + "\n";
   Str += "----------------------------------------";
   return Str;
 }
@@ -48,8 +51,8 @@ bool Node::isTerminal() { return !(this->hasOutNodes()); }
 // ---------------------------------------------
 Node *Node::findOutputNode(std::string NodeName, NodeListType L) {
   NodeListType CL(L);
-  CL.reverse();
-  for (Node *NL : CL) {
+  std::reverse(std::begin(CL), std::end(CL));
+  for (auto NL : CL) {
     if (NodeName == NL->getOutputInfoName()) {
       return NL;
     }

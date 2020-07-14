@@ -79,12 +79,14 @@ static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n),
                             DATA_TYPE POLYBENCH_2D(C, N, N, n, n),
                             DATA_TYPE POLYBENCH_3D(A, N, N, N, n, n, n)) {
 #pragma macveth
-  for (int i = 0; i < _PB_N; i++)
-    for (int j = 0; j < _PB_N; j++)
+  for (int i = 0; i < _PB_N; i++) {
+    for (int j = 0; j < _PB_N; j++) {
       for (int k = 0; k < _PB_N; k++) {
         A[i][j][k] = x[j] * C[i][j] + A[i][j][k];
         A[i][j][k] = A[i][j][k] * 42.3f;
       }
+    }
+  }
 
 #pragma endmacveth
 }

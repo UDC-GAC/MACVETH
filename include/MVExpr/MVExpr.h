@@ -1,11 +1,14 @@
 /**
- * File              : MVExpr.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Lun 18 Nov 2019 14:51:25 MST
- * Last Modified Date: Mér 15 Xan 2020 12:07:57 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+ * File					 : include/MVExpr/MVExpr.h
+ * Author				 : Marcos Horro
+ * Date					 : Tue 07 Apr 2020 03:34 +02:00
  *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
+ * Last Modified : Wed 10 Jun 2020 10:26 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +41,7 @@
 #include <string>
 
 using namespace clang;
+using namespace macveth;
 
 namespace macveth {
 
@@ -54,10 +58,10 @@ public:
     MVK_Array,
     /// Defined in MVExprLiteral
     MVK_Literal,
-    /// Defined in MVExprFunc
-    MVK_Function,
     /// Defined in MVExprVar
-    MVK_Var
+    MVK_Var,
+    /// Other
+    MVK_Other
   };
 
   /// A MVExpr can be created from a clang::Expr or from a string, it can be an
@@ -70,9 +74,6 @@ public:
   /// Destructor
   virtual ~MVExpr(){};
 
-  /// Empty constructor
-  MVExpr(){};
-  MVExpr(MVExprKind MK) : MK(MK){};
   /// Clone constructor
   MVExpr(MVExpr *TE) {
     this->setExprStr(TE->getExprStr());
@@ -87,14 +88,24 @@ public:
   MVExpr(MVExprKind K, std::string E) : MK(K), ExprStr(E) {
     this->TempInfo = TAC_EXPR;
   }
-  /// Create MVExpr from string and set ad-hoc MVExprInfo
-  MVExpr(std::string E, MVExprInfo TI) : ExprStr(E), TempInfo(TI) {}
+
   /// Create MVExpr from clang::Expr, which sets its inner type/info to
   /// EXPR_CLANG
   MVExpr(MVExprKind K, Expr *E) : MK(K), ClangExpr(E) {
     this->TempInfo = MVExprInfo::EXPR_CLANG;
     this->ExprStr = Utils::getStringFromExpr(E);
-    this->setTypeStr(this->getClangExpr()->getType().getAsString());
+    if (isa<clang::TypedefType>(E->getType())) {
+      auto T = dyn_cast<clang::TypedefType>(E->getType());
+      if (!T->isSugared()) {
+        llvm::llvm_unreachable_internal();
+      }
+      auto ET = dyn_cast<ElaboratedType>(T->desugar());
+      auto TT = dyn_cast<TypedefType>(ET->desugar());
+      auto Subs = dyn_cast<SubstTemplateTypeParmType>(TT->desugar());
+      this->setTypeStr(Subs->desugar().getAsString());
+    } else {
+      this->setTypeStr(E->getType().getAsString());
+    }
   }
 
   /// Set info
@@ -108,7 +119,21 @@ public:
   clang::Expr *getClangExpr() const { return this->ClangExpr; }
 
   /// Set type as a string
-  void setTypeStr(std::string TypeStr) { this->TypeStr = TypeStr; }
+  void setTypeStr(std::string TypeStr) {
+    // This is a fucking hack: treat const as if they are not const...
+    // Thus, typing is easier. Do we really need to know if a variable is
+    // constant or not? I think we do not.
+    auto LastNotNullToken = TypeStr;
+    char *dup = strdup(TypeStr.c_str());
+    auto Tok = strtok(dup, " ");
+    while (Tok != NULL) {
+      LastNotNullToken = Tok;
+      Tok = strtok(NULL, " ");
+    }
+    this->TypeStr = LastNotNullToken;
+    // At least be clean
+    free(dup);
+  }
   /// Get type as a string
   std::string getTypeStr() { return this->TypeStr; }
 
@@ -127,7 +152,7 @@ public:
   bool isNotClang() { return (this->getTempInfo() != EXPR_CLANG); }
 
   /// Given a MVExpr it will return its unrolled version
-  virtual MVExpr *unrollExpr(int UF, std::string LL) { return this; }
+  virtual MVExpr *unrollExpr(int UF, std::string LL) = 0;
   /// Given a MVExpr and the map of unrolled,loop_level, it will return the
   /// unrolled version
   virtual MVExpr *unrollExpr(std::unordered_map<int, std::string> LList) {
@@ -160,19 +185,16 @@ private:
   /// Type of MVExpr
   MVExprInfo TempInfo = TMP_RES;
   /// Type of data in string
-  std::string TypeStr = "double";
-  /// Expression as string
-  std::string ExprStr = "";
+  std::string TypeStr = "";
   /// Expresion as Clang's
   clang::Expr *ClangExpr = NULL;
+  /// Expression as string
+  std::string ExprStr = "";
   /// Need to be loaded from mem
   bool NeedsMemLoad = true;
   /// Dimensiones of the expressions
   std::list<std::string> Dims;
 };
 
-/// Operators
-MVExpr *operator+(const MVExpr &Lhs, int Rhs);
-
 } // namespace macveth
-#endif
+#endif /* !MACVETH_MVEXPR_H */

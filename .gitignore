@@ -4,6 +4,12 @@ macveth
 *.bin
 *_report.txt
 *.warn
+*.s
+*__tmp*
+.vscode/*
+
+# Results
+*.csv
 
 # Temp files
 tmp/
@@ -20,7 +26,7 @@ benchmark
 # Plugins and all this stuff
 .idea/
 .color_coded
-
+ 
 # Inputs
 inputs/
 

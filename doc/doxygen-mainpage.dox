@@ -1,9 +1,4 @@
-/// \mainpage MACVETH
+/// \mainpage MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors for HPC applications
 ///
 /// \section main_intro Introduction
-/// Welcome to the clang project.
-///
-/// \section main_caveat Caveat
-/// This documentation is generated directly from the source code with doxygen.
-/// Since clang is constantly under active development, what you're about to
-/// read is out of date!
+/// Welcome to the MACVETH compiler.

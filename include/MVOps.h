@@ -6,6 +6,10 @@
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  */
 
+#ifndef MACVETH_MVOPS_H
+#define MACVETH_MVOPS_H
+
+#include "include/MVAssert.h"
 #include "clang/AST/Expr.h"
 
 namespace macveth {
@@ -22,6 +26,10 @@ enum MVOpType {
 enum MVOpCode {
   /// Operation not known/defined
   UNDEF,
+  /// Exponential
+  EXP,
+  /// Power
+  POW,
   /// Max operation
   MAX,
   /// Minimum
@@ -55,12 +63,55 @@ struct MVOp {
     MVOpCode MVOpC;
   };
 
-  /// Given a string it returns the type of function based on the MVOpCode it is
-  /// defined for this compiler
+  /// Get operation cost
+  /// FIXME: this should be architecture-dependent
+  static long getOperationCost(MVOp Op) {
+    long Cost = 100000;
+    auto Type = Op.getType();
+    if (Type == MVOpType::MVFUNC) {
+      auto Code = Op.MVOpC;
+      switch (Code) {
+      case UNDEF:
+        return Cost;
+      case EXP:
+      case POW:
+      case MAX:
+      case MIN:
+      case AVG:
+      case CEIL:
+      case FLOOR:
+      case ROUND:
+      case SIN:
+      case COS:
+      default:
+        return 10000;
+      }
+    }
+    if (Type == MVOpType::CLANG_BINOP) {
+      Cost = 2;
+      if (Op.ClangOP == BinaryOperator::Opcode::BO_Mul) {
+        Cost = 12;
+      }
+      if (Op.ClangOP == BinaryOperator::Opcode::BO_Div) {
+        Cost = 20;
+      }
+      if (Op.ClangOP == BinaryOperator::Opcode::BO_Xor) {
+        Cost = 15;
+      }
+    }
+    return Cost;
+  }
+
+  /// Given a string it returns the type of function based on the MVOpCode it
+  /// is defined for this compiler
   static MVOpCode getTypeFromStr(std::string S) {
-    if ((S == "max") || (S == "MAX"))
+    if ((S == "exp") || (S == "EXP"))
+      return MVOpCode::EXP;
+    if ((S == "pow") || (S == "powf") || (S == "powl"))
+      return MVOpCode::POW;
+    if ((S == "std::max") || (S == "max") || (S == "MAX"))
       return MVOpCode::MAX;
-    if ((S == "min") || (S == "MIN"))
+    if ((S == "std::min") || (S == "min") || (S == "MIN"))
       return MVOpCode::MIN;
     if ((S == "avg") || (S == "AVG"))
       return MVOpCode::AVG;
@@ -79,24 +130,30 @@ struct MVOp {
 
   /// Return the equivalent string given a MVOpCode
   std::string getStrFromMVCode(MVOpCode C) {
-    if (MVOpCode::MAX)
+    switch (C) {
+    case MVOpCode::EXP:
+      return "exp";
+    case MVOpCode::MAX:
       return "max";
-    if (MVOpCode::MIN)
+    case MVOpCode::MIN:
       return "min";
-    if (MVOpCode::AVG)
+    case MVOpCode::AVG:
       return "avg";
-    if (MVOpCode::CEIL)
+    case MVOpCode::CEIL:
       return "ceil";
-    if (MVOpCode::FLOOR)
+    case MVOpCode::FLOOR:
       return "floor";
-    if (MVOpCode::ROUND)
+    case MVOpCode::ROUND:
       return "round";
-    if (MVOpCode::SIN)
+    case MVOpCode::SIN:
       return "sin";
-    if (MVOpCode::COS)
+    case MVOpCode::COS:
       return "cos";
+    default:
+      return "undef";
+    }
+    return "undef";
   }
-
   /// Shortcut to check whether a MVOp is of type BO_Assign
   bool isAssignment() {
     return (getType() == MVOpType::CLANG_BINOP) &&
@@ -110,6 +167,7 @@ struct MVOp {
     } else if (getType() == MVOpType::MVFUNC) {
       return getStrFromMVCode(this->MVOpC);
     }
+    MVAssert(false, "This can not ever happen!");
     return "";
   }
 
@@ -131,8 +189,9 @@ struct MVOp {
   /// Empty constructor: UNDEF MVOp
   MVOp() {
     this->T = MVOpType::MVFUNC;
-    this->MVOpC = getTypeFromStr("");
+    this->MVOpC = MVOpCode::UNDEF;
   }
-};
+}; // namespace macveth
 
 } // namespace macveth
+#endif /* !MACVETH_MVOPS_H */

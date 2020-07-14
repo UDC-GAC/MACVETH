@@ -45,6 +45,8 @@ using namespace clang::driver;
 using namespace clang::tooling;
 using namespace llvm;
 
+namespace macveth {
+
 class MVFuncVisitor : public RecursiveASTVisitor<MVFuncVisitor> {
 public:
   explicit MVFuncVisitor(ASTContext *Context, Rewriter &R, ScopHandler *L)
@@ -59,8 +61,19 @@ private:
   void scanScops(FunctionDecl *fd);
   /// Comment those stmts which are replaced
   void commentReplacedStmts(std::list<StmtWrapper *> SList);
+  //// Add includes to files if needed
+  void addHeaders(std::list<std::string> S, FileID FID);
+  /// Rewrite TAC as regular statements
+  void renderTACInPlace(std::list<StmtWrapper *> SL, long TacID);
+  /// Render SIMD instructions where they should be (regular map operations)
   void renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                              std::list<StmtWrapper *> SL);
+  /// Render SIMD after a statement (for reductions, for instance)
+  bool renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
+                                std::list<StmtWrapper *> SL);
+  /// Render SIMD before a statement (for initializing reductions, for instance)
+  bool renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
+                                 std::list<StmtWrapper *> SL);
   /// Holds information regarding the ROI
   ScopHandler *SL;
   /// Context
@@ -94,7 +107,7 @@ public:
 
   /// This routine is called in BeginSourceFile(), from
   /// CreateWrapperASTConsumer.
-  /// * CompilterInstance CI: got from getCompilerInstance()
+  /// * CompilerInstance CI: got from getCompilerInstance()
   /// * StringRef file: input file, provided by getCurrentFile()
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef file) override;
@@ -107,5 +120,5 @@ private:
   /// requests to the low-level RewriteBuffers involved.
   Rewriter TheRewriter;
 };
-
-#endif
+} // namespace macveth
+#endif /* !MACVETH_FRONTEND_H */

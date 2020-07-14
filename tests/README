@@ -1,7 +1,7 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-*                                    MACVETH
-*    Multi-dimensional Array C-compiler VEctorization and Translation for
-*                              HPC applications
+*                               MACVETH                                       *
+*    Multi-dimensional Array C-compiler VEctorizating Tensors in              *
+*                              HPC applications                               *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 Contact:
@@ -27,11 +27,11 @@ $> python3 testing.py [options]
 
 Main options available:
 
-    --all|-a: execute all tests
+    --all|-a: execute all tests (default)
     --help|-h: show help message
-    --unit|-u: execute only "unittests" (description below)
-    --full|-f: execute only "fulltests" (description below)
-    --must|-m: execute only "mustpass" (description below)
+    --unit|-u: execute "unittests" (description below)
+    --full|-f: execute "fulltests" (description below)
+    --must|-m: execute "mustpass" (description below)
 
 * Terminology:
 --------------

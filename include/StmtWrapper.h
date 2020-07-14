@@ -65,7 +65,9 @@ public:
     /// Name of dimension
     std::string Dim;
     /// Initial value (-1 if not known)
-    long InitVal = 0;
+    long InitVal = -1;
+    /// Initial value if it can not be evaluated
+    std::string StrInitVal = "";
     /// Upperbound value (-1 if not known)
     long UpperBound = 0;
     /// Upperbound as string
@@ -79,7 +81,9 @@ public:
     /// Variable declared in the loop creation
     bool Declared = false;
     /// Unrolling factor
-    int UnrollFactor = 4;
+    int UnrollFactor = UBFallback;
+    /// Full unroll
+    bool FullyUnrolled = false;
     /// Location of the initialization in the loop
     clang::CharSourceRange SRVarInit;
     /// Location of the condition of the loop
@@ -100,12 +104,15 @@ public:
 
     /// For debugging purposes
     std::string toString() {
-      std::string Str = Dim + "; init val = " + std::to_string(InitVal) +
-                        ", upperbound = " + std::to_string(UpperBound) +
-                        ", step = " + std::to_string(Step) +
-                        "; declared = " + std::to_string(Declared);
-      return Str;
+      return Dim + "; init val = " + std::to_string(InitVal) +
+             ", upperbound = " + std::to_string(UpperBound) +
+             ", step = " + std::to_string(Step) +
+             "; declared = " + std::to_string(Declared) +
+             "; stepunrolled = " + std::to_string(StepUnrolled) +
+             "; knownbounds = " + std::to_string(knownBounds());
     }
+
+    static void clearDims() { LoopInfo::DimDeclared.clear(); }
   };
 
   /// LoopInfo list type
@@ -126,11 +133,19 @@ public:
   /// Constructor
   StmtWrapper(clang::Stmt *S);
 
+  /// Compute the sequential cost
+  static long computeSequentialCostStmtWrapper(std::list<StmtWrapper *> SL);
+
+  /// Compute the cost of the statments within
+  long getCost();
+
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
   TacListType unroll(LoopInfo L);
   /// Unrolls the TAC list in all the possible dimensions
-  bool unrollAndJam(std::list<LoopInfo> LI);
+  bool unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop);
+  /// Unrolls the TAC list in the specified dimensions
+  bool unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop);
   /// Get list of stmts
   std::list<StmtWrapper *> getListStmt() { return this->ListStmt; }
   /// Get LoopInfo
@@ -138,16 +153,33 @@ public:
   /// Get Clang Stmt
   Stmt *getClangStmt() { return this->ClangStmt; };
   /// Get TAC list
-  TacListType getTacList() { return this->TacList; };
-  /// Set TAC lsit
+  TacListType getTacList() { return TacList; };
+
+  /// Set TAC list
   void setTacList(TacListType TacList) { this->TacList = TacList; };
   /// Check if it is a loop
-  bool isLoop() {
-    auto S = dyn_cast<ForStmt>(this->ClangStmt);
-    return S;
-  }
+  bool isLoop() { return dyn_cast<ForStmt>(this->ClangStmt); }
   /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
   bool isLeftOver() { return !this->isLoop(); }
+  /// Set the name of the loop surrounding this Stmt
+  void setInnerLoopName(std::string InnerLoopName) {
+    this->InnerLoopName = InnerLoopName;
+    TacListType NewTac;
+    for (auto T : this->getTacList()) {
+      auto NT = T;
+      NT.setLoopName(InnerLoopName);
+      NewTac.push_back(NT);
+    }
+    this->setTacList(NewTac);
+  }
+  /// Get the name of the loop surrounding this Stmt
+  std::string getInnerLoopName() { return this->InnerLoopName; }
+
+  void setNotVectorized() { this->Vectorized = false; }
+  bool isVectorized() { return this->Vectorized; }
+
+  /// Get scop
+  long getScop() { return this->TacList.front().getScop(); }
 
 private:
   /// Statements holded if loop
@@ -158,6 +190,10 @@ private:
   LoopInfo LoopL;
   /// TAC list with regard to the Statement S
   TacListType TacList;
+  /// Loop within
+  std::string InnerLoopName = "";
+  /// Has been vectorized or not
+  bool Vectorized = true;
 };
 } // namespace macveth
-#endif // MACVETH_STMTWRAPPER_H
+#endif /* !MACVETH_STMTWRAPPER_H */

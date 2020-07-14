@@ -11,12 +11,7 @@
 
 #include "include/Node.h"
 #include "include/TAC.h"
-#include "include/Utils.h"
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
-#include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
-#include "include/Vectorization/VectorIR.h"
-#include <list>
-#include <stdio.h>
 
 using namespace macveth;
 
@@ -40,8 +35,6 @@ public:
 
   /// Get the node of list registered for this CDAG
   Node::NodeListType getNodeListOps() { return this->NLOps; }
-  /// Get the node of list registered for this CDAG
-  // Node::NodeListType getNodeListMem() { return this->NLMem; }
 
 private:
   /// Insert TAC instruction to the CDAG
@@ -53,4 +46,4 @@ private:
 };
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_CDAG_H */
