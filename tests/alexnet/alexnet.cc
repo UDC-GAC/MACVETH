@@ -22,6 +22,38 @@
 //     fc7.bin
 //     fc8.bin
 
+#define _PB_TSTEPS POLYBENCH_LOOP_BOUND(TSTEPS, tsteps)
+#define _PB_N POLYBENCH_LOOP_BOUND(N, n)
+
+/* Default data type */
+#if !defined(DATA_TYPE_IS_INT) && !defined(DATA_TYPE_IS_FLOAT) &&              \
+    !defined(DATA_TYPE_IS_DOUBLE)
+#define DATA_TYPE_IS_FLOAT
+#endif
+
+#ifdef DATA_TYPE_IS_INT
+#define DATA_TYPE int
+#define DATA_PRINTF_MODIFIER "%d "
+#endif
+
+#ifdef DATA_TYPE_IS_FLOAT
+#define DATA_TYPE float
+#define DATA_PRINTF_MODIFIER "%0.2f "
+#define SCALAR_VAL(x) x##f
+#define SQRT_FUN(x) sqrtf(x)
+#define EXP_FUN(x) expf(x)
+#define POW_FUN(x, y) powf(x, y)
+#endif
+
+#ifdef DATA_TYPE_IS_DOUBLE
+#define DATA_TYPE double
+#define DATA_PRINTF_MODIFIER "%0.2lf "
+#define SCALAR_VAL(x) x
+#define SQRT_FUN(x) sqrt(x)
+#define EXP_FUN(x) exp(x)
+#define POW_FUN(x, y) pow(x, y)
+#endif
+
 /**
  * Macro to encapsulate a function call in the main function to enable
  * its profiling with the PolyBench harness.
@@ -50,16 +82,56 @@
 //     polybench_print_instruments;                                               \
 //   }
 
+static void print_1darray(int n, std::vector<float> C) {
+  int i, j;
+
+  for (i = 0; i < n; i++) {
+    fprintf(stderr, DATA_PRINTF_MODIFIER, C[i]);
+    if (i % 20 == 0)
+      fprintf(stderr, "\n");
+  }
+  fprintf(stderr, "\n");
+}
+
+static void print_3darray(int NI, int NJ, int NK, quote_vector3D(C)) {
+  int i, j, k;
+
+  for (i = 0; i < NI; i++)
+    for (j = 0; j < NJ; j++)
+      for (k = 0; k < NK; k++) {
+        fprintf(stderr, DATA_PRINTF_MODIFIER, C[i][j][k]);
+        if (i % 20 == 0)
+          fprintf(stderr, "\n");
+      }
+  fprintf(stderr, "\n");
+}
+
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static void print_4darray(int NI, int NJ, int NK, int NL, quote_vector4D(C)) {
+  int i, j, k, l;
+
+  for (i = 0; i < NI; i++)
+    for (j = 0; j < NJ; j++)
+      for (k = 0; k < NK; k++)
+        for (l = 0; l < NL; l++) {
+          fprintf(stderr, DATA_PRINTF_MODIFIER, C[i][j][k][l]);
+          if (i % 20 == 0)
+            fprintf(stderr, "\n");
+        }
+  fprintf(stderr, "\n");
+}
+
 /**
  * Main AlexNet inference code.
  *
  */
-int main() {
+int main(int argc, char **argv) {
+  printf("name,features,flops,time,gflops\n");
   // read image
   vector3D(image, 3, 227, 227);
   long flops = readimage_flops("image.bin", image);
-  polybench_profile_one_function(readimage("image.bin", image), "readimage",
-                                 "image.bin", flops);
+  readimage("image.bin", image);
   // printf("readimage done\n");
 
   /////////////conv1//////////////
@@ -69,9 +141,8 @@ int main() {
            conv_kernel_size);
   vector<float> conv1_bias(num_output);
   flops = readweights_flops("conv1.bin", conv1_weights, conv1_bias);
-  polybench_profile_one_function(
-      readweights("conv1.bin", conv1_weights, conv1_bias), "readweights",
-      "conv1.bin", flops);
+  readweights("conv1.bin", conv1_weights, conv1_bias);
+
   int stride = 4, pad = 0;
   vector3D(conv1_rst, num_output, 55, 55);
   // compute
@@ -86,6 +157,9 @@ int main() {
   /////////////relu1///////////////
   flops = relu_flops(conv1_rst);
   polybench_profile_one_function(relu(conv1_rst), "relu", "conv1_rst", flops);
+  polybench_prevent_dce(print_3darray(conv1_rst.size(), conv1_rst[0].size(),
+                                      conv1_rst[0][0].size(), conv1_rst));
+
   // printf("relu1 done\n");
 
   ////////////pool1////////////////
@@ -138,6 +212,8 @@ int main() {
   ///////////////relu2////////////////
   flops = relu_flops(conv2_rst);
   polybench_profile_one_function(relu(conv2_rst), "relu", "conv2_rst", flops);
+  polybench_prevent_dce(print_3darray(conv2_rst.size(), conv2_rst[0].size(),
+                                      conv2_rst[0][0].size(), conv2_rst));
   // printf("relu2 done\n");
 
   ////////////////lrn2/////////////////
@@ -181,6 +257,8 @@ int main() {
 
   flops = relu_flops(conv3_rst);
   polybench_profile_one_function(relu(conv3_rst), "relu", "conv3_rst", flops);
+  polybench_prevent_dce(print_3darray(conv3_rst.size(), conv3_rst[0].size(),
+                                      conv3_rst[0][0].size(), conv3_rst));
   // printf("relu3 done\n");
 
   ////////////////conv4////////////////
@@ -217,9 +295,13 @@ int main() {
   flops = relu_flops(conv4_rst_1);
   polybench_profile_one_function(relu(conv4_rst_1), "relu", "conv4_rst_1",
                                  flops);
+  polybench_prevent_dce(print_3darray(conv4_rst_1.size(), conv4_rst_1[0].size(),
+                                      conv4_rst_1[0][0].size(), conv4_rst_1));
   flops = relu_flops(conv4_rst_2);
   polybench_profile_one_function(relu(conv4_rst_2), "relu", "conv4_rst_2",
                                  flops);
+  polybench_prevent_dce(print_3darray(conv4_rst_2.size(), conv4_rst_2[0].size(),
+                                      conv4_rst_2[0][0].size(), conv4_rst_2));
   // printf("relu4 done\n");
 
   ////////////////conv5////////////////
@@ -318,8 +400,8 @@ int main() {
   ////////////////softmax////////////////
   flops = softmax_flops(fc8_rst);
   polybench_profile_one_function(softmax(fc8_rst), "softmax", "fc8_rst", flops);
-  // printf("softmax done\n");
+  polybench_prevent_dce(print_1darray(fc8_rst.size(), fc8_rst));
+  // printf("softmax done\n");z
   // print_vec("fc8_softmax_rst.txt", fc8_rst);
-  // fc8_rst是1000个概率数字，对应1000组分类
   return 0;
 }

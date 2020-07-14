@@ -1,3 +1,13 @@
+"""
+ This is the default license template.
+ 
+ File: testing_debug.py
+ Author: markoshorro
+ Copyright (c) 2020 markoshorro
+ 
+ To edit this license information: Press Ctrl+Shift+P and press 'Create new License Template...'.
+"""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # File              : unittest.py
@@ -69,7 +79,7 @@ def run_test(test, output):
 
 def compile_macveth():
     # Compiling MACVETH
-    out = os.system("make -C %s " % build_path)
+    out = os.system("make -j6 -C %s " % build_path)
     if (out != 0):
         print("Something went wrong compiling MACVETH! Exiting...")
         exit(0)
@@ -79,7 +89,7 @@ def compile_macveth():
 
 def compile_test_with_macveth(org_file, out_file, args=""):
     # Compiling the tests
-    os.system("./macveth -macro-free %s %s -o=%s 2>> macveth_compiler.log" %
+    os.system("./macveth %s %s -o=%s " %
               (args, org_file, out_file))
     # FIXME more than urgently
     # HAHA please remove this ASAP, please
@@ -112,7 +122,6 @@ def print_results(name, passed, failed, tests):
             # If the test passes, we do not want to have a copy of it because is the
             # same as the expected value, therefore redundant. Be clean
             f.write("\t\t%s\n" % tpass)
-            os.system("rm %s" % tpass)
 
         if (len(failed) == 0):
             return

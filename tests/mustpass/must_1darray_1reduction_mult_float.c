@@ -29,7 +29,7 @@ static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   int i, j;
 
   for (i = 0; i < n; i++)
-    x[i] = 42;
+    x[i] = 1.05;
 }
 
 static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
   /* Initialize array(s). */
   init_1darray(n, POLYBENCH_ARRAY(x));
 
-  DATA_TYPE S = 0;
+  DATA_TYPE S = 1.0;
 
   /* Start timer. */
   polybench_start_instruments;

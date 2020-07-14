@@ -16,7 +16,7 @@
 #include <polybench.h>
 
 /* Include benchmark-specific header. */
-/* Default data type is float, default size is N=1024. */
+/* Default data type is DATA_TYPE, default size is N=1024. */
 #include "definitions.h"
 
 #ifdef DATA_TYPE
@@ -29,7 +29,7 @@ static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   int i, j;
 
   for (i = 0; i < n; i++)
-    x[i] = 1.1;
+    x[i] = 1.05;
 }
 
 static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
@@ -42,7 +42,7 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
-static void print_value(float S) {
+static void print_value(DATA_TYPE S) {
   fprintf(stderr, DATA_PRINTF_MODIFIER, S);
   fprintf(stderr, "\n");
 }
@@ -62,20 +62,20 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
 static void kernel_template(
-    int n, float *S, float *F, float *G, float *H, float *SS, float *FF,
-    float *GG, float *HH, DATA_TYPE POLYBENCH_1D(x, N, n),
-    DATA_TYPE POLYBENCH_1D(y, N, n), DATA_TYPE POLYBENCH_1D(w, N, n),
-    DATA_TYPE POLYBENCH_1D(z, N, n), DATA_TYPE POLYBENCH_1D(xx, N, n),
-    DATA_TYPE POLYBENCH_1D(yy, N, n), DATA_TYPE POLYBENCH_1D(ww, N, n),
-    DATA_TYPE POLYBENCH_1D(zz, N, n)) {
-  float s = (*S);
-  float f = (*F);
-  float g = (*G);
-  float h = (*H);
-  float ss = (*SS);
-  float ff = (*FF);
-  float gg = (*GG);
-  float hh = (*HH);
+    int n, DATA_TYPE *S, DATA_TYPE *F, DATA_TYPE *G, DATA_TYPE *H,
+    DATA_TYPE *SS, DATA_TYPE *FF, DATA_TYPE *GG, DATA_TYPE *HH,
+    DATA_TYPE POLYBENCH_1D(x, N, n), DATA_TYPE POLYBENCH_1D(y, N, n),
+    DATA_TYPE POLYBENCH_1D(w, N, n), DATA_TYPE POLYBENCH_1D(z, N, n),
+    DATA_TYPE POLYBENCH_1D(xx, N, n), DATA_TYPE POLYBENCH_1D(yy, N, n),
+    DATA_TYPE POLYBENCH_1D(ww, N, n), DATA_TYPE POLYBENCH_1D(zz, N, n)) {
+  DATA_TYPE s = (*S);
+  DATA_TYPE f = (*F);
+  DATA_TYPE g = (*G);
+  DATA_TYPE h = (*H);
+  DATA_TYPE ss = (*SS);
+  DATA_TYPE ff = (*FF);
+  DATA_TYPE gg = (*GG);
+  DATA_TYPE hh = (*HH);
 #pragma macveth i 8
   for (int i = 0; i < _PB_N; i++) {
     s = s + x[i];
@@ -122,14 +122,14 @@ int main(int argc, char **argv) {
   init_1darray(n, POLYBENCH_ARRAY(ww));
   init_1darray(n, POLYBENCH_ARRAY(zz));
 
-  float S = 2.02;
-  float F = 1.01;
-  float G = 2.019;
-  float H = 1.1;
-  float SS = 2.12;
-  float FF = 1.08;
-  float GG = 1.019;
-  float HH = 1.0000042341;
+  DATA_TYPE S = 2.0;
+  DATA_TYPE F = 1.0;
+  DATA_TYPE G = 2.0;
+  DATA_TYPE H = 1.1;
+  DATA_TYPE SS = 2.1;
+  DATA_TYPE FF = 1.3;
+  DATA_TYPE GG = 1.2;
+  DATA_TYPE HH = 1.1;
 
   /* Start timer. */
   polybench_start_instruments;
@@ -154,9 +154,16 @@ int main(int argc, char **argv) {
   polybench_prevent_dce(print_value(FF));
   polybench_prevent_dce(print_value(GG));
   polybench_prevent_dce(print_value(HH));
+
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(x);
   POLYBENCH_FREE_ARRAY(y);
+  POLYBENCH_FREE_ARRAY(w);
+  POLYBENCH_FREE_ARRAY(z);
+  POLYBENCH_FREE_ARRAY(xx);
+  POLYBENCH_FREE_ARRAY(yy);
+  POLYBENCH_FREE_ARRAY(ww);
+  POLYBENCH_FREE_ARRAY(zz);
 
   return 0;
 }

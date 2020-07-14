@@ -92,8 +92,6 @@ int main(int argc, char **argv) {
   /* Initialize array(s). */
   init_2darray(n, POLYBENCH_ARRAY(x));
 
-  double S = 0;
-
   /* Start timer. */
   polybench_start_instruments;
 

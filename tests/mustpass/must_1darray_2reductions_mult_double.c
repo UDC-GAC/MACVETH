@@ -61,7 +61,7 @@ static void kernel_template(int n, double *S, double *F,
                             DATA_TYPE POLYBENCH_1D(y, N, n)) {
   double G = (*S);
   double H = (*F);
-#pragma macveth
+#pragma macveth i 4
   for (int i = 0; i < _PB_N; i++) {
     G = G * x[i];
     H = H * y[i];

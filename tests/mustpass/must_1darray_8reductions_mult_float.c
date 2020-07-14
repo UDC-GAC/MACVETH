@@ -80,12 +80,12 @@ static void kernel_template(
   for (int i = 0; i < _PB_N; i++) {
     s = s * x[i];
     f = f * y[i];
-    // g = g * w[i];
-    // h = h * z[i];
-    // ss = ss * xx[i];
-    // ff = ff * yy[i];
-    // gg = gg * ww[i];
-    // hh = hh * zz[i];
+    g = g * w[i];
+    h = h * z[i];
+    ss = ss * xx[i];
+    ff = ff * yy[i];
+    gg = gg * ww[i];
+    hh = hh * zz[i];
   }
 #pragma endmacveth
   (*S) = s;

@@ -58,7 +58,7 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
    including the call and return. */
 static void kernel_template(int n, double *S,
                             DATA_TYPE POLYBENCH_1D(redux, N, n),
-                            DATA_TYPE POLYBENCH_2D(A, N, N, n n)) {
+                            DATA_TYPE POLYBENCH_2D(A, N, N, n, n)) {
   DATA_TYPE tmp = (*S);
 #pragma macveth
   for (int i = 0; i < _PB_N; i++) {
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
-  polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
+  // polybench_prevent_dce(print_1darray(n, POLYBENCH_ARRAY(x)));
   polybench_prevent_dce(print_value(S));
 
   /* Be clean. */

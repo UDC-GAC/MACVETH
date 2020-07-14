@@ -65,7 +65,7 @@ static void kernel_template(int n, double *S, double *F, double *G, double *H,
   double f = (*F);
   double g = (*G);
   double h = (*H);
-#pragma macveth
+#pragma macveth i 4
   for (int i = 0; i < _PB_N; i++) {
     s = s * x[i];
     f = f * y[i];

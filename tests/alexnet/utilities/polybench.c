@@ -1,5 +1,3 @@
-/* polybench.c: this file is part of PolyBench/C */
-
 #include <assert.h>
 #include <math.h>
 #include <sched.h>

@@ -1,12 +1,14 @@
 
 #include "layers.h"
 //#include "utilities/polybench.h"
-//#include <immintrin.h>
 #include <algorithm>
+#include <immintrin.h>
 #include <math.h>
 #include <stdio.h>
 #include <vector>
+
 using namespace std;
+
 #define vector4D(name, n, c, h, w)                                             \
   vector<vector<vector<vector<float>>>> name(                                  \
       n, vector<vector<vector<float>>>(                                        \
@@ -29,13 +31,13 @@ void relu(quote_vector3D(bottom)) {
   int channel = bottom.size();
   int width = bottom[0].size();
   int height = bottom[0][0].size();
-  int a, b, x, d, c = 0;
+  int a, b, x, d;
   int h = 0;
 #pragma macveth c 1 h 1 w 8
   for (int c = 0; c < channel; ++c) {
     for (int h = 0; h < height; ++h) {
       for (int w = 0; w < width; ++w) {
-        bottom[c][h][w] = bottom[c][h][w] * 2.0;
+        bottom[c][h][w] = std::max(bottom[c][h][w], 0.0f);
       }
     }
   }
@@ -50,51 +52,49 @@ long relu_flops(vector<float> &bottom) {
 
 void relu(vector<float> &bottom) {
   int count = bottom.size();
-  //#pragma macveth
+#pragma macveth i 8
   for (int i = 0; i < count; ++i) {
     bottom[i] = std::max(bottom[i], 0.0f);
   }
-  //#pragma endmacveth
+#pragma endmacveth
 }
 
-// // ---------------------------------------------
-// long dropout_flops(vector<float> &bottom, float ratio) {
-//   int count = bottom.size();
-//   return count;
-// }
-// void dropout(vector<float> &bottom, float ratio) {
-//   int count = bottom.size();
-//   //#pragma macveth
-//   for (int i = 0; i < count; ++i) {
-//     bottom[i] = bottom[i] * ratio;
-//   }
-//   //#pragma endmacveth
-// }
+// ---------------------------------------------
+long dropout_flops(vector<float> &bottom, float ratio) {
+  int count = bottom.size();
+  return count;
+}
+void dropout(vector<float> &bottom, float ratio) {
+  int count = bottom.size();
+#pragma macveth i 8
+  for (int i = 0; i < count; ++i) {
+    bottom[i] = bottom[i] * ratio;
+  }
+#pragma endmacveth
+}
 
-// // ---------------------------------------------
-// long dropout_flops(quote_vector3D(bottom), float ratio) {
-//   // ratio 是一个 0~1的浮点数
-//   int channel = bottom.size();
-//   int width = bottom[0].size();
-//   int height = bottom[0][0].size();
-//   return channel * width * height;
-// }
+// ---------------------------------------------
+long dropout_flops(quote_vector3D(bottom), float ratio) {
+  int channel = bottom.size();
+  int width = bottom[0].size();
+  int height = bottom[0][0].size();
+  return channel * width * height;
+}
 
-// void dropout(quote_vector3D(bottom), float ratio) {
-//   // ratio 是一个 0~1的浮点数
-//   int channel = bottom.size();
-//   int width = bottom[0].size();
-//   int height = bottom[0][0].size();
-//   //#pragma macveth c 1 w 1 h 8
-//   for (int c = 0; c < channel; c++) {
-//     for (int w = 0; w < width; ++w) {
-//       for (int h = 0; h < height; ++h) {
-//         bottom[c][w][h] = bottom[c][w][h] * ratio;
-//       }
-//     }
-//   }
-//   //#pragma endmacveth
-// }
+void dropout(quote_vector3D(bottom), float ratio) {
+  int channel = bottom.size();
+  int width = bottom[0].size();
+  int height = bottom[0][0].size();
+#pragma macveth c 1 w 1 h 8
+  for (int c = 0; c < channel; c++) {
+    for (int w = 0; w < width; ++w) {
+      for (int h = 0; h < height; ++h) {
+        bottom[c][w][h] = bottom[c][w][h] * ratio;
+      }
+    }
+  }
+#pragma endmacveth
+}
 
 // ---------------------------------------------
 long fullconnection_flops(const quote_vector3D(bottom),
@@ -147,10 +147,8 @@ void fullconnection(const vector<float> &bottom,
 #pragma macveth n 1 c 8
   for (int n = 0; n < num_output; ++n) {
     for (int c = 0; c < channel; ++c) {
-      // top[n] += weights[n][c] * bottom[c];
       top[n] = top[n] + weights[n][c] * bottom[c];
     }
-    // top[n] += bias[n];
     top[n] = top[n] + bias[n];
   }
 #pragma endmacveth
@@ -169,10 +167,9 @@ void fullconnection(const vector<float> &bottom,
   int channel = bottom.size();
   int num_output = top.size();
   top.assign(num_output, 0);
-#pragma macveth n 1 c 8
+#pragma macveth unroll n 1 c 8
   for (int n = 0; n < num_output; ++n) {
     for (int c = 0; c < channel; ++c) {
-      // top[n] += weights[n][c] * bottom[c];
       top[n] = top[n] + weights[n][c] * bottom[c];
     }
   }
@@ -215,24 +212,25 @@ void lrn(quote_vector3D(bottom), float k, float alpha, float beta,
   int c_start, c_end;
   float sum = 0, temp;
 
-  //#pragma macveth
   for (int h = 0; h < height; ++h)
     for (int w = 0; w < width; ++w) {
       for (int c = 0; c < channel; ++c) {
         c_start = std::max(0, c - local_size / 2);
         c_end = std::min(channel - 1, c + local_size / 2);
         sum = 0;
+        //#pragma macveth unroll i 8
         for (int i = c_start; i <= c_end; ++i) {
           sum = sum + bottom[i][h][w] * bottom[i][h][w];
         }
+        //#pragma endmacveth
         temp = sum * alpha / local_size + k;
         temp_vec[c] = bottom[c][h][w] / powf(temp, beta);
+        // bottom[c][h][w] = bottom[c][h][w] / powf(temp, beta);
       }
       for (int c = 0; c < channel; ++c) {
         bottom[c][h][w] = temp_vec[c];
       }
     }
-  //#pragma endmacveth
 }
 
 // ---------------------------------------------
@@ -246,13 +244,15 @@ void softmax(vector<float> &bottom) {
   int count = bottom.size();
   vector<float> exp_rst(count);
   float sum = 0;
+#pragma macveth i 8
   for (int i = 0; i < count; i++) {
-    exp_rst[i] = exp(bottom[i]); //对于每一个输入求其exp(x)；
-    sum += exp_rst[i];           //求exp(x)的和；
+    exp_rst[i] = exp(bottom[i]);
+    sum = sum + exp_rst[i];
   }
   for (int i = 0; i < count; i++) {
-    bottom[i] = exp_rst[i] / sum; //输出为一个归一化值
+    bottom[i] = exp_rst[i] / sum;
   }
+#pragma endmacveth
 }
 
 // ---------------------------------------------
@@ -310,7 +310,6 @@ void pooling(quote_vector3D(bottom), int kernel_size, int stride, int pad,
 
   int h_start, h_end, w_start, w_end;
   float max_value;
-
   for (int c = 0; c < channel; ++c) {
     for (int h = 0; h < hout; ++h) {
       for (int w = 0; w < wout; ++w) {
@@ -328,14 +327,16 @@ void pooling(quote_vector3D(bottom), int kernel_size, int stride, int pad,
         // }
         // if (!strcmp(type.c_str(), "MAX")) {
         max_value = -10000000000.0;
-        //#pragma macveth
+        // float max_value2 = -10000000000.0;
+
+#pragma macveth i 2 j 8
         for (int i = h_start; i < h_end; ++i) {
           for (int j = w_start; j < w_end; ++j) {
             max_value = std::max(max_value, bottom[c][i][j]);
+            // max_value2 = std::max(max_value2, bottom[c][i][j]);
           }
         }
-        //#pragma endmacveth
-
+#pragma endmacveth
         top[c][h][w] = max_value;
         //}
       }
@@ -368,6 +369,7 @@ long convolution_flops(quote_vector3D(bottom), int stride, int pad,
   }
   return tmp + add_pad_flops(bottom, pad);
 }
+
 void convolution(quote_vector3D(bottom), int stride, int pad,
                  const quote_vector4D(weights), const vector<float> &bias,
                  quote_vector3D(top), string layer_name) {
@@ -384,6 +386,7 @@ void convolution(quote_vector3D(bottom), int stride, int pad,
   int wout = (width - kernel_size) / stride + 1;
   int h_start, h_end, w_start, w_end;
   float sum;
+  //#pragma macveth co 1 h 1 w 1 i 1 j 1 ci 8
   for (int co = 0; co < cout; ++co) {
     for (int h = 0; h < hout; ++h) {
       for (int w = 0; w < wout; ++w) {
@@ -392,23 +395,25 @@ void convolution(quote_vector3D(bottom), int stride, int pad,
         w_start = w * stride;
         w_end = w_start + kernel_size;
         sum = 0;
-        int m = 0;
-        int n = 0;
-        //#pragma macveth
-        for (int i = h_start; i < h_end; ++i) {
-          for (int j = w_start; j < w_end; ++j) {
-            for (int ci = 0; ci < channel; ++ci) {
-              sum = sum + weights[co][ci][m++][n++] * bottom[ci][i][j];
+#pragma macveth i 1 j 8 ci 1
+        for (int ci = 0; ci < channel; ++ci) {
+          for (int i = h_start; i < h_end; ++i) {
+            for (int j = w_start; j < w_end; ++j) {
+              sum = sum + weights[co][ci][i - h_start][j - w_start] *
+                              bottom[ci][i][j];
             }
           }
         }
-        //#pragma endmacveth
+#pragma endmacveth
 
         top[co][h][w] = sum + bias[co];
       }
     }
   }
+  //#pragma endmacveth
 }
+
+// ---------------------------------------------
 
 long readimage_flops(string ss, quote_vector3D(image)) {
   FILE *fin;
@@ -438,6 +443,8 @@ void readimage(string ss, quote_vector3D(image)) {
   return;
 }
 
+// ---------------------------------------------
+
 long readdescriptor_flops(char *s, vector<float> &descriptor) { return 1; }
 
 void readdescriptor(char *s, vector<float> &descriptor) {
@@ -452,6 +459,8 @@ void readdescriptor(char *s, vector<float> &descriptor) {
   free(temp);
   return;
 }
+
+// ---------------------------------------------
 
 long readweights_flops(string ss, quote_vector4D(weights),
                        vector<float> &bias) {
@@ -487,6 +496,8 @@ void readweights(string ss, quote_vector4D(weights), vector<float> &bias) {
   return;
 }
 
+// ---------------------------------------------
+
 long readweights_flops(string ss, vector<vector<float>> &weights) {
   FILE *fin;
   fin = fopen(ss.c_str(), "rb");
@@ -510,6 +521,8 @@ void readweights(string ss, vector<vector<float>> &weights) {
   fclose(fin);
   free(temp);
 }
+
+// ---------------------------------------------
 
 long readweights_flops(string ss, vector<vector<float>> &weights,
                        vector<float> &bias) {
@@ -543,6 +556,8 @@ void readweights(string ss, vector<vector<float>> &weights,
   free(temp);
 }
 
+// ---------------------------------------------
+
 long print_vec_flops(char *s, const vector<float> &vec) {
   FILE *fin;
   fin = fopen(s, "wt");
@@ -560,6 +575,8 @@ void print_vec(char *s, const vector<float> &vec) {
   fclose(fin);
 }
 
+// ---------------------------------------------
+
 long print_vec_flops(char *s, const vector<int> &vec) {
   FILE *fin;
   fin = fopen(s, "wt");
@@ -576,6 +593,8 @@ void print_vec(char *s, const vector<int> &vec) {
   }
   fclose(fin);
 }
+
+// ---------------------------------------------
 
 long print_vec_flops(char *s, const vector<vector<float>> &vec) {
   FILE *fin;
@@ -600,6 +619,8 @@ void print_vec(char *s, const vector<vector<float>> &vec) {
   fclose(fin);
 }
 
+// ---------------------------------------------
+
 long EmbedLayer_flops(int word_input,
                       const vector<vector<float>> &embed_weights,
                       vector<float> &input_sentence) {
@@ -615,6 +636,8 @@ void EmbedLayer(int word_input, const vector<vector<float>> &embed_weights,
   }
   input_sentence = embed_weights[word_input];
 }
+
+// ---------------------------------------------
 
 long PredictLayer_flops(const vector<float> &bottom,
                         const vector<vector<float>> &weights,
@@ -639,6 +662,8 @@ void PredictLayer(const vector<float> &bottom,
   }
 }
 
+// ---------------------------------------------
+
 long Update_flops(int cont_input, vector<float> &hc_rst) {
   int length = hc_rst.size();
   return length;
@@ -650,6 +675,8 @@ void Update(int cont_input, vector<float> &hc_rst) {
     hc_rst[i] = cont_input * hc_rst[i];
   }
 }
+
+// ---------------------------------------------
 
 long LSTMFullconnectionLayer_flops(const vector<float> &bottom,
                                    const vector<vector<float>> &weights,
@@ -673,6 +700,8 @@ void LSTMFullconnectionLayer(const vector<float> &bottom,
   }
 }
 
+// ---------------------------------------------
+
 long Add_Result_flops(vector<float> &gate_input_t,
                       const vector<float> &xcstatic_rst,
                       const vector<float> &Wxc_tm1,
@@ -691,6 +720,8 @@ void Add_Result(vector<float> &gate_input_t, const vector<float> &xcstatic_rst,
   }
 }
 
+// ---------------------------------------------
+
 long sigmoid_flops(float x) { return 3; }
 
 float sigmoid(float x) { return 1. / (1. + exp(-x)); }
@@ -698,6 +729,8 @@ float sigmoid(float x) { return 1. / (1. + exp(-x)); }
 // float tanh(float x) {
 //  return 2. * sigmoid(2. * x) - 1.;
 //}
+
+// ---------------------------------------------
 
 long LSTMlayer_flops(int cont_input, const vector<float> &gate_input_t,
                      vector<float> &c_tm1, vector<float> &hc_tm1) {
@@ -718,6 +751,8 @@ void LSTMlayer(int cont_input, const vector<float> &gate_input_t,
     hc_tm1[i] = ot * tanh(c_tm1[i]);
   }
 }
+
+// ---------------------------------------------
 
 long argmax_flops(const vector<float> &probs) {
   int rst = -1;
