@@ -51,7 +51,7 @@ const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
     assert(checkIfIndexIsAffine(IdxE) && "Index must be affine");
     BaseE = ASE->getBase()->IgnoreParenCasts();
     ASE = dyn_cast<ArraySubscriptExpr>(BaseE);
-    Idxs.push_back(MVAffineIndex(IdxE));
+    Idxs.push_back(IdxE);
   }
 
   std::reverse(Idxs.begin(), Idxs.end());

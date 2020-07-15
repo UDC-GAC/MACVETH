@@ -28,18 +28,17 @@ public:
     case SSE:
     case AVX:
     case AVX512:
-      assert(false && "Architecture not implemented yet!");
+      MVErr("This ISA has not been implemented yet!");
     case NATIVE:
     // FIXME: remove this at some point: native case should be determined at
     // some point, not to be contemplated exactly here
     case AVX2:
       G = AVX2Gen::getSingleton();
+      if (G != NULL) {
+        return G;
+      }
     }
-    if (G != NULL) {
-      G->clearMappings();
-      return G;
-    }
-    assert(false && "No backend chosen!");
+    MVErr("No backend chosen!");
     return nullptr;
   }
 };

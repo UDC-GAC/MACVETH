@@ -35,15 +35,19 @@ public:
 
   /// Pack memory operands
   virtual SIMDInstListType vpack(VectorIR::VOperand V) override;
+
   /// Broadcast values
   virtual SIMDInstListType vbcast(VectorIR::VOperand V) override;
+
   /// Gather data from memory
   virtual SIMDInstListType vgather(VectorIR::VOperand V) override;
+
   /// Set values to registers
   virtual SIMDInstListType vset(VectorIR::VOperand V) override;
 
   /// Store values in memory
   virtual SIMDInstListType vstore(VectorIR::VectorOP V) override;
+
   /// Store values in memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
 
@@ -51,12 +55,16 @@ public:
 
   /// Multiplication operation
   virtual SIMDInstListType vmul(VectorIR::VectorOP V) override;
+
   /// Substraction operation
   virtual SIMDInstListType vsub(VectorIR::VectorOP V) override;
+
   /// Add operation
   virtual SIMDInstListType vadd(VectorIR::VectorOP V) override;
+
   /// Division operation
   virtual SIMDInstListType vdiv(VectorIR::VectorOP V) override;
+
   /// Modulo operation
   virtual SIMDInstListType vmod(VectorIR::VectorOP V) override;
 
@@ -146,7 +154,10 @@ public:
 private:
   /// Constructor
   AVX2Gen() : SIMDGenerator() { SIMDGenerator::populateTable(MVISA::AVX2); }
+
+  /// Singletton pattern
   static inline SIMDGenerator *_instance = 0;
+
   /// Add SIMD instruction
   SIMDGenerator::SIMDInst
   addSIMDInst(std::string Result, std::string Op, std::string PrefS,
@@ -156,6 +167,7 @@ private:
               SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
               std::string MVFunc = "", std::list<std::string> MVArgs = {},
               MVOp MVOP = MVOp());
+
   /// Auxiliary function for adding the SIMDInst to the list
   SIMDGenerator::SIMDInst
   addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
@@ -178,13 +190,17 @@ private:
 
   /// Auxiliary method for declaring auxiliary arrays
   std::string declareAuxArray(VectorIR::VDataType DT);
+
   /// Specific instruction for loading data according to the operand
   bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
+
   /// Max width
   static inline const int MaxWidth = 256;
+
   /// Mapping the width types with its name in AVX2
   static inline std::map<VectorIR::VWidth, std::string> MapWidth = {
       {VectorIR::VWidth::W128, ""}, {VectorIR::VWidth::W256, "256"}};
+
   /// Map of VectorIR types and its translation in the AVX2 architecture
   static inline std::map<VectorIR::VDataType, std::string> MapType = {
       {VectorIR::VDataType::FLOAT, "ps"},

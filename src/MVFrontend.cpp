@@ -286,6 +286,8 @@ void clearAllMappings() {
   TAC::clear();
   // VectorIR
   VectorIR::clear();
+  // SIMDGenerator
+  SIMDGenerator::clearMappings();
 }
 
 // ---------------------------------------------
@@ -295,10 +297,10 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     llvm::llvm_unreachable_internal();
   }
 
-  std::list<std::string> DimsDeclFunc = {};
-
   // Clear all kind of mappings, since this is a new function
   clearAllMappings();
+
+  std::list<std::string> DimsDeclFunc = {};
 
   // For each scop in the function
   for (auto Scop : ScopHandler::funcGetScops(fd)) {
@@ -361,9 +363,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
           MVOptions::Headers = false;
         }
 
-        /// Clear mappings
-        // SIMDGen->clearMappings();
-
         // Comment statements
         commentReplacedStmts(SL);
 
@@ -381,13 +380,13 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
             "; Sequential cost = " +
             std::to_string(StmtWrapper::computeSequentialCostStmtWrapper(SL)));
       }
-      delete G;
+      // delete G;
     }
 
     // Be clean
-    for (auto SWrap : SL) {
-      delete SWrap;
-    }
+    // for (auto SWrap : SL) {
+    //   delete SWrap;
+    // }
   }
 
   return;
@@ -415,6 +414,7 @@ bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
 
   // If the function has scops to parse, then scan them
   this->scanScops(F);
+
   return true;
 }
 

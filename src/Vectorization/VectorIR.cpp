@@ -394,6 +394,8 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
 
   // The width of the operation is the result width
   this->VW = this->R.getWidth();
+  this->OpA.Width = this->VW;
+  this->OpB.Width = this->VW;
 
   // Data type
   this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];

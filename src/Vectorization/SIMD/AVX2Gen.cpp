@@ -721,6 +721,10 @@ SIMDGenerator::SIMDInst AVX2Gen::addSIMDInst(
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
+  // Utils::printDebug("addSIMDInst", "OP = " + Op + ", " +
+  //                                      std::to_string(V.getWidth()) + " = " +
+  //                                      getMapWidth(V.getWidth()));
+
   // Replace fills in pattern
   std::string AVXFunc =
       replacePatterns(Pattern, getMapWidth(V.getWidth()),
@@ -827,25 +831,32 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
   std::list<std::string> Args;
   Args.push_back("&" + V.UOP[0]->getValue());
 
+  // FIXME: who tf did intel intrinsics??????? I mean, it makes no sense at all
+
   // To gather elements
   // Generate preffix: must be i32 or i64, depending on the VIndex width
   std::string Scale = "8";
   auto VIndexSuffix = (V.Width == VectorIR::VWidth::W128) ? "epi64" : "epi64x";
   std::string PrefS = "i64";
+  std::string Cast =
+      (V.Width == VectorIR::VWidth::W128) ? "(__m64)" : "(__int64)";
   if (V.VSize > 4) {
     PrefS = "i32";
     VIndexSuffix = "epi32";
     Scale = std::to_string(4);
+    Cast = "";
   }
 
   Utils::printDebug("AVX2Gen", "");
 
   auto VIndex = "_mm" + MapWidth[V.Width] + "_setr_" + VIndexSuffix + "(";
   for (auto T = 0; T < V.VSize; ++T) {
-    VIndex += std::to_string(V.Idx[T]) + ((T == (V.VSize - 1)) ? "" : ", ");
+    VIndex +=
+        Cast + std::to_string(V.Idx[T]) + ((T == (V.VSize - 1)) ? "" : ", ");
   }
-  for (auto T = 0; T < V.VSize % 4; ++T) {
-    VIndex += std::to_string(0) + ((T == ((V.VSize % 4) - 1)) ? "" : ", ");
+  for (auto T = 0; T < V.VSize % 2; ++T) {
+    VIndex +=
+        Cast + std::to_string(0) + ((T == ((V.VSize % 2) - 1)) ? "" : ", ");
   }
   VIndex += ")";
   Args.push_back(VIndex);

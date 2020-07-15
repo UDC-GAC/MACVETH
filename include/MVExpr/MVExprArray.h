@@ -23,9 +23,9 @@ public:
   /// Abstraction to handle affine indices in MACVETH
   struct MVAffineIndex {
     /// Left part of the expression, if it has
-    MVAffineIndex *LHS;
+    MVAffineIndex *LHS = nullptr;
     /// Right part of the expression, if it has
-    MVAffineIndex *RHS;
+    MVAffineIndex *RHS = nullptr;
     /// Value of the expression (we do not care of its type, we handle strings)
     std::string Val = "";
     /// Unrolled
@@ -38,6 +38,89 @@ public:
       return ((Val != "") && (LHS == nullptr) && (RHS == nullptr));
     }
 
+    /// Copy constructor
+    static MVAffineIndex copy(MVAffineIndex O) {
+      MVAffineIndex New;
+      New.Val = O.Val;
+      New.Unrolled = O.Unrolled;
+      New.OP = O.OP;
+      New.LHS = nullptr;
+      if (O.LHS != nullptr) {
+        New.LHS = new MVAffineIndex(O.LHS);
+      }
+      New.RHS = nullptr;
+      if (O.RHS != nullptr) {
+        New.RHS = new MVAffineIndex(O.RHS);
+      }
+      return New;
+    }
+
+    /// Empty constructor
+    MVAffineIndex() {}
+
+    /// Create a copy of an MVAffineIndex
+    MVAffineIndex(MVAffineIndex *M) {
+      if (M == nullptr) {
+        return;
+      }
+      this->Val = M->Val;
+      this->Unrolled = M->Unrolled;
+      this->OP = M->OP;
+      if (M->LHS != nullptr) {
+        this->LHS = new MVAffineIndex(M->LHS);
+      }
+      if (M->RHS != nullptr) {
+        this->RHS = new MVAffineIndex(M->RHS);
+      }
+    }
+
+    /// If we set a Val, then there it has no leaves
+    void setVal(std::string Val) {
+      this->Val = Val;
+      this->LHS = nullptr;
+      this->RHS = nullptr;
+    }
+
+    /// Simplify expression in order to better calculate indices and so
+    void simplifyIndex() {
+      if (this->isTerminal()) {
+        return;
+      }
+      if ((this->OP == BinaryOperator::Opcode::BO_Add) ||
+          (this->OP == BinaryOperator::Opcode::BO_Sub)) {
+        if (this->LHS->isTerminal() && (this->LHS->Val == "0")) {
+          this->setVal(this->RHS->Val);
+          return;
+        }
+        if (this->RHS->isTerminal() && (this->RHS->Val == "0")) {
+          this->setVal(this->LHS->Val);
+          return;
+        }
+      }
+      // Multiplication
+      if (this->OP == BinaryOperator::Opcode::BO_Mul) {
+        if ((this->LHS->isTerminal() && (this->LHS->Val == "0")) ||
+            (this->RHS->isTerminal() && (this->RHS->Val == "0"))) {
+          this->setVal("0");
+          return;
+        }
+        if (this->LHS->isTerminal() && (this->LHS->Val == "1")) {
+          this->setVal(this->RHS->Val);
+          return;
+        }
+        if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
+          this->setVal(this->LHS->Val);
+          return;
+        }
+      }
+      if (this->OP == BinaryOperator::Opcode::BO_Div) {
+        if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
+          this->setVal(this->LHS->Val);
+          return;
+        }
+      }
+    }
+
     /// Main constructor
     MVAffineIndex(const Expr *E) {
       if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
@@ -48,9 +131,12 @@ public:
       }
       if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
         this->LHS = new MVAffineIndex(Op->getLHS());
+        this->LHS->simplifyIndex();
         this->RHS = new MVAffineIndex(Op->getRHS());
+        this->RHS->simplifyIndex();
         this->OP = Op->getOpcode();
         this->Val = "";
+        this->simplifyIndex();
       }
     }
 
@@ -101,6 +187,7 @@ public:
         if (M.OP != this->OP) {
           return INT_MIN;
         }
+
         auto Lhs = ((*M.LHS) - (*this->LHS));
         auto Rhs = ((*M.RHS) - (*this->RHS));
         if ((Lhs == INT_MIN + 2) || (Rhs == INT_MIN + 2)) {
@@ -112,13 +199,10 @@ public:
         if (M.Val == this->Val) {
           return 0;
         }
-        char *pEnd = NULL;
-        auto I1 = strtol(M.Val.c_str(), &pEnd, 10);
-        if (*pEnd) {
-          return INT_MIN + 2;
-        }
-        auto I0 = strtol(this->Val.c_str(), &pEnd, 10);
-        if (*pEnd) {
+        char *P0 = NULL, *P1 = NULL;
+        auto I0 = strtol(this->Val.c_str(), &P0, 10);
+        auto I1 = strtol(M.Val.c_str(), &P1, 10);
+        if ((*P0) || (*P1)) {
           return INT_MIN + 2;
         }
         return abs(I1 - I0);
@@ -137,9 +221,14 @@ public:
       }
     }
   }; /* !MVAffineIndex */
+
+  /// Definition of a vector of indices
   typedef std::vector<MVAffineIndex> IdxVector;
 
+  /// Destructor
   virtual ~MVExprArray(){};
+
+  /// Basic constructor
   MVExprArray(Expr *E) : MVExpr(MVK_Array, E) {
     if (ArraySubscriptExpr *ASE =
             dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
@@ -155,9 +244,14 @@ public:
     }
     llvm::llvm_unreachable_internal();
   }
+
+  /// Copy constructor
   MVExprArray(MVExprArray *E) : MVExpr(MVK_Array, E->getClangExpr()) {
     this->BaseName = E->BaseName;
-    IdxVector Copy(E->Idx);
+    IdxVector Copy;
+    for (auto I : E->Idx) {
+      Copy.push_back(MVAffineIndex::copy(I));
+    }
     this->Idx = Copy;
   }
 
@@ -166,6 +260,15 @@ public:
 
   /// Get index
   IdxVector getIndex() { return this->Idx; }
+
+  /// To string
+  virtual std::string toString() const {
+    std::string T = this->BaseName;
+    for (auto I : this->Idx) {
+      T += "[" + I.toString() + "]";
+    }
+    return T;
+  }
 
   /// Implementation of unrolling for arrays. In this case we will need to
   /// create a new MVExpr

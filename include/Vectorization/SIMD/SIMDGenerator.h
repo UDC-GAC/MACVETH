@@ -391,7 +391,11 @@ protected:
 
   /// AccmReg numbering for auxiliary operations such as reduce
   inline static int AccmReg = 0;
+
+  /// Map of the operands mapped to the accumulator
   inline static std::map<std::string, int> AccmToReg;
+
+  /// Get the next available accumulator register
   static std::string getNextAccmRegister(std::string V) {
     if (AccmToReg.count(V) == 0) {
       AccmToReg[V] = SIMDGenerator::AccmReg++;
@@ -399,6 +403,7 @@ protected:
     return VEC_PREFIX + std::to_string(AccmToReg.at(V));
   }
 
+  /// Get the current accumulator register
   static std::string getAccmReg(std::string V) {
     if (AccmToReg.count(V) == 0) {
       return "";
