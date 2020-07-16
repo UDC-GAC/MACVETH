@@ -50,7 +50,7 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
 static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
-#pragma macveth
+#pragma macveth i 4
   for (int i = 0; i < _PB_N; i++) {
     x[i] = x[i] * i + 42.3;
   }

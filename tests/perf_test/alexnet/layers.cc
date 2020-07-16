@@ -183,24 +183,24 @@ long lrn_flops(quote_vector3D(bottom), float k, float alpha, float beta,
   int height = bottom[0].size();
   int width = bottom[0][0].size();
   vector<float> temp_vec(channel);
-  long tmp = 0;
+  long flops = 0;
   int c_start, c_end;
   float sum = 0, temp;
   for (int h = 0; h < height; ++h)
     for (int w = 0; w < width; ++w) {
       for (int c = 0; c < channel; ++c) {
-        tmp += 2;
-        tmp += 3;
+        flops += 2;
+        flops += 3;
         c_start = std::max(0, c - local_size / 2);
         c_end = std::min(channel - 1, c + local_size / 2);
         for (int i = c_start; i <= c_end; ++i) {
-          tmp += 2;
+          flops += 2;
         }
-        tmp += 3;
-        tmp += 4;
+        flops += 3;
+        flops += 4;
       }
     }
-  return tmp;
+  return flops;
 }
 
 void lrn(quote_vector3D(bottom), float k, float alpha, float beta,
@@ -212,17 +212,17 @@ void lrn(quote_vector3D(bottom), float k, float alpha, float beta,
   int c_start, c_end;
   float sum = 0, temp;
 
-  for (int h = 0; h < height; ++h)
+  for (int h = 0; h < height; ++h) {
     for (int w = 0; w < width; ++w) {
       for (int c = 0; c < channel; ++c) {
         c_start = std::max(0, c - local_size / 2);
         c_end = std::min(channel - 1, c + local_size / 2);
         sum = 0;
-        //#pragma macveth unroll i 8
+#pragma macveth unroll i 8
         for (int i = c_start; i <= c_end; ++i) {
           sum = sum + bottom[i][h][w] * bottom[i][h][w];
         }
-        //#pragma endmacveth
+#pragma endmacveth
         temp = sum * alpha / local_size + k;
         temp_vec[c] = bottom[c][h][w] / powf(temp, beta);
         // bottom[c][h][w] = bottom[c][h][w] / powf(temp, beta);
@@ -231,10 +231,10 @@ void lrn(quote_vector3D(bottom), float k, float alpha, float beta,
         bottom[c][h][w] = temp_vec[c];
       }
     }
+  }
 }
 
 // ---------------------------------------------
-
 long softmax_flops(vector<float> &bottom) {
   int count = bottom.size();
   return count * 2 + count;
@@ -293,7 +293,28 @@ long pooling_flops(quote_vector3D(bottom), int kernel_size, int stride, int pad,
   int hout = (height - kernel_size) / stride + 1;
   int wout = (width - kernel_size) / stride + 1;
 
-  return channel * hout * wout;
+  long flops = add_pad_flops(bottom, pad);
+
+  int h_start, h_end, w_start, w_end;
+  float max_value;
+  for (int c = 0; c < channel; ++c) {
+    for (int h = 0; h < hout; ++h) {
+      for (int w = 0; w < wout; ++w) {
+        h_start = h * stride;
+        h_end = h_start + kernel_size;
+        w_start = w * stride;
+        w_end = w_start + kernel_size;
+        flops += 4;
+        for (int i = h_start; i < h_end; ++i) {
+          for (int j = w_start; j < w_end; ++j) {
+            flops += 1;
+          }
+        }
+      }
+    }
+  }
+
+  return flops;
 }
 
 void pooling(quote_vector3D(bottom), int kernel_size, int stride, int pad,
@@ -329,7 +350,7 @@ void pooling(quote_vector3D(bottom), int kernel_size, int stride, int pad,
         max_value = -10000000000.0;
         // float max_value2 = -10000000000.0;
 
-#pragma macveth i 2 j 8
+#pragma macveth i 1 j 8
         for (int i = h_start; i < h_end; ++i) {
           for (int j = w_start; j < w_end; ++j) {
             max_value = std::max(max_value, bottom[c][i][j]);
@@ -356,7 +377,7 @@ long convolution_flops(quote_vector3D(bottom), int stride, int pad,
   long kernel_size = weights[0][0].size();
   long hout = (height - kernel_size) / stride + 1;
   long wout = (width - kernel_size) / stride + 1;
-  long tmp = 0;
+  long flops = 0;
   for (int co = 0; co < cout; ++co) {
     for (int h = 0; h < hout; ++h)
       for (int w = 0; w < wout; ++w) {
@@ -364,10 +385,10 @@ long convolution_flops(quote_vector3D(bottom), int stride, int pad,
         int h_end = h_start + kernel_size;
         int w_start = w * stride;
         int w_end = w_start + kernel_size;
-        tmp += 1 + 2 * (h_end - h_start) * (w_end - w_start) * channel;
+        flops += 1 + 2 * (h_end - h_start) * (w_end - w_start) * channel;
       }
   }
-  return tmp + add_pad_flops(bottom, pad);
+  return flops + add_pad_flops(bottom, pad);
 }
 
 void convolution(quote_vector3D(bottom), int stride, int pad,

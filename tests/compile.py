@@ -1,15 +1,28 @@
+"""
+ This is the default license template.
+ 
+ File: compile.py
+ Author: markoshorro
+ Copyright (c) 2020 markoshorro
+ 
+ To edit this license information: Press Ctrl+Shift+P and press 'Create new License Template...'.
+"""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# File              : unittest.py
+# Author            : Marcos Horro <marcos.horro@udc.gal>
+# Date              : Mér 15 Xan 2020 15:33:25 MST
+# Last Modified Date: Mér 15 Xan 2020 21:58:58 MST
+# Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
 
-
-# Some path declarations
 import os
 import filecmp
 import re
-import time
-import subprocess
 from utils.utilities import pr_col
 from utils.utilities import colors as c
+
+# Some path declarations
 build_path = "../build"
 unittest_path = "unittest/"
 fulltest_path = "fulltest/"
@@ -72,7 +85,7 @@ def run_test(test, output):
 
 def compile_macveth():
     # Compiling MACVETH
-    out = os.system("make -j8 -C %s " % build_path)
+    out = os.system("make -C %s " % build_path)
     if (out != 0):
         print("Something went wrong compiling MACVETH! Exiting...")
         exit(0)
@@ -80,15 +93,13 @@ def compile_macveth():
     return True
 
 
-def compile_test_with_macveth(org_file, out_file, args=" "):
+def compile_test_with_macveth(org_file, out_file, args=""):
     # Compiling the tests
-    os.system("./macveth %s %s -o=%s 2>> macveth_compiler.log" %
+    os.system("./macveth -macro-free %s %s -o=%s 2>> macveth_compiler.log" %
               (args, org_file, out_file))
-    # For some reason, sometimes there is a bad descriptor error when compiling...
-    line = subprocess.check_output(['tail', '-1', "macveth_compiler.log"])
-    if "LLVM ERROR" in str(line):
-        # print("\tSomething went wrong, recompiling...")
-        return False
+    # FIXME more than urgently
+    # HAHA please remove this ASAP, please
+    os.system("sed -i '1i#include <immintrin.h>' %s" % out_file)
     return True
 
 
@@ -163,10 +174,10 @@ def unittest_suite():
         print("{:<80}".format("execution test of " + org_test + "..."), end="")
         if (test_output(exp_test, comp_test, True)):
             passed_tests.append(comp_test)
-            pr_col(c.fg.green, " [PASS]")
+            pr_col(c.fg.green, " [PASSED]")
         else:
             failed_tests.append(comp_test)
-            pr_col(c.fg.red, " [FAIL]")
+            pr_col(c.fg.red, " [FAILED]")
 
     # Print results obtained
     print_results("unittest", passed_tests, failed_tests, tests_name)
@@ -193,38 +204,34 @@ def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
         org_t = path_suite + test + file_t
 
         # Compile with macveth the test
-        n_attemps = 3
-        while (n_attemps > 0):
-            if compile_test_with_macveth(org_t, macveth_t, mv_poly_flags):
-                break
-            n_attemps -= 1
-        print("{:<80}".format("execution test of " + org_t + "..."), end="")
+        compile_test_with_macveth(org_t, macveth_t, mv_poly_flags)
+        print("{:<80}".format("compilation test of " + org_t + "..."), end="\n")
 
-        pref = tmp_path + test
+        # pref = tmp_path + test
 
-        # Compile and run the original
-        tmp_org_bin = pref + "_org.bin"
-        tmp_org_out = pref + "_org.output"
-        comp_cmd(poly_flags(path_suite), org_t, tmp_org_bin)
-        run_test(tmp_org_bin, tmp_org_out)
+        # # Compile and run the original
+        # tmp_org_bin = pref + "_org.bin"
+        # tmp_org_out = pref + "_org.output"
+        # comp_cmd(poly_flags(path_suite), org_t, tmp_org_bin)
+        # # run_test(tmp_org_bin, tmp_org_out)
 
-        # Compile and run macveth's version
-        tmp_mv_bin = pref + "_mv.bin"
-        tmp_mv_out = pref + "_mv.output"
-        comp_cmd(poly_flags(path_suite) +
-                 compiler_flags, macveth_t, tmp_mv_bin)
-        run_test(tmp_mv_bin, tmp_mv_out)
+        # # Compile and run macveth's version
+        # tmp_mv_bin = pref + "_mv.bin"
+        # tmp_mv_out = pref + "_mv.output"
+        # comp_cmd(poly_flags(path_suite) +
+        #          compiler_flags, macveth_t, tmp_mv_bin)
+    #     run_test(tmp_mv_bin, tmp_mv_out)
 
-        if (test_output(tmp_org_out,
-                        tmp_mv_out)):
-            passed_tests.append(macveth_t)
-            pr_col(c.fg.green, " [PASS]")
-        else:
-            failed_tests.append(macveth_t)
-            pr_col(c.fg.red, " [FAIL]")
+    #     if (test_output(tmp_org_out,
+    #                     tmp_mv_out)):
+    #         passed_tests.append(macveth_t)
+    #         pr_col(c.fg.green, " [PASSED]")
+    #     else:
+    #         failed_tests.append(macveth_t)
+    #         pr_col(c.fg.red, " [FAILED]")
 
-    # Write results obtained
-    print_results(path_suite, passed_tests, failed_tests, tests_name)
+    # # Write results obtained
+    # print_results(path_suite, passed_tests, failed_tests, tests_name)
 
 
 # Clean everything
@@ -233,16 +240,16 @@ clean_previous_files()
 # Compiling macveth
 compile_macveth()
 
-# Unittest
+# # Unittest
 # unittest_suite()
 
-# Fulltest
-exectest_suite(fulltest_path)
+# # Fulltest
+# exectest_suite(fulltest_path)
 
 # "MUST PASS" tests
 exectest_suite(mustpass_path, "must")
 
-# Print results
-os.system("cat %s" % test_report)
+# # Print results
+# os.system("cat %s" % test_report)
 
-clean_tmp_files()
+# clean_tmp_files()
