@@ -58,6 +58,16 @@ static llvm::cl::opt<std::string>
     CDAGInFile("input-cdag", cl::cat(MacvethCategory),
                llvm::cl::desc("Input file to read the custom CDAG placement"));
 
+static llvm::cl::opt<MVSIMDCostModel> SIMDCostModel(
+    "simd-cost-model", llvm::cl::desc("SIMD cost model"),
+    llvm::cl::init(MVSIMDCostModel::CONSERVATIVE), cl::cat(MacvethCategory),
+    llvm::cl::values(
+        clEnumValN(MVSIMDCostModel::CONSERVATIVE, "conservative",
+                   "Vectorize if and only if the sequential estimation is "
+                   "worse than the vectorized"),
+        clEnumValN(MVSIMDCostModel::UNLIMITED, "unlimited",
+                   "Unlimited SIMD cost, i.e. vectorize regardless the cost")));
+
 static llvm::cl::opt<MVISA>
     ISA("misa", llvm::cl::desc("Target ISA"), llvm::cl::init(MVISA::NATIVE),
         llvm::cl::cat(MacvethCategory),
@@ -155,6 +165,7 @@ int main(int argc, const char **argv) {
   MVOptions::Debug = Debug.getValue();
   MVOptions::MacroCode = MacroCode.getValue();
   MVOptions::Headers = !NoHeaders.getValue();
+  MVOptions::SIMDCostModel = SIMDCostModel.getValue();
 
   /// Check incompatible options:
   assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&

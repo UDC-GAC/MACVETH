@@ -759,14 +759,14 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
   // Suffix: we are going to assume that all the load are unaligned.
   std::string SuffS = "u";
   // Mask
-  std::string PrefS = (V.IsPartial) ? "mask" : "";
+  std::string Mask = (V.IsPartial) ? "mask" : "";
 
   // Type of load: load/u
   // [1]
   // https://software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
   // [2] https://stackoverflow.com/questions/36191748/difference-between-\
   // load1-and-broadcast-intrinsics
-  auto Op = "load";
+  auto Op = Mask + "load";
 
   // FIXME: if line crosses cache boundary consider using lddqu instead of
   // loadu. Approach only valid for integers... Fuck integers.
@@ -791,7 +791,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
   }
 
   // Adding SIMD inst to the list
-  addSIMDInst(V, Op, PrefS, SuffS, Args, SIMDType::VPACK, &IL);
+  addSIMDInst(V, Op, "", SuffS, Args, SIMDType::VPACK, &IL);
 
   return IL;
 }
@@ -812,8 +812,13 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vbcast(VectorIR::VOperand V) {
   std::list<std::string> Args;
   Args.push_back(getOpName(V, true, true));
 
-  if (V.getDataType() == VectorIR::VDataType::DOUBLE) {
-    V.DType = VectorIR::VDataType::SDOUBLE;
+  if (V.EqualVal) {
+    if (V.getDataType() == VectorIR::VDataType::DOUBLE) {
+      V.DType = VectorIR::VDataType::SDOUBLE;
+    }
+    if (V.getDataType() == VectorIR::VDataType::FLOAT) {
+      V.DType = VectorIR::VDataType::SFLOAT;
+    }
   }
 
   // Adding SIMD inst to the list
@@ -831,7 +836,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
   std::list<std::string> Args;
   Args.push_back("&" + V.UOP[0]->getValue());
 
-  // FIXME: who tf did intel intrinsics??????? I mean, it makes no sense at all
+  // FIXME: who tf did intel intrinsics??????? I mean, it makes no sense at
+  // all
 
   // To gather elements
   // Generate preffix: must be i32 or i64, depending on the VIndex width
@@ -924,8 +930,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
   // TODO: check
   // List of parameters
   std::list<std::string> Args;
-  // Hack: if data type is integer then use the si128/si256 notation instead of
-  // epi
+  // Hack: if data type is integer then use the si128/si256 notation instead
+  // of epi
   if (V.R.DType > VectorIR::VDataType::SFLOAT) {
     V.R.DType = (V.R.VSize > 4) ? VectorIR::VDataType::UNDEF256
                                 : VectorIR::VDataType::UNDEF128;
@@ -1127,7 +1133,7 @@ std::vector<std::string> AVX2Gen::getInitValues(VectorIR::VectorOP V) {
   }
   auto VS = V.R.VSize;
 
-  for (int i = 0; i < VS - 1; ++i) {
+  for (int i = 0; i < VS - 1 + (VS % 2); ++i) {
     InitVal.push_back(NeutralValue);
   }
   InitVal.push_back(V.R.UOP[0]->getRegisterValue());

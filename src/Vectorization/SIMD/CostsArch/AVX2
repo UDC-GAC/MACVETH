@@ -20,6 +20,7 @@ UNDEF,ceil,3,_mm#W_#Psvml_ceil#S_#D
 UNDEF,permute,1,1,1,_mm#W_#Ppermute#S_#D
 UNDEF,shuffle,1,1,1,_mm#W_#Pshuffle#S_#D
 UNDEF,load,1,0.5,1,_mm#W_#Pload#S_#D
+UNDEF,maskload,8,2,1,_mm#W_maskload#S_#D
 UNDEF,store,1,0.5,1,_mm#W_#Pstore#S_#D
 UNDEF,gather,10,5,1,_mm#W_#Pgather#S_#D
 UNDEF,broadcast,10,1,1,_mm#W_#Pbroadcast#S_#D
@@ -130,6 +131,8 @@ Broadwell,blend,1,0.33,1,_mm#W_#Pblend#S_#D
 Haswell,blend,1,0.33,1,_mm#W_#Pblend#S_#D
 IvyBridge,blend,1,0.5,1,_mm#W_#Pblend#S_#D
 Zen,blend,1,1,1,_mm#W_#Pblend#S_#D
+# Maskload
+Skylake,maskload,8,0.5,1,_mm#W_maskload#S_#D
 # Load
 Skylake,load,1,0.25,1,_mm#W_#Pload#S_#D
 Broadwell,load,1,0.5,1,_mm#W_#Pload#S_#D

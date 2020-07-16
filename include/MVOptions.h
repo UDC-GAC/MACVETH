@@ -22,6 +22,16 @@ enum MVISA {
   AVX512 = 22
 };
 
+/// Costs models naming
+enum MVSIMDCostModel {
+  /// Vectorize always, despite the not vectorized estimation cost
+  UNLIMITED,
+  /// If the sequential code vs the SIMDized code has a better estimation, then
+  /// MACVETH does not vectorize the code
+  CONSERVATIVE
+};
+
+/// Mapping ISAs
 static std::map<MVISA, std::string> MVISAStr = {
     {SSE, "SSE"}, {AVX, "AVX"}, {AVX2, "AVX2"}, {AVX512, "AVX512"}};
 
@@ -116,9 +126,12 @@ struct MVOptions {
   static inline bool MacroCode = false;
   /// Include headers (--no-headers)
   static inline bool Headers = true;
+  /// SIMD Cost model
+  static inline MVSIMDCostModel SIMDCostModel = MVSIMDCostModel::CONSERVATIVE;
 
   /// Main function to check options of the compiler
   static void validateOptions() {
+    // TODO:
     if (MVOptions::ISA == MVISA::NATIVE) {
     }
     if (MVOptions::Arch == MVArch::AUTODETECT) {

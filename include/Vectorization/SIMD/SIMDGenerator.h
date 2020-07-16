@@ -303,6 +303,7 @@ public:
   /// list of VectorOP
   SIMDInstListType getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList);
 
+  /// Auxiliary function for adding a SIMD instruction
   virtual SIMDGenerator::SIMDInst
   addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
               std::string SuffS, std::list<std::string> OPS,

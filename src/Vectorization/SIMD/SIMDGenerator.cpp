@@ -195,17 +195,17 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
                           "; SameVec = " + std::to_string(V.SameVector) +
                           "; ExpVal = " + std::to_string(ExpVal));
 
-    // 0, 1, 0, 0
+    // Load contiguous from memory
     if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
       TIL = vpack(V);
-      // 0, X, 1
+      // Load from memory but not contiguous
     } else if ((!EqualVal) && (ScatterMem) && (V.SameVector)) {
       TIL = vgather(V);
-      // 1, X, 0, 1
+      // Replicate value
     } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {
       TIL = vbcast(V);
     } else {
-      // 1, X, 0, 1
+      // Set values directly
       TIL = vset(V);
     }
 
@@ -283,15 +283,12 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   // Arranging the operation
   switch (V.VT) {
   case VectorIR::VType::MAP:
-    Utils::printDebug("SIMDGen", "map");
     mapOperation(V, &IL);
     break;
   case VectorIR::VType::REDUCE:
-    Utils::printDebug("SIMDGen", "reduce");
     reduceOperation(V, &IL);
     break;
   case VectorIR::VType::SEQ:
-    Utils::printDebug("SIMDGen", "sequential");
     return vseq(V);
   };
 
@@ -395,4 +392,5 @@ void SIMDGenerator::clearMappings() {
   AccmReg = 0;
   AuxRegId = 0;
   AuxReg.clear();
+  InitReg.clear();
 }

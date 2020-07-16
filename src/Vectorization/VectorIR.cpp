@@ -363,6 +363,10 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
+  if (VOps[0]->getOutputInfo().MVOP.isAssignment()) {
+    VLoadA = VLoadB;
+    VLoadB = nullptr;
+  }
   if (VLoadB != nullptr) {
     // Vector type will depend on the operations and operations, logically
     this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
@@ -398,8 +402,9 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   this->OpB.Width = this->VW;
 
   // Data type
-  this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];
-  this->R.DType = this->DT;
+  // this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];
+  // this->R.DType = this->DT;
+  this->DT = this->R.DType;
 
   // Ordering
   this->OpA.Order = this->Order;

@@ -27,6 +27,7 @@
  */
 
 #include "include/MVFrontend.h"
+#include "include/MVAssert.h"
 #include "include/MVOptions.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
@@ -37,6 +38,8 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
 #include <llvm-10/llvm/Support/ErrorHandling.h>
+
+jmp_buf GotoStartScop, GotoEndScop;
 
 // ---------------------------------------------
 ScopLoc *getScopLoc(StmtWrapper *S) {
@@ -263,7 +266,8 @@ void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID) {
     }
     if ((TacID == S->getTacList().back().getTacID()) || (TacID == -1)) {
       S->setNotVectorized();
-      Utils::printDebug("MVFuncVisitor", TAC::renderTacAsStmt(S->getTacList()));
+      // Utils::printDebug("MVFuncVisitor",
+      // TAC::renderTacAsStmt(S->getTacList()));
       Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                          TAC::renderTacAsStmt(S->getTacList()), true, true);
     }
@@ -297,8 +301,13 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     llvm::llvm_unreachable_internal();
   }
 
+  int Code = setjmp(GotoStartScop);
+  if (Code == MVSkipCode) {
+    return;
+  }
+
   // Clear all kind of mappings, since this is a new function
-  clearAllMappings();
+  // clearAllMappings();
 
   std::list<std::string> DimsDeclFunc = {};
 
@@ -341,7 +350,15 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       // Computing the cost model of the CDAG created
       auto SInfo = CDAG::computeCostModel(G, SIMDGen);
 
-      if (SInfo.TotCost < StmtWrapper::computeSequentialCostStmtWrapper(SL)) {
+      // Vectorize according to the SIMD cost model selected and the total cost
+      // of the SIMD operations
+      auto Vectorize =
+          ((MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED) ||
+           ((MVOptions::SIMDCostModel == MVSIMDCostModel::CONSERVATIVE) &&
+            (SInfo.TotCost <
+             StmtWrapper::computeSequentialCostStmtWrapper(SL))));
+
+      if (Vectorize) {
         //// Printing the registers we are going to use
         for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
           Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
@@ -411,6 +428,8 @@ bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
   // Check if pragmas to parse
   if (!ScopHandler::funcHasROI(F))
     return true;
+
+  clearAllMappings();
 
   // If the function has scops to parse, then scan them
   this->scanScops(F);

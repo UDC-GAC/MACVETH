@@ -55,7 +55,8 @@ repeat:
   int VL = 4;
   // This is where magic should happen
   while (!NL.empty()) {
-    if ((Cursor > 0) && (NL.front()->getScop() > VOps[Cursor - 1]->getScop())) {
+    if ((Cursor > 0) &&
+        (NL.front()->getScop() != VOps[Cursor - 1]->getScop())) {
       break;
     }
     // Consume the first one
@@ -74,7 +75,8 @@ repeat:
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
       Utils::printDebug("CDAG", "Full OPS of same type and placement = " +
-                                    VOps[Cursor - 1]->getValue());
+                                    VOps[Cursor - 1]->getValue() + "; (" +
+                                    VOps[Cursor]->getValue() + ")");
       break;
     }
     // NL.pop_front();
@@ -147,8 +149,11 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
     Utils::printDebug("CDAG", "No reductions detected");
   }
   // NL.splice(NL.end(), NRedux);
-  std::sort(NL.begin(), NL.end(),
-            [](Node *A, Node *B) { return A->getScop() < B->getScop(); });
+  // std::sort(NL.begin(), NL.end(), [](Node *A, Node *B) {
+  //   return ((A->getTacID() <= B->getTacID()) &&
+  //           (A->getSchedInfo().FreeSched <= B->getSchedInfo().FreeSched) &&
+  //           (A->getScop() <= B->getScop()));
+  // });
   // Consume rest of nodes in a general form
   Utils::printDebug("CDAG", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
