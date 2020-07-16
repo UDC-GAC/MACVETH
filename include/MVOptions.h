@@ -31,6 +31,10 @@ enum MVSIMDCostModel {
   CONSERVATIVE
 };
 
+/// Map costs models to strings
+static std::map<MVSIMDCostModel, std::string> CostModelStr = {
+    {UNLIMITED, "unlimited"}, {CONSERVATIVE, "conservative"}};
+
 /// Mapping ISAs
 static std::map<MVISA, std::string> MVISAStr = {
     {SSE, "SSE"}, {AVX, "AVX"}, {AVX2, "AVX2"}, {AVX512, "AVX512"}};
@@ -110,6 +114,8 @@ struct MVOptions {
   static inline std::string InCDAGFile = "";
   /// Name of the output debug file (-output-debug=<file>)
   static inline std::string OutDebugFile = "";
+  /// Name of the output debug file (-report-file=<file>)
+  static inline std::string ReportFile = "";
   /// Target ISA
   static inline MVISA ISA = MVISA::NATIVE;
   /// Target architecture
@@ -120,7 +126,7 @@ struct MVOptions {
   static inline bool DisableFMA = false;
   /// Debug
   static inline bool Debug = false;
-  /// Debug
+  /// Debug level
   static inline DebugLevel DLevel = DebugLevel::ALL;
   /// Generate or not macro-based code
   static inline bool MacroCode = false;
@@ -128,6 +134,23 @@ struct MVOptions {
   static inline bool Headers = true;
   /// SIMD Cost model
   static inline MVSIMDCostModel SIMDCostModel = MVSIMDCostModel::CONSERVATIVE;
+  /// Intrinsics Short Vector Math Library (SVML)
+  static inline bool IntrinsicsSVML = true;
+
+  /// Print options as a string for reports and so
+  static std::string toString() {
+    std::string S;
+    S += "-------------------------------\n";
+    S += "\toutput file\t= " + OutFile + "\n";
+    S += "\tCDAG file\t= " + InCDAGFile + "\n";
+    S += "\toutput debug\t= " + OutDebugFile + "\n";
+    S += "\tISA and arch\t= " + MVISAStr[ISA] + ", " + MVArchStr[Arch] + "\n";
+    S += "\tFMA enabled\t= " + std::to_string(!DisableFMA) + "\n";
+    S += "\tSIMD cost model\t= " + CostModelStr[SIMDCostModel] + "\n";
+    S += "\tSVML enabled\t= " + std::to_string(IntrinsicsSVML) + "\n";
+    S += "-------------------------------\n";
+    return S;
+  }
 
   /// Main function to check options of the compiler
   static void validateOptions() {

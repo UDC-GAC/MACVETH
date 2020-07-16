@@ -183,9 +183,18 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     // We will say it is a set if we have to explicitly set the values of the
     // vector operand
     bool EqualVal = equalValues(V.VSize, V.UOP);
+    bool NullIndex = false;
     bool ContMem = V.MemOp && (V.Contiguous);
     bool ScatterMem = V.MemOp && !ContMem;
     bool ExpVal = !V.MemOp;
+
+    auto I0 = V.Idx[0];
+    for (int i = 1; i < V.VSize; ++i) {
+      if (V.Idx[i] == I0) {
+        NullIndex = true;
+        break;
+      }
+    }
 
     Utils::printDebug("SIMDGenerator",
                       "V = " + V.Name +
@@ -193,13 +202,14 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
                           "; ContMem = " + std::to_string(ContMem) +
                           "; ScatterMem = " + std::to_string(ScatterMem) +
                           "; SameVec = " + std::to_string(V.SameVector) +
-                          "; ExpVal = " + std::to_string(ExpVal));
+                          "; ExpVal = " + std::to_string(ExpVal) +
+                          "; NullIndex = " + std::to_string(NullIndex));
 
     // Load contiguous from memory
     if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
       TIL = vpack(V);
       // Load from memory but not contiguous
-    } else if ((!EqualVal) && (ScatterMem) && (V.SameVector)) {
+    } else if ((!EqualVal) && (ScatterMem) && (V.SameVector) && (!NullIndex)) {
       TIL = vgather(V);
       // Replicate value
     } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {

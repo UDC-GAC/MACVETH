@@ -46,7 +46,7 @@ long StmtWrapper::getCost() {
     }
   } else {
     for (auto T : this->getTacList()) {
-      // FIXME:
+      // FIXME: this is a very _naïve_ (i.e. stupid) metric...
       Tot += MVOp::getOperationCost(T.getMVOP());
       Tot += (T.getA()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
       Tot += (T.getB()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
@@ -166,20 +166,27 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   const DeclStmt *NameValInit = dyn_cast<DeclStmt>(ForLoop->getInit());
   const BinaryOperator *ValInit;
   const VarDecl *V = nullptr;
-  /// FIXME:
+  // FIXME:
   if (NameValInit != nullptr) {
+    // In cases like: int i = <expr>; i.e. the declaration of the variable
+    // itself
     clang::Expr::EvalResult R;
     V = dyn_cast<VarDecl>(NameValInit->getSingleDecl());
-    if (V->getInit()->EvaluateAsInt(R, *Utils::getCtx())) {
-      Loop.InitVal = (long)R.Val.getInt().getExtValue();
+    if (V != nullptr) {
+      Loop.InitVal = Utils::getIntFromExpr(V->getInit(), Utils::getCtx());
+      Loop.StrInitVal = Utils::getStringFromStmt(V->getInit());
     } else {
       Loop.StrInitVal = Utils::getStringFromStmt(NameValInit);
     }
     Loop.Dim = V->getDeclName().getAsString();
   } else {
+    // In case the declaration is sth like: i = <expr>; i.e. i = t, i = 0, etc.
     ValInit = dyn_cast<BinaryOperator>(ForLoop->getInit());
     if (ValInit != nullptr) {
       Loop.InitVal = Utils::getIntFromExpr(ValInit->getRHS(), Utils::getCtx());
+      if (Loop.InitVal == -1) {
+        Loop.StrInitVal = Utils::getStringFromStmt(ValInit->getRHS());
+      }
     } else {
       Loop.StrInitVal = Utils::getStringFromStmt(ForLoop->getInit());
     }
@@ -270,6 +277,7 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   }
   std::list<StmtWrapper *> SVec = SWrap->ListStmt;
   LoopInfo Loop = SWrap->getLoopInfo();
+  // FIXME:
   // Write new epilogs
   // auto EpiInit = Loop.Dim + " = " +
   //                ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +

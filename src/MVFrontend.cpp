@@ -119,9 +119,11 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
         DimsDeclared.push_back(Loop.Dim);
       }
     }
-    // If it has been fully unrolled
-    std::string Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
-    Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
+    // If it has been fully unrolled no need to write the epilog of it
+    if (!Loop.FullyUnrolled) {
+      std::string Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
+      Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
+    }
     rewriteLoops(SWrap->getListStmt(), Rewrite, DimAlreadyDecl);
   }
   // Declare variables

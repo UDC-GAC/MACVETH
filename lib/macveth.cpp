@@ -111,6 +111,12 @@ static llvm::cl::opt<bool> FMA("fma",
                                llvm::cl::init(false),
                                llvm::cl::cat(MacvethCategory));
 
+/// Disable Intrinsics SVML
+static llvm::cl::opt<bool> NoSVML("no-svml",
+                                  llvm::cl::desc("Disable Intrinsics SVML"),
+                                  llvm::cl::init(false),
+                                  llvm::cl::cat(MacvethCategory));
+
 /// Disable FMA support flag
 static llvm::cl::opt<bool> DisableFMA(
     "nofma",
@@ -166,6 +172,7 @@ int main(int argc, const char **argv) {
   MVOptions::MacroCode = MacroCode.getValue();
   MVOptions::Headers = !NoHeaders.getValue();
   MVOptions::SIMDCostModel = SIMDCostModel.getValue();
+  MVOptions::IntrinsicsSVML = !NoSVML.getValue();
 
   /// Check incompatible options:
   assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&

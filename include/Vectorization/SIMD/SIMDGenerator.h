@@ -168,7 +168,7 @@ public:
              std::map<std::string, long> NumOp, long TotCost)
         : SIMDList(S), CostOp(CostOp), NumOp(NumOp), TotCost(TotCost) {}
 
-    /// Printing the cost
+    /// Printing the total cost of the operations
     void printCost() {
       std::cout << "---------- SIMD REPORT ----------\n";
       for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {

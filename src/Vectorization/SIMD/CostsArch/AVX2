@@ -23,7 +23,7 @@ UNDEF,load,1,0.5,1,_mm#W_#Pload#S_#D
 UNDEF,maskload,8,2,1,_mm#W_maskload#S_#D
 UNDEF,store,1,0.5,1,_mm#W_#Pstore#S_#D
 UNDEF,gather,10,5,1,_mm#W_#Pgather#S_#D
-UNDEF,broadcast,10,1,1,_mm#W_#Pbroadcast#S_#D
+UNDEF,broadcast,8,1,1,_mm#W_#Pbroadcast#S_#D
 UNDEF,set,1,1,1,_mm#W_#Pset#S_#D
 UNDEF,hadd,6,_mm#W_hadd_#D
 UNDEF,hsub,6,_mm#W_hsub_#D

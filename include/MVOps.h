@@ -105,26 +105,32 @@ struct MVOp {
   /// Given a string it returns the type of function based on the MVOpCode it
   /// is defined for this compiler
   static MVOpCode getTypeFromStr(std::string S) {
-    if ((S == "exp") || (S == "EXP"))
-      return MVOpCode::EXP;
-    if ((S == "pow") || (S == "powf") || (S == "powl"))
-      return MVOpCode::POW;
     if ((S == "std::max") || (S == "max") || (S == "MAX"))
       return MVOpCode::MAX;
     if ((S == "std::min") || (S == "min") || (S == "MIN"))
       return MVOpCode::MIN;
     if ((S == "avg") || (S == "AVG"))
       return MVOpCode::AVG;
+    if ((S == "round") || (S == "ROUND"))
+      return MVOpCode::ROUND;
+
+    MVAssertSkip(MVOptions::IntrinsicsSVML,
+                 "No SVML, so function " + S + " can not be vectorized",
+                 GotoStartScop);
+
     if ((S == "ceil") || (S == "CEIL"))
       return MVOpCode::CEIL;
     if ((S == "floor") || (S == "FLOOR"))
       return MVOpCode::FLOOR;
-    if ((S == "round") || (S == "ROUND"))
-      return MVOpCode::ROUND;
+    if ((S == "exp") || (S == "EXP"))
+      return MVOpCode::EXP;
+    if ((S == "pow") || (S == "powf") || (S == "powl"))
+      return MVOpCode::POW;
     if ((S == "sin") || (S == "SIN"))
       return MVOpCode::SIN;
     if ((S == "cos") || (S == "COS"))
       return MVOpCode::COS;
+
     return MVOpCode::UNDEF;
   }
 
