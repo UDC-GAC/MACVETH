@@ -193,12 +193,12 @@ void fullconnection(const quote_vector3D(bottom), const quote_vector4D(weights),
   __m256 __mv_vop2, __mv_vop0, __mv_vop1, __mv_accm0, __mv_vop3;
   for (n = 0; (n + 1) <= num_output; n += 1) {
     int c;
+    __mv_accm0 =
+        _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, top[(n + 0)]); // latency = 1
     for (c = 0; (c + 1) <= channel; c += 1) {
       int h;
       for (h = 0; (h + 1) <= height; h += 1) {
         int w;
-        __mv_accm0 =
-            _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, top[(n + 0)]); // latency = 1
         for (w = 0; (w + 8) <= width; w += 8) {
           // top[n] += weights[n][c][h][w] * bottom[c][h][w];
           __mv_vop0 = _mm256_loadu_ps(
@@ -210,14 +210,6 @@ void fullconnection(const quote_vector3D(bottom), const quote_vector4D(weights),
           // vectorized: top[n] = top[n] + weights[n][c][h][w] *
           // bottom[c][h][w];
         }
-        __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
-        __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        top[(n + 0)] = _mm_cvtss_f32(__mv_lo);                  // latency = 1
 
         for (w = w; w < width; w += 1) {
           top[n] = top[n] + weights[n][c][h][w] * bottom[c][h][w];
@@ -238,6 +230,14 @@ void fullconnection(const quote_vector3D(bottom), const quote_vector4D(weights),
         }
       };
     }
+    __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    top[(n + 0)] += _mm_cvtss_f32(__mv_lo);                 // latency = 1
 
     // top[n] += bias[n];
     top[(n + 0)] = (top[(n + 0)] + bias[(n + 0)]);
@@ -658,11 +658,11 @@ void convolution(quote_vector3D(bottom), int stride, int pad,
         int ci;
         __m128 __mv_lo, __mv_hi;
         __m256 __mv_vop2, __mv_vop0, __mv_vop1, __mv_accm0, __mv_vop3;
+        __mv_accm0 = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, sum); // latency = 1
         for (ci = 0; (ci + 1) <= channel; ci += 1) {
           int i;
           for (i = h_start; (i + 1) <= h_end; i += 1) {
             int j;
-            __mv_accm0 = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, sum); // latency = 1
             for (j = w_start; (j + 8) <= w_end; j += 8) {
               __mv_vop0 =
                   _mm256_loadu_ps(&weights[co][(ci + 0)][((i + 0) - h_start)]
@@ -672,18 +672,8 @@ void convolution(quote_vector3D(bottom), int stride, int pad,
               __mv_accm0 = _mm256_fmadd_ps(__mv_vop0, __mv_vop1,
                                            __mv_accm0); // latency = 5
               // vectorized: sum = sum + weights[co][ci][i - h_start][j -
-              // w_start] *
-              bottom[ci][i][j];
+              // w_start] * bottom[ci][i][j];
             }
-            __mv_lo = _mm256_castps256_ps128(__mv_accm0);     // latency = 0
-            __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1); // latency = 3
-            __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);           // latency = 4
-            __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);        // latency = 1
-            __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);           // latency = 4
-            __mv_hi =
-                _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
-            __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);           // latency = 4
-            sum = _mm_cvtss_f32(__mv_lo);                     // latency = 1
 
             for (j = j; j < w_end; j += 1) {
               sum = sum + weights[co][ci][i - h_start][j - w_start] *
@@ -705,7 +695,14 @@ void convolution(quote_vector3D(bottom), int stride, int pad,
             }
           };
         }
-
+        __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
+        __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
+        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+        __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+        __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+        sum += _mm_cvtss_f32(__mv_lo);                          // latency = 1
 #pragma endmacveth
 
         top[co][h][w] = sum + bias[co];
