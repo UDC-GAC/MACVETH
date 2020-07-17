@@ -610,15 +610,6 @@ void pooling(quote_vector3D(bottom), int kernel_size, int stride, int pad,
             // vectorized: max_value = std::max(max_value, bottom[c][i][j]);
             // max_value2 = std::max(max_value2, bottom[c][i][j]);
           }
-          __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
-          __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
-          __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                 // latency = 4
-          __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
-          __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                 // latency = 4
-          __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
-          __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                 // latency = 4
-          max_value = _mm_cvtss_f32(__mv_lo);                     // latency = 1
-
           for (j = j; j < w_end; j += 1) {
             max_value = std::max(max_value, bottom[c][i][j]);
           }
@@ -629,6 +620,15 @@ void pooling(quote_vector3D(bottom), int kernel_size, int stride, int pad,
             // max_value2 = std::max(max_value2, bottom[c][i][j]);
           };
         }
+
+        __mv_lo = _mm256_castps256_ps128(__mv_accm0);            // latency = 0
+        __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);        // latency = 3
+        __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                  // latency = 4
+        __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);               // latency = 1
+        __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                  // latency = 4
+        __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110);  // latency = 1
+        __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                  // latency = 4
+        max_value = std::max(max_value, _mm_cvtss_f32(__mv_lo)); // latency = 1
 
 #pragma endmacveth
         top[c][h][w] = max_value;
