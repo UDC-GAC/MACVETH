@@ -428,10 +428,17 @@ bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
   if (!F->hasBody())
     return true;
   // Check if pragmas to parse
-  if (!ScopHandler::funcHasROI(F))
+  if (!ScopHandler::funcHasROI(F)) {
     return true;
+  }
 
+  /// Be clean
   clearAllMappings();
+
+  if ((MVOptions::TargetFunc != "") &&
+      (F->getNameAsString() != MVOptions::TargetFunc)) {
+    return true;
+  }
 
   // If the function has scops to parse, then scan them
   this->scanScops(F);

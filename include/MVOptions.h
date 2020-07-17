@@ -136,6 +136,8 @@ struct MVOptions {
   static inline MVSIMDCostModel SIMDCostModel = MVSIMDCostModel::CONSERVATIVE;
   /// Intrinsics Short Vector Math Library (SVML)
   static inline bool IntrinsicsSVML = true;
+  /// Target function
+  static inline std::string TargetFunc = "";
 
   /// Print options as a string for reports and so
   static std::string toString() {

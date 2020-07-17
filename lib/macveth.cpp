@@ -53,7 +53,9 @@ static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static llvm::cl::opt<std::string>
     OutputFile("o", cl::cat(MacvethCategory),
                llvm::cl::desc("Output file to write the code, otherwise "
-                              "it will just print int std outputt"));
+                              "it will just print int std output"));
+static llvm::cl::opt<std::string> TargetFunc("func", cl::cat(MacvethCategory),
+                                             llvm::cl::desc("Target function"));
 static llvm::cl::opt<std::string>
     CDAGInFile("input-cdag", cl::cat(MacvethCategory),
                llvm::cl::desc("Input file to read the custom CDAG placement"));
@@ -173,6 +175,7 @@ int main(int argc, const char **argv) {
   MVOptions::Headers = !NoHeaders.getValue();
   MVOptions::SIMDCostModel = SIMDCostModel.getValue();
   MVOptions::IntrinsicsSVML = !NoSVML.getValue();
+  MVOptions::TargetFunc = TargetFunc.getValue();
 
   /// Check incompatible options:
   assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&
