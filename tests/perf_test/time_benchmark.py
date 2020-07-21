@@ -31,6 +31,7 @@ def calculate_mean(bench, executions):
     bench_dir = bench.split("/")[0]
     os.chdir("%s" % bench_dir)
     bench = bench.split("/")[1]
+    print("Executing %s times %s:" % (str(executions), bench))
     pbar = tqdm(total=executions)
     for exe in range(executions):
         pbar.update(0.5)
@@ -46,7 +47,6 @@ def calculate_mean(bench, executions):
 
     s = pd.concat(df_arr).groupby(level=0).std() / \
         pd.concat(df_arr).groupby(level=0).mean()
-    print(s)
     for r in s['time']:
         if (r > tolerance):
             print("[WARNING] Deviation too high = " + str(r))

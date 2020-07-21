@@ -8,18 +8,18 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
-if (len(sys.argv) < 4):
-    print("Usage: python3 comp_exec_analyze.py <bench> <output> <analyzeonly> <compexeconly>")
+if (len(sys.argv) < 5):
+    print("Usage: python3 comp_exec_analyze.py <bench> <output> <analyzeonly> <compexeconly> <res_dir>")
 
 bench = sys.argv[1]
 analyze_only = int(sys.argv[3])
 comp_exec_only = int(sys.argv[4])
 
 bench_dir = bench + "/"
-results_dir = "results/"
+results_dir = "results" + sys.argv[5] + "/"
 output_dir = "output/"
 
-os.system("mkdir -p %s" % results_dir)
+os.system("mkdir -p %s" % results_dir + bench)
 os.system("mkdir -p %s" % output_dir)
 
 comp = ["gcc", "icc"]
