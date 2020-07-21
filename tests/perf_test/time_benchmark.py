@@ -12,14 +12,15 @@ bench = "alexnet"
 args = ""
 
 if (len(sys.argv) < 5):
-    print("Usage: python3 time_benchmark.py <executable> <compilation_opts> <output> <macveth>")
+    print("Usage: python3 time_benchmark.py <executable> <compilation_opts> <output> <macveth> <nexec>")
     exit(0)
 
 bench = sys.argv[1]
 comp_opts = sys.argv[2]
 output = sys.argv[3]
 macveth = int(sys.argv[4])
-
+if (len(sys.argv) == 6):
+    n_exec = int(sys.argv[5])
 tmp_file = "___tmp_file_"
 
 # README:
