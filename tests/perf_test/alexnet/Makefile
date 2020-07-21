@@ -11,13 +11,14 @@ endif
 ifeq ($(COMP),icc)
 	CC=icc
 	CXX=icpc
-	VFLAGS= $(VF) -vec-threshold0 -unroll0 -qoverride-limits -qopt-report=5 -mavx2 -mfma
+	VFLAGS= $(VF) -vec-threshold0 -unroll0 -qoverride-limits -qopt-report=5 -mavx2 -mfma -Wno-unknown-pragmas
+
 	SUFFIX=_icc
 else
 	COMP=gcc
 	CC=gcc
 	CXX=g++
-	VFLAGS= $(VF) -ftree-vectorize -ftree-loop-vectorize -fvect-cost-model=unlimited -fsimd-cost-model=unlimited -fprefetch-loop-arrays -march=native -std=c99 -unroll0 -mfma
+	VFLAGS= $(VF) -ftree-vectorize -ftree-loop-vectorize -fvect-cost-model=unlimited -fsimd-cost-model=unlimited -fprefetch-loop-arrays -march=native -unroll0 -mfma
 endif
 
 NAME=$(COMP)_$(VECT)_$(BINARY_NAME)

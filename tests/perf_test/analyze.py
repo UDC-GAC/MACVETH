@@ -9,12 +9,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 if (len(sys.argv) < 6):
-    print("Usage: python3 comp_exec_analyze.py <bench> <res_dir> <comp> <ops> <output>")
-
+    print("Usage: python3 comp_exec_analyze.py <bench> <arch> <comp> <ops> <output>")
+    exit(0)
 bench = sys.argv[1]
 
+arch = sys.argv[2]
+
 bench_dir = bench + "/"
-results_dir = "results" + sys.argv[2] + "/" + bench_dir
+results_dir = "results_" + arch + "/" + bench_dir
 output_dir = "output/"
 
 os.system("mkdir -p %s" % output_dir)
@@ -53,7 +55,7 @@ for c in comp:
 f = sns.catplot(data=df, x="name", y="gflops", hue="type", hue_order=hue_order,
                 kind="bar", palette=palette)
 f.set_xticklabels(rotation=45, horizontalalignment="right")
-plt.show(block=False)
 plt.show()
 f.savefig(output_file + ".pdf")
+df['arch'] = arch
 df.to_csv(output_file + ".csv")

@@ -10,6 +10,7 @@ import numpy as np
 
 if (len(sys.argv) < 5):
     print("Usage: python3 comp_exec_analyze.py <bench> <res_dir> <comp> <ops> <nexec>")
+    exit(0)
 
 bench = sys.argv[1]
 
