@@ -1,5 +1,4 @@
-#POLYBENCH_PAPI_FLAGS=-DPOLYBENCH_PAPI -I $(HOME)/cs553-hw3/papi/install/include -L $(HOME)/cs553-hw3/papi/install/lib -lpapi -I utilities
-POLYBENCH_FLAGS=-DPOLYBENCH_TIME -I. -L/share/apps/papi/gnu8/6.0.0/lib -lpapi -I utilities
+POLYBENCH_FLAGS=-DPOLYBENCH_TIME -I. -L/share/apps/papi/gnu8/6.0.0/lib -lpapi -I ../utilities
 BINARY_NAME=alexnet
 
 ifeq ($(VECT),fast)
@@ -13,6 +12,7 @@ ifeq ($(COMP),icc)
 	CC=icc
 	CXX=icpc
 	VFLAGS= $(VF) -vec-threshold0 -unroll0 -qoverride-limits -qopt-report=5 -mavx2 -mfma
+	SUFFIX=_icc
 else
 	COMP=gcc
 	CC=gcc
@@ -25,9 +25,9 @@ NAME=$(COMP)_$(VECT)_$(BINARY_NAME)
 all: alexnet run
 
 alexnet:
-	$(CC) -O3 -c $(POLYBENCH_FLAGS) utilities/polybench.c
+	$(CC) -O3 -c $(POLYBENCH_FLAGS) ../utilities/polybench.c
 	$(CXX) $(VFLAGS) alexnet.cc layers.cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME).o
-	$(CXX) $(VFLAGS) alexnet.cc layers_macveth.cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME)_macveth.o
+	$(CXX) $(VFLAGS) alexnet.cc layers_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME)_macveth.o
 
 clean:
 	rm *.o *.optrpt
