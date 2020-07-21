@@ -12,6 +12,8 @@
 #include <omp.h>
 #endif
 
+#include <time.h>
+
 #if defined(POLYBENCH_PAPI)
 #undef POLYBENCH_PAPI
 #include "polybench.h"
@@ -61,18 +63,22 @@ static struct polybench_data_ptrs *_polybench_alloc_table = NULL;
 static size_t polybench_inter_array_padding_sz = 0;
 
 /* Timer code (gettimeofday). */
-double polybench_t_start, polybench_t_end;
+long double polybench_t_start, polybench_t_end;
 /* Timer code (RDTSC). */
 unsigned long long int polybench_c_start, polybench_c_end;
 
-static double rtclock() {
+static long double rtclock() {
 #if defined(POLYBENCH_TIME) || defined(POLYBENCH_GFLOPS)
-  struct timeval Tp;
-  int stat;
-  stat = gettimeofday(&Tp, NULL);
-  if (stat != 0)
-    printf("Error return from gettimeofday: %d", stat);
-  return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
+  // struct timeval Tp;
+  // int stat;
+  struct timespec S;
+
+  //  stat = gettimeofday(&Tp, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &S);
+  // if (stat != 0)
+  //   printf("Error return from gettimeofday: %d", stat);
+  // return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
+  return (S.tv_sec + S.tv_nsec * 1.0e-9);
 #else
   return 0;
 #endif
@@ -344,7 +350,7 @@ void polybench_timer_print() {
                            1000000000);
 #else
 #ifndef POLYBENCH_CYCLE_ACCURATE_TIMER
-  printf("%0.6f\n", polybench_t_end - polybench_t_start);
+  printf("%Lf\n", polybench_t_end - polybench_t_start);
 #else
   printf("%Ld\n", polybench_c_end - polybench_c_start);
 #endif
@@ -353,11 +359,13 @@ void polybench_timer_print() {
 
 void polybench_timer_print_flops(long flops) {
 #ifndef POLYBENCH_CYCLE_ACCURATE_TIMER
-  printf("%0.6f,%f\n", (double)(polybench_t_end - polybench_t_start),
-         flops / (double)(polybench_t_end - polybench_t_start) / 1000000000);
+  printf("%Lf,%Lf\n", (long double)(polybench_t_end - polybench_t_start),
+         flops / ((long double)(polybench_t_end - polybench_t_start) / 1e9));
 #else
-  printf("%Ld\n",
-         flops / (double)(polybench_c_end - polybench_c_start) / 1000000000);
+  printf("%Lf,%f\n",
+         (long double)(polybench_c_end - polybench_c_start) / CLOCKS_PER_SEC,
+         flops / (double)(polybench_c_end - polybench_c_start) /
+             CLOCKS_PER_SEC);
 #endif
 }
 

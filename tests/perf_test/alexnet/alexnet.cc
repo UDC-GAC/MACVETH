@@ -351,7 +351,7 @@ int main(int argc, char **argv) {
       "pooling", "conv5_rst_max", flops);
   // printf("pool5 done\n");
 
-  ////////////////fc6////////////////
+  ////////////////fc6//////////////// 3dimensional
   channels = num_output, num_output = 4096;
   vector4D(fc6_weights, num_output, channels, 6, 6);
   vector<float> fc6_bias(num_output);
@@ -368,7 +368,7 @@ int main(int argc, char **argv) {
   polybench_profile_one_function(relu(fc6_rst), "relu", "fc6_rst", flops);
   // printf("relu6 done");
 
-  ////////////////fc7////////////////
+  ////////////////fc7//////////////// 2dimensional + bias
   channels = num_output, num_output = 4096;
   vector<vector<float>> fc7_weights(num_output, vector<float>(channels));
   vector<float> fc7_bias(num_output);
@@ -385,7 +385,7 @@ int main(int argc, char **argv) {
   polybench_profile_one_function(relu(fc7_rst), "relu", "fc7_rst", flops);
   // printf("relu7 done\n");
 
-  ////////////////fc8////////////////
+  ////////////////fc8//////////////// 2dimensional
   channels = num_output, num_output = 1000;
   vector<vector<float>> fc8_weights(num_output, vector<float>(channels));
   vector<float> fc8_bias(num_output);

@@ -119,12 +119,10 @@ void fullconnection(const quote_vector3D(bottom), const quote_vector4D(weights),
     for (int c = 0; c < channel; ++c) {
       for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
-          // top[n] += weights[n][c][h][w] * bottom[c][h][w];
           top[n] = top[n] + weights[n][c][h][w] * bottom[c][h][w];
         }
       }
     }
-    // top[n] += bias[n];
     top[n] = top[n] + bias[n];
   }
 #pragma endmacveth
@@ -144,7 +142,7 @@ void fullconnection(const vector<float> &bottom,
   int channel = bottom.size();
   int num_output = top.size();
   top.assign(num_output, 0);
-#pragma macveth n 1 c 8
+#pragma macveth n 8 c 8
   for (int n = 0; n < num_output; ++n) {
     for (int c = 0; c < channel; ++c) {
       top[n] = top[n] + weights[n][c] * bottom[c];
@@ -167,7 +165,7 @@ void fullconnection(const vector<float> &bottom,
   int channel = bottom.size();
   int num_output = top.size();
   top.assign(num_output, 0);
-#pragma macveth unroll n 1 c 8
+#pragma macveth unroll n 8 c 8
   for (int n = 0; n < num_output; ++n) {
     for (int c = 0; c < channel; ++c) {
       top[n] = top[n] + weights[n][c] * bottom[c];
