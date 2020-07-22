@@ -13,7 +13,7 @@ ifeq ($(COMP),icc)
 	CXX=icpc
 	VFLAGS= $(VF) -vec-threshold0 -unroll0 -qoverride-limits -qopt-report=5 -mavx2 -mfma -Wno-unknown-pragmas
 
-	SUFFIX=_icc
+SUFFIX=_icc
 else
 	COMP=gcc
 	CC=gcc
@@ -30,9 +30,19 @@ alexnet:
 	$(CXX) $(VFLAGS) alexnet.cc layers.cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME).o
 	$(CXX) $(VFLAGS) alexnet.cc layers_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME)_macveth.o
 
+correct:
+	$(CC) -O3 -c $(POLYBENCH_FLAGS) -DPOLYBENCH_DUMP_ARRAYS ../utilities/polybench.c
+	$(CXX) $(VFLAGS) alexnet.cc layers.cc polybench.o $(POLYBENCH_FLAGS) -DPOLYBENCH_DUMP_ARRAYS -o $(NAME)_dump.o
+	$(CXX) $(VFLAGS) alexnet.cc layers_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -DPOLYBENCH_DUMP_ARRAYS -o $(NAME)_macveth_dump.o
+
 clean:
 	rm *.o *.optrpt
 
 run:
 	./$(NAME).o > $(NAME).csv
 	./$(NAME)_macveth.o > $(NAME)_macveth.csv
+
+check_dump:
+	./$(NAME)_dump.o 2> $(NAME).dump
+	./$(NAME)_macveth_dump.o 2> $(NAME)_macveth.dump
+	diff $(NAME).dump $(NAME)_macveth.dump

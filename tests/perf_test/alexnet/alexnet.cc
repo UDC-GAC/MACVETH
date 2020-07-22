@@ -60,6 +60,7 @@
  *
  *
  */
+#ifndef POLYBENCH_PAPI
 #define polybench_profile_one_function(X, name, features, flops)               \
   {                                                                            \
     polybench_prepare_instruments;                                             \
@@ -69,6 +70,17 @@
     printf("%s,%s,%ld,", name, features, flops);                               \
     polybench_print_instruments_flops(flops);                                  \
   }
+#else
+#define polybench_profile_one_function(X, name, features, flops)               \
+  {                                                                            \
+    polybench_prepare_instruments;                                             \
+    polybench_start_instruments;                                               \
+    X;                                                                         \
+    polybench_stop_instruments;                                                \
+    printf("%s,%s,%ld,", name, features, flops);                               \
+    polybench_print_instruments;                                               \
+  }
+#endif
 
 // #define polybench_profile_one_function(X, name, features, flops)               \
 //   {                                                                            \
@@ -121,13 +133,31 @@ static void print_4darray(int NI, int NJ, int NK, int NL, quote_vector4D(C)) {
         }
   fprintf(stderr, "\n");
 }
+#ifdef POLYBENCH_PAPI
+char *__polybench_papi_eventlist[] = {
+#include "papi_counters.list"
+    NULL};
+#endif
 
 /**
  * Main AlexNet inference code.
  *
  */
 int main(int argc, char **argv) {
+#ifndef POLYBENCH_PAPI
   printf("name,features,flops,time,gflops\n");
+#else
+  printf("name,features,flops,");
+  int i = 0;
+  while (__polybench_papi_eventlist[i] != NULL) {
+    if (__polybench_papi_eventlist[i + 1] == NULL) {
+      printf("%s", __polybench_papi_eventlist[i++]);
+    } else {
+      printf("%s,", __polybench_papi_eventlist[i++]);
+    }
+  }
+  printf("\n");
+#endif
   // read image
   vector3D(image, 3, 227, 227);
   long flops = readimage_flops("image.bin", image);
@@ -157,8 +187,8 @@ int main(int argc, char **argv) {
   /////////////relu1///////////////
   flops = relu_flops(conv1_rst);
   polybench_profile_one_function(relu(conv1_rst), "relu", "conv1_rst", flops);
-  polybench_prevent_dce(print_3darray(conv1_rst.size(), conv1_rst[0].size(),
-                                      conv1_rst[0][0].size(), conv1_rst));
+  // polybench_prevent_dce(print_3darray(conv1_rst.size(), conv1_rst[0].size(),
+  //                                     conv1_rst[0][0].size(), conv1_rst));
 
   // printf("relu1 done\n");
 
@@ -257,8 +287,8 @@ int main(int argc, char **argv) {
 
   flops = relu_flops(conv3_rst);
   polybench_profile_one_function(relu(conv3_rst), "relu", "conv3_rst", flops);
-  polybench_prevent_dce(print_3darray(conv3_rst.size(), conv3_rst[0].size(),
-                                      conv3_rst[0][0].size(), conv3_rst));
+  // polybench_prevent_dce(print_3darray(conv3_rst.size(), conv3_rst[0].size(),
+  //                                     conv3_rst[0][0].size(), conv3_rst));
   // printf("relu3 done\n");
 
   ////////////////conv4////////////////
@@ -295,13 +325,17 @@ int main(int argc, char **argv) {
   flops = relu_flops(conv4_rst_1);
   polybench_profile_one_function(relu(conv4_rst_1), "relu", "conv4_rst_1",
                                  flops);
-  polybench_prevent_dce(print_3darray(conv4_rst_1.size(), conv4_rst_1[0].size(),
-                                      conv4_rst_1[0][0].size(), conv4_rst_1));
+  // polybench_prevent_dce(print_3darray(conv4_rst_1.size(),
+  // conv4_rst_1[0].size(),
+  //                                     conv4_rst_1[0][0].size(),
+  //                                     conv4_rst_1));
   flops = relu_flops(conv4_rst_2);
   polybench_profile_one_function(relu(conv4_rst_2), "relu", "conv4_rst_2",
                                  flops);
-  polybench_prevent_dce(print_3darray(conv4_rst_2.size(), conv4_rst_2[0].size(),
-                                      conv4_rst_2[0][0].size(), conv4_rst_2));
+  // polybench_prevent_dce(print_3darray(conv4_rst_2.size(),
+  // conv4_rst_2[0].size(),
+  //                                     conv4_rst_2[0][0].size(),
+  //                                     conv4_rst_2));
   // printf("relu4 done\n");
 
   ////////////////conv5////////////////

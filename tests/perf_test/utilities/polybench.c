@@ -294,7 +294,11 @@ void polybench_papi_print() {
       for (evid = 0; polybench_papi_eventlist[evid] != 0; ++evid) {
         if (verbose)
           printf("%s=", _polybench_papi_eventlist[evid]);
-        printf("%llu ", polybench_papi_values[evid]);
+        if (polybench_papi_eventlist[evid + 1] == 0) {
+          printf("%llu", polybench_papi_values[evid]);
+        } else {
+          printf("%llu,", polybench_papi_values[evid]);
+        }
         if (verbose)
           printf("\n");
       }
@@ -359,8 +363,8 @@ void polybench_timer_print() {
 
 void polybench_timer_print_flops(long flops) {
 #ifndef POLYBENCH_CYCLE_ACCURATE_TIMER
-  printf("%Lf,%Lf\n", (long double)(polybench_t_end - polybench_t_start),
-         flops / ((long double)(polybench_t_end - polybench_t_start) / 1e9));
+  long double diff = (long double)(polybench_t_end - polybench_t_start);
+  printf("%Lf,%Lf\n", diff, flops / (diff) / 1e9);
 #else
   printf("%Lf,%f\n",
          (long double)(polybench_c_end - polybench_c_start) / CLOCKS_PER_SEC,
