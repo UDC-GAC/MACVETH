@@ -274,6 +274,74 @@ void redux8(red_vec(v0)) {
         _mm256_fmadd_ps(__mv_vop16, __mv_vop4, __mv_accm7); // latency = 5
     // vectorized: sum7 = sum7 + v7[w] * beta;
   }
+  /*
+    __m128 __mv_lo, __mv_hi;
+
+    __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    sum0 = _mm_cvtss_f32(__mv_lo);                          // latency = 1
+    __mv_lo = _mm256_castps256_ps128(__mv_accm1);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm1, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    sum1 = _mm_cvtss_f32(__mv_lo);                          // latency = 1
+    __mv_lo = _mm256_castps256_ps128(__mv_accm2);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm2, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    sum2 = _mm_cvtss_f32(__mv_lo);                          // latency = 1
+    __mv_lo = _mm256_castps256_ps128(__mv_accm3);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm3, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    sum3 = _mm_cvtss_f32(__mv_lo);                          // latency = 1
+    __mv_lo = _mm256_castps256_ps128(__mv_accm4);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm4, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    sum4 = _mm_cvtss_f32(__mv_lo);                          // latency = 1
+    __mv_lo = _mm256_castps256_ps128(__mv_accm5);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm5, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    sum5 = _mm_cvtss_f32(__mv_lo);                          // latency = 1
+    __mv_lo = _mm256_castps256_ps128(__mv_accm6);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm6, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    sum6 = _mm_cvtss_f32(__mv_lo);                          // latency = 1
+    __mv_lo = _mm256_castps256_ps128(__mv_accm7);           // latency = 0
+    __mv_hi = _mm256_extractf128_ps(__mv_accm7, 0x1);       // latency = 3
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
+    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
+    sum7 = _mm_cvtss_f32(__mv_lo);                          // latency = 1
+  */
   __mv_accm0 = _mm256_hadd_ps(__mv_accm0, __mv_accm1); // latency = 6
   __mv_accm2 = _mm256_hadd_ps(__mv_accm2, __mv_accm3); // latency = 6
   __mv_accm4 = _mm256_hadd_ps(__mv_accm4, __mv_accm5); // latency = 6

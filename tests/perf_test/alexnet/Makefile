@@ -1,39 +1,24 @@
-POLYBENCH_FLAGS=-DPOLYBENCH_TIME -I. -L/share/apps/papi/gnu8/6.0.0/lib -lpapi -I ../utilities
 BINARY_NAME=alexnet
+MAIN_SRC=alexnet.cc
+TARGET=layers
 
-ifeq ($(VECT),fast)
-	VF= -Ofast
-else
-	VECT=nofast
-	VF= -O3
-endif
-
-ifeq ($(COMP),icc)
-	CC=icc
-	CXX=icpc
-	VFLAGS= $(VF) -vec-threshold0 -unroll0 -qoverride-limits -qopt-report=5 -mavx2 -mfma -Wno-unknown-pragmas
-
-SUFFIX=_icc
-else
-	COMP=gcc
-	CC=gcc
-	CXX=g++
-	VFLAGS= $(VF) -ftree-vectorize -ftree-loop-vectorize -fvect-cost-model=unlimited -fsimd-cost-model=unlimited -fprefetch-loop-arrays -march=native -unroll0 -mfma
-endif
+include ../MakeFlags.mk
 
 NAME=$(COMP)_$(VECT)_$(BINARY_NAME)
+
+.PHONY: clean
 
 all: alexnet run
 
 alexnet:
 	$(CC) -O3 -c $(POLYBENCH_FLAGS) ../utilities/polybench.c
-	$(CXX) $(VFLAGS) alexnet.cc layers.cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME).o
-	$(CXX) $(VFLAGS) alexnet.cc layers_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME)_macveth.o
+	$(CXX) $(VFLAGS) $(MAIN_SRC) $(TARGET).cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME).o
+	$(CXX) $(VFLAGS) $(MAIN_SRC) $(TARGET)_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME)_macveth.o
 
 correct:
 	$(CC) -O3 -c $(POLYBENCH_FLAGS) -DPOLYBENCH_DUMP_ARRAYS ../utilities/polybench.c
-	$(CXX) $(VFLAGS) alexnet.cc layers.cc polybench.o $(POLYBENCH_FLAGS) -DPOLYBENCH_DUMP_ARRAYS -o $(NAME)_dump.o
-	$(CXX) $(VFLAGS) alexnet.cc layers_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -DPOLYBENCH_DUMP_ARRAYS -o $(NAME)_macveth_dump.o
+	$(CXX) $(VFLAGS) $(MAIN_SRC) $(TARGET).cc polybench.o $(POLYBENCH_FLAGS) -DPOLYBENCH_DUMP_ARRAYS -o $(NAME)_dump.o
+	$(CXX) $(VFLAGSMV) $(MAIN_SRC) $(TARGET)_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -DPOLYBENCH_DUMP_ARRAYS -o $(NAME)_macveth_dump.o
 
 clean:
 	rm *.o *.optrpt

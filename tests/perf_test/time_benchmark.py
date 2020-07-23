@@ -53,7 +53,7 @@ def calculate_mean(bench, executions):
             print("[WARNING] Deviation too high = " + str(r))
 
     m = pd.concat(df_arr).groupby(level=0).mean()
-    m['name'] = name + "_" + features
+    m['name'] = name + "_" + [str(i) for i in features]
     m['gflops'] = m.flops/m.time/1e9
     m['compilation'] = comp_opts
     m['macveth'] = macveth
