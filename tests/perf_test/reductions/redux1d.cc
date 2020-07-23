@@ -21,8 +21,7 @@ long redux_flops(red_vec(v0)) {
 
 void redux(red_vec(v0)) {
   int width = v0.size();
-  int a, b, x, d;
-  int h = 0;
+
   DATA_TYPE sum = 0.0;
   DATA_TYPE alpha = 1.1f;
 #pragma macveth w 8
@@ -39,13 +38,8 @@ long redux2_flops(red_vec(v0)) {
   return channel * 2 * 2;
 }
 
-void redux2(red_vec(v0)) {
+void redux2(red_vec(v0), red_vec(v1)) {
   int width = v0.size();
-  int a, b, x, d;
-  int h = 0;
-
-  DATA_TYPE v1[width];
-  init_array(v1, width);
 
   DATA_TYPE sum0 = 0.0;
   DATA_TYPE sum1 = 0.0;
@@ -54,8 +48,15 @@ void redux2(red_vec(v0)) {
 #pragma macveth w 8
   for (int w = 0; w < width; ++w) {
     sum0 = sum0 + v0[w] * alpha;
+  }
+  for (int w = 0; w < width; ++w) {
     sum1 = sum1 + v1[w] * beta;
   }
+
+  // for (int w = 0; w < width; ++w) {
+  //   sum0 = sum0 + v0[w] * alpha;
+  //   sum1 = sum1 + v1[w] * beta;
+  // }
 #pragma endmacveth
   v0[0] = sum0;
   v0[1] = sum1;
@@ -67,15 +68,8 @@ long redux4_flops(red_vec(v0)) {
   return channel * 2 * 4;
 }
 
-void redux4(red_vec(v0)) {
+void redux4(red_vec(v0), red_vec(v1), red_vec(v2), red_vec(v3)) {
   int width = v0.size();
-
-  DATA_TYPE v1[width];
-  init_array(v1, width);
-  DATA_TYPE v2[width];
-  init_array(v2, width);
-  DATA_TYPE v3[width];
-  init_array(v3, width);
 
   DATA_TYPE sum0 = 0.0;
   DATA_TYPE sum1 = 0.0;
@@ -84,12 +78,26 @@ void redux4(red_vec(v0)) {
   DATA_TYPE alpha = 1.1f;
   DATA_TYPE beta = 0.9f;
 #pragma macveth w 8
+
   for (int w = 0; w < width; ++w) {
     sum0 = sum0 + v0[w] * alpha;
+  }
+  for (int w = 0; w < width; ++w) {
     sum1 = sum1 + v1[w] * beta;
-    sum2 = sum2 + v2[w] * beta;
+  }
+  for (int w = 0; w < width; ++w) {
+    sum2 = sum2 + v2[w] * alpha;
+  }
+  for (int w = 0; w < width; ++w) {
     sum3 = sum3 + v3[w] * beta;
   }
+
+  // for (int w = 0; w < width; ++w) {
+  //   sum0 = sum0 + v0[w] * alpha;
+  //   sum1 = sum1 + v1[w] * beta;
+  //   sum2 = sum2 + v2[w] * beta;
+  //   sum3 = sum3 + v3[w] * beta;
+  // }
 #pragma endmacveth
   v0[0] = sum0;
   v0[1] = sum1;
@@ -103,23 +111,9 @@ long redux8_flops(red_vec(v0)) {
   return channel * 2 * 8;
 }
 
-void redux8(red_vec(v0)) {
+void redux8(red_vec(v0), red_vec(v1), red_vec(v2), red_vec(v3), red_vec(v4),
+            red_vec(v5), red_vec(v6), red_vec(v7)) {
   int width = v0.size();
-
-  DATA_TYPE v1[width];
-  init_array(v1, width);
-  DATA_TYPE v2[width];
-  init_array(v2, width);
-  DATA_TYPE v3[width];
-  init_array(v3, width);
-  DATA_TYPE v4[width];
-  init_array(v4, width);
-  DATA_TYPE v5[width];
-  init_array(v5, width);
-  DATA_TYPE v6[width];
-  init_array(v6, width);
-  DATA_TYPE v7[width];
-  init_array(v7, width);
 
   DATA_TYPE sum0 = 0.0;
   DATA_TYPE sum1 = 0.0;
@@ -134,14 +128,42 @@ void redux8(red_vec(v0)) {
 #pragma macveth w 8
   for (int w = 0; w < width; ++w) {
     sum0 = sum0 + v0[w] * alpha;
+  }
+  for (int w = 0; w < width; ++w) {
     sum1 = sum1 + v1[w] * beta;
+  }
+  for (int w = 0; w < width; ++w) {
     sum2 = sum2 + v2[w] * alpha;
+  }
+  for (int w = 0; w < width; ++w) {
     sum3 = sum3 + v3[w] * beta;
+  }
+  for (int w = 0; w < width; ++w) {
     sum4 = sum4 + v4[w] * alpha;
+  }
+  for (int w = 0; w < width; ++w) {
     sum5 = sum5 + v5[w] * beta;
+  }
+  for (int w = 0; w < width; ++w) {
     sum6 = sum6 + v6[w] * alpha;
+  }
+  for (int w = 0; w < width; ++w) {
     sum7 = sum7 + v7[w] * beta;
   }
+
+  /*
+    for (int w = 0; w < width; ++w) {
+      sum0 = sum0 + v0[w] * alpha;
+      sum1 = sum1 + v1[w] * beta;
+      sum2 = sum2 + v2[w] * alpha;
+      sum3 = sum3 + v3[w] * beta;
+      sum4 = sum4 + v4[w] * alpha;
+      sum5 = sum5 + v5[w] * beta;
+      sum6 = sum6 + v6[w] * alpha;
+      sum7 = sum7 + v7[w] * beta;
+    }
+  */
+
 #pragma endmacveth
   v0[0] = sum0;
   v0[1] = sum1;

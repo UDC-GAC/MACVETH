@@ -192,13 +192,14 @@ long redux_flops(red_vec(v));
 void redux(red_vec(v));
 
 long redux2_flops(red_vec(v));
-void redux2(red_vec(v));
+void redux2(red_vec(v0), red_vec(v1));
 
 long redux4_flops(red_vec(v));
-void redux4(red_vec(v));
+void redux4(red_vec(v0), red_vec(v1), red_vec(v2), red_vec(v3));
 
 long redux8_flops(red_vec(v));
-void redux8(red_vec(v));
+void redux8(red_vec(v0), red_vec(v1), red_vec(v2), red_vec(v3), red_vec(v4),
+            red_vec(v5), red_vec(v6), red_vec(v7));
 
 long redux_fma_flops(red_vec(v));
 void redux_fma(red_vec(v));

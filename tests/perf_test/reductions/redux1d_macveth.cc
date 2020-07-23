@@ -8,12 +8,6 @@
 #include <stdio.h>
 #include <vector>
 
-void init_array(DATA_TYPE *A, int n) {
-  for (int i = 0; i < n; ++i) {
-    A[i] = i + 0.1;
-  }
-}
-
 // ---------------------------------------------
 long redux_flops(red_vec(v0)) {
   int channel = v0.size();
@@ -22,8 +16,7 @@ long redux_flops(red_vec(v0)) {
 
 void redux(red_vec(v0)) {
   int width = v0.size();
-  int a, b, x, d;
-  int h = 0;
+
   DATA_TYPE sum = 0.0;
   DATA_TYPE alpha = 1.1f;
 #pragma macveth w 8
@@ -61,13 +54,8 @@ long redux2_flops(red_vec(v0)) {
   return channel * 2 * 2;
 }
 
-void redux2(red_vec(v0)) {
+void redux2(red_vec(v0), red_vec(v1)) {
   int width = v0.size();
-  int a, b, x, d;
-  int h = 0;
-
-  DATA_TYPE v1[width];
-  init_array(v1, width);
 
   DATA_TYPE sum0 = 0.0;
   DATA_TYPE sum1 = 0.0;
@@ -116,15 +104,8 @@ long redux4_flops(red_vec(v0)) {
   return channel * 2 * 4;
 }
 
-void redux4(red_vec(v0)) {
+void redux4(red_vec(v0), red_vec(v1), red_vec(v2), red_vec(v3)) {
   int width = v0.size();
-
-  DATA_TYPE v1[width];
-  init_array(v1, width);
-  DATA_TYPE v2[width];
-  init_array(v2, width);
-  DATA_TYPE v3[width];
-  init_array(v3, width);
 
   DATA_TYPE sum0 = 0.0;
   DATA_TYPE sum1 = 0.0;
@@ -138,6 +119,7 @@ void redux4(red_vec(v0)) {
       __mv_vop3, __mv_vop4, __mv_accm1, __mv_vop11, __mv_vop7, __mv_vop6,
       __mv_accm2, __mv_vop12, __mv_vop9, __mv_vop8, __mv_accm3, __mv_vop13;
   float __mv_arr0[8];
+
   __mv_accm0 = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, sum0); // latency = 1
   __mv_accm1 = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, sum1); // latency = 1
   __mv_accm2 = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, sum2); // latency = 1
@@ -193,23 +175,24 @@ long redux8_flops(red_vec(v0)) {
   return channel * 2 * 8;
 }
 
-void redux8(red_vec(v0)) {
+void redux8(red_vec(v0), red_vec(v1), red_vec(v2), red_vec(v3), red_vec(v4),
+            red_vec(v5), red_vec(v6), red_vec(v7)) {
   int width = v0.size();
 
-  DATA_TYPE v1[width];
-  init_array(v1, width);
-  DATA_TYPE v2[width];
-  init_array(v2, width);
-  DATA_TYPE v3[width];
-  init_array(v3, width);
-  DATA_TYPE v4[width];
-  init_array(v4, width);
-  DATA_TYPE v5[width];
-  init_array(v5, width);
-  DATA_TYPE v6[width];
-  init_array(v6, width);
-  DATA_TYPE v7[width];
-  init_array(v7, width);
+  // DATA_TYPE v1[width];
+  // init_array(v1, width);
+  // DATA_TYPE v2[width];
+  // init_array(v2, width);
+  // DATA_TYPE v3[width];
+  // init_array(v3, width);
+  // DATA_TYPE v4[width];
+  // init_array(v4, width);
+  // DATA_TYPE v5[width];
+  // init_array(v5, width);
+  // DATA_TYPE v6[width];
+  // init_array(v6, width);
+  // DATA_TYPE v7[width];
+  // init_array(v7, width);
 
   DATA_TYPE sum0 = 0.0;
   DATA_TYPE sum1 = 0.0;
