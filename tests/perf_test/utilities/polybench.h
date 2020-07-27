@@ -279,7 +279,6 @@ extern const unsigned int polybench_papi_eventlist[];
   polybench_papi_counters_threadid = x;
 #define polybench_start_instruments                                            \
   polybench_prepare_instruments();                                             \
-  polybench_papi_init();                                                       \
   int evid;                                                                    \
   for (evid = 0; polybench_papi_eventlist[evid] != 0; evid++) {                \
     if (polybench_papi_start_counter(evid))                                    \
@@ -287,8 +286,7 @@ extern const unsigned int polybench_papi_eventlist[];
 
 #define polybench_stop_instruments                                             \
   polybench_papi_stop_counter(evid);                                           \
-  }                                                                            \
-  polybench_papi_close();
+  }
 
 #define polybench_print_instruments polybench_papi_print();
 #endif

@@ -4,7 +4,7 @@ TARGET=layers
 
 include ../MakeFlags.mk
 
-NAME=$(COMP)_$(VECT)_$(BINARY_NAME)
+NAME=$(COMP)_$(VECT)_$(BINARY_NAME)_$(TYPE)
 
 .PHONY: clean
 

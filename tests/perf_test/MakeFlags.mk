@@ -1,4 +1,4 @@
-POLYBENCH_FLAGS=-DPOLYBENCH_TIME -I. -L/share/apps/papi/gnu8/6.0.0/lib -lpapi -I ../utilities
+POLYBENCH_FLAGS= -g -DPOLYBENCH_$(TYPE) -I. -L/share/apps/papi/gnu8/6.0.0/lib -lpapi -I ../utilities
 
 ifeq ($(VECT),fast)
 	VF= -Ofast

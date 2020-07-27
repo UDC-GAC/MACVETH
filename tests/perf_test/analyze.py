@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 if (len(sys.argv) < 6):
-    print("Usage: python3 comp_exec_analyze.py <bench> <arch> <comp> <ops> <output>")
+    print("Usage: python3 analyze.py <bench> <arch> <comp> <ops> <output>")
     exit(0)
-bench = sys.argv[1]
 
+bench = sys.argv[1]
 arch = sys.argv[2]
 
 bench_dir = bench + "/"
-results_dir = "results_" + arch + "/" + bench_dir
+results_dir = "results_" + arch + "/results/" + bench_dir
 output_dir = "output/"
 
 os.system("mkdir -p %s" % output_dir)

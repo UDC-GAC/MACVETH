@@ -259,6 +259,7 @@ void polybench_papi_stop_counter(int evid) {
       int retval;
       long_long values[1];
       values[0] = 0;
+
       if ((retval = PAPI_read(polybench_papi_eventset, &values[0])) != PAPI_OK)
         test_fail(__FILE__, __LINE__, "PAPI_read", retval);
 
@@ -315,7 +316,7 @@ void polybench_papi_print() {
 
 void polybench_prepare_instruments() {
 #ifndef POLYBENCH_NO_FLUSH_CACHE
-  polybench_flush_cache();
+  // polybench_flush_cache();
 #endif
 #ifdef POLYBENCH_LINUX_FIFO_SCHEDULER
   polybench_linux_fifo_scheduler();

@@ -12,8 +12,8 @@ all: $(TARGET)
 
 $(TARGET):
 	$(CC) -O3 -c $(POLYBENCH_FLAGS) ../utilities/polybench.c
-	$(CXX) $(VFLAGS) $(MAIN_SRC) redux1d.cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME).o
-	$(CXX) $(VFLAGSMV) $(MAIN_SRC) redux1d_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME)_macveth.o
+	$(CXX) $(VFLAGS) $(MAIN_SRC) redux1d.cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME)_$(TYPE).o
+	$(CXX) $(VFLAGSMV) $(MAIN_SRC) redux1d_macveth$(SUFFIX).cc polybench.o $(POLYBENCH_FLAGS) -o $(NAME)_$(TYPE)_macveth.o
 
 clean:
 	rm *.o *.optrpt

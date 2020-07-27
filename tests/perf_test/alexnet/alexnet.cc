@@ -147,6 +147,7 @@ int main(int argc, char **argv) {
 #ifndef POLYBENCH_PAPI
   printf("name,features,flops,time,gflops\n");
 #else
+  polybench_papi_init();
   printf("name,features,flops,");
   int i = 0;
   while (__polybench_papi_eventlist[i] != NULL) {
@@ -437,5 +438,10 @@ int main(int argc, char **argv) {
   polybench_prevent_dce(print_1darray(fc8_rst.size(), fc8_rst));
   // printf("softmax done\n");z
   // print_vec("fc8_softmax_rst.txt", fc8_rst);
+
+#ifdef POLYBENCH_PAPI
+  // polybench_papi_close();
+#endif
+
   return 0;
 }
