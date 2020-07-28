@@ -271,6 +271,7 @@
 
 /* PAPI support. */
 #ifdef POLYBENCH_PAPI
+#include <papi.h>
 extern const unsigned int polybench_papi_eventlist[];
 #undef polybench_start_instruments
 #undef polybench_stop_instruments
@@ -284,11 +285,19 @@ extern const unsigned int polybench_papi_eventlist[];
     if (polybench_papi_start_counter(evid))                                    \
       continue;
 
+#define polybench_start_instruments_single(evid)                               \
+  if (polybench_papi_start_counter(evid))                                      \
+    continue;
+
+#define polybench_stop_instruments_single(evid)                                \
+  polybench_papi_stop_counter(evid);
+
 #define polybench_stop_instruments                                             \
   polybench_papi_stop_counter(evid);                                           \
   }
 
 #define polybench_print_instruments polybench_papi_print();
+#define polybench_get_value(evid) polybench_get_val(evid)
 #endif
 
 BEGIN_C_DECLS
@@ -314,6 +323,7 @@ extern void polybench_timer_print_flops(long flops);
 #ifdef POLYBENCH_PAPI
 extern int polybench_papi_start_counter(int evid);
 extern void polybench_papi_stop_counter(int evid);
+extern long_long polybench_get_val(int evid);
 extern void polybench_papi_init();
 extern void polybench_papi_close();
 extern void polybench_papi_print();

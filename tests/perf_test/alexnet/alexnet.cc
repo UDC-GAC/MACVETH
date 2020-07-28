@@ -6,6 +6,9 @@
 
 #include "layers.h"
 #include "polybench.h"
+#ifdef POLYBENCH_PAPI
+#include <papi.h>
+#endif
 
 #define release4D(name) vector<vector<vector<vector<float>>>>(name).swap(name)
 #define release3D(name) vector<vector<vector<float>>>(name).swap(name)
@@ -54,6 +57,31 @@
 #define POW_FUN(x, y) pow(x, y)
 #endif
 
+#ifdef POLYBENCH_PAPI
+struct T {
+  char *name;
+  char *feat;
+  long flops;
+  long_long counters[128];
+} values_t;
+
+struct T values[128];
+
+long long n_func = 0;
+
+void update_row(char *name, char *features, long flops, int t, long_long val) {
+  if (t == 0) {
+    struct T tmp;
+    tmp.name = name;
+    tmp.feat = features;
+    tmp.flops = flops;
+    tmp.counters[t] = val;
+    values[n_func] = tmp;
+    return;
+  }
+  values[n_func].counters[t] = val;
+}
+#endif
 /**
  * Macro to encapsulate a function call in the main function to enable
  * its profiling with the PolyBench harness.
@@ -61,7 +89,7 @@
  *
  */
 #ifndef POLYBENCH_PAPI
-#define polybench_profile_one_function(X, name, features, flops)               \
+#define polybench_profile_one_function(X, name, features, flops, i)            \
   {                                                                            \
     polybench_prepare_instruments;                                             \
     polybench_start_instruments;                                               \
@@ -71,14 +99,13 @@
     polybench_print_instruments_flops(flops);                                  \
   }
 #else
-#define polybench_profile_one_function(X, name, features, flops)               \
+#define polybench_profile_one_function(X, name, features, flops, t)            \
   {                                                                            \
-    polybench_prepare_instruments;                                             \
-    polybench_start_instruments;                                               \
+    polybench_start_instruments_single(t);                                     \
     X;                                                                         \
-    polybench_stop_instruments;                                                \
-    printf("%s,%s,%ld,", name, features, flops);                               \
-    polybench_print_instruments;                                               \
+    polybench_stop_instruments_single(t);                                      \
+    update_row(name, features, flops, t, polybench_get_value(t));              \
+    n_func++;                                                                  \
   }
 #endif
 
@@ -144,12 +171,11 @@ char *__polybench_papi_eventlist[] = {
  *
  */
 int main(int argc, char **argv) {
+  int i = 0;
 #ifndef POLYBENCH_PAPI
   printf("name,features,flops,time,gflops\n");
 #else
-  polybench_papi_init();
   printf("name,features,flops,");
-  int i = 0;
   while (__polybench_papi_eventlist[i] != NULL) {
     if (__polybench_papi_eventlist[i + 1] == NULL) {
       printf("%s", __polybench_papi_eventlist[i++]);
@@ -158,6 +184,11 @@ int main(int argc, char **argv) {
     }
   }
   printf("\n");
+  i = 0;
+  polybench_papi_init();
+  while (__polybench_papi_eventlist[i] != NULL) {
+    n_func = 0;
+    polybench_prepare_instruments();
 #endif
   // read image
   vector3D(image, 3, 227, 227);
@@ -181,13 +212,14 @@ int main(int argc, char **argv) {
                             conv1_rst, "conv1");
   polybench_profile_one_function(convolution(image, stride, pad, conv1_weights,
                                              conv1_bias, conv1_rst, "conv1"),
-                                 "convolution", "conv1", flops);
+                                 "convolution", "conv1", flops, i);
   // free space
   // printf("conv1 done\n");
 
   /////////////relu1///////////////
   flops = relu_flops(conv1_rst);
-  polybench_profile_one_function(relu(conv1_rst), "relu", "conv1_rst", flops);
+  polybench_profile_one_function(relu(conv1_rst), "relu", "conv1_rst", flops,
+                                 i);
   // polybench_prevent_dce(print_3darray(conv1_rst.size(), conv1_rst[0].size(),
   //                                     conv1_rst[0][0].size(), conv1_rst));
 
@@ -204,7 +236,7 @@ int main(int argc, char **argv) {
                         "MAX");
   polybench_profile_one_function(
       pooling(conv1_rst, pooling_kernel_size, stride, pad, pool1_rst, "MAX"),
-      "pooling", "conv1_rst_max", flops);
+      "pooling", "conv1_rst_max", flops, i);
 
   // printf("pool1 done\n");
 
@@ -231,18 +263,19 @@ int main(int argc, char **argv) {
   polybench_profile_one_function(convolution(pool1_rst_1, stride, pad,
                                              conv2_weights_1, conv2_bias_1,
                                              conv2_rst_1, "conv2_1"),
-                                 "convolution", "conv2_1", flops);
+                                 "convolution", "conv2_1", flops, i);
   flops = convolution_flops(pool1_rst_2, stride, pad, conv2_weights_2,
                             conv2_bias_2, conv2_rst_2, "conv2_2");
   polybench_profile_one_function(convolution(pool1_rst_2, stride, pad,
                                              conv2_weights_2, conv2_bias_2,
                                              conv2_rst_2, "conv2_2"),
-                                 "convolution", "conv2_2", flops);
+                                 "convolution", "conv2_2", flops, i);
   // printf("conv2 done\n");
 
   ///////////////relu2////////////////
   flops = relu_flops(conv2_rst);
-  polybench_profile_one_function(relu(conv2_rst), "relu", "conv2_rst", flops);
+  polybench_profile_one_function(relu(conv2_rst), "relu", "conv2_rst", flops,
+                                 i);
   polybench_prevent_dce(print_3darray(conv2_rst.size(), conv2_rst[0].size(),
                                       conv2_rst[0][0].size(), conv2_rst));
   // printf("relu2 done\n");
@@ -254,7 +287,7 @@ int main(int argc, char **argv) {
   int local_size = 1;
   flops = lrn_flops(conv2_rst, k, alpha, beta, local_size);
   polybench_profile_one_function(lrn(conv2_rst, k, alpha, beta, local_size),
-                                 "lrn", "conv2_rst", flops);
+                                 "lrn", "conv2_rst", flops, i);
   // printf("lrn2 done\n");
 
   ////////////////pool2////////////////
@@ -265,7 +298,7 @@ int main(int argc, char **argv) {
                         "MAX");
   polybench_profile_one_function(
       pooling(conv2_rst, pooling_kernel_size, stride, pad, pool2_rst, "MAX"),
-      "pooling", "conv2_rst_max", flops);
+      "pooling", "conv2_rst_max", flops, i);
   // printf("pool2 done\n");
 
   ////////////////conv3////////////////
@@ -281,13 +314,14 @@ int main(int argc, char **argv) {
   polybench_profile_one_function(convolution(pool2_rst, stride, pad,
                                              conv3_weights, conv3_bias,
                                              conv3_rst, "conv3"),
-                                 "convolution", "conv3", flops);
+                                 "convolution", "conv3", flops, i);
   // printf("conv3 done\n");
 
   ////////////////relu3////////////////
 
   flops = relu_flops(conv3_rst);
-  polybench_profile_one_function(relu(conv3_rst), "relu", "conv3_rst", flops);
+  polybench_profile_one_function(relu(conv3_rst), "relu", "conv3_rst", flops,
+                                 i);
   // polybench_prevent_dce(print_3darray(conv3_rst.size(), conv3_rst[0].size(),
   //                                     conv3_rst[0][0].size(), conv3_rst));
   // printf("relu3 done\n");
@@ -313,26 +347,26 @@ int main(int argc, char **argv) {
   polybench_profile_one_function(convolution(conv3_rst_1, stride, pad,
                                              conv4_weights_1, conv4_bias_1,
                                              conv4_rst_1, "conv4_1"),
-                                 "convolution", "conv4_1", flops);
+                                 "convolution", "conv4_1", flops, i);
   flops = convolution_flops(conv3_rst_2, stride, pad, conv4_weights_2,
                             conv4_bias_2, conv4_rst_2, "conv4_2");
   polybench_profile_one_function(convolution(conv3_rst_2, stride, pad,
                                              conv4_weights_2, conv4_bias_2,
                                              conv4_rst_2, "conv4_2"),
-                                 "convolution", "conv4_2", flops);
+                                 "convolution", "conv4_2", flops, i);
   // printf("conv4 done \n");
 
   ////////////////relu4////////////////
   flops = relu_flops(conv4_rst_1);
   polybench_profile_one_function(relu(conv4_rst_1), "relu", "conv4_rst_1",
-                                 flops);
+                                 flops, i);
   // polybench_prevent_dce(print_3darray(conv4_rst_1.size(),
   // conv4_rst_1[0].size(),
   //                                     conv4_rst_1[0][0].size(),
   //                                     conv4_rst_1));
   flops = relu_flops(conv4_rst_2);
   polybench_profile_one_function(relu(conv4_rst_2), "relu", "conv4_rst_2",
-                                 flops);
+                                 flops, i);
   // polybench_prevent_dce(print_3darray(conv4_rst_2.size(),
   // conv4_rst_2[0].size(),
   //                                     conv4_rst_2[0][0].size(),
@@ -360,19 +394,19 @@ int main(int argc, char **argv) {
   polybench_profile_one_function(convolution(conv4_rst_1, stride, pad,
                                              conv5_weights_1, conv5_bias_1,
                                              conv5_rst_1, "conv5_1"),
-                                 "convolution", "conv5_1", flops);
+                                 "convolution", "conv5_1", flops, i);
   flops = convolution_flops(conv4_rst_2, stride, pad, conv5_weights_2,
                             conv5_bias_2, conv5_rst_2, "conv5_2");
   polybench_profile_one_function(convolution(conv4_rst_2, stride, pad,
                                              conv5_weights_2, conv5_bias_2,
                                              conv5_rst_2, "conv5_2"),
-                                 "convolution", "conv5_2", flops);
+                                 "convolution", "conv5_2", flops, i);
   // printf("conv5 done\n");
 
   ////////////////relu5////////////////
   flops = relu_flops(conv5_rst);
-  polybench_profile_one_function(relu(conv5_rst), "relu", "conv5_rst",
-                                 flops); // printf("relu5 done\n");
+  polybench_profile_one_function(relu(conv5_rst), "relu", "conv5_rst", flops,
+                                 i); // printf("relu5 done\n");
 
   ////////////////pool5////////////////
   pooling_kernel_size = 3;
@@ -383,7 +417,7 @@ int main(int argc, char **argv) {
 
   polybench_profile_one_function(
       pooling(conv5_rst, pooling_kernel_size, stride, pad, pool5_rst, "MAX"),
-      "pooling", "conv5_rst_max", flops);
+      "pooling", "conv5_rst_max", flops, i);
   // printf("pool5 done\n");
 
   ////////////////fc6//////////////// 3dimensional
@@ -395,13 +429,8 @@ int main(int argc, char **argv) {
   flops = fullconnection_flops(pool5_rst, fc6_weights, fc6_bias, fc6_rst);
   polybench_profile_one_function(
       fullconnection(pool5_rst, fc6_weights, fc6_bias, fc6_rst),
-      "fullconnection", "pool5_rst", flops);
+      "fullconnection", "pool5_rst", flops, i);
   // printf("fc6 done\n");
-
-  ////////////////relu6////////////////
-  flops = relu_flops(fc6_rst);
-  polybench_profile_one_function(relu(fc6_rst), "relu", "fc6_rst", flops);
-  // printf("relu6 done");
 
   ////////////////fc7//////////////// 2dimensional + bias
   channels = num_output, num_output = 4096;
@@ -412,12 +441,12 @@ int main(int argc, char **argv) {
   flops = fullconnection_flops(fc6_rst, fc7_weights, fc7_bias, fc7_rst);
   polybench_profile_one_function(
       fullconnection(fc6_rst, fc7_weights, fc7_bias, fc7_rst), "fullconnection",
-      "fc6_rst", flops);
+      "fc6_rst", flops, i);
   // printf("fc7 done\n");
 
   ////////////////relu7////////////////
   flops = relu_flops(fc7_rst);
-  polybench_profile_one_function(relu(fc7_rst), "relu", "fc7_rst", flops);
+  polybench_profile_one_function(relu(fc7_rst), "relu", "fc7_rst", flops, i);
   // printf("relu7 done\n");
 
   ////////////////fc8//////////////// 2dimensional
@@ -429,19 +458,34 @@ int main(int argc, char **argv) {
   flops = fullconnection_flops(fc7_rst, fc8_weights, fc8_bias, fc8_rst);
   polybench_profile_one_function(
       fullconnection(fc7_rst, fc8_weights, fc8_bias, fc8_rst), "fullconnection",
-      "fc7_rst", flops);
+      "fc7_rst", flops, i);
   // printf("fc8 done\n");
 
   ////////////////softmax////////////////
   flops = softmax_flops(fc8_rst);
-  polybench_profile_one_function(softmax(fc8_rst), "softmax", "fc8_rst", flops);
+  polybench_profile_one_function(softmax(fc8_rst), "softmax", "fc8_rst", flops,
+                                 i);
   polybench_prevent_dce(print_1darray(fc8_rst.size(), fc8_rst));
   // printf("softmax done\n");z
   // print_vec("fc8_softmax_rst.txt", fc8_rst);
 
 #ifdef POLYBENCH_PAPI
-  // polybench_papi_close();
+  i++;
+}
+int n_count = i;
+for (int n = 0; n < n_func; ++n) {
+  struct T val = values[n];
+  printf("%s,%s,%ld,", val.name, val.feat, val.flops);
+  for (int c = 0; c < n_count; ++c) {
+    printf("%llu", val.counters[c]);
+    if (c + 1 < n_count) {
+      printf(",");
+    }
+  }
+  printf("\n");
+}
+polybench_papi_close();
 #endif
 
-  return 0;
+return 0;
 }

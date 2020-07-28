@@ -12,8 +12,6 @@
 #include <omp.h>
 #endif
 
-#include <time.h>
-
 #if defined(POLYBENCH_PAPI)
 #undef POLYBENCH_PAPI
 #include "polybench.h"
@@ -311,12 +309,32 @@ void polybench_papi_print() {
 #endif
 }
 
+long_long polybench_get_val(int evid) {
+  int verbose = 0;
+#ifdef POLYBENCH_PAPI_VERBOSE
+  verbose = 1;
+#endif
+#ifdef _OPENMP
+#pragma omp parallel
+  {
+    if (omp_get_thread_num() == polybench_papi_counters_threadid) {
+      if (verbose)
+        printf("On thread %d:\n", polybench_papi_counters_threadid);
+#endif
+      return polybench_papi_values[evid];
+#ifdef _OPENMP
+    }
+  }
+#pragma omp barrier
+#endif
+}
+
 #endif
 /* ! POLYBENCH_PAPI */
 
 void polybench_prepare_instruments() {
 #ifndef POLYBENCH_NO_FLUSH_CACHE
-  // polybench_flush_cache();
+  polybench_flush_cache();
 #endif
 #ifdef POLYBENCH_LINUX_FIFO_SCHEDULER
   polybench_linux_fifo_scheduler();
