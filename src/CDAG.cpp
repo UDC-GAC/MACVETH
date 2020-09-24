@@ -56,7 +56,7 @@ repeat:
   // This is where magic should happen
   while (!NL.empty()) {
     if ((Cursor > 0) &&
-        (NL.front()->getScop() != VOps[Cursor - 1]->getScop())) {
+        (NL.front()->getScop()[0] != VOps[Cursor - 1]->getScop()[0])) {
       break;
     }
     // Consume the first one
@@ -142,27 +142,18 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
   // Working with a copy
   Node::NodeListType NL(NList);
 
-  // FIXME: Detect reductions. Is this even needed right now? I mean,
-  // Utils::printDebug("CDAG", "Detecting reductions");
+  //
+  Utils::printDebug("CDAG", "Detecting reductions");
   Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
   if (NRedux.size() == 0) {
     Utils::printDebug("CDAG", "No reductions detected");
   }
-  // NL.splice(NL.end(), NRedux);
-  // std::sort(NL.begin(), NL.end(), [](Node *A, Node *B) {
-  //   return ((A->getTacID() <= B->getTacID()) &&
-  //           (A->getSchedInfo().FreeSched <= B->getSchedInfo().FreeSched) &&
-  //           (A->getScop() <= B->getScop()));
-  // });
-  // Consume rest of nodes in a general form
+
   Utils::printDebug("CDAG", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
   Utils::printDebug("CDAG", "Reductions case");
   VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
-  // Reordering by TACID
-  // VList.sort([](VectorIR::VectorOP OP1, VectorIR::VectorOP OP2) {
-  //   return OP1.Order < OP2.Order;
-  // });
+
   return VList;
 }
 
