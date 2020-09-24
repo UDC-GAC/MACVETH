@@ -151,29 +151,6 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
   }
 }
 
-// // --------------------------------------------
-// StmtWrapper *loopContainsSIMD(SIMDGenerator::SIMDInst SI,
-//                               std::list<StmtWrapper *> SL) {
-//   for (auto S : SL) {
-//     if (S->isLoop()) {
-//       for (auto B : S->getListStmt()) {
-//         if (B->isLoop()) {
-//           auto L = loopContainsSIMD(SI, B->getListStmt());
-//           if (L != NULL) {
-//             return B;
-//           }
-//         }
-//         for (auto T : B->getTacList()) {
-//           if (SI.TacID == T.getTacID()) {
-//             return S;
-//           }
-//         }
-//       }
-//     }
-//   }
-//   return NULL;
-// }
-
 // ---------------------------------------------
 bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
                                               std::list<StmtWrapper *> SL) {
@@ -279,9 +256,17 @@ void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID) {
 // ---------------------------------------------
 void MVFuncVisitor::addHeaders(std::list<std::string> S, FileID FID) {
   auto SM = Utils::getSourceMgr();
+  if (S.size() > 0) {
+    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
+                       "// begin MACVETH: headers added\n", true, true);
+  }
   for (auto I : S) {
     Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
                        "#include <" + I + ">\n", true, true);
+  }
+  if (S.size() > 0) {
+    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1), "// end MACVETH\n",
+                       true, true);
   }
 }
 
@@ -308,7 +293,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     return;
   }
 
-  // Clear all kind of mappings, since this is a new function
+  // FIXME: Clear all kind of mappings, since this is a new function
   // clearAllMappings();
 
   std::list<std::string> DimsDeclFunc = {};
@@ -402,7 +387,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       // delete G;
     }
 
-    // Be clean
+    // FIXME: Be clean
     // for (auto SWrap : SL) {
     //   delete SWrap;
     // }
