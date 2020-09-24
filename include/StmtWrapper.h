@@ -70,6 +70,8 @@ public:
     std::string StrInitVal = "";
     /// Upperbound value (-1 if not known)
     long UpperBound = 0;
+    /// Comparator upperbound
+    BinaryOperator::Opcode UpperBoundComp = BinaryOperator::Opcode::BO_LT;
     /// Upperbound as string
     std::string StrUpperBound = "";
     /// Stride or step
@@ -184,7 +186,7 @@ public:
   /// Get the name of the loop surrounding this Stmt
   std::string getInnerLoopName() { return this->InnerLoopName; }
 
-  void setNotVectorized() { this->Vectorized = false; }
+    void setNotVectorized() { this->Vectorized = false; }
   bool isVectorized() { return this->Vectorized; }
 
   /// Get scop

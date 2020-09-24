@@ -25,7 +25,7 @@ public:
   /// new naming
   static inline std::map<std::string, std::string> MapRegToVReg;
   /// Keeping track of the loads in the program
-  static inline std::list<std::tuple<int, std::string>> MapLoads;
+  static inline std::list<std::tuple<std::vector<int>, std::string>> MapLoads;
   /// Keeping track of the stores in the program
   static inline std::list<std::string> MapStores;
 

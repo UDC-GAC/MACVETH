@@ -2,9 +2,8 @@
  * File					 : src/TAC.cpp
  * Author				 : Marcos Horro
  * Date					 : Wed 03 Jun 2020 04:24 +02:00
- *
  * Last Modified : Wed 10 Jun 2020 10:21 +02:00
- * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal)
  *
  * MIT License
  *
@@ -36,6 +35,7 @@
 #include "include/MVExpr/MVExprLiteral.h"
 #include "include/MVExpr/MVExprVar.h"
 #include "clang/AST/Expr.h"
+#include "clang/Basic/LangOptions.h"
 #include "clang/Lex/Lexer.h"
 #include <llvm-10/llvm/Support/ErrorHandling.h>
 
@@ -141,11 +141,29 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   MVOp Op;
   auto S = dyn_cast<BinaryOperator>(ST);
   auto F = dyn_cast<CallExpr>(ST);
+  // This is something like Lhs [+-]= Rhs
   if (S) {
     S1 = S->getLHS()->IgnoreImpCasts();
     S2 = S->getRHS()->IgnoreImpCasts();
     clang::BinaryOperator *LhsBin = NULL;
     clang::BinaryOperator *RhsBin = NULL;
+    Op = MVOp(S->getOpcode());
+    if (S->getOpcode() == BinaryOperator::Opcode::BO_AddAssign) {
+      auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Add,
+                                         S1->getType(), S1->getValueKind(),
+                                         S1->getObjectKind(), S1->getBeginLoc(),
+                                         clang::FPOptions());
+      S2 = &NewOp;
+      Op = MVOp(BinaryOperator::Opcode::BO_Assign);
+    }
+    if (S->getOpcode() == BinaryOperator::Opcode::BO_SubAssign) {
+      auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Sub,
+                                         S1->getType(), S1->getValueKind(),
+                                         S1->getObjectKind(), S1->getBeginLoc(),
+                                         clang::FPOptions());
+      S2 = &NewOp;
+      Op = MVOp(BinaryOperator::Opcode::BO_Assign);
+    }
     if ((LhsBin = getBinOp(S1))) {
       S1 = LhsBin;
     }
@@ -154,7 +172,6 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     }
     IsTerminalS1 = isTerminal(S1);
     IsTerminalS2 = isTerminal(S2);
-    Op = MVOp(S->getOpcode());
   } else if (F) {
     auto Args = F->getArgs();
     assert((F->getNumArgs() <= 2) && "Function not binary!! Not supported yet");
@@ -179,6 +196,9 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     }
     Op = MVOp(Utils::getStringFromExpr(F->getCallee()));
   }
+  Utils::printDebug("TAC", "S1 = " + std::to_string(S1 != nullptr));
+  Utils::printDebug("TAC", "S2 = " + std::to_string(S2 != nullptr));
+  Utils::printDebug("TAC", "Unary = " + std::to_string(IsUnary));
 
   assert(((S1 != nullptr) && ((IsUnary) || (S2 != nullptr))) &&
          "Something went wrong...");

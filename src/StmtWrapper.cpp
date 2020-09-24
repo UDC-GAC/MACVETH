@@ -5,7 +5,7 @@
  * Last Modified Date: Lun 23 Mar 2020 18:29:59 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
+ * Copyright (c) 2019-2020 Marcos Horro <marcos.horro@udc.gal>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -88,7 +88,6 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
       Utils::printDebug("StmtWrapper genStmtWraps",
                         "new StmtWrapper => " + Utils::getStringFromStmt(ST));
       StmtWrapper *NewStmt = new StmtWrapper(ST);
-      // TAC::TacScop++;
       SList.push_back(NewStmt);
     } else {
       // Could be inside the loop the region of interest
@@ -109,7 +108,6 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
                                 "new StmtWrapper => " +
                                     Utils::getStringFromStmt(B));
               StmtWrapper *NewStmt = new StmtWrapper(B);
-              // TAC::TacScop++;
               SList.push_back(NewStmt);
             }
           }
@@ -202,10 +200,19 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
 
   // Get UpperBound
   const BinaryOperator *Cond = dyn_cast<BinaryOperator>(ForLoop->getCond());
+  Loop.UpperBoundComp = Cond->getOpcode();
   const Expr *UpperBoundExpr = Cond->getRHS();
   if (UpperBoundExpr != nullptr) {
     Loop.StrUpperBound = Utils::getStringFromExpr(UpperBoundExpr);
     Loop.UpperBound = Utils::getIntFromExpr(UpperBoundExpr, Utils::getCtx());
+    if (Loop.UpperBound != -1) {
+      if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_LE) {
+        Loop.UpperBound++;
+      }
+      if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_GE) {
+        Loop.UpperBound--;
+      }
+    }
   }
 
   // Get step value

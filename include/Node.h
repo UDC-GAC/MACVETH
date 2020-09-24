@@ -50,7 +50,7 @@ public:
     /// TAC order
     int TacID = 0;
     /// Scope within program
-    long Scop = 0;
+    std::vector<int> Scop = {0};
     /// Topological order of this node
     int FreeSched = 0;
     /// TODO this value should be calculated by an algorithm
@@ -93,7 +93,8 @@ public:
   void setSchedInfo(TAC T) {
     this->SI.NodeID = Node::UUID++;
     this->SI.TacID = T.getTacID();
-    this->SI.Scop = T.getScop();
+    // FIXME: vector of scops
+    this->SI.Scop[0] = T.getScop();
   }
 
   /// When creating a Node from a TempExpr, the connections will be created by
@@ -106,14 +107,14 @@ public:
   }
 
   /// Copy constructor for cloning
-  Node(const Node &rhs) {
-    this->I = rhs.I;
-    this->O = rhs.O;
-    this->OutNodes = rhs.OutNodes;
-    this->SI = rhs.SI;
-    this->T = rhs.T;
-    this->Value = rhs.Value;
-    this->LoopName = rhs.LoopName;
+  Node(const Node &Rhs) {
+    this->I = Rhs.I;
+    this->O = Rhs.O;
+    this->OutNodes = Rhs.OutNodes;
+    this->SI = Rhs.SI;
+    this->T = Rhs.T;
+    this->Value = Rhs.Value;
+    this->LoopName = Rhs.LoopName;
   }
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
@@ -142,7 +143,7 @@ public:
     setSchedInfo(T);
     this->LoopName = T.getLoopName();
     auto NB = findOutputNode(T.getB()->getExprStr(), L);
-    if (NB == NULL || this->getScop() != NB->getScop()) {
+    if (NB == NULL || this->getScop()[0] != NB->getScop()[0]) {
       connectInput(new Node(T.getB()));
     } else {
       connectInput(NB);
@@ -150,7 +151,7 @@ public:
     Node *NC = NULL;
     if (T.getC() != NULL) {
       NC = findOutputNode(T.getC()->getExprStr(), L);
-      if (NC == NULL || this->getScop() != NC->getScop()) {
+      if (NC == NULL || this->getScop()[0] != NC->getScop()[0]) {
         connectInput(new Node(T.getC()));
       } else {
         connectInput(NC);
@@ -164,6 +165,12 @@ public:
   void updateIfStore() {
     if (this->O.Type == MEM_STORE) {
       this->getInputs().front()->T = NODE_STORE;
+    }
+    for (auto I : this->getInputs()) {
+      if (I->T == NodeType::NODE_MEM) {
+        I->SI.Scop = this->getScop();
+        I->SI.TacID = this->getTacID();
+      }
     }
   }
 
@@ -190,7 +197,7 @@ public:
   void connectInput(Node *N);
 
   /// Get the scope of the node
-  long getScop() { return this->SI.Scop; }
+  std::vector<int> getScop() { return this->SI.Scop; }
 
   /// Get the number of inputs in this Node
   int getOutputNum() { return this->OutNodes.size(); }
@@ -290,11 +297,17 @@ public:
 
   /// For debugging purposes: show information regarding the node
   std::string getSchedInfoStr() {
-    return "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
-           "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
-           "; TacID = " + std::to_string(getSchedInfo().TacID) +
-           "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
-           "; Scop = " + std::to_string(getSchedInfo().Scop);
+    std::string S =
+        "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
+        "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
+        "; TacID = " + std::to_string(getSchedInfo().TacID) +
+        "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
+        "; Scops = ";
+    for (int i = 0; i < getSchedInfo().Scop.size() - 1; ++i) {
+      S += std::to_string(getSchedInfo().Scop[i]) + ", ";
+    }
+    S += std::to_string(getSchedInfo().Scop[getSchedInfo().Scop.size() - 1]);
+    return S;
   }
 
 private:

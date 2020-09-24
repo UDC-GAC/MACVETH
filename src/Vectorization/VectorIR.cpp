@@ -42,13 +42,8 @@ bool opsAreSequential(int VL, Node *VOps[]) {
       return true;
     }
   }
-  // If there is only one operation, then it is also a sequential operation,
-  // you think?
-  if (VL == 1) {
-    return true;
-  }
-
-  return false;
+  // If there is only one operation, then it is also a sequential operation
+  return (VL == 1);
 }
 
 // ---------------------------------------------
@@ -192,8 +187,11 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // This is the number of elements in this Vector
   this->VSize = VL;
 
-  if ((V[0]->getNodeType() == Node::NODE_STORE) && (Res)) {
-    this->Name = V[0]->getRegisterValue();
+  auto PrimaryNode = V[0];
+
+  // Check whether the operand is a store or not
+  if ((PrimaryNode->getNodeType() == Node::NODE_STORE) && (Res)) {
+    this->Name = PrimaryNode->getRegisterValue();
     this->IsStore = true;
   }
 
@@ -201,27 +199,29 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   auto VecAssigned = checkIfVectorAssigned(VL, V);
 
   // Get name of this operand, otherwise create a custom name
-  this->Name =
-      VecAssigned ? MapRegToVReg[V[0]->getRegisterValue()] : genNewVOpName();
+  this->Name = VecAssigned ? MapRegToVReg[PrimaryNode->getRegisterValue()]
+                           : genNewVOpName();
 
   // Check if this has been already loaded
   auto AlreadyLoaded = false;
   for (auto T : MapLoads) {
     if (std::get<1>(T) == this->getName()) {
-      if (V[0]->getScop() == std::get<0>(T)) {
+      if (std::get<0>(T)[0] == PrimaryNode->getScop()[0]) {
         AlreadyLoaded = true;
         break;
       }
     }
   }
 
-  // It is a temporal result if it has already been assigned
+  // It is a temporal result if it has already been assigned. If within a loop,
+  // it should have the same Scop
   this->IsTmpResult = VecAssigned && AlreadyLoaded;
 
   // So, if it has not been assigned yet, then we added to the list of loads
   // (or register that we are going to pack somehow). It can also be a store.
   if (!AlreadyLoaded)
-    MapLoads.push_back(std::make_tuple(V[0]->getScop(), this->getName()));
+    MapLoads.push_back(
+        std::make_tuple(PrimaryNode->getScop(), this->getName()));
 
   // So if it has not been packed/loaded yet, then we consider it a load
   this->IsLoad = !AlreadyLoaded && !this->IsStore;
@@ -245,7 +245,7 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Get data mask
   this->Mask = getMask(VL, V);
 
-  // FIXME: Determine whether is partial or not
+  // Determine whether is partial or not
   if (true && (Mask != ((1 << VL) - 1))) {
     this->IsPartial = true;
   }
@@ -271,7 +271,7 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
         this->Contiguous = T;
       }
     }
-    // Get shuffle index
+    // TODO: Get shuffle index
     this->Shuffle = getShuffle(VL, this->getWidth(), V);
   }
 
@@ -363,6 +363,8 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
+  // By design, if the operand is an assignment, is because the operation is
+  // unary, therefore: R = R OP B
   if (VOps[0]->getOutputInfo().MVOP.isAssignment()) {
     VLoadA = VLoadB;
     VLoadB = nullptr;
@@ -371,17 +373,21 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
     // Vector type will depend on the operations and operations, logically
     this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
   } else {
-    this->IsUnary = true;
     // Vector type will depend on the operations and operations, logically
     this->VT = getVectorOpType(VL, VOps, VLoadA);
+    this->IsUnary = true;
   }
 
+  // If this operation is sequential, then we do not care about its vector
+  // form, as it will be synthesized in its original form
   if (this->VT == VectorIR::VType::SEQ) {
     return;
   }
 
+  // Creating vector operands
   this->OpA = VOperand(VL, VLoadA, false);
-  if (VLoadB != nullptr) {
+  // Vector operations could be unary, e.g. log(x)
+  if (!this->IsUnary) {
     this->OpB = VOperand(VL, VLoadB, false);
   }
 
@@ -401,9 +407,8 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   this->OpA.Width = this->VW;
   this->OpB.Width = this->VW;
 
-  // Data type
-  // this->DT = CTypeToVDataType[VLoadA[0]->getDataType()];
-  // this->R.DType = this->DT;
+  // Data type: vector operation will have the same data type as the original
+  // result
   this->DT = this->R.DType;
 
   // Ordering

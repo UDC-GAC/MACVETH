@@ -35,6 +35,10 @@ bool checkIfIndexIsAffine(const Expr *E) {
   if (dyn_cast<IntegerLiteral>(E->IgnoreImpCasts())) {
     return true;
   }
+  if (auto Op = dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
+    return (((Op->getOpcode() == UnaryOperator::Opcode::UO_Minus) ||
+             (Op->getOpcode() == UnaryOperator::Opcode::UO_Plus)));
+  }
   if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
     return checkIfIndexIsAffine(Op->getLHS()) &&
            checkIfIndexIsAffine(Op->getRHS());

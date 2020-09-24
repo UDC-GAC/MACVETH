@@ -411,7 +411,7 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
 
   auto NElems = VIL[0].W / VectorIR::VDataTypeWidthBits[VIL[0].DT];
   auto OpRedux = VIL[0].MVOP;
-  auto OpReduxType = OpRedux.getType();
+  // auto OpReduxType = OpRedux.getType();
   auto OpName = VIL[0].MVOP.toString();
   auto NumRedux = TIL.size();
   if (NumRedux > NElems) {
@@ -1159,6 +1159,9 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType TIL;
   auto RegType = getRegisterType(V.DT, V.VW);
   auto IsANewReduction = !hasAlreadyBeenMapped(V.R.Name);
+  Utils::printDebug("AVX2Gen", "this is a new reduction = " +
+                                   std::to_string(IsANewReduction) +
+                                   "; name = " + V.R.Name);
   auto RegAccm = getNextAccmRegister(V.R.Name);
   if (IsANewReduction) {
     SIMDGenerator::addRegToDeclareInitVal(RegType, RegAccm, getInitValues(V));

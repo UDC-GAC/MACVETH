@@ -183,11 +183,11 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     // We will say it is a set if we have to explicitly set the values of the
     // vector operand
     bool EqualVal = equalValues(V.VSize, V.UOP);
-    bool NullIndex = false;
     bool ContMem = V.MemOp && (V.Contiguous);
     bool ScatterMem = V.MemOp && !ContMem;
     bool ExpVal = !V.MemOp;
 
+    bool NullIndex = false;
     auto I0 = V.Idx[0];
     for (int i = 1; i < V.VSize; ++i) {
       if (V.Idx[i] == I0) {
