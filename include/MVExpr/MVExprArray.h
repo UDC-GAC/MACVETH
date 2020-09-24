@@ -113,6 +113,7 @@ public:
           return;
         }
       }
+      // Division
       if (this->OP == BinaryOperator::Opcode::BO_Div) {
         if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
           this->setVal(this->LHS->Val);
@@ -124,7 +125,8 @@ public:
     /// Main constructor
     MVAffineIndex(const Expr *E) {
       if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
-          dyn_cast<IntegerLiteral>(E->IgnoreImpCasts())) {
+          dyn_cast<IntegerLiteral>(E->IgnoreImpCasts()) ||
+          dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
         this->Val = Utils::getStringFromExpr(E);
         this->LHS = nullptr;
         this->RHS = nullptr;
@@ -187,25 +189,43 @@ public:
         if (M.OP != this->OP) {
           return INT_MIN;
         }
-
-        auto Lhs = ((*M.LHS) - (*this->LHS));
-        auto Rhs = ((*M.RHS) - (*this->RHS));
+        auto Lhs = ((*this->LHS) - (*M.LHS));
+        auto Rhs = ((*this->RHS) - (*M.RHS));
         if ((Lhs == INT_MIN + 2) || (Rhs == INT_MIN + 2)) {
           return INT_MIN;
         } else {
+          if (this->OP == BinaryOperator::Opcode::BO_Mul) {
+            if ((Lhs == 0) && (this->LHS->isTerminal())) {
+              char *P = NULL;
+              auto I = strtol(this->LHS->Val.c_str(), &P, 10);
+              if (!(*P)) {
+                Lhs = I;
+              }
+            }
+            if ((Rhs == 0) && (this->RHS->isTerminal())) {
+              char *P = NULL;
+              auto I = strtol(this->RHS->Val.c_str(), &P, 10);
+              if (!(*P)) {
+                Rhs = I;
+              }
+            }
+            return Lhs * Rhs;
+          }
           return std::max(Lhs, Rhs);
         }
       } else {
-        if (M.Val == this->Val) {
+        char *P0 = NULL, *P1 = NULL;
+        auto I0 = strtol(M.Val.c_str(), &P0, 10);
+        auto I1 = strtol(this->Val.c_str(), &P1, 10);
+        auto IsANumber = !((*P0) || (*P1));
+        auto SameVal = M.Val == this->Val;
+        if (SameVal) {
           return 0;
         }
-        char *P0 = NULL, *P1 = NULL;
-        auto I0 = strtol(this->Val.c_str(), &P0, 10);
-        auto I1 = strtol(M.Val.c_str(), &P1, 10);
-        if ((*P0) || (*P1)) {
+        if (!IsANumber) {
           return INT_MIN + 2;
         }
-        return abs(I1 - I0);
+        return I1 - I0;
       }
       return INT_MIN;
     }
