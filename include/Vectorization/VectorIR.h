@@ -19,27 +19,6 @@ namespace macveth {
 /// generate intrinsics and perform the optimizations.
 class VectorIR {
 public:
-  /// Unique identifier for the operand
-  static inline unsigned int VID = 0;
-  /// Keeping track of the correspondence between the registers name and the
-  /// new naming
-  static inline std::map<std::string, std::string> MapRegToVReg;
-  /// Keeping track of the loads in the program
-  static inline std::list<std::tuple<std::vector<int>, std::string>> MapLoads;
-  /// Keeping track of the stores in the program
-  static inline std::list<std::string> MapStores;
-
-  /// Clearing all the mappings
-  static void clear() {
-    VectorIR::MapRegToVReg.clear();
-    VectorIR::MapLoads.clear();
-    VectorIR::MapStores.clear();
-    VectorIR::VID = 0;
-  }
-
-  /// Prefix for operands
-  static inline const std::string VOP_PREFIX = "__mv_vop";
-
   /// Types of vector operations we distinguish according their scheduling
   enum VType {
     /// No dependencies between operations, so it can be used a unique vector
@@ -129,7 +108,7 @@ public:
   /// them
   static VWidth getWidthFromVDataType(int NOps, VDataType VData) {
     int Bits = VDataTypeWidthBits[VData] * NOps;
-    Utils::printDebug("VectorIR", "bits = " + std::to_string(Bits));
+    // Utils::printDebug("VectorIR", "bits = " + std::to_string(Bits));
     if (Bits > 256) {
       return VWidth::W512;
     } else if (Bits > 128) {
@@ -146,7 +125,29 @@ public:
     return VWidth::W8;
   }
 
-  /// Vector operand basically is a wrap of VL (vector lenght) operands in the
+  /// Unique identifier for the operand
+  static inline unsigned int VID = 0;
+  /// Keeping track of the correspondence between the registers name and the
+  /// new naming
+  static inline std::map<std::tuple<std::string, VectorIR::VWidth>,std::string>
+      MapRegToVReg;
+  /// Keeping track of the loads in the program
+  static inline std::list<std::tuple<std::vector<int>, std::string>> MapLoads;
+  /// Keeping track of the stores in the program
+  static inline std::list<std::string> MapStores;
+
+  /// Clearing all the mappings
+  static void clear() {
+    VectorIR::MapRegToVReg.clear();
+    VectorIR::MapLoads.clear();
+    VectorIR::MapStores.clear();
+    VectorIR::VID = 0;
+  }
+
+  /// Prefix for operands
+  static inline const std::string VOP_PREFIX = "__mv_vop";
+
+  /// Vector operand basically is a wrap of VL (vector length) operands in the
   /// original Node
   struct VOperand {
     /// Name identifying the vector operand
@@ -163,7 +164,7 @@ public:
     /// Width of this operand
     VWidth Width = VWidth::W256;
     /// Mask for shuffling if necessary
-    int64_t *Idx;
+    std::vector<long> Idx;
     /// Mask for shuffling if necessary
     unsigned int Shuffle = 0x0;
     /// Mask to avoid elements if necessary
@@ -192,7 +193,7 @@ public:
     /// Order of the vector operation
     int Order = -1;
     /// Check if there is a vector already assigned wraping the same values
-    bool checkIfVectorAssigned(int VL, Node *V[]);
+    bool checkIfVectorAssigned(int VL, Node *V[], VectorIR::VWidth);
     /// Get width
     VWidth getWidth() { return Width; }
     /// Get data type of the operand: assumption that all elements are the same

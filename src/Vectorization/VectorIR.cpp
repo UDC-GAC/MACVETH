@@ -69,9 +69,11 @@ bool isAtomic(int VL, Node *VOps[], Node *VLoad[]) {
 }
 
 // ---------------------------------------------
-bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node *V[]) {
+bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node *V[],
+                                               VectorIR::VWidth Width) {
   for (int n = 0; n < VL; ++n) {
-    if (MapRegToVReg.find(V[n]->getRegisterValue()) == MapRegToVReg.end()) {
+    if (MapRegToVReg.find(std::make_tuple(V[n]->getRegisterValue(), Width)) ==
+        MapRegToVReg.end()) {
       return false;
     }
   }
@@ -138,15 +140,16 @@ bool areInSameVector(int VL, Node *V[]) {
 }
 
 // ---------------------------------------------
-int64_t *getMemIdx(int VL, Node *V[], unsigned int Mask) {
-  int64_t *Idx = (int64_t *)calloc(sizeof(int64_t), VL);
+std::vector<long> getMemIdx(int VL, Node *V[], unsigned int Mask) {
+  std::vector<long> Idx(VL);
   Idx[0] = 0;
   auto Arr0 = dyn_cast<MVExprArray>(V[0]->getMVExpr());
   auto Idx0 = Arr0->getIndex().back();
   for (int i = 1; i < VL; ++i) {
     auto MV = dyn_cast<MVExprArray>(V[i]->getMVExpr());
     if (!MV) {
-      return nullptr;
+      Idx[0] = -1;
+      return Idx;
     }
     auto IdxI = MV->getIndex().back();
     Idx[i] = IdxI - Idx0;
@@ -189,6 +192,19 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
 
   auto PrimaryNode = V[0];
 
+  // Get data type
+  this->DType = CTypeToVDataType[PrimaryNode->getDataType()];
+  if ((this->EqualVal) && (this->MemOp)) {
+    if ((this->DType == VectorIR::VDataType::FLOAT) ||
+        (this->DType == VectorIR::VDataType::DOUBLE)) {
+      this->DType = VectorIR::VDataType(this->DType + 1);
+    }
+  }
+
+  // Computing data width
+  this->Width = getWidthFromVDataType(this->VSize, this->DType);
+  this->Size = this->Width / VDataTypeWidthBits[this->DType];
+
   // Check whether the operand is a store or not
   if ((PrimaryNode->getNodeType() == Node::NODE_STORE) && (Res)) {
     this->Name = PrimaryNode->getRegisterValue();
@@ -196,11 +212,13 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   }
 
   // Check if there is a vector assigned for these operands
-  auto VecAssigned = checkIfVectorAssigned(VL, V);
+  auto VecAssigned = checkIfVectorAssigned(VL, V, this->getWidth());
 
   // Get name of this operand, otherwise create a custom name
-  this->Name = VecAssigned ? MapRegToVReg[PrimaryNode->getRegisterValue()]
-                           : genNewVOpName();
+  this->Name = VecAssigned
+                   ? MapRegToVReg[std::make_tuple(
+                         PrimaryNode->getRegisterValue(), this->getWidth())]
+                   : genNewVOpName();
 
   // Check if this has been already loaded
   auto AlreadyLoaded = false;
@@ -233,7 +251,8 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
     IsMemOp = (IsMemOp) && (V[n]->needsMemLoad());
     this->UOP[n] = V[n];
     if (!VecAssigned) {
-      MapRegToVReg[V[n]->getRegisterValue()] = this->Name;
+      MapRegToVReg[std::make_tuple(V[n]->getRegisterValue(),
+                                   this->getWidth())] = this->Name;
     }
     if (n > 0) {
       this->EqualVal = this->EqualVal && (V[n]->getRegisterValue() ==
@@ -243,12 +262,15 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   this->MemOp = IsMemOp;
 
   // Get data mask
-  this->Mask = getMask(VL, V);
+  this->Mask = getMask(this->Size, V);
+
+  Utils::printDebug("VectorIR", "width = " + std::to_string(this->Width) +
+                                    "; " + std::to_string(this->Size) + "; " +
+                                    std::to_string(this->VSize) + "; " +
+                                    std::to_string(this->Mask));
 
   // Determine whether is partial or not
-  if (true && (Mask != ((1 << VL) - 1))) {
-    this->IsPartial = true;
-  }
+  this->IsPartial = !(this->Size == this->VSize);
 
   // In case we have to access to memory we are also interested in how we do it:
   // if we have to use an index for it, or if we have to shuffle data
@@ -257,7 +279,7 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
     if (this->SameVector) {
       // Get Memory index
       this->Idx = getMemIdx(VL, V, this->Mask);
-      if (this->Idx != nullptr) {
+      if (this->Idx[0] != -1) {
         auto T = true;
         if (VL > 1) {
           for (int i = 1; i < VL; ++i) {
@@ -274,18 +296,6 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
     // TODO: Get shuffle index
     this->Shuffle = getShuffle(VL, this->getWidth(), V);
   }
-
-  // Get data type
-  this->DType = CTypeToVDataType[this->UOP[0]->getDataType()];
-  if ((this->EqualVal) && (this->MemOp)) {
-    if ((this->DType == VectorIR::VDataType::FLOAT) ||
-        (this->DType == VectorIR::VDataType::DOUBLE)) {
-      this->DType = VectorIR::VDataType(this->DType + 1);
-    }
-  }
-
-  // Computing data width
-  this->Width = getWidthFromVDataType(this->VSize, this->DType);
 };
 
 // ---------------------------------------------

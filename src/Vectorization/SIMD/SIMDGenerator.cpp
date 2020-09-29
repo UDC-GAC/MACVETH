@@ -70,11 +70,14 @@ void SIMDGenerator::populateTable(MVISA ISA) {
 std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
                                      bool RegVal) {
   if ((Ptr) && (V.IsStore || V.IsLoad)) {
+    // Pointer to Rvalue
     return "&" + V.getRegName();
   }
   if (RegVal) {
+    // Rvalue
     return V.getRegName();
   }
+  // Other
   return V.Name;
 }
 
