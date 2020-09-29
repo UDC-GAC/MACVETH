@@ -345,7 +345,7 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
 bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
   bool FullUnroll = true;
   if (this->isLoop()) {
-    Utils::printDebug("StmtWrapper", "unrollByDim loop");
+    // Utils::printDebug("StmtWrapper", "unrollByDim loop");
     for (auto D : Scop->PA.UnrollDim) {
       if (this->LoopL.Dim == std::get<0>(D)) {
         if (Scop->PA.FullUnroll[this->LoopL.Dim]) {

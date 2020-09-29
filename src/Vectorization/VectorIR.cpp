@@ -122,13 +122,15 @@ MVOp VectorIR::VectorOP::getMVOp() {
 }
 
 // ---------------------------------------------
-bool areInSameVector(int VL, Node *V[]) {
-  auto A0 = dyn_cast<MVExprArray>(V[0]->getMVExpr());
-  if (!dyn_cast<MVExprArray>(V[0]->getMVExpr())) {
+bool areInSameVector(int VL, Node *V[], bool Store) {
+  auto E = (Store) ? V[0]->getOutputInfo().E : V[0]->getMVExpr();
+  auto A0 = dyn_cast<MVExprArray>(E);
+  if (!A0) {
     return false;
   }
   for (auto i = 1; i < VL; ++i) {
-    auto Arr = dyn_cast<MVExprArray>(V[i]->getMVExpr());
+    auto E = (Store) ? V[i]->getOutputInfo().E : V[i]->getMVExpr();
+    auto Arr = dyn_cast<MVExprArray>(E);
     if (!Arr) {
       return false;
     }
@@ -140,13 +142,15 @@ bool areInSameVector(int VL, Node *V[]) {
 }
 
 // ---------------------------------------------
-std::vector<long> getMemIdx(int VL, Node *V[], unsigned int Mask) {
+std::vector<long> getMemIdx(int VL, Node *V[], unsigned int Mask, bool Store) {
   std::vector<long> Idx(VL);
   Idx[0] = 0;
-  auto Arr0 = dyn_cast<MVExprArray>(V[0]->getMVExpr());
+  auto E = (Store) ? V[0]->getOutputInfo().E : V[0]->getMVExpr();
+  auto Arr0 = dyn_cast<MVExprArray>(E);
   auto Idx0 = Arr0->getIndex().back();
   for (int i = 1; i < VL; ++i) {
-    auto MV = dyn_cast<MVExprArray>(V[i]->getMVExpr());
+    auto E = (Store) ? V[i]->getOutputInfo().E : V[i]->getMVExpr();
+    auto MV = dyn_cast<MVExprArray>(E);
     if (!MV) {
       Idx[0] = -1;
       return Idx;
@@ -233,7 +237,7 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
 
   // It is a temporal result if it has already been assigned. If within a loop,
   // it should have the same Scop
-  this->IsTmpResult = VecAssigned && AlreadyLoaded;
+  this->IsTmpResult = VecAssigned && AlreadyLoaded && !this->IsStore;
 
   // So, if it has not been assigned yet, then we added to the list of loads
   // (or register that we are going to pack somehow). It can also be a store.
@@ -264,21 +268,17 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Get data mask
   this->Mask = getMask(this->Size, V);
 
-  Utils::printDebug("VectorIR", "width = " + std::to_string(this->Width) +
-                                    "; " + std::to_string(this->Size) + "; " +
-                                    std::to_string(this->VSize) + "; " +
-                                    std::to_string(this->Mask));
-
   // Determine whether is partial or not
   this->IsPartial = !(this->Size == this->VSize);
 
   // In case we have to access to memory we are also interested in how we do it:
   // if we have to use an index for it, or if we have to shuffle data
-  if (this->MemOp) {
-    this->SameVector = areInSameVector(VL, V);
+  // if ((this->MemOp) || ((this->IsStore) && (this->IsTmpResult))) {
+  if ((this->MemOp) || (this->IsStore)) {
+    this->SameVector = areInSameVector(VL, V, this->IsStore);
     if (this->SameVector) {
       // Get Memory index
-      this->Idx = getMemIdx(VL, V, this->Mask);
+      this->Idx = getMemIdx(VL, V, this->Mask, this->IsStore);
       if (this->Idx[0] != -1) {
         auto T = true;
         if (VL > 1) {
@@ -314,22 +314,20 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
   bool Atomic_B = isAtomic(VL, VOps, VLoadB);
 
   // Type of VectorOP
-  Utils::printDebug("VectorIR", "Seq = " + std::to_string(Seq));
-  Utils::printDebug("VectorIR", "RAW_A = " + std::to_string(RAW_A));
-  Utils::printDebug("VectorIR", "RAW_B = " + std::to_string(RAW_B));
-  Utils::printDebug("VectorIR", "Atomic_A = " + std::to_string(Atomic_A));
-  Utils::printDebug("VectorIR", "Atomic_B = " + std::to_string(Atomic_B));
+  Utils::printDebug("VectorIR", "Seq = " + std::to_string(Seq) + "; " +
+                                    "RAW_A = " + std::to_string(RAW_A) + "; " +
+                                    "RAW_B = " + std::to_string(RAW_B) + "; " +
+                                    "Atomic_A = " + std::to_string(Atomic_A) +
+                                    "; " +
+                                    "Atomic_B = " + std::to_string(Atomic_B));
 
   // Decide which type of VectorOp it is according to the features of its
   // VOperands
   if ((Seq) && ((RAW_A) || (RAW_B)) && Atomic_A && Atomic_B) {
-    Utils::printDebug("VectorIR", "reduction");
     return VectorIR::VType::REDUCE;
   } else if ((!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
-    Utils::printDebug("VectorIR", "map");
     return VectorIR::VType::MAP;
   } else {
-    Utils::printDebug("VectorIR", "sequential");
     return VectorIR::VType::SEQ;
   }
 }
@@ -356,13 +354,10 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[]) {
   // Decide which type of VectorOp it is according to the features of its
   // VOperands
   if ((Seq) && ((RAW_A) && Atomic_A)) {
-    Utils::printDebug("VectorIR", "reduction");
     return VectorIR::VType::REDUCE;
   } else if ((!Seq) && (!RAW_A) && Atomic_A) {
-    Utils::printDebug("VectorIR", "map");
     return VectorIR::VType::MAP;
   } else {
-    Utils::printDebug("VectorIR", "sequential");
     return VectorIR::VType::SEQ;
   }
 }

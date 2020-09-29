@@ -62,8 +62,6 @@ public:
 
   /// If the node is NODE_OP type, then it will hold a result value
   struct OutputInfo {
-    /// Name of the register or memory variable as output
-    std::string Name = "";
     /// MVExpr of output
     MVExpr *E;
     /// If the target variable is in memory it will be a MEM_STORE; TEMP_STORE
@@ -79,7 +77,6 @@ public:
   OutputInfo setOutputInfo(TAC T) {
     OutputInfo O;
     O.E = T.getA();
-    O.Name = T.getA()->getExprStr();
     O.Type = (T.getMVOP().isAssignment()) ? MEM_STORE : TEMP_STORE;
     O.MVOP = T.getMVOP();
     O.IsBinaryOp = T.getMVOP().getType() == MVOpType::CLANG_BINOP;
@@ -88,6 +85,9 @@ public:
 
   /// Setting the scheduling info without any other information
   void setSchedInfo() { this->SI.NodeID = Node::UUID++; }
+
+  /// Update the output expression
+  void setOutputExpr(MVExpr *E) { this->O.E = E; }
 
   /// Setting the scheduling info without any other information than the TAC
   void setSchedInfo(TAC T) {
@@ -206,7 +206,7 @@ public:
   /// Get the output information
   OutputInfo getOutputInfo() { return this->O; }
   /// Get the output information
-  std::string getOutputInfoName() { return this->O.Name; }
+  std::string getOutputInfoName() { return this->O.E->toString(); }
   /// Get the number of inputs in this Node
   int getInputNum() { return this->I.size(); }
   /// Get the list of node inputs in this Node
@@ -250,13 +250,13 @@ public:
   /// Returns the variable/register value
   std::string getRegisterValue() const {
     if (this->T != NodeType::NODE_MEM) {
-      return this->O.Name;
+      return this->O.E->toString();
     }
     return this->getValue();
   }
 
   /// Setting the name of the output value
-  void setOutputName(std::string S) { this->O.Name = S; }
+  // void setOutputName(std::string S) { this->O.Name = S; }
 
   /// Get loop name of the loop
   std::string getLoopName() { return this->LoopName; }

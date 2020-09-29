@@ -196,9 +196,9 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     }
     Op = MVOp(Utils::getStringFromExpr(F->getCallee()));
   }
-  Utils::printDebug("TAC", "S1 = " + std::to_string(S1 != nullptr));
-  Utils::printDebug("TAC", "S2 = " + std::to_string(S2 != nullptr));
-  Utils::printDebug("TAC", "Unary = " + std::to_string(IsUnary));
+  // Utils::printDebug("TAC", "S1 = " + std::to_string(S1 != nullptr));
+  // Utils::printDebug("TAC", "S2 = " + std::to_string(S2 != nullptr));
+  // Utils::printDebug("TAC", "Unary = " + std::to_string(IsUnary));
 
   assert(((S1 != nullptr) && ((IsUnary) || (S2 != nullptr))) &&
          "Something went wrong...");

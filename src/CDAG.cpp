@@ -79,10 +79,8 @@ repeat:
                                     VOps[Cursor]->getValue() + ")");
       break;
     }
-    // NL.pop_front();
     NL.erase(NL.begin());
     if (++Cursor == VL) {
-      Utils::printDebug("CDAG", "VL OPS achieved");
       break;
     }
   }
@@ -217,7 +215,7 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
       goto no_output;
     }
     Utils::printDebug("CDAG/NODE", "output found = " + T.getA()->getExprStr());
-    N->setOutputName(T.getA()->getExprStr());
+    N->setOutputExpr(T.getA());
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
     auto WarNode = Node::findWARDataRace(N, this->NLOps);

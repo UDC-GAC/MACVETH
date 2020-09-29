@@ -32,7 +32,7 @@ void SIMDGenerator::populateTable(MVISA ISA) {
   std::string Arch = MVArchStr[MVOptions::Arch];
   std::ifstream F(PathISA);
   std::string L, W;
-  Utils::printDebug("CostsTable", "PathISA = " + PathISA);
+  // Utils::printDebug("CostsTable", "PathISA = " + PathISA);
   if (F.is_open()) {
     while (getline(F, L)) {
       if ((L.rfind("#", 0) == 0) || (L == "")) {
@@ -267,7 +267,11 @@ void SIMDGenerator::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
 
   // If there is a store
   if (V.R.IsStore) {
-    TIL.splice(TIL.end(), vstore(V));
+    if (V.R.Contiguous) {
+      TIL.splice(TIL.end(), vstore(V));
+    } else {
+      TIL.splice(TIL.end(), vscatter(V));
+    }
   }
   TI->splice(TI->end(), TIL);
 }

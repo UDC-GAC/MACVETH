@@ -70,7 +70,7 @@ void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
       assert(CouldFullyUnroll &&
              "Need to be able to full unroll when having leftovers");
     } else if (Scop->PA.Unroll) {
-      Utils::printDebug("MVConsumer", "unroll by dim...");
+      //Utils::printDebug("MVConsumer", "unroll by dim...");
       CouldFullyUnroll = S->unrollByDim(LI, Scop);
     }
   }

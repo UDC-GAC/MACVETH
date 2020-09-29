@@ -1012,6 +1012,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VectorOP V) {
   // Mask
   PrefS += (V.R.IsPartial) ? "mask" : "";
 
+  Utils::printDebug("AVX2Gen", "Scatter");
+
   // TODO:
   std::string Op = "scatter";
 
