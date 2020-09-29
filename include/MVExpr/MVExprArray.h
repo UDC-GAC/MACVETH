@@ -81,23 +81,52 @@ public:
       this->RHS = nullptr;
     }
 
+    /// Delete safely the LHS of the expression
+    void deleteLhs() {
+      this->Val = this->RHS->Val;
+      if (this->RHS->isTerminal()) {
+        this->LHS = nullptr;
+        this->RHS = nullptr;
+      } else {
+        auto Rhs = this->RHS;
+        this->LHS = Rhs->LHS;
+        this->RHS = Rhs->RHS;
+        this->OP = Rhs->OP;
+      }
+    }
+
+    /// Delete safely the RHS of the expression
+    void deleteRhs() {
+      this->Val = this->LHS->Val;
+      if (this->LHS->isTerminal()) {
+        this->LHS = nullptr;
+        this->RHS = nullptr;
+      } else {
+        auto Lhs = this->LHS;
+        this->LHS = Lhs->LHS;
+        this->RHS = Lhs->RHS;
+        this->OP = Lhs->OP;
+      }
+    }
+
     /// Simplify expression in order to better calculate indices and so
     void simplifyIndex() {
       if (this->isTerminal()) {
         return;
       }
+      // Addition or substraction: E +/-
       if ((this->OP == BinaryOperator::Opcode::BO_Add) ||
           (this->OP == BinaryOperator::Opcode::BO_Sub)) {
         if (this->LHS->isTerminal() && (this->LHS->Val == "0")) {
-          this->setVal(this->RHS->Val);
+          deleteLhs();
           return;
         }
         if (this->RHS->isTerminal() && (this->RHS->Val == "0")) {
-          this->setVal(this->LHS->Val);
+          deleteRhs();
           return;
         }
       }
-      // Multiplication
+      // Multiplication: E * 0 or E * 1
       if (this->OP == BinaryOperator::Opcode::BO_Mul) {
         if ((this->LHS->isTerminal() && (this->LHS->Val == "0")) ||
             (this->RHS->isTerminal() && (this->RHS->Val == "0"))) {
@@ -105,18 +134,18 @@ public:
           return;
         }
         if (this->LHS->isTerminal() && (this->LHS->Val == "1")) {
-          this->setVal(this->RHS->Val);
+          deleteLhs();
           return;
         }
         if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
-          this->setVal(this->LHS->Val);
+          deleteRhs();
           return;
         }
       }
-      // Division
+      // Division: N / 1
       if (this->OP == BinaryOperator::Opcode::BO_Div) {
         if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
-          this->setVal(this->LHS->Val);
+          deleteRhs();
           return;
         }
       }
