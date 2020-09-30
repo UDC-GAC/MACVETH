@@ -324,9 +324,9 @@ private:
   /// Info regarding the output register/node. This field only makes sense if
   /// we are dealing with an operation node
   OutputInfo O;
-  /// List of output nodes for this node
+  /// FIXME: List of output nodes for this node. Is this needed?
   NodeListType OutNodes;
-  /// Loop variable where it belongs
+  /// FIXME: Loop variable where it belongs. This is awful.
   std::string LoopName = "";
 };
 } // namespace macveth

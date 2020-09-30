@@ -55,6 +55,9 @@ public:
     /// Sequential operation
     VSEQ,
     VSEQR,
+    VPREREDUX,
+    VINREDUX,
+    VPOSTREDUX,
     /// If the SIMD instruction is the result of an optimization (e.g. fuse
     /// multiply-accumulation) we will call it VOPT
     VOPT,
@@ -192,7 +195,8 @@ public:
   /// and the RHS
   SIMDGenerator::SIMDInst addNonSIMDInst(std::string Lhs, std::string Rhs,
                                          SIMDGenerator::SIMDType SType,
-                                         SIMDGenerator::SIMDInstListType *IL);
+                                         SIMDGenerator::SIMDInstListType *IL,
+                                         int Order = -1);
 
   // VectorAPI: instructions to implement by the specific backends
 

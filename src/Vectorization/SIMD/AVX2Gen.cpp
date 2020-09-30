@@ -156,9 +156,8 @@ AVX2Gen::fuseAddSubMult(SIMDGenerator::SIMDInstListType I) {
 
 // ---------------------------------------------
 std::string AVX2Gen::declareAuxArray(VectorIR::VDataType DT) {
-  // FIXME: 256 should not be ad-hoc
   return getNextArrRegister(VDTypeToCType[DT],
-                            256 / VectorIR::VDataTypeWidthBits[DT]);
+                            getMaxWidth() / VectorIR::VDataTypeWidthBits[DT]);
 }
 
 // ---------------------------------------------
@@ -731,10 +730,6 @@ SIMDGenerator::SIMDInst AVX2Gen::addSIMDInst(
   // Get the function
   std::string Pattern = CostTable::getPattern(AVX2Gen::NArch, Op);
 
-  // Utils::printDebug("addSIMDInst", "OP = " + Op + ", " +
-  //                                      std::to_string(V.getWidth()) + " = " +
-  //                                      getMapWidth(V.getWidth()));
-
   // Replace fills in pattern
   std::string AVXFunc =
       replacePatterns(Pattern, getMapWidth(V.getWidth()),
@@ -897,12 +892,18 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
     Scale = std::to_string(4);
   }
 
-  // Memory address
-  Args.push_back("&" + V.UOP[0]->getValue());
-
   // FIXME: fuck me, this is garbage
   auto VIndex = "_mm" + MapWidth[V.Width] + "_set_" + VIndexSuffix + "(";
   auto CopyIdx = V.Idx;
+  auto MinIdx = std::min_element(CopyIdx.begin(), CopyIdx.end());
+  auto MinVal = abs(*MinIdx);
+  auto BaseIdx = V.UOP[MinIdx - CopyIdx.begin()]->getValue();
+  // This way we avoid negative indices
+  if (MinVal < 0) {
+    for (auto T = 0; T < CopyIdx.size(); ++T) {
+      CopyIdx[T] += MinVal;
+    }
+  }
   std::reverse(CopyIdx.begin(), CopyIdx.end());
   for (auto T = 0; T < V.VSize % 2; ++T) {
     VIndex += std::to_string(0) + ",";
@@ -912,6 +913,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
         std::to_string(CopyIdx[T]) + ((T == (CopyIdx.size() - 1)) ? "" : ", ");
   }
   VIndex += ")";
+  // Memory address
+  Args.push_back("&" + BaseIdx);
   Args.push_back(VIndex);
 
   // Mask argument if needed
@@ -1005,26 +1008,15 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vstore(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType AVX2Gen::vscatter(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
-  // TODO: generate preffix
-  std::string PrefS = "";
-  // TODO: generate suffix
-  std::string SuffS = "";
-  // Mask
-  PrefS += (V.R.IsPartial) ? "mask" : "";
-
   Utils::printDebug("AVX2Gen", "Scatter");
 
-  // TODO:
-  std::string Op = "scatter";
+  // TODO: check if any contiguous
 
-  // TODO: check
-  // List of parameters
-  std::list<std::string> Args;
-  Args.push_back(V.OpA.getName());
-  Args.push_back(V.OpB.getName());
-
-  // Adding SIMD inst to the list
-  addSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VSCATTER, &IL);
+  for (int N = 0; N < V.R.VSize; ++N) {
+    std::string Idx = "[" + std::to_string(N) + "]";
+    addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
+                   SIMDType::VSCATTER, &IL, V.Order);
+  }
 
   return IL;
 }

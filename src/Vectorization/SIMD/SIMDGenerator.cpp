@@ -102,8 +102,12 @@ SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
 SIMDGenerator::SIMDInst
 SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
                               SIMDGenerator::SIMDType SType,
-                              SIMDGenerator::SIMDInstListType *IL) {
-  SIMDGenerator::SIMDInst I(Lhs, Rhs, IL->back().TacID);
+                              SIMDGenerator::SIMDInstListType *IL, int Order) {
+  auto O = IL->back().TacID;
+  if (Order != -1) {
+    O = Order;
+  }
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, O);
   // Retrieving cost of function
   I.SType = SType;
 
@@ -119,13 +123,12 @@ std::string SIMDGenerator::SIMDInst::render() {
                           (SType == SIMDType::VSTORER))
                              ? FN
                              : Result + " = " + FN;
-  if (((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ)) &&
+  if (((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ)) ||
       (Args.size() == 0))
     return FullFunc;
-  FullFunc += "(";
-  std::list<std::string>::iterator Op;
   int i = 0;
-  for (Op = Args.begin(); Op != Args.end(); ++Op) {
+  FullFunc += "(";
+  for (auto Op = Args.begin(); Op != Args.end(); ++Op) {
     FullFunc += (i++ == (Args.size() - 1)) ? (*Op + ")") : (*Op + ", ");
   }
   return FullFunc;
