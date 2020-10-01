@@ -118,7 +118,7 @@ public:
   };
 
   /// LoopInfo list type
-  typedef std::list<LoopInfo> LoopList;
+  using LoopList = std::list<LoopInfo>;
 
   /// Generate a list of StmtWrapper
   static std::list<StmtWrapper *> genStmtWraps(CompoundStmt *CS, ScopLoc *Scop);

@@ -524,6 +524,26 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
 }
 
 // ---------------------------------------------
+bool isThisReductionFusible() { return true; }
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
+AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
+  // Copy list
+  SIMDGenerator::SIMDInstListType IL;
+  SIMDGenerator::SIMDInstListType SkipList;
+  SIMDGenerator::SIMDInstListType ReduxList;
+  for (auto I : TIL) {
+    if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
+      ReduxList.push_back(I);
+    }
+  }
+  SIMDGenerator::SIMDInstListType FusedReductions;
+  for (auto R : ReduxList) {
+  }
+}
+
+// ---------------------------------------------
 SIMDGenerator::SIMDInstListType
 AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
   // Copy list
@@ -554,9 +574,8 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
         auto W = L.second.front().VOPResult.Width;
         auto DT = L.second.front().VOPResult.DType;
         auto DW = VectorIR::VDataTypeWidthBits[DT];
-        int MaxFusibleRedux = W / DW;
         // Only compute reductions if max found
-        if (MaxFusibleRedux > LInsSize) {
+        if (W / DW > LInsSize) {
           continue;
         }
         auto OpReduxType = L.second.front().MVOP.T;
@@ -638,7 +657,6 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
     }
     for (auto &R : ReplaceFusedRedux) {
       if (R.second.count(I) > 0) {
-        Utils::printDebug("AVX2Gen", "mmm = " + I.render());
         IL.splice(IL.end(), R.second.at(I));
         continue;
       }
@@ -654,10 +672,12 @@ SIMDGenerator::SIMDInstListType
 AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
   SIMDGenerator::SIMDInstListType IL(I);
 
-  // Fuse reductions if any and fusable
+  // Fuse reductions if any and fuse them
   IL = fuseReductions(IL);
-  // Fuse operations: find potential and applicable FMADD/FMSUB
-  IL = fuseAddSubMult(IL);
+  // Fuse operations: find potential and applicable FMADD/FMSUB, if not disabled
+  if (!MVOptions::DisableFMA) {
+    IL = fuseAddSubMult(IL);
+  }
 
   // TODO: eliminate duplicated instructions (?)
   // IL = eliminateDeadIns();
@@ -941,10 +961,10 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vset(VectorIR::VOperand V) {
   std::list<std::string> Args;
   if (V.EqualVal) {
     SuffS += "1";
-    Args.push_back((V.UOP[0] != NULL) ? V.UOP[0]->getRegisterValue() : "0");
+    Args.push_back((V.UOP[0] != nullptr) ? V.UOP[0]->getRegisterValue() : "0");
   } else {
     for (int n = 0; n < V.VSize; n++) {
-      Args.push_back((V.UOP[n] != NULL) ? V.UOP[n]->getValue() : "0.0");
+      Args.push_back((V.UOP[n] != nullptr) ? V.UOP[n]->getValue() : "0.0");
     }
   }
   for (int t = V.VSize; t < (V.Width / VectorIR::VDataTypeWidthBits[V.DType]);
@@ -1257,7 +1277,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vseq(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
 
   // Adding SIMD inst to the list
-  addNonSIMDInst(V, SIMDType::VSEQ, &IL);
+  addNonSIMDInst(V, SIMDType::VSEQ, &IL, V.R.Order);
 
   return IL;
 }

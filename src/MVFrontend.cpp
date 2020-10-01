@@ -50,7 +50,7 @@ ScopLoc *getScopLoc(StmtWrapper *S) {
       return ScopHandler::List[n];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 // ---------------------------------------------
@@ -63,14 +63,14 @@ void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
     }
     auto SLoc = S->getClangStmt()->getBeginLoc();
     auto Scop = getScopLoc(S);
-    assert(Scop != NULL && "Scop not found for these statements");
+    assert(Scop != nullptr && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
       Utils::printDebug("MVConsumer", "unroll and jam...");
       CouldFullyUnroll = S->unrollAndJam(LI, Scop);
       assert(CouldFullyUnroll &&
              "Need to be able to full unroll when having leftovers");
     } else if (Scop->PA.Unroll) {
-      //Utils::printDebug("MVConsumer", "unroll by dim...");
+      // Utils::printDebug("MVConsumer", "unroll by dim...");
       CouldFullyUnroll = S->unrollByDim(LI, Scop);
     }
   }

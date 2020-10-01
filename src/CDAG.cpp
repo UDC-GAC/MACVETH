@@ -188,12 +188,12 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
 
 // ---------------------------------------------
 Node *Node::findWARDataRace(Node *N, Node::NodeListType NL) {
-  Node *WarNode = NULL;
+  Node *WarNode = nullptr;
   for (auto Op : NL) {
     for (auto In : Op->getInputs()) {
       if ((N->getOutputInfoName() == In->getRegisterValue()) &&
-          ((WarNode == NULL) ||
-           (((WarNode != NULL) && (WarNode->getTacID() < In->getTacID()) &&
+          ((WarNode == nullptr) ||
+           (((WarNode != nullptr) && (WarNode->getTacID() < In->getTacID()) &&
              (In->getTacID() < N->getTacID()))))) {
         WarNode = In;
       }
@@ -209,7 +209,7 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
   if (T.getMVOP().isAssignment()) {
     // Assumption: a = b op c, c is always the "connector"
     Node *N = Node::findOutputNode(T.getC()->getExprStr(), L);
-    if (N == NULL) {
+    if (N == nullptr) {
       Utils::printDebug("CDAG/NODE",
                         "no output found = " + T.getC()->getExprStr());
       goto no_output;
@@ -219,8 +219,8 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
     auto WarNode = Node::findWARDataRace(N, this->NLOps);
-    // Node *WarNode = NULL;
-    if (WarNode != NULL) {
+    // Node *WarNode = nullptr;
+    if (WarNode != nullptr) {
       Utils::printDebug("CDAG/NODE",
                         "WAR found = " + WarNode->getRegisterValue() + "; " +
                             WarNode->getSchedInfoStr());

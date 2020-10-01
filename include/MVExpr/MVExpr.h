@@ -125,14 +125,14 @@ public:
     // This is a fucking hack: treat const as if they are not const...
     // Thus, typing is easier. Do we really need to know if a variable is
     // constant or not? I think we do not.
-    auto LastNotNullToken = TypeStr;
+    auto LastNotNullptrToken = TypeStr;
     char *dup = strdup(TypeStr.c_str());
     auto Tok = strtok(dup, " ");
-    while (Tok != NULL) {
-      LastNotNullToken = Tok;
-      Tok = strtok(NULL, " ");
+    while (Tok != nullptr) {
+      LastNotNullptrToken = Tok;
+      Tok = strtok(nullptr, " ");
     }
-    this->TypeStr = LastNotNullToken;
+    this->TypeStr = LastNotNullptrToken;
     // At least be clean
     free(dup);
   }
@@ -205,7 +205,7 @@ private:
   /// Type of data in string
   std::string TypeStr = "";
   /// Expresion as Clang's
-  clang::Expr *ClangExpr = NULL;
+  clang::Expr *ClangExpr = nullptr;
   /// Expression as string
   std::string ExprStr = "";
   /// Need to be loaded from mem

@@ -19,7 +19,7 @@ std::string Utils::getExePath() {
   // FIXME:
   char result[MAX_PATH];
   int found;
-  GetModuleFileName(NULL, result, MAX_PATH);
+  GetModuleFileName(nullptr, result, MAX_PATH);
   found = string(result).find_last_of("\\");
   return (string(result).substr(0, found) + "\\");
 }

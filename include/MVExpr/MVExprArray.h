@@ -225,14 +225,14 @@ public:
         } else {
           if (this->OP == BinaryOperator::Opcode::BO_Mul) {
             if ((Lhs == 0) && (this->LHS->isTerminal())) {
-              char *P = NULL;
+              char *P = nullptr;
               auto I = strtol(this->LHS->Val.c_str(), &P, 10);
               if (!(*P)) {
                 Lhs = I;
               }
             }
             if ((Rhs == 0) && (this->RHS->isTerminal())) {
-              char *P = NULL;
+              char *P = nullptr;
               auto I = strtol(this->RHS->Val.c_str(), &P, 10);
               if (!(*P)) {
                 Rhs = I;
@@ -243,7 +243,7 @@ public:
           return std::max(Lhs, Rhs);
         }
       } else {
-        char *P0 = NULL, *P1 = NULL;
+        char *P0 = nullptr, *P1 = nullptr;
         auto I0 = strtol(M.Val.c_str(), &P0, 10);
         auto I1 = strtol(this->Val.c_str(), &P1, 10);
         auto IsANumber = !((*P0) || (*P1));
@@ -272,7 +272,7 @@ public:
   }; /* !MVAffineIndex */
 
   /// Definition of a vector of indices
-  typedef std::vector<MVAffineIndex> IdxVector;
+  using IdxVector = std::vector<MVAffineIndex>;
 
   /// Destructor
   virtual ~MVExprArray(){};
@@ -326,7 +326,7 @@ public:
   /// As we may not know the total size of the array at compilation time, we
   /// can only know the difference between two indices
   virtual int operator-(const MVExpr &MVE) override {
-    if ((getClangExpr() != NULL) && (MVE.getClangExpr() != NULL)) {
+    if ((getClangExpr() != nullptr) && (MVE.getClangExpr() != nullptr)) {
       int Diff = 0;
       return Diff;
     } else {

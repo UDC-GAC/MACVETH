@@ -22,7 +22,7 @@ class SIMDGeneratorFactory {
 public:
   /// Return a specific backend given as input
   static SIMDGenerator *getBackend(MVISA ISA) {
-    SIMDGenerator *G = NULL;
+    SIMDGenerator *G = nullptr;
     /// TODO: only AVX2 implemented yet...
     switch (ISA) {
     case SSE:
@@ -34,7 +34,7 @@ public:
     // some point, not to be contemplated exactly here
     case AVX2:
       G = AVX2Gen::getSingleton();
-      if (G != NULL) {
+      if (G != nullptr) {
         return G;
       }
     }

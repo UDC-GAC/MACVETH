@@ -50,7 +50,7 @@ long StmtWrapper::getCost() {
       Tot += MVOp::getOperationCost(T.getMVOP());
       Tot += (T.getA()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
       Tot += (T.getB()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
-      if (T.getC() != NULL) {
+      if (T.getC() != nullptr) {
         Tot += (T.getC()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
       }
     }

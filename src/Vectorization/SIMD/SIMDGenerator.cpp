@@ -85,11 +85,15 @@ std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
 SIMDGenerator::SIMDInst
 SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
                               SIMDGenerator::SIMDType SType,
-                              SIMDGenerator::SIMDInstListType *IL) {
+                              SIMDGenerator::SIMDInstListType *IL, int Order) {
   // Generate SIMD inst
   std::string Rhs;
   std::string Lhs = OP.R.getName();
-  SIMDGenerator::SIMDInst I(Lhs, Rhs, OP.Order);
+  auto O = Order;
+  if (O == -1) {
+    O = OP.Order;
+  }
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, O);
   // Retrieving cost of function
   I.SType = SType;
 
@@ -103,9 +107,9 @@ SIMDGenerator::SIMDInst
 SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
                               SIMDGenerator::SIMDType SType,
                               SIMDGenerator::SIMDInstListType *IL, int Order) {
-  auto O = IL->back().TacID;
-  if (Order != -1) {
-    O = Order;
+  auto O = Order;
+  if (O == -1) {
+    O = IL->back().TacID;
   }
   SIMDGenerator::SIMDInst I(Lhs, Rhs, O);
   // Retrieving cost of function

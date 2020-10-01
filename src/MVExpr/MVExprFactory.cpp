@@ -37,7 +37,7 @@
 
 //------------------------------------------------
 MVExprFactory::MVExprType MVExprFactory::getTempTypeFromExpr(Expr *E) {
-  if (E == NULL) {
+  if (E == nullptr) {
     return MVExprType::VARIABLE;
   }
 

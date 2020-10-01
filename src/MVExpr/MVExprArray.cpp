@@ -49,7 +49,7 @@ bool checkIfIndexIsAffine(const Expr *E) {
 //------------------------------------------------
 const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
                                                  IdxVector &Idxs) {
-  const Expr *BaseE = NULL;
+  const Expr *BaseE = nullptr;
   while (ASE) {
     auto IdxE = ASE->getIdx();
     assert(checkIfIndexIsAffine(IdxE) && "Index must be affine");
@@ -65,7 +65,7 @@ const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
 //------------------------------------------------
 const Expr *MVExprArray::getArrayBaseExprAndIdxs(const CXXOperatorCallExpr *C,
                                                  IdxVector &Idxs) {
-  Expr *BaseE = NULL;
+  Expr *BaseE = nullptr;
   CXXOperatorCallExpr *CXX = const_cast<CXXOperatorCallExpr *>(C);
   while (CXX) {
     if (CXX->getDirectCallee()->getNameAsString() != "operator[]") {

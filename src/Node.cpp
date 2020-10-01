@@ -20,7 +20,7 @@ std::string Node::toString() {
   Str += "\tNodeID\t\t= " + std::to_string(this->getSchedInfo().NodeID) + "\n";
   Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
   for (int i = 0; i < this->getInputs().size(); ++i) {
-    if (this->getInputs()[i] != NULL) {
+    if (this->getInputs()[i] != nullptr) {
       Str += "\tInput " + std::to_string(i) +
              "\t\t= " + this->getInputs()[i]->getValue() + " (ID = " +
              std::to_string(this->getInputs()[i]->getSchedInfo().NodeID) +
@@ -57,5 +57,5 @@ Node *Node::findOutputNode(std::string NodeName, NodeListType L) {
       return NL;
     }
   }
-  return NULL;
+  return nullptr;
 }

@@ -153,7 +153,7 @@ public:
   };
 
   /// Alias for list of SIMDInst structures
-  typedef std::list<SIMDInst> SIMDInstListType;
+  using SIMDInstListType = std::list<SIMDInst>;
 
   /// Return value when generating new code
   struct SIMDInfo {
@@ -189,7 +189,8 @@ public:
   /// other type of not vectorized instructions, given a VectorOP
   SIMDGenerator::SIMDInst addNonSIMDInst(VectorIR::VectorOP OP,
                                          SIMDGenerator::SIMDType SType,
-                                         SIMDGenerator::SIMDInstListType *IL);
+                                         SIMDGenerator::SIMDInstListType *IL,
+                                         int Order = -1);
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions specifying explicitly the LHS
   /// and the RHS

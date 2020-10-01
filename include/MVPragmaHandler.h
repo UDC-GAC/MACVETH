@@ -19,7 +19,7 @@ using namespace clang;
 
 namespace macveth {
 
-typedef std::vector<std::tuple<std::string, int>> PragmaTupleDim;
+using PragmaTupleDim = std::vector<std::tuple<std::string, int>>;
 
 /// The Location of the Scop, as delimited by macveth and endmacveth
 /// pragmas by the user.
@@ -151,8 +151,9 @@ struct ScopHandler {
 
 /// Get IdentifierInfo from Token
 static IdentifierInfo *getValue(Token &token) {
-  if (token.isNot(tok::identifier))
-    return NULL;
+  if (token.isNot(tok::identifier)) {
+    return nullptr;
+  }
   return token.getIdentifierInfo();
 }
 
@@ -165,7 +166,7 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
   bool DimensionFound = false;
   Token Tok;
   PP.Lex(Tok);
-  while ((II = getValue(Tok)) != NULL) {
+  while ((II = getValue(Tok)) != nullptr) {
     PP.Lex(Tok);
     if (((II->isStr("nounroll")) || (II->isStr("unroll")) ||
          (II->isStr("unrollandjam"))) &&
@@ -204,7 +205,7 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
     }
 
     auto IINext = Tok.getLiteralData();
-    if (IINext == NULL) {
+    if (IINext == nullptr) {
       assert(false &&
              "Bad format: needed a unrolling factor for the dimension");
     }

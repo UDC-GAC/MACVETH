@@ -117,7 +117,7 @@ public:
 
   /// To string method
   std::string toString() {
-    auto C = (this->getC() != NULL) ? ", " + this->getC()->getExprStr() : "";
+    auto C = (this->getC() != nullptr) ? ", " + this->getC()->getExprStr() : "";
     auto Op = this->MVOP.toString();
     Op = "t: " + this->getA()->getExprStr() + ", " +
          this->getB()->getExprStr() + C + ", " + Op +
@@ -164,7 +164,7 @@ private:
 };
 
 /// List of TACs
-typedef std::list<TAC> TacListType;
+using TacListType = std::list<TAC>;
 
 } // namespace macveth
 #endif /* !MACVETH_TAC_H */

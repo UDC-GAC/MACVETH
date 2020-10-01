@@ -35,7 +35,7 @@ public:
   static void restart() { Node::UUID = 0; }
 
   /// Definition of NodeListType
-  typedef std::vector<Node *> NodeListType;
+  using NodeListType = std::vector<Node *>;
 
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_STORE, NODE_OP, UNDEF };
@@ -127,7 +127,7 @@ public:
     setSchedInfo(T);
     this->LoopName = T.getLoopName();
     connectInput(new Node(T.getB()));
-    if (T.getC() != NULL) {
+    if (T.getC() != nullptr) {
       connectInput(new Node(T.getC()));
     }
     updateIfStore();
@@ -143,15 +143,15 @@ public:
     setSchedInfo(T);
     this->LoopName = T.getLoopName();
     auto NB = findOutputNode(T.getB()->getExprStr(), L);
-    if (NB == NULL || this->getScop()[0] != NB->getScop()[0]) {
+    if (NB == nullptr || this->getScop()[0] != NB->getScop()[0]) {
       connectInput(new Node(T.getB()));
     } else {
       connectInput(NB);
     }
-    Node *NC = NULL;
-    if (T.getC() != NULL) {
+    Node *NC = nullptr;
+    if (T.getC() != nullptr) {
       NC = findOutputNode(T.getC()->getExprStr(), L);
-      if (NC == NULL || this->getScop()[0] != NC->getScop()[0]) {
+      if (NC == nullptr || this->getScop()[0] != NC->getScop()[0]) {
         connectInput(new Node(T.getC()));
       } else {
         connectInput(NC);

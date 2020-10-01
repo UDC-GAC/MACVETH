@@ -104,7 +104,7 @@ std::string TAC::renderTacAsStmt(TacListType TL) {
     std::string C = "";
     auto Op = T.getMVOP().toString();
     auto TOP = T.getMVOP().T == MVOpType::CLANG_BINOP ? "BinOp" : "Func";
-    if (T.getC() != NULL) {
+    if (T.getC() != nullptr) {
       C = T.getC()->getExprStr();
     }
     if ((T.getA()->getTempInfo() == MVExpr::MVExprInfo::TMP_RES)) {
@@ -118,7 +118,7 @@ std::string TAC::renderTacAsStmt(TacListType TL) {
     auto B = T.getB()->getExprStr();
     std::string C = "";
     // auto Op = T.getMVOP().toString();
-    if (T.getC() != NULL) {
+    if (T.getC() != nullptr) {
       C = T.getC()->getExprStr();
     }
     // If this, then it is an assignment (by design)
@@ -145,8 +145,8 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   if (S) {
     S1 = S->getLHS()->IgnoreImpCasts();
     S2 = S->getRHS()->IgnoreImpCasts();
-    clang::BinaryOperator *LhsBin = NULL;
-    clang::BinaryOperator *RhsBin = NULL;
+    clang::BinaryOperator *LhsBin = nullptr;
+    clang::BinaryOperator *RhsBin = nullptr;
     Op = MVOp(S->getOpcode());
     if (S->getOpcode() == BinaryOperator::Opcode::BO_AddAssign) {
       auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Add,
@@ -253,7 +253,7 @@ TacListType TAC::stmtToTAC(clang::Stmt *ST) {
   TacListType TL;
 
   // Check if the expression is binary
-  clang::BinaryOperator *SBin = NULL;
+  clang::BinaryOperator *SBin = nullptr;
   bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
   if (STypeBin) {
     stmtToTACRecursive(SBin, &TL, -1);
@@ -276,8 +276,9 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
 
   auto NewA = Tac->getA()->unrollExpr(UnrollA, LoopLevel);
   auto NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
-  auto NewC =
-      Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL;
+  auto NewC = Tac->getC() != nullptr
+                  ? Tac->getC()->unrollExpr(UnrollC, LoopLevel)
+                  : nullptr;
   auto UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
   UnrolledTac->setScop(Tac->getScop());
   UnrolledTac->setLoopName(Tac->getLoopName());
@@ -292,10 +293,10 @@ TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
   for (int S = 0; S < Steps; S++) {
     for (auto T : TacList) {
       auto NT = (TAC::unroll(&T, UnrollFactor, S, 0x000000, LoopLevel));
-      if (NT != NULL) {
+      if (NT != nullptr) {
         TacListOrg.push_back(*NT);
       }
-      if ((NT == NULL) && (S == 0)) {
+      if ((NT == nullptr) && (S == 0)) {
         TacListOrg.push_back(T);
       }
     }

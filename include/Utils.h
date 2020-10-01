@@ -44,7 +44,7 @@ namespace macveth {
 class Utils {
 public:
   /// Type of string list
-  typedef std::list<std::string> StrList;
+  using StrList = std::list<std::string>;
 
   // When declaring static members of class, when assigning them you need
   // to redeclare them or since C++17 you can just put in
