@@ -15,7 +15,7 @@ int computeMaxDepth(Node *N) {
   if (N->getInputNum() == 0) {
     return 0;
   } else {
-    int Max = 0;
+    int Max = N->getSchedInfo().FreeSched;
     for (Node *T : N->getInputs()) {
       Max = std::max(Max, 1 + computeMaxDepth(T));
     }
@@ -30,7 +30,6 @@ void PlcmntAlgo::computeFreeSchedule(Node *N) {
 
 // ---------------------------------------------
 void PlcmntAlgo::computeFreeSchedule(Node::NodeListType NL) {
-  // Compute RAW
   for (Node *N : NL) {
     N->setFreeSchedInfo(computeMaxDepth(N));
   }

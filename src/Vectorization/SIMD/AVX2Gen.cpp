@@ -527,21 +527,21 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
 bool isThisReductionFusible() { return true; }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInstListType
-AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
-  // Copy list
-  SIMDGenerator::SIMDInstListType IL;
-  SIMDGenerator::SIMDInstListType SkipList;
-  SIMDGenerator::SIMDInstListType ReduxList;
-  for (auto I : TIL) {
-    if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
-      ReduxList.push_back(I);
-    }
-  }
-  SIMDGenerator::SIMDInstListType FusedReductions;
-  for (auto R : ReduxList) {
-  }
-}
+// SIMDGenerator::SIMDInstListType
+// AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
+//   // Copy list
+//   SIMDGenerator::SIMDInstListType IL;
+//   SIMDGenerator::SIMDInstListType SkipList;
+//   SIMDGenerator::SIMDInstListType ReduxList;
+//   for (auto I : TIL) {
+//     if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
+//       ReduxList.push_back(I);
+//     }
+//   }
+//   SIMDGenerator::SIMDInstListType FusedReductions;
+//   for (auto R : ReduxList) {
+//   }
+// }
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType

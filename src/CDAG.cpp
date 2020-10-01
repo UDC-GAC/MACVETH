@@ -163,6 +163,7 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
   // Set placement according to the desired algorithm
   Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
 
+  // Debugging
   for (auto N : NL) {
     Utils::printDebug("CDAG", N->toString());
   }
@@ -187,7 +188,7 @@ SIMDGenerator::SIMDInfo CDAG::computeCostModel(CDAG *G, SIMDGenerator *SG) {
 }
 
 // ---------------------------------------------
-Node *Node::findWARDataRace(Node *N, Node::NodeListType NL) {
+Node *CDAG::findWARDataRace(Node *N, Node::NodeListType NL) {
   Node *WarNode = nullptr;
   for (auto Op : NL) {
     for (auto In : Op->getInputs()) {
@@ -196,10 +197,30 @@ Node *Node::findWARDataRace(Node *N, Node::NodeListType NL) {
            (((WarNode != nullptr) && (WarNode->getTacID() < In->getTacID()) &&
              (In->getTacID() < N->getTacID()))))) {
         WarNode = In;
+        this->MapWAR[N->getTacID()].insert(WarNode->getTacID());
       }
     }
   }
   return WarNode;
+}
+
+// ---------------------------------------------
+Node *CDAG::findRAWDataRace(Node *N, Node::NodeListType NL) {
+  Node *RawNode = nullptr;
+  for (auto Op : NL) {
+    if (!Op->isStoreNodeOp()) {
+      continue;
+    }
+    auto OutName = Op->getOutputInfoName();
+    for (auto In : N->getInputs()) {
+      if (((OutName == In->getRegisterValue()) &&
+           (Op->getTacID() < N->getTacID()))) {
+        RawNode = Op;
+        this->MapRAW[RawNode->getTacID()].insert(N->getTacID());
+      }
+    }
+  }
+  return RawNode;
 }
 
 // ---------------------------------------------
@@ -208,7 +229,7 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
   // operation
   if (T.getMVOP().isAssignment()) {
     // Assumption: a = b op c, c is always the "connector"
-    Node *N = Node::findOutputNode(T.getC()->getExprStr(), L);
+    auto N = Node::findOutputNode(T.getC()->getExprStr(), L);
     if (N == nullptr) {
       Utils::printDebug("CDAG/NODE",
                         "no output found = " + T.getC()->getExprStr());
@@ -218,8 +239,8 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
     N->setOutputExpr(T.getA());
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
-    auto WarNode = Node::findWARDataRace(N, this->NLOps);
-    // Node *WarNode = nullptr;
+    auto WarNode = findWARDataRace(N, this->NLOps);
+    auto RawNode = findRAWDataRace(N, this->NLOps);
     if (WarNode != nullptr) {
       Utils::printDebug("CDAG/NODE",
                         "WAR found = " + WarNode->getRegisterValue() + "; " +
@@ -229,8 +250,14 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
     return nullptr;
   }
 no_output:
-  Node *NewNode = new Node(T, L);
+  auto NewNode = new Node(T, L);
+  auto WarNode = findWARDataRace(NewNode, this->NLOps);
+  auto RawNode = findRAWDataRace(NewNode, this->NLOps);
+
   PlcmntAlgo::computeFreeSchedule(NewNode);
+  NewNode->setFreeSchedInfo(
+      std::max(NewNode->getSchedInfo().FreeSched,
+               (RawNode == nullptr) ? 0 : RawNode->getSchedInfo().FreeSched));
   Utils::printDebug("CDAG/NODE", "new node = " + T.toString() + "; " +
                                      NewNode->getSchedInfoStr());
   this->NLOps.push_back(NewNode);
@@ -252,5 +279,20 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
     // new NODE_OP. Looking for inputs
     Node *PrevNode = G->insertTac(T, G->getNodeListOps());
   }
+
+  for (auto R : G->MapRAW) {
+    Utils::printDebug("CDAG", "RAW for TAC = " + std::to_string(R.first));
+    for (auto RAW : R.second) {
+      Utils::printDebug("CDAG", "\t TAC = " + std::to_string(RAW));
+    }
+  }
+
+  for (auto R : G->MapWAR) {
+    Utils::printDebug("CDAG", "WAR for TAC = " + std::to_string(R.first));
+    for (auto RAW : R.second) {
+      Utils::printDebug("CDAG", "\t TAC = " + std::to_string(RAW));
+    }
+  }
+
   return G;
 }

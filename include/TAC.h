@@ -122,7 +122,8 @@ public:
     Op = "t: " + this->getA()->getExprStr() + ", " +
          this->getB()->getExprStr() + C + ", " + Op +
          "; (loop = " + this->getLoopName() +
-         "; scop = " + std::to_string(this->getScop()) + ")";
+         "; scop = " + std::to_string(this->getScop()) +
+         "); ID = " + std::to_string(this->getTacID());
     return Op;
   }
 

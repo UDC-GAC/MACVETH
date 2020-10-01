@@ -190,9 +190,6 @@ public:
   /// Check if Node N is already in node list L
   static Node *findOutputNode(std::string NodeName, NodeListType L);
 
-  /// Get Node
-  static Node *findWARDataRace(Node *N, Node::NodeListType NL);
-
   /// Connect a Node as input
   void connectInput(Node *N);
 
@@ -202,7 +199,7 @@ public:
   /// Get the number of inputs in this Node
   int getOutputNum() { return this->OutNodes.size(); }
   /// Get the output Nodes
-  NodeListType getOuputNodes() { return this->OutNodes; }
+  NodeListType getOutputNodes() { return this->OutNodes; }
   /// Get the output information
   OutputInfo getOutputInfo() { return this->O; }
   /// Get the output information
