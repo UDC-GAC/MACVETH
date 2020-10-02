@@ -99,7 +99,7 @@ std::string VectorIR::VOperand::toString() {
 // ---------------------------------------------
 std::string VectorIR::VectorOP::toString() {
   if (this->VT == VectorIR::VType::SEQ) {
-    return "Sequential";
+    return "Sequential " + this->R.Name;
   }
   auto B = (IsUnary) ? "" : "," + OpB.toString();
   auto Str = R.toString() + " = " + VN + "(" + OpA.toString() + B + ")";

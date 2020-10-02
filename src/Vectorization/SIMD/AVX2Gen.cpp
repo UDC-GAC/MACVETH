@@ -89,6 +89,7 @@ SIMDGenerator::SIMDInst AVX2Gen::genMultAccOp(SIMDGenerator::SIMDInst Mul,
   Fuse = createSIMDInst(Op, Res, Width, DataType, PrefS, SuffS, Args,
                         SIMDGenerator::SIMDType::VOPT, Acc.TacID);
   Fuse.VOPResult = Acc.VOPResult;
+  Fuse.MVSL = Acc.MVSL;
 
   return Fuse;
 }
@@ -179,64 +180,64 @@ AVX2Gen::horizontalSingleReduction(SIMDGenerator::SIMDInstListType TIL) {
   SIMDGenerator::addRegToDeclare(RegType, HiRes, {0});
   std::string AccmReg = getAccmReg(VIL[0].VOPResult.Name);
   auto Pos = MVSourceLocation::Position::POSORDER;
-
+  auto Loc = VIL[NElems - 1].VOPResult.Order;
   if (Type == VectorIR::VDataType::DOUBLE) {
     // If 4 elements
     if (NElems > 2) {
       // __m128d lo = _mm256_castpd256_pd128(v); zero latency
       genSIMDInst(LoRes, "castpd", "256", "pd128", VectorIR::VWidth::W256, Type,
-                  {AccmReg}, SIMDType::VREDUC, &IL, -1, Pos);
+                  {AccmReg}, SIMDType::VOPT, &IL, Loc, Pos);
       // __m128d hi = _mm256_extractf128_pd(v,0x1);
       genSIMDInst(HiRes, "extract", "", "f128", VectorIR::VWidth::W256, Type,
-                  {AccmReg, "0x1"}, SIMDType::VREDUC, &IL, -1, Pos);
+                  {AccmReg, "0x1"}, SIMDType::VOPT, &IL, Loc, Pos);
       // lo = op(lo,hi);
       genSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
-                  {LoRes, HiRes}, SIMDType::VREDUC, &IL, -1, Pos);
+                  {LoRes, HiRes}, SIMDType::VOPT, &IL, Loc, Pos);
     } else {
       LoRes = AccmReg;
     }
     // When only 2 elements
     // hi = _mm_shuffle_pd(lo,lo,0x1);
     genSIMDInst(HiRes, "shuffle", "", "", VectorIR::VWidth::W128, Type,
-                {LoRes, LoRes, "0x1"}, SIMDType::VREDUC, &IL, -1, Pos);
+                {LoRes, LoRes, "0x1"}, SIMDType::VPERM, &IL, Loc, Pos);
     // val = _mm_cvtsd_f64(op(lo,hi));
     genSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
-                {LoRes, HiRes}, SIMDType::VREDUC, &IL, -1, Pos);
+                {LoRes, HiRes}, SIMDType::VOPT, &IL, Loc, Pos);
     genSIMDInst(VIL[0].Result, "cvtsd", "", "f64", VectorIR::VWidth::W128, Type,
-                {LoRes}, SIMDType::VREDUC, &IL, -1, Pos);
+                {LoRes}, SIMDType::VOPT, &IL, Loc, Pos);
   } else if (Type == VectorIR::VDataType::FLOAT) {
     // 8 elements
     if (NElems > 4) {
       // __m128 lo =
       genSIMDInst(LoRes, "castps", "256", "ps128", VectorIR::VWidth::W256, Type,
-                  {AccmReg}, SIMDType::VREDUC, &IL, -1, Pos);
+                  {AccmReg}, SIMDType::VOPT, &IL, Loc, Pos);
       // __m128 lo = cast(v)
       genSIMDInst(HiRes, "extract", "", "f128", VectorIR::VWidth::W256, Type,
-                  {AccmReg, "0x1"}, SIMDType::VREDUC, &IL, -1, Pos);
+                  {AccmReg, "0x1"}, SIMDType::VOPT, &IL, Loc, Pos);
 
       // lo = op(lo,hi);
       genSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
-                  {LoRes, HiRes}, SIMDType::VREDUC, &IL, -1, Pos);
+                  {LoRes, HiRes}, SIMDType::VOPT, &IL, Loc, Pos);
     } else {
       LoRes = AccmReg;
     }
     // 4 elements
     // hi = movehl(lo);
     genSIMDInst(HiRes, "move", "", "hl", VectorIR::VWidth::W128, Type,
-                {LoRes, LoRes}, SIMDType::VREDUC, &IL, -1, Pos);
+                {LoRes, LoRes}, SIMDType::VOPT, &IL, Loc, Pos);
     // lo = op(lo,hi);
     genSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
-                {LoRes, HiRes}, SIMDType::VREDUC, &IL, -1, Pos);
+                {LoRes, HiRes}, SIMDType::VOPT, &IL, Loc, Pos);
     // 2 elements
     // hi = shuffle(lo);
     genSIMDInst(HiRes, "shuffle", "", "", VectorIR::VWidth::W128, Type,
-                {LoRes, LoRes, "0b00001110"}, SIMDType::VREDUC, &IL, -1, Pos);
+                {LoRes, LoRes, "0b00001110"}, SIMDType::VPERM, &IL, Loc, Pos);
     // lo = op(lo,hi);
     genSIMDInst(LoRes, OpName, "", "", VectorIR::VWidth::W128, Type,
-                {LoRes, HiRes}, SIMDType::VREDUC, &IL, -1, Pos);
+                {LoRes, HiRes}, SIMDType::VOPT, &IL, Loc, Pos);
 
     genSIMDInst(VIL[0].Result, "cvtss", "", "f32", VectorIR::VWidth::W128, Type,
-                {LoRes}, SIMDType::VREDUC, &IL, -1, Pos);
+                {LoRes}, SIMDType::VOPT, &IL, Loc, Pos);
   } else {
     // FIXME: should we implement this for integer arithmetic?
     MVErr("Not implemented this approach yet for other types than float or "
@@ -262,7 +263,7 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   if (NumRedux > NElems) {
     MVAssert(false, "You can not have more reductions than elements in vector");
   }
-  int Loc = 0;
+  auto Loc = 0;
   std::vector<std::string> VAccm;
   std::vector<std::string> VRedux;
   for (int t = 0; t < NumRedux; ++t) {
@@ -271,11 +272,11 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     Loc = std::max(Loc, VIL[t].VOPResult.Order);
   }
 
-  Utils::printDebug("AVX2Gen", "Location is = " + std::to_string(Loc) +
-                                   ", otherwise it would be " +
-                                   std::to_string(VIL[0].VOPResult.Order));
+  // Utils::printDebug("AVX2Gen", "Location is = " + std::to_string(Loc) +
+  //                                  ", otherwise it would be " +
+  //                                  std::to_string(VIL[0].VOPResult.Order));
 
-  int S = (NumRedux + (NumRedux % 2)) / 2;
+  auto S = (NumRedux + (NumRedux % 2)) / 2;
   std::string OP =
       (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "hadd" : "hsub";
 
@@ -284,7 +285,7 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     for (int i = 0; i < NumRedux; i += Stride) {
       genSIMDInst(VIL[0].VOPResult, OP, "", "",
                   {VAccm[i], (NumRedux > 1) ? VAccm[i + 1] : VAccm[i]},
-                  SIMDType::VREDUC, &IL, Loc, Pos, VAccm[i]);
+                  SIMDType::VOPT, &IL, Loc, Pos, VAccm[i]);
       if (i > 0) {
         VAccm[i - 1] = VAccm[i];
       }
@@ -316,8 +317,8 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
       auto Op2 = genGenericFunc(Perm, {V0, V1, Mask2});
 
       OP = (OP == "hadd") ? "add" : "sub";
-      genSIMDInst(VIL[0].VOPResult, OP, "", "", {Op1, Op2}, SIMDType::VREDUC,
-                  &IL, Loc, Pos, VAccm[0]);
+      genSIMDInst(VIL[0].VOPResult, OP, "", "", {Op1, Op2}, SIMDType::VOPT, &IL,
+                  Loc, Pos, VAccm[0]);
 
       break;
     }
@@ -328,7 +329,7 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
               SIMDType::VSTORE, &IL, Loc, Pos);
   for (int R = 0; R < NumRedux; ++R) {
     auto Idx = "[" + std::to_string(R) + "]";
-    addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQ, &IL, Loc, Pos);
+    addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VOPT, &IL, Loc, Pos);
   }
 
   return IL;
@@ -417,6 +418,7 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   SIMDGenerator::SIMDInstListType IL;
   std::vector<SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
 
+  auto Pos = MVSourceLocation::Position::POSORDER;
   auto NElems = VIL[0].W / VectorIR::VDataTypeWidthBits[VIL[0].DT];
   auto OpRedux = VIL[0].MVOP;
   // auto OpReduxType = OpRedux.getType();
@@ -433,7 +435,7 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   }
 
   auto OP = OpRedux.toString();
-
+  auto Loc = VIL[NumRedux - 1].VOPResult.Order;
   // Pseudo-algorithm:
   // -----------------
   // An = op(shuffle(OPn,mask1), shuffle(OPn+1,mask2))
@@ -446,8 +448,6 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
 
   // IMPORTANT: This approach assumes NumRedux > 1
 
-  auto Pos = MVSourceLocation::Position::POSORDER;
-
   // Shuffles
   for (int i = 0; i < NumRedux; i += 2) {
     auto A0 =
@@ -456,8 +456,8 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
     auto A1 =
         shuffleArguments(VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i],
                          VIL[i].W, VIL[i], 1);
-    genSIMDInst(VIL[i].VOPResult, OP, "", "", {A0, A1}, SIMDType::VREDUC, &IL,
-                VIL[i].TacID, Pos, VAccm[i]);
+    genSIMDInst(VIL[i].VOPResult, OP, "", "", {A0, A1}, SIMDType::VOPT, &IL,
+                Loc, Pos, VAccm[i]);
     if (i > 0) {
       VAccm[i - 1] = VAccm[i];
     }
@@ -475,8 +475,8 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
         Blend, {VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i], Mask});
     auto A1 = permuteArguments(
         VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i], VIL[i], 1);
-    genSIMDInst(VIL[i].VOPResult, OP, "", "", {A0, A1}, SIMDType::VREDUC, &IL,
-                VIL[i].TacID, Pos, VAccm[i]);
+    genSIMDInst(VIL[i].VOPResult, OP, "", "", {A0, A1}, SIMDType::VOPT, &IL,
+                Loc, Pos, VAccm[i]);
     if (i > 0)
       VAccm[i - 1] = VAccm[i];
   }
@@ -488,10 +488,10 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   if (NElems <= 4) {
     // FIXME: Store approach
     genSIMDInst(VIL[0].VOPResult, "store", "", "u", {AuxArray, VAccm[0]},
-                SIMDType::VSTORE, &IL);
+                SIMDType::VSTORE, &IL, Loc, Pos);
     for (int R = 0; R < NumRedux; ++R) {
       std::string Idx = "[" + std::to_string(VIdx[R]) + "]";
-      addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQ, &IL);
+      addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQ, &IL, Loc, Pos);
     }
     return IL;
   } else {
@@ -506,11 +506,11 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
       auto Res = getNextAuxRegister(VIL[R].VOPResult.Name);
       SIMDGenerator::addRegToDeclare(RegType, Res, {0});
       genSIMDInst(Res, OP, "", "", VectorIR::VWidth::W128, VIL[R].DT, {A1, A2},
-                  SIMDType::VREDUC, &IL, -1, Pos);
+                  SIMDType::VOPT, &IL, Loc, Pos);
       if (NumRedux > 1) {
         genSIMDInst(Res, "store", "", "u", VectorIR::VWidth::W128, VIL[R].DT,
                     {"&" + AuxArray + "[" + std::to_string(R) + "]", Res},
-                    SIMDType::VSTORE, &IL);
+                    SIMDType::VSTORE, &IL, Loc, Pos);
       }
     }
     if (NumRedux == 1) {
@@ -521,12 +521,12 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
                       ? VectorIR::VDataType::SDOUBLE
                       : VectorIR::VDataType::SFLOAT;
       genSIMDInst(VRedux[0], "cvt", "", Suf, VectorIR::VWidth::W128, Type,
-                  {Res}, SIMDType::VSEQ, &IL);
+                  {Res}, SIMDType::VOPT, &IL, Loc, Pos);
     } else {
-      // FIXME: not sure this works properly
       for (int R = 0; R < NumRedux; ++R) {
         std::string Idx = "[" + std::to_string(VIdx[R]) + "]";
-        addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQ, &IL);
+        addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VSEQ, &IL, Loc,
+                       Pos);
       }
     }
   }
@@ -545,7 +545,7 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
            std::map<SIMDGenerator::SIMDInst, SIMDGenerator::SIMDInstListType>>
       ReplaceFusedRedux;
   for (auto I : TIL) {
-    if (I.SType == SIMDGenerator::SIMDType::VREDUC) {
+    if (I.isReduction()) {
       LRedux[I.VOPResult.Size][I.VOPResult.getOperandLoop() + I.MVOP.toString()]
           .push_back(I);
     }
@@ -718,6 +718,7 @@ SIMDGenerator::SIMDInst AVX2Gen::genSIMDInst(
   // Generate SIMD inst
   SIMDGenerator::SIMDInst I(NameOp, AVXFunc, Args, MVFunc, MVArgs, O);
   I.MVSL.setOrder(O);
+  I.MVSL.setPosition(P);
 
   // Retrieving cost of function
   SIMDGenerator::SIMDCostInfo C(CostTable::getRow(AVX2Gen::NArch, Op));
@@ -922,16 +923,15 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
     Scale = std::to_string(4);
   }
 
-  // FIXME: fuck me, this is garbage
   auto VIndex = "_mm" + MapWidth[V.Width] + "_set_" + VIndexSuffix + "(";
   auto CopyIdx = V.Idx;
   auto MinIdx = std::min_element(CopyIdx.begin(), CopyIdx.end());
-  auto MinVal = abs(*MinIdx);
+  auto MinVal = *MinIdx;
   auto BaseIdx = V.UOP[MinIdx - CopyIdx.begin()]->getValue();
   // This way we avoid negative indices
   if (MinVal < 0) {
     for (auto T = 0; T < CopyIdx.size(); ++T) {
-      CopyIdx[T] += MinVal;
+      CopyIdx[T] += abs(MinVal);
     }
   }
   std::reverse(CopyIdx.begin(), CopyIdx.end());
@@ -943,6 +943,7 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
         std::to_string(CopyIdx[T]) + ((T == (CopyIdx.size() - 1)) ? "" : ", ");
   }
   VIndex += ")";
+
   // Memory address
   Args.push_back("&" + BaseIdx);
   Args.push_back(VIndex);
@@ -1286,7 +1287,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vseq(VectorIR::VectorOP V) {
   SIMDGenerator::SIMDInstListType IL;
 
   // Adding SIMD inst to the list
-  addNonSIMDInst(V, SIMDType::VSEQ, &IL, V.R.Order);
+  addNonSIMDInst(V, SIMDType::VSEQ, &IL, V.R.Order,
+                 MVSourceLocation::Position::INORDER);
 
   return IL;
 }

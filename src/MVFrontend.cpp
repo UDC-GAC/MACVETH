@@ -142,10 +142,10 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
     }
     if (S->isVectorized()) {
       Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         "// vectorized: ", true, true);
+                         "// stmt vectorized: ", true, true);
     } else {
       Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         "// replaced: ", true, true);
+                         "// stmt not vectorized: ", true, true);
     }
   }
 }
@@ -201,14 +201,23 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
         if (SI.getSourceLocationOrder() == T.getTacID()) {
+          // Utils::printDebug("MVFuncVisitor", "This is sequential in order = "
+          // + std::to_string(T.getTacID()));
           renderTACInPlace({S}, SI.getSourceLocationOrder());
           return;
         }
       }
     }
   }
+
+  // FIXME: needed other mechanism for this
+  if (SI.isReduction()) {
+    // Utils::printDebug("MVFuncVisitor", "This was a reduction");
+    return;
+  }
+
   if (SI.isPosOrder()) {
-    Utils::printDebug("MVFrontend", "Printing after place = " + SI.render());
+    // Utils::printDebug("MVFrontend", "Printing after place = " + SI.render());
     renderSIMDInstAfterPlace(SI, SL);
   } else {
     // Rest of SIMD operations

@@ -95,6 +95,8 @@ SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
     O = OP.Order;
   }
   SIMDGenerator::SIMDInst I(Lhs, Rhs, O);
+  I.MVSL.setOrder(O);
+  I.MVSL.setPosition(P);
   // Retrieving cost of function
   I.SType = SType;
 
@@ -114,6 +116,9 @@ SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
     O = IL->back().TacID;
   }
   SIMDGenerator::SIMDInst I(Lhs, Rhs, O);
+  I.MVSL.setOrder(O);
+  I.MVSL.setPosition(P);
+
   // Retrieving cost of function
   I.SType = SType;
 

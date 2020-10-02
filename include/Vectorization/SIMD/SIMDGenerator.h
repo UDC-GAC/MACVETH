@@ -138,6 +138,9 @@ public:
       return this->MVSL.getPosition() == MVSourceLocation::Position::POSORDER;
     }
 
+    /// Check if reduction
+    bool isReduction() { return this->SType == SIMDType::VREDUC; }
+
     /// Get MVSourceLocation order
     unsigned int getSourceLocationOrder() { return this->MVSL.getOrder(); }
 
