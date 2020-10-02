@@ -216,9 +216,11 @@ Node *CDAG::findRAWDataRace(Node *N, Node::NodeListType NL) {
       if (((OutName == In->getRegisterValue()) &&
            (Op->getTacID() < N->getTacID()))) {
         RawNode = Op;
-        this->MapRAW[RawNode->getTacID()].insert(N->getTacID());
       }
     }
+  }
+  if (RawNode != nullptr) {
+    this->MapRAW[RawNode->getTacID()].insert(N->getTacID());
   }
   return RawNode;
 }

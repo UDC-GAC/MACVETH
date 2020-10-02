@@ -85,7 +85,8 @@ std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
 SIMDGenerator::SIMDInst
 SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
                               SIMDGenerator::SIMDType SType,
-                              SIMDGenerator::SIMDInstListType *IL, int Order) {
+                              SIMDGenerator::SIMDInstListType *IL, int Order,
+                              MVSourceLocation::Position P) {
   // Generate SIMD inst
   std::string Rhs;
   std::string Lhs = OP.R.getName();
@@ -106,7 +107,8 @@ SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
 SIMDGenerator::SIMDInst
 SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
                               SIMDGenerator::SIMDType SType,
-                              SIMDGenerator::SIMDInstListType *IL, int Order) {
+                              SIMDGenerator::SIMDInstListType *IL, int Order,
+                              MVSourceLocation::Position P) {
   auto O = Order;
   if (O == -1) {
     O = IL->back().TacID;
@@ -123,12 +125,10 @@ SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
   std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
-  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
-                          (SType == SIMDType::VSTORER))
+  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
                              ? FN
                              : Result + " = " + FN;
-  if (((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ)) ||
-      (Args.size() == 0))
+  if ((SType == SIMDType::VSEQ) || (Args.size() == 0))
     return FullFunc;
   int i = 0;
   FullFunc += "(";

@@ -86,7 +86,7 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
         Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
     if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
       Utils::printDebug("StmtWrapper genStmtWraps",
-                        "new StmtWrapper => " + Utils::getStringFromStmt(ST));
+                        "new StmtWrapper =\n" + Utils::getStringFromStmt(ST));
       StmtWrapper *NewStmt = new StmtWrapper(ST);
       SList.push_back(NewStmt);
     } else {
@@ -105,7 +105,7 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
                 Utils::getSourceMgr()->getExpansionLineNumber(B->getEndLoc());
             if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
               Utils::printDebug("StmtWrapper genStmtWraps",
-                                "new StmtWrapper => " +
+                                "new StmtWrapper =\n" +
                                     Utils::getStringFromStmt(B));
               StmtWrapper *NewStmt = new StmtWrapper(B);
               SList.push_back(NewStmt);

@@ -159,23 +159,24 @@ private:
   static inline SIMDGenerator *_instance = 0;
 
   /// Add SIMD instruction
-  SIMDGenerator::SIMDInst
-  addSIMDInst(std::string Result, std::string Op, std::string PrefS,
-              std::string SuffS, VectorIR::VWidth Width,
-              VectorIR::VDataType Type, std::list<std::string> Args,
-              SIMDGenerator::SIMDType SType,
-              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "", std::list<std::string> MVArgs = {},
-              MVOp MVOP = MVOp());
+  SIMDGenerator::SIMDInst genSIMDInst(
+      std::string Result, std::string Op, std::string PrefS, std::string SuffS,
+      VectorIR::VWidth Width, VectorIR::VDataType Type,
+      std::list<std::string> Args, SIMDGenerator::SIMDType SType,
+      SIMDGenerator::SIMDInstListType *IL, int Order = -1,
+      MVSourceLocation::Position P = MVSourceLocation::Position::INORDER,
+      std::string NameOp = "", std::string MVFunc = "",
+      std::list<std::string> MVArgs = {}, MVOp MVOP = MVOp());
 
-  /// Auxiliary function for adding the SIMDInst to the list
-  SIMDGenerator::SIMDInst
-  addSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
-              std::string SuffS, std::list<std::string> OPS,
-              SIMDGenerator::SIMDType SType,
-              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "", std::list<std::string> MVArgs = {},
-              MVOp MVOP = MVOp()) override;
+  /// Auxiliary function for generating the SIMDInst to the list
+  SIMDGenerator::SIMDInst genSIMDInst(
+      VectorIR::VOperand V, std::string Op, std::string PrefS,
+      std::string SuffS, std::list<std::string> OPS,
+      SIMDGenerator::SIMDType SType,
+      SIMDGenerator::SIMDInstListType *IL = nullptr, int Order = -1,
+      MVSourceLocation::Position P = MVSourceLocation::Position::INORDER,
+      std::string NameOp = "", std::string MVFunc = "",
+      std::list<std::string> MVArgs = {}, MVOp MVOP = MVOp()) override;
 
   /// Shuffle method for reductions
   std::string shuffleArguments(std::string A1, std::string A2,
