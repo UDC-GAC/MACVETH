@@ -99,6 +99,9 @@ public:
   SIMDGenerator::SIMDInstListType
   generalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
 
+  SIMDGenerator::SIMDInstListType
+  fuseReductionsList(SIMDGenerator::SIMDInstListType TIL);
+
   /// Fusing reductions: peephole optimization
   SIMDGenerator::SIMDInstListType
   fuseReductions(SIMDGenerator::SIMDInstListType I);
@@ -106,6 +109,10 @@ public:
   /// Peephole optimization for fusing reductions
   SIMDGenerator::SIMDInst genMultAccOp(SIMDGenerator::SIMDInst Mul,
                                        SIMDGenerator::SIMDInst Acc);
+
+  /// Generate mask given a number of elements and width
+  std::string getMask(unsigned int MaskVect, int NElems,
+                      VectorIR::VWidth Width);
 
   /// Get name of AVX architecture
   virtual std::string getNArch() override { return AVX2Gen::NArch; }

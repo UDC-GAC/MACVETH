@@ -535,125 +535,94 @@ AVX2Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
 
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
+AVX2Gen::fuseReductionsList(SIMDGenerator::SIMDInstListType L) {
+  // For each reduction found, check whether they can be fused together or
+  // not:
+  // they can be fused if and only if they are in the same loop dimension/name
+  // and the same loop, basically (because they can have same name but be
+  // different loops). This is important for coherence in the program
+  auto LInsSize = L.size();
+  auto OpReduxType = L.front().MVOP.T;
+  auto OpRedux = L.front().MVOP;
+  SIMDGenerator::SIMDInstListType FusedRedux;
+  // This is the horizontal approach, only valid for AVX2 and additions
+  // and subtraction
+  if (LInsSize == 1) {
+    Utils::printDebug("AVX2Gen", "Single reduction approach (" +
+                                     std::to_string(LInsSize) + ")");
+    return horizontalSingleReduction(L);
+  } else if (((OpReduxType == MVOpType::CLANG_BINOP) &&
+              ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
+               (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)))) {
+    // Horizontal approach only worth it when we have two or more
+    // reductions
+    Utils::printDebug("AVX2Gen",
+                      "Horizontal approach (" + std::to_string(LInsSize) + ")");
+    return horizontalReductionFusion(L);
+  } else {
+    Utils::printDebug("AVX2Gen", "General approach approach (" +
+                                     std::to_string(LInsSize) + ")");
+    return generalReductionFusion(L);
+  }
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInstListType
 AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
-  // Copy list
   SIMDGenerator::SIMDInstListType IL;
   SIMDGenerator::SIMDInstListType SkipList;
   // List of reduction candidates to be fused
-  std::map<int, std::map<std::string, SIMDGenerator::SIMDInstListType>> LRedux;
-  std::map<int,
-           std::map<SIMDGenerator::SIMDInst, SIMDGenerator::SIMDInstListType>>
+  std::map<int, SIMDGenerator::SIMDInstListType> LRedux;
+  std::map<SIMDGenerator::SIMDInst, SIMDGenerator::SIMDInstListType>
       ReplaceFusedRedux;
   for (auto I : TIL) {
     if (I.isReduction()) {
-      LRedux[I.VOPResult.Size][I.VOPResult.getOperandLoop() + I.MVOP.toString()]
-          .push_back(I);
-    }
-    if (LRedux.size() == 0) {
-      continue;
+      // if RAW dependencies OK then
+      LRedux[I.VOPResult.Size].push_back(I);
+      // TODO: else computeReductions and add
     }
     // For each reduction found, check whether they can be fused together or
     // not:
-    // they can be fused if and only if they are in the same loop dimension/name
-    // and the same loop, basically (because they can have same name but be
-    // different loops). This is important for coherence in the program
-    for (auto const &R : LRedux) {
-      for (auto const &L : R.second) { /* this is valid >=C++11 */
-        auto LInsSize = L.second.size();
-        auto Ins = L.second.front();
-        auto W = L.second.front().VOPResult.Width;
-        auto DT = L.second.front().VOPResult.DType;
-        auto DW = VectorIR::VDataTypeWidthBits[DT];
-        // Only compute reductions if max found
-        if (W / DW > LInsSize) {
-          continue;
-        }
-        auto OpReduxType = L.second.front().MVOP.T;
-        auto OpRedux = L.second.front().MVOP;
-        SIMDGenerator::SIMDInstListType FusedRedux;
-        // This is the horizontal approach, only valid for AVX2 and additions
-        // and subtraction
-        if (LInsSize == 1) {
-          Utils::printDebug("AVX2Gen", "Single reduction approach (" +
-                                           std::to_string(LInsSize) + ")");
-          FusedRedux = horizontalSingleReduction(L.second);
-        } else if (((OpReduxType == MVOpType::CLANG_BINOP) &&
-                    ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
-                     (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)))) {
-          // Horizontal approach only worth it when we have two or more
-          // reductions
-          Utils::printDebug("AVX2Gen", "Horizontal approach (" +
-                                           std::to_string(LInsSize) + ")");
-          FusedRedux = horizontalReductionFusion(L.second);
-        } else {
-          Utils::printDebug("AVX2Gen", "General approach approach (" +
-                                           std::to_string(LInsSize) + ")");
-          FusedRedux = generalReductionFusion(L.second);
-        }
-        ReplaceFusedRedux[R.first][L.second.back()] = FusedRedux;
-        for (auto SInst : L.second) {
-          if (SInst == L.second.back()) {
-            break;
-          }
-          SkipList.push_back(SInst);
-        }
-        LRedux[R.first][L.first].clear();
-      }
-    }
-  }
-
-  for (auto const &R : LRedux) {
-    for (auto const &L : R.second) { /* this is valid >=C++11 */
-      auto LInsSize = L.second.size();
-      if (LInsSize == 0) {
+    // they can be fused if and only if they are in the same loop
+    // dimension/name and the same loop, basically (because they can have same
+    // name but be different loops). This is important for coherence in the
+    // program
+    for (auto &L : LRedux) {
+      if ((L.second.size() == 0)) {
         continue;
       }
-      auto OpReduxType = L.second.front().MVOP.T;
-      auto OpRedux = L.second.front().MVOP;
-      SIMDGenerator::SIMDInstListType FusedRedux;
-      // This is the horizontal approach, only valid for AVX2 and additions and
-      // subtraction
-      if (LInsSize == 1) {
-        Utils::printDebug("AVX2Gen", "Single reduction approach (" +
-                                         std::to_string(LInsSize) + ")");
-        FusedRedux = horizontalSingleReduction(L.second);
-      } else if (((OpReduxType == MVOpType::CLANG_BINOP) &&
-                  ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
-                   (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)))) {
-        // Horizontal approach only worth it when we have two or more
-        // reductions
-        Utils::printDebug("AVX2Gen", "Horizontal approach (" +
-                                         std::to_string(LInsSize) + ")");
-        FusedRedux = horizontalReductionFusion(L.second);
-      } else {
-        Utils::printDebug("AVX2Gen", "General approach approach (" +
-                                         std::to_string(LInsSize) + ")");
-        FusedRedux = generalReductionFusion(L.second);
+      auto LInsSize = L.second.size();
+      auto W = L.second.front().VOPResult.Width;
+      auto DW = VectorIR::VDataTypeWidthBits[L.second.front().VOPResult.DType];
+      // Only compute reductions if max found
+      if (W / DW > LInsSize) {
+        continue;
       }
-
-      ReplaceFusedRedux[R.first][L.second.back()] = FusedRedux;
-      for (auto SInst : L.second) {
-        if (SInst == L.second.back()) {
-          break;
-        }
-        SkipList.push_back(SInst);
-      }
+      ReplaceFusedRedux[L.second.back()] = fuseReductionsList(L.second);
+      auto it = L.second.end();
+      SkipList.splice(SkipList.end(), L.second, L.second.begin(), --it);
+      LRedux[L.first].clear();
     }
   }
+
+  // Compute the rest
+  for (auto &L : LRedux) {
+    ReplaceFusedRedux[L.second.back()] = fuseReductionsList(L.second);
+    auto it = L.second.end();
+    SkipList.splice(SkipList.end(), L.second, L.second.begin(), --it);
+  }
+
   // Reorder SIMDInstructions yet
   for (auto I : TIL) {
     if (std::find(SkipList.begin(), SkipList.end(), I) != SkipList.end()) {
       continue;
     }
-    for (auto &R : ReplaceFusedRedux) {
-      if (R.second.count(I) > 0) {
-        IL.splice(IL.end(), R.second.at(I));
-        continue;
-      }
+    if (ReplaceFusedRedux.count(I)) {
+      IL.splice(IL.end(), ReplaceFusedRedux.at(I));
+      continue;
     }
     IL.push_back(I);
   }
-
   return IL;
 }
 
@@ -664,7 +633,8 @@ AVX2Gen::peepholeOptimizations(SIMDGenerator::SIMDInstListType I) {
 
   // Fuse reductions if any and fuse them
   IL = fuseReductions(IL);
-  // Fuse operations: find potential and applicable FMADD/FMSUB, if not disabled
+  // Fuse operations: find potential and applicable FMADD/FMSUB, if not
+  // disabled
   if (!MVOptions::DisableFMA) {
     IL = fuseAddSubMult(IL);
   }
@@ -790,7 +760,8 @@ SIMDGenerator::SIMDInst AVX2Gen::genSIMDInst(
 }
 
 // ---------------------------------------------
-std::string getMask(unsigned int MaskVect, int NElems, VectorIR::VWidth Width) {
+std::string AVX2Gen::getMask(unsigned int MaskVect, int NElems,
+                             VectorIR::VWidth Width) {
   std::string Mask = "";
   std::string SetPref = "";
   std::string SetSuff = "epi32";
@@ -835,8 +806,8 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vpack(VectorIR::VOperand V) {
   // List of parameters
   std::list<std::string> Args;
 
-  // Hack: if data type is integer then use the si128/si256 notation instead of
-  // epi
+  // Hack: if data type is integer then use the si128/si256 notation instead
+  // of epi
   if (V.DType > VectorIR::VDataType::SFLOAT) {
     V.DType = (V.VSize > 4) ? VectorIR::VDataType::UNDEF256
                             : VectorIR::VDataType::UNDEF128;
@@ -908,9 +879,9 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vgather(VectorIR::VOperand V) {
   if (V.IsPartial) {
     // Who tf did intel intrinsics??????? I mean, it makes no sense at
     // all that for loads we use "maskload", then for gathers
-    // "mask_[i32|i64]gather", why the underscore? It should not be difficult to
-    // normalize the API so the signature of all functions are constructed the
-    // same way
+    // "mask_[i32|i64]gather", why the underscore? It should not be difficult
+    // to normalize the API so the signature of all functions are constructed
+    // the same way
     PrefS += "mask_";
     std::string NeutralReg = "_mm" + getMapWidth(V.getWidth()) + "_setzero_" +
                              getMapType(V.getDataType()) + "()";
