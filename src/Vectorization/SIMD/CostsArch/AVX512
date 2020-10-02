@@ -1,0 +1,159 @@
+# Default architecture values
+UNDEF,*,5,_mm#W_#Pmul#S_#D
+UNDEF,mul,5,_mm#W_#Pmul#S_#D
+UNDEF,+,4,_mm#W_#Padd#S_#D
+UNDEF,add,4,_mm#W_#Padd#S_#D
+UNDEF,-,4,_mm#W_#Psub#S_#D
+UNDEF,sub,4,_mm#W_#Psub#S_#D
+UNDEF,/,20,_mm#W_#Pdiv#S_#D
+UNDEF,div,20,_mm#W_#Pdiv#S_#D
+UNDEF,/,20,_mm#W_#Pdiv#S_#D
+UNDEF,div,20,_mm#W_#Pdiv#S_#D
+UNDEF,fmadd,5,_mm#W_#Pfmadd#S_#D
+UNDEF,fmsub,5,_mm#W_#Pfmsub#S_#D
+UNDEF,avg,1,_mm#W_#Pavg#S_#D
+UNDEF,min,4,_mm#W_#Pmin#S_#D
+UNDEF,max,4,_mm#W_#Pmax#S_#D
+UNDEF,round,3,_mm#W_#Psvml_round#S_#D
+UNDEF,trunc,3,_mm#W_#Ptrunc#S_#D
+UNDEF,ceil,3,_mm#W_#Psvml_ceil#S_#D
+UNDEF,permute,1,1,1,_mm#W_#Ppermute#S_#D
+UNDEF,shuffle,1,1,1,_mm#W_#Pshuffle#S_#D
+UNDEF,load,1,0.5,1,_mm#W_#Pload#S_#D
+UNDEF,maskload,8,2,1,_mm#W_maskload#S_#D
+UNDEF,store,1,0.5,1,_mm#W_#Pstore#S_#D
+UNDEF,gather,10,5,1,_mm#W_#Pgather#S_#D
+UNDEF,broadcast,8,1,1,_mm#W_#Pbroadcast#S_#D
+UNDEF,set,1,1,1,_mm#W_#Pset#S_#D
+UNDEF,hadd,6,_mm#W_hadd_#D
+UNDEF,hsub,6,_mm#W_hsub_#D
+UNDEF,cvtsd,1,_mm#P_cvtsd_#S
+UNDEF,cvtss,1,_mm#P_cvtss_#S
+UNDEF,cvt,1,_mm#W_cvt#D_#S
+UNDEF,exp,1,_mm#W_exp_#D
+UNDEF,extract,3,_mm#W_#Pextract#S_#D
+UNDEF,blend,1,0.33,2,_mm#W_#Pblend#S_#D
+UNDEF,castps,0,0,1,_mm#W_castps#P_#S
+UNDEF,castpd,0,0,1,_mm#W_castpd#P_#S
+UNDEF,move,1,1,1,_mm#W_#Pmove#S_#D
+# Multiplication
+Skylake,mul,4,_mm#W_#Pmul#S_#D
+Skylake,*,4,_mm#W_#Pmul#S_#D
+Broadwell,mul,3,_mm#W_#Pmul#S_#D
+Broadwell,*,3,_mm#W_#Pmul#S_#D
+Haswell,mul,5,_mm#W_#Pmul#S_#D
+Haswell,*,5,_mm#W_#Pmul#S_#D
+IvyBridge,mul,5,_mm#W_#Pmul#S_#D
+IvyBridge,*,5,_mm#W_#Pmul#S_#D
+Zen,*,5,_mm#W_#Pmul#S_#D
+Zen,mul,5,_mm#W_#Pmul#S_#D
+# Addition
+Skylake,add,4,_mm#W_#Padd#S_#D
+Skylake,+,4,_mm#W_#Padd#S_#D
+Broadwell,add,3,_mm#W_#Padd#S_#D
+Broadwell,+,3,_mm#W_#Padd#S_#D
+Haswell,add,3,_mm#W_#Padd#S_#D
+Haswell,+,3,_mm#W_#Padd#S_#D
+IvyBridge,add,3,_mm#W_#Padd#S_#D
+IvyBridge,+,3,_mm#W_#Padd#S_#D
+Zen,add,3,_mm#W_#Padd#S_#D
+Zen,+,3,_mm#W_#Padd#S_#D
+# Substraction
+Skylake,sub,4,_mm#W_#Psub#S_#D
+Skylake,-,4,_mm#W_#Psub#S_#D
+Broadwell,sub,3,_mm#W_#Psub#S_#D
+Broadwell,-,3,_mm#W_#Psub#S_#D
+Haswell,sub,3,_mm#W_#Psub#S_#D
+Haswell,-,3,_mm#W_#Psub#S_#D
+IvyBridge,sub,3,_mm#W_#Psub#S_#D
+IvyBridge,-,3,_mm#W_#Psub#S_#D
+Zen,sub,3,_mm#W_#Psub#S_#D
+Zen,-,3,_mm#W_#Psub#S_#D
+# Division
+Skylake,div,14,_mm#W_#Pdiv#S_#D
+Skylake,/,14,_mm#W_#Pdiv#S_#D
+Broadwell,div,20,_mm#W_#Pdiv#S_#D
+Broadwell,/,20,_mm#W_#Pdiv#S_#D
+Haswell,div,30,_mm#W_#Pdiv#S_#D
+Haswell,/,30,_mm#W_#Pdiv#S_#D
+IvyBridge,div,32,_mm#W_#Pdiv#S_#D
+IvyBridge,/,32,_mm#W_#Pdiv#S_#D
+Zen,div,32,_mm#W_#Pdiv#S_#D
+Zen,/,32,_mm#W_#Pdiv#S_#D
+# FMADD
+Skylake,fmadd,4,_mm#W_#Pfmadd#S_#D
+Broadwell,fmadd,5,_mm#W_#Pfmadd#S_#D
+Haswell,fmadd,5,_mm#W_#Pfmadd#S_#D
+KnightsLanding,fmadd,6,_mm#W_#Pfmadd#S_#D
+# FMSUB
+Skylake,fmsub,4,_mm#W_#Pfmsub#S_#D
+Broadwell,fmsub,5,_mm#W_#Pfmsub#S_#D
+Haswell,fmsub,5,_mm#W_#Pfmsub#S_#D
+KnightsLanding,fmsub,6,_mm#W_#Pfmsub#S_#D
+# Min
+Skylake,min,4,_mm#W_#Pmin#S_#D
+Broadwell,min,3,_mm#W_#Pmin#S_#D
+Haswell,min,3,_mm#W_#Pmin#S_#D
+IvyBridge,min,3,_mm#W_#Pmin#S_#D
+# Max
+Skylake,max,4,_mm#W_#Pmax#S_#D
+Broadwell,max,3,_mm#W_#Pmax#S_#D
+Haswell,max,3,_mm#W_#Pmax#S_#D
+IvyBridge,max,3,_mm#W_#Pmax#S_#D
+# Round
+Skylake,round,4,_mm#W_#Psvml_round#S_#D
+Broadwell,round,3,_mm#W_#Psvml_round#S_#D
+Haswell,round,3,_mm#W_#Psvml_round#S_#D
+IvyBridge,round,3,_mm#W_#Psvml_round#S_#D
+# Trunc
+Skylake,trunc,4,_mm#W_#Ptrunc#S_#D
+Broadwell,trunc,3,_mm#W_#Ptrunc#S_#D
+Haswell,trunc,3,_mm#W_#Ptrunc#S_#D
+IvyBridge,trunc,3,_mm#W_#Ptrunc#S_#D
+# Ceil
+Skylake,ceil,4,_mm#W_#Psvml_ceil#S_#D
+Broadwell,ceil,3,_mm#W_#Psvml_ceil#S_#D
+Haswell,ceil,3,_mm#W_#Psvml_ceil#S_#D
+IvyBridge,ceil,3,_mm#W_#Psvml_ceil#S_#D
+# Permute
+Skylake,permute,1,1,1,_mm#W_#Ppermute#S_#D
+Broadwell,permute,1,1,1,_mm#W_#Ppermute#S_#D
+Haswell,permute,1,1,1,_mm#W_#Ppermute#S_#D
+IvyBridge,permute,1,1,1,_mm#W_#Ppermute#S_#D
+# Shuffle
+Skylake,shuffle,1,1,1,_mm#W_#Pshuffle#S_#D
+Broadwell,shuffle,1,1,1,_mm#W_#Pshuffle#S_#D
+Haswell,shuffle,1,1,1,_mm#W_#Pshuffle#S_#D
+IvyBridge,shuffle,1,1,1,_mm#W_#Pshuffle#S_#D
+# Blend
+Skylake,blend,1,0.33,1,_mm#W_#Pblend#S_#D
+Broadwell,blend,1,0.33,1,_mm#W_#Pblend#S_#D
+Haswell,blend,1,0.33,1,_mm#W_#Pblend#S_#D
+IvyBridge,blend,1,0.5,1,_mm#W_#Pblend#S_#D
+Zen,blend,1,1,1,_mm#W_#Pblend#S_#D
+# Maskload
+Skylake,maskload,8,0.5,1,_mm#W_maskload#S_#D
+# Load
+Skylake,load,1,0.25,1,_mm#W_#Pload#S_#D
+Broadwell,load,1,0.5,1,_mm#W_#Pload#S_#D
+Haswell,load,1,0.5,1,_mm#W_#Pload#S_#D
+IvyBridge,load,1,1,1,_mm#W_#Pload#S_#D
+Zen,load,1,1,1,_mm#W_#Pload#S_#D
+# Store
+Skylake,store,1,0.25,1,_mm#W_#Pstore#S_#D
+Broadwell,store,1,0.5,1,_mm#W_#Pstore#S_#D
+Haswell,store,1,0.5,1,_mm#W_#Pstore#S_#D
+IvyBridge,store,1,1,1,_mm#W_#Pstore#S_#D
+Zen,store,1,1,1,_mm#W_#Pstore#S_#D
+# Horizontal add
+Skylake,hadd,7,2,1,3,_mm#W_hadd_#D
+Broadwell,hadd,7,2,1,3,_mm#W_hadd_#D
+Haswell,hadd,7,2,1,3,_mm#W_hadd_#D
+IvyBridge,hadd,7,2,1,3,_mm#W_hadd_#D
+Zen,hadd,7,2,1,3,_mm#W_hadd_#D
+# Horizontal substraction
+Skylake,hsub,7,2,1,3,_mm#W_hsub_#D
+Broadwell,hsub,7,2,1,3,_mm#W_hsub_#D
+Haswell,hsub,7,2,1,3,_mm#W_hsub_#D
+IvyBridge,hsub,7,2,1,3,_mm#W_hsub_#D
+Zen,hsub,7,2,1,3,_mm#W_hsub_#D
