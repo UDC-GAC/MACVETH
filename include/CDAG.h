@@ -11,7 +11,7 @@
 
 #include "include/Node.h"
 #include "include/TAC.h"
-#include "include/Vectorization/SIMD/SIMDGenerator.h"
+//#include "include/Vectorization/SIMD/SIMDGenerator.h"
 
 using namespace macveth;
 
@@ -24,9 +24,6 @@ public:
 
   /// Given a list of TACs, create its correspondent CDAG
   static CDAG *createCDAGfromTAC(TacListType TL);
-
-  /// Compute cost model
-  static SIMDGenerator::SIMDInfo computeCostModel(CDAG *C, SIMDGenerator *SG);
 
   /// Compute cost model for a set of Nodes
   static int computeCostModel(Node::NodeListType NL);
@@ -46,6 +43,9 @@ public:
 
   /// Get the node of list registered for this CDAG
   Node::NodeListType getNodeListOps() { return this->NLOps; }
+
+  DepMap getRAWs() { return this->MapRAW; }
+  DepMap getWARs() { return this->MapWAR; }
 
 private:
   /// Insert TAC instruction to the CDAG

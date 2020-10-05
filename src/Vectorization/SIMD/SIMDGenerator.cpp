@@ -8,6 +8,7 @@
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
 #include "include/MVOptions.h"
+#include "include/PlcmntAlgo.h"
 #include "include/Utils.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 #include "clang/AST/OperationKinds.h"
@@ -103,6 +104,152 @@ SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
   // Adding instruction to the list
   IL->push_back(I);
   return I;
+}
+
+//---------------------------------------------
+std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType NL,
+                                                SIMDGenerator *SG) {
+  std::list<VectorIR::VectorOP> VList;
+  Node *VLoadA[64];
+  Node *VLoadB[64];
+  Node *VOps[64];
+  int Cursor = 0;
+repeat:
+  bool IsUnary = false;
+  // Consume nodes
+  int VL = 4;
+  // This is where magic should happen
+  while (!NL.empty()) {
+    if ((Cursor > 0) &&
+        (NL.front()->getScop()[0] != VOps[Cursor - 1]->getScop()[0])) {
+      break;
+    }
+    // Consume the first one
+    VOps[Cursor] = NL.front();
+    // Get vector length
+    VL = SG->getMaxVectorSize(VOps[Cursor]->getDataType());
+    // NOTE: how do you solve this? I mean, for reductions, for instance,
+    // you will have different Plcmnts, something like: 1,2,3,4; but this
+    // algorithm should be able to select them. So maybe when selecting
+    // operations you should only look at the type of operations, but not at
+    // the Plcmnt or schedule.
+    // 06/03/2020: I think this is solved by tackling reductions as a non
+    // standard case and, then, detecting them before going onto the general
+    // case.
+    // 06/25/2020: not sure if reductions should be handled that way...
+    if ((Cursor > 0) &&
+        (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
+      Utils::printDebug("CDAG", "Full OPS of same type and placement = " +
+                                    VOps[Cursor - 1]->getValue() + "; (" +
+                                    VOps[Cursor]->getValue() + ")");
+      break;
+    }
+    NL.erase(NL.begin());
+    if (++Cursor == VL) {
+      break;
+    }
+  }
+
+  // Compute memory operands for the operations fetched above
+  int i = 0;
+  while ((i < Cursor) && (VOps[i] != nullptr)) {
+    auto Aux = VOps[i]->getInputs();
+    VLoadA[i] = Aux[0];
+    if (Aux[1] != nullptr) {
+      VLoadB[i] = Aux[1];
+      Aux.erase(Aux.begin());
+      IsUnary = false;
+    } else {
+      IsUnary = true;
+    }
+    i++;
+  }
+
+  // Debugging
+  for (int n = 0; n < Cursor; ++n) {
+    std::string B = IsUnary ? "" : VLoadB[n]->getRegisterValue() + "; ";
+    Utils::printDebug("CDAG", VOps[n]->getRegisterValue() + " = " +
+                                  VLoadA[n]->getRegisterValue() + " " +
+                                  VOps[n]->getValue() + " " + B +
+                                  VOps[n]->getSchedInfoStr());
+  }
+
+  if (Cursor != 0) {
+    // Compute the vector cost
+    auto NewVectInst =
+        VectorIR::VectorOP(Cursor, VOps, VLoadA, (IsUnary) ? nullptr : VLoadB);
+    VList.push_back(NewVectInst);
+  }
+
+  // Repeat process if list not empty
+  if (!NL.empty()) {
+    Cursor = 0;
+    for (int i = 0; i < VL; ++i) {
+      VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
+    }
+    goto repeat;
+  }
+  return VList;
+}
+
+//---------------------------------------------
+std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
+                                                  SIMDGenerator *SG) {
+  // Returning list
+  std::list<VectorIR::VectorOP> VList;
+
+  // Working with a copy
+  Node::NodeListType NL(NList);
+
+  //
+  Utils::printDebug("CDAG", "Detecting reductions");
+  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  if (NRedux.size() == 0) {
+    Utils::printDebug("CDAG", "No reductions detected");
+  }
+
+  Utils::printDebug("CDAG", "General case");
+  VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
+  Utils::printDebug("CDAG", "Reductions case");
+  VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
+
+  return VList;
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInfo SIMDGenerator::computeCostModel(CDAG *G,
+                                                        SIMDGenerator *SG) {
+  // Be clean
+  // VectorIR::clearMappigs();
+
+  // Set placement according to the desired algorithm
+  Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
+
+  // Debugging
+  for (auto N : NL) {
+    Utils::printDebug("CDAG", N->toString());
+  }
+
+  // Setting CDAG
+  SG->setCDAG(G);
+
+  // Execute greedy algorithm
+  std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(NL, SG);
+
+  // Order Vector Operations by TAC ID
+  VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {
+    return V1.Order < V2.Order;
+  });
+
+  // If debug enabled, it will print the VectorOP obtained
+  for (auto V : VList) {
+    Utils::printDebug("VectorIR", V.toString());
+  }
+
+  // Generate the SIMD list
+  SIMDGenerator::SIMDInstListType S = SG->getSIMDfromVectorOP(VList);
+
+  return SG->computeSIMDCost(S);
 }
 
 // ---------------------------------------------
@@ -203,11 +350,13 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     bool ExpVal = !V.MemOp;
 
     bool NullIndex = false;
-    auto I0 = V.Idx[0];
-    for (int i = 1; i < V.VSize; ++i) {
-      if (V.Idx[i] == I0) {
-        NullIndex = true;
-        break;
+    if (V.Idx.size() > 0) {
+      auto I0 = V.Idx[0];
+      for (int i = 1; i < V.VSize; ++i) {
+        if (V.Idx[i] == I0) {
+          NullIndex = true;
+          break;
+        }
       }
     }
 
@@ -333,20 +482,18 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
-  SIMDInstListType I;
+  SIMDInstListType IL;
 
   // Get list of SIMD instructions
   for (VectorIR::VectorOP V : VList) {
-    for (SIMDInst Inst : getSIMDfromVectorOP(V)) {
-      I.push_back(Inst);
-    }
+    IL.splice(IL.end(), getSIMDfromVectorOP(V));
   }
 
   // Then optimizations can be done, for instance, combine operatios such as
   // addition + multiplication. It will depend on the architecture/ISA.
-  I = peepholeOptimizations(I);
+  IL = peepholeOptimizations(IL);
 
-  return I;
+  return IL;
 }
 
 // ---------------------------------------------

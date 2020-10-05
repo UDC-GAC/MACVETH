@@ -6,10 +6,11 @@
 import os
 import filecmp
 import re
-import time
 import subprocess
 from utils.utilities import pr_col
 from utils.utilities import colors as c
+
+# Some path declarations
 build_path = "../build"
 unittest_path = "unittest/"
 fulltest_path = "fulltest/"
@@ -18,7 +19,6 @@ macveth_path = "macveth_dir/"
 fail_path = "failed_tests/"
 tmp_path = "tmpfiles/"
 test_report = "test_report.txt"
-
 
 # File extensions
 file_t = ".c"
@@ -30,7 +30,7 @@ cc = "gcc"
 
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
-mv_poly_flags = " --extra-arg-before='-Itests/fulltest/utilities' "
+mv_poly_flags = " --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/fulltest/utilities' "
 
 # Discussion:
 # is POLYBENCH_USE_C99_PROTO needed?
@@ -76,18 +76,18 @@ def compile_macveth():
     if (out != 0):
         print("Something went wrong compiling MACVETH! Exiting...")
         exit(0)
-    os.system("cp %s/macveth ." % build_path)
     return True
 
 
 def compile_test_with_macveth(org_file, out_file, args=" "):
     # Compiling the tests
-    os.system("./macveth %s %s -o=%s 2>> macveth_compiler.log" %
+    # print("DEBUG: macveth %s %s -o=%s 2>> macveth_compiler.log" %
+    #      (args, org_file, out_file))
+    os.system("macveth %s %s -o=%s 2>> macveth_compiler.log" %
               (args, org_file, out_file))
     # For some reason, sometimes there is a bad descriptor error when compiling...
     line = subprocess.check_output(['tail', '-1', "macveth_compiler.log"])
     if "LLVM ERROR" in str(line):
-        # print("\tSomething went wrong, recompiling...")
         return False
     return True
 
@@ -232,9 +232,6 @@ clean_previous_files()
 
 # Compiling macveth
 compile_macveth()
-
-# Unittest
-# unittest_suite()
 
 # Fulltest
 exectest_suite(fulltest_path)

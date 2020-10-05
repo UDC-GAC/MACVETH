@@ -210,14 +210,11 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
     }
   }
 
-  // FIXME: needed other mechanism for this
   if (SI.isReduction()) {
-    // Utils::printDebug("MVFuncVisitor", "This was a reduction");
     return;
   }
 
   if (SI.isPosOrder()) {
-    // Utils::printDebug("MVFrontend", "Printing after place = " + SI.render());
     renderSIMDInstAfterPlace(SI, SL);
   } else {
     // Rest of SIMD operations
@@ -294,19 +291,27 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     return;
   }
 
-  // FIXME: Clear all kind of mappings, since this is a new function
-  // clearAllMappings();
-
   std::list<std::string> DimsDeclFunc = {};
+  // std::map<std::string, std::set<std::string>> RegistersDeclared;
+  SIMDGenerator::RegistersMapT RegistersDeclared;
 
+  SourceLocation RegDeclLoc;
+  auto Scops = ScopHandler::funcGetScops(fd);
   // For each scop in the function
-  for (auto Scop : ScopHandler::funcGetScops(fd)) {
+  for (auto Scop : Scops) {
+    auto IsFirstScop = (Scop == Scops[0]);
+    auto IsLastScop = (Scop == Scops[Scops.size() - 1]);
+
     // Check if ST is within the ROI or not
     Utils::printDebug("MVConsumer",
                       "scop = " + std::to_string(Scop->StartLine));
 
     // Get the info about the loops surrounding this statement
-    std::list<StmtWrapper *> SL = StmtWrapper::genStmtWraps(CS, Scop);
+    auto SL = StmtWrapper::genStmtWraps(CS, Scop);
+
+    if (IsFirstScop) {
+      RegDeclLoc = SL.front()->getClangStmt()->getBeginLoc();
+    }
 
     Utils::printDebug("MVConsumer", "list of stmt wrappers parsed = " +
                                         std::to_string(SL.size()));
@@ -332,11 +337,11 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
                           rewriteLoops(SL, &Rewrite, DimsDeclFunc));
     } else {
       // Creating the CDAG
-      CDAG *G = CDAG::createCDAGfromTAC(TL);
+      auto G = CDAG::createCDAGfromTAC(TL);
       // Get SIMD generator according to the option chosen
-      SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
+      auto SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
       // Computing the cost model of the CDAG created
-      auto SInfo = CDAG::computeCostModel(G, SIMDGen);
+      auto SInfo = SIMDGenerator::computeCostModel(G, SIMDGen);
 
       // Vectorize according to the SIMD cost model selected and the total cost
       // of the SIMD operations
@@ -348,10 +353,13 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
       if (Vectorize) {
         // Render the registers we are going to use, declarations
-        for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-          Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
-                             InsSIMD + "\n", true, true);
+        if (IsLastScop) {
+          for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+
+            Rewrite.InsertText(RegDeclLoc, InsSIMD + "\n", true, true);
+          }
         }
+
         // Render initializations if needed for special cases such as
         // reductions
         for (auto InitRedux : SIMDGen->getInitReg()) {
@@ -388,34 +396,19 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
             "; Sequential cost = " +
             std::to_string(StmtWrapper::computeSequentialCostStmtWrapper(SL)));
       }
-      // delete G;
     }
-
-    // FIXME: Be clean
-    // for (auto SWrap : SL) {
-    //   delete SWrap;
-    // }
   }
 
   return;
 }
 
 // ---------------------------------------------
-bool areAllScopsScanned() {
-  bool Scanned = true;
-  for (auto S : ScopHandler::List) {
-    if (!S->ScopHasBeenScanned) {
-      return false;
-    }
-  }
-  return Scanned;
-}
-
-// ---------------------------------------------
 bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
   // Continue if empty function
-  if (!F->hasBody())
+  if (!F->hasBody()) {
     return true;
+  }
+
   // Check if pragmas to parse
   if (!ScopHandler::funcHasROI(F)) {
     return true;

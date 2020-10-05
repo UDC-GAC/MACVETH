@@ -102,6 +102,9 @@ public:
   SIMDGenerator::SIMDInstListType
   fuseReductionsList(SIMDGenerator::SIMDInstListType TIL);
 
+  bool hasRawDependencies(SIMDGenerator::SIMDInstListType L,
+                          SIMDGenerator::SIMDInst I);
+
   /// Fusing reductions: peephole optimization
   SIMDGenerator::SIMDInstListType
   fuseReductions(SIMDGenerator::SIMDInstListType I);

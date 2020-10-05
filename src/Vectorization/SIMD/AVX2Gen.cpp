@@ -33,6 +33,7 @@
 #include "include/Utils.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 #include <algorithm>
+#include <bits/stdc++.h>
 #include <map>
 #include <utility>
 
@@ -180,7 +181,7 @@ AVX2Gen::horizontalSingleReduction(SIMDGenerator::SIMDInstListType TIL) {
   SIMDGenerator::addRegToDeclare(RegType, HiRes, {0});
   std::string AccmReg = getAccmReg(VIL[0].VOPResult.Name);
   auto Pos = MVSourceLocation::Position::POSORDER;
-  auto Loc = VIL[NElems - 1].VOPResult.Order;
+  auto Loc = VIL[0].VOPResult.Order;
   if (Type == VectorIR::VDataType::DOUBLE) {
     // If 4 elements
     if (NElems > 2) {
@@ -265,22 +266,20 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
   }
   auto Loc = 0;
   std::vector<std::string> VAccm;
-  std::vector<std::string> VRedux;
+  std::unordered_set<std::string> VRedux;
+  std::vector<std::string> VReduxList;
   for (int t = 0; t < NumRedux; ++t) {
     VAccm.push_back(VIL[t].Args.front());
-    VRedux.push_back(VIL[t].Result);
+    VRedux.insert(VIL[t].Result);
+    VReduxList.push_back(VIL[t].Result);
     Loc = std::max(Loc, VIL[t].VOPResult.Order);
   }
-
-  // Utils::printDebug("AVX2Gen", "Location is = " + std::to_string(Loc) +
-  //                                  ", otherwise it would be " +
-  //                                  std::to_string(VIL[0].VOPResult.Order));
 
   auto S = (NumRedux + (NumRedux % 2)) / 2;
   std::string OP =
       (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "hadd" : "hsub";
 
-  auto Stride = 2;
+  auto Stride = VIL[0].DT == VectorIR::VDataType::DOUBLE ? 4 : 2;
   while (true) {
     for (int i = 0; i < NumRedux; i += Stride) {
       genSIMDInst(VIL[0].VOPResult, OP, "", "",
@@ -290,10 +289,10 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
         VAccm[i - 1] = VAccm[i];
       }
     }
-    Stride *= 2;
     S = (S + (S % 2)) / 2;
+    Stride *= 2;
     // Final permutation
-    if (S == 1) {
+    if ((S == 1) && (NElems > 2)) {
       // README: for further information
       // https://stackoverflow.com/questions/6996764/fastest-way-to-do-horizontal-sse-vector-sum-or-other-reduction
       // https://stackoverflow.com/questions/49941645/get-sum-of-values-stored-in-m256d-with-sse-avx
@@ -319,17 +318,24 @@ AVX2Gen::horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
       OP = (OP == "hadd") ? "add" : "sub";
       genSIMDInst(VIL[0].VOPResult, OP, "", "", {Op1, Op2}, SIMDType::VOPT, &IL,
                   Loc, Pos, VAccm[0]);
-
+      break;
+    } else if (S == 1) {
       break;
     }
   }
 
-  auto AuxArray = declareAuxArray(VIL[0].DT);
-  genSIMDInst(VIL[0].VOPResult, "store", "", "u", {AuxArray, VAccm[0]},
-              SIMDType::VSTORE, &IL, Loc, Pos);
-  for (int R = 0; R < NumRedux; ++R) {
-    auto Idx = "[" + std::to_string(R) + "]";
-    addNonSIMDInst(VRedux[R], AuxArray + Idx, SIMDType::VOPT, &IL, Loc, Pos);
+  // auto AuxArray = declareAuxArray(VIL[0].DT);
+  // genSIMDInst(VIL[0].VOPResult, "store", "", "u", {AuxArray, VAccm[0]},
+  //             SIMDType::VSTORE, &IL, Loc, Pos);
+  auto No = 0;
+  std::set<std::string> Visited;
+  for (auto R : VReduxList) {
+    if (Visited.find(R) != Visited.end()) {
+      continue;
+    }
+    Visited.insert(R);
+    auto Idx = "[" + std::to_string(No++) + "]";
+    addNonSIMDInst(R, VAccm[0] + Idx, SIMDType::VOPT, &IL, Loc, Pos);
   }
 
   return IL;
@@ -545,12 +551,15 @@ AVX2Gen::fuseReductionsList(SIMDGenerator::SIMDInstListType L) {
   auto OpReduxType = L.front().MVOP.T;
   auto OpRedux = L.front().MVOP;
   SIMDGenerator::SIMDInstListType FusedRedux;
+  if (LInsSize == 0) {
+    return FusedRedux;
+  }
   // This is the horizontal approach, only valid for AVX2 and additions
   // and subtraction
   if (LInsSize == 1) {
     Utils::printDebug("AVX2Gen", "Single reduction approach (" +
                                      std::to_string(LInsSize) + ")");
-    return horizontalSingleReduction(L);
+    FusedRedux = horizontalSingleReduction(L);
   } else if (((OpReduxType == MVOpType::CLANG_BINOP) &&
               ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
                (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)))) {
@@ -558,12 +567,31 @@ AVX2Gen::fuseReductionsList(SIMDGenerator::SIMDInstListType L) {
     // reductions
     Utils::printDebug("AVX2Gen",
                       "Horizontal approach (" + std::to_string(LInsSize) + ")");
-    return horizontalReductionFusion(L);
+    FusedRedux = horizontalReductionFusion(L);
   } else {
     Utils::printDebug("AVX2Gen", "General approach approach (" +
                                      std::to_string(LInsSize) + ")");
-    return generalReductionFusion(L);
+    FusedRedux = generalReductionFusion(L);
   }
+  return FusedRedux;
+}
+
+// ---------------------------------------------
+bool AVX2Gen::hasRawDependencies(SIMDGenerator::SIMDInstListType L,
+                                 SIMDGenerator::SIMDInst I) {
+  auto Last = I.VOPResult.Order;
+  auto RAW = this->getCDAG()->getRAWs();
+  for (auto Ins : L) {
+    auto O = Ins.VOPResult.Order;
+    auto It = RAW.find(O);
+    if (It != RAW.end()) {
+      auto S = It->second;
+      if (Last > *(S.begin())) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------
@@ -577,9 +605,16 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
       ReplaceFusedRedux;
   for (auto I : TIL) {
     if (I.isReduction()) {
-      // if RAW dependencies OK then
-      LRedux[I.VOPResult.Size].push_back(I);
-      // TODO: else computeReductions and add
+      auto S = I.VOPResult.Size;
+      auto L = LRedux[S];
+      if (hasRawDependencies(L, I)) {
+        Utils::printDebug("AVX2Gen", "Has raw dependencies");
+        ReplaceFusedRedux[L.back()] = fuseReductionsList(L);
+        auto it = L.end();
+        SkipList.splice(SkipList.end(), L, L.begin(), --it);
+        LRedux[S].clear();
+      }
+      LRedux[S].push_back(I);
     }
     // For each reduction found, check whether they can be fused together or
     // not:
@@ -607,6 +642,9 @@ AVX2Gen::fuseReductions(SIMDGenerator::SIMDInstListType TIL) {
 
   // Compute the rest
   for (auto &L : LRedux) {
+    if ((L.second.size() == 0)) {
+      continue;
+    }
     ReplaceFusedRedux[L.second.back()] = fuseReductionsList(L.second);
     auto it = L.second.end();
     SkipList.splice(SkipList.end(), L.second, L.second.begin(), --it);
@@ -1243,12 +1281,26 @@ SIMDGenerator::SIMDInstListType AVX2Gen::vreduce(VectorIR::VectorOP V) {
   /// instructions needed for it, wait until the peephole optimization says
   /// if there are any other reductions that can be packed and fused together.
   /// P.S. creating hacks make me a hacker? lol
-  if (IsANewReduction) {
-    genSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
-                V.Order, Pos, ReduxVar, "", {}, V.getMVOp());
-  } else {
-    Utils::printDebug("AVX2Gen", "it is not a new reduction");
-  }
+  genSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL, V.Order,
+              Pos, ReduxVar, "", {}, V.getMVOp());
+  // if (IsANewReduction) {
+  //   genSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, &IL,
+  //               V.Order, Pos, ReduxVar, "", {}, V.getMVOp());
+  // } else {
+  //   Utils::printDebug("AVX2Gen", "it is not a new reduction, updating
+  //   order"); for (auto I : IL) {
+  //     Utils::printDebug("AVX2Gen", "ReduxVar = " + ReduxVar + ", " +
+  //                                      I.render() + ", " +
+  //                                      std::to_string(IL.size()));
+  //     if ((I.isReduction()) && (I.Result == RegAccm)) {
+  //       Utils::printDebug("AVX2Gen", "updating = " +
+  //       std::to_string(I.TacID));
+  //       // auto &New = (*I);
+  //       (&I)->TacID = V.R.Order;
+  //       Utils::printDebug("AVX2Gen", "updated = " + std::to_string(I.TacID));
+  //     }
+  //   }
+  // }
 
   return IL;
 }

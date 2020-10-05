@@ -9,6 +9,7 @@
 #ifndef MACVETH_SIMDGENERATOR_H
 #define MACVETH_SIMDGENERATOR_H
 
+#include "include/CDAG.h"
 #include "include/MVSourceLocation.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 #include "include/Vectorization/VectorIR.h"
@@ -204,6 +205,8 @@ public:
     }
   };
 
+  static SIMDGenerator::SIMDInfo computeCostModel(CDAG *C, SIMDGenerator *SG);
+
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions, given a VectorOP
   SIMDGenerator::SIMDInst addNonSIMDInst(
@@ -362,6 +365,9 @@ public:
       {VectorIR::VDataType::UINT64, "unsigned long"},
   };
 
+  void setCDAG(CDAG *C) { this->C = C; }
+  CDAG *getCDAG() { return this->C; }
+
   /// Map data types to their size in bytes
   inline static std::map<std::string, int> SizeOf = {
       {"double", 8},
@@ -388,12 +394,21 @@ public:
   /// Destructor
   virtual ~SIMDGenerator(){};
 
+  using RegistersMapT =
+      std::map<std::string,
+               std::vector<std::tuple<std::string, std::vector<std::string>>>>;
+
+  RegistersMapT getRegDeclared() { return SIMDGenerator::RegDeclared; }
+
 private:
   /// Auxiliary function to dispatch the VectorOP operation
   void mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
 
   /// Auxiliary function to dispatch the VectorOP operation
   void reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
+
+  /// CDAG information
+  CDAG *C;
 
 protected:
   /// Add register to declare
@@ -405,10 +420,7 @@ protected:
                                      std::vector<std::string> InitVal);
 
   /// List of registers declared
-  inline static std::map<
-      std::string,
-      std::vector<std::tuple<std::string, std::vector<std::string>>>>
-      RegDeclared;
+  inline static RegistersMapT RegDeclared;
 
   /// List of SIMD instructions which represent the initialization of some
   /// registers

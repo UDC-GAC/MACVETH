@@ -32,6 +32,7 @@
 #include "include/CDAG.h"
 #include "include/MVPragmaHandler.h"
 #include "include/StmtWrapper.h"
+#include "include/Vectorization/SIMD/SIMDGenerator.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/Tooling.h"
