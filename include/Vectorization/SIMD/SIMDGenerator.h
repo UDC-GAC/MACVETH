@@ -129,6 +129,11 @@ public:
     /// Check if type is sequential
     bool isSequential() { return this->SType == SIMDGenerator::SIMDType::VSEQ; }
 
+    /// Check whether position is posorder or not
+    bool isPreOrder() {
+      return this->MVSL.getPosition() == MVSourceLocation::Position::PREORDER;
+    }
+
     /// Check whether position is in order or not
     bool isInOrder() {
       return this->MVSL.getPosition() == MVSourceLocation::Position::INORDER;
@@ -438,14 +443,19 @@ protected:
 
   /// Map of the operands mapped to the accumulator
   inline static std::map<std::string, int> AccmToReg;
+  inline static std::map<std::string, int> AccmDirty;
 
   /// Get the next available accumulator register
   static std::string getNextAccmRegister(std::string V) {
     if (AccmToReg.count(V) == 0) {
+      AccmDirty[V] = 0;
       AccmToReg[V] = SIMDGenerator::AccmReg++;
     }
     return VEC_PREFIX + std::to_string(AccmToReg.at(V));
   }
+
+  static bool isAccmClean(std::string V) { return !AccmDirty[V]; }
+  static void markDirtyAccm(std::string V) { AccmDirty[V] = 1; }
 
   /// Get the current accumulator register
   static std::string getAccmReg(std::string V) {

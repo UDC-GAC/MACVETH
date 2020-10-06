@@ -552,11 +552,6 @@ AVX2Gen::fuseReductionsList(SIMDGenerator::SIMDInstListType L) {
     return FusedRedux;
   }
 
-  /// FIXME: Clean accumulators
-
-  /// FIXME: Mark accumulators
-  for (auto R : L) {
-  }
   // This is the horizontal approach, only valid for AVX2 and additions
   // and subtraction
   if (LInsSize == 1) {
@@ -576,6 +571,22 @@ AVX2Gen::fuseReductionsList(SIMDGenerator::SIMDInstListType L) {
                                      std::to_string(LInsSize) + ")");
     FusedRedux = generalReductionFusion(L);
   }
+
+  // FIXME: Clean accumulators
+  for (auto R : L) {
+    auto Accm = getAccmReg(R.VOPResult.getName());
+    if (!isAccmClean(R.Result)) {
+      genSIMDInst(R.Result, "setzero", "", "", R.W, R.DT, {}, SIMDType::VSET,
+                  &FusedRedux, R.VOPResult.Order,
+                  MVSourceLocation::Position::PREORDER);
+    }
+  }
+  /// Mark accumulators
+  for (auto R : L) {
+    auto Accm = getAccmReg(R.VOPResult.getName());
+    markDirtyAccm(Accm);
+  }
+
   return FusedRedux;
 }
 
