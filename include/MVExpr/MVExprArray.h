@@ -220,6 +220,8 @@ public:
         }
         auto Lhs = ((*this->LHS) - (*M.LHS));
         auto Rhs = ((*this->RHS) - (*M.RHS));
+        auto StrLhs = std::to_string(Lhs);
+        auto StrRhs = std::to_string(Rhs);
         if ((Lhs == INT_MIN + 2) || (Rhs == INT_MIN + 2)) {
           return INT_MIN;
         } else {
@@ -239,6 +241,12 @@ public:
               }
             }
             return Lhs * Rhs;
+          }
+          if (this->OP == BinaryOperator::Opcode::BO_Add) {
+            return Lhs + Rhs;
+          }
+          if (this->OP == BinaryOperator::Opcode::BO_Sub) {
+            return Lhs - Rhs;
           }
           return std::max(Lhs, Rhs);
         }

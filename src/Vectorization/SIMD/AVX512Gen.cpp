@@ -503,25 +503,26 @@ AVX512Gen::generalReductionFusion(SIMDGenerator::SIMDInstListType TIL) {
       auto A1 = shuffleArguments(Lo, Hi, VectorIR::VWidth::W128, VIL[R], 0);
       auto A2 = shuffleArguments(Lo, Hi, VectorIR::VWidth::W128, VIL[R], 1);
       auto RegType = getRegisterType(VIL[R].DT, VectorIR::VWidth::W128);
-      auto Res = getNextAuxRegister(VIL[R].VOPResult.Name);
-      SIMDGenerator::addRegToDeclare(RegType, Res, {0});
-      genSIMDInst(Res, OP, "", "", VectorIR::VWidth::W128, VIL[R].DT, {A1, A2},
-                  SIMDType::VREDUC, &IL, -1, Pos);
-      if (NumRedux > 1) {
-        genSIMDInst(Res, "store", "", "u", VectorIR::VWidth::W128, VIL[R].DT,
-                    {"&" + AuxArray + "[" + std::to_string(R) + "]", Res},
-                    SIMDType::VSTORE, &IL);
-      }
+      // auto Res = getNextAuxRegister(VIL[R].VOPResult.Name);
+      // SIMDGenerator::addRegToDeclare(RegType, Res, {0});
+      // genSIMDInst(Res, OP, "", "", VectorIR::VWidth::W128, VIL[R].DT, {A1,
+      // A2},
+      //             SIMDType::VREDUC, &IL, -1, Pos);
+      // if (NumRedux > 1) {
+      //   genSIMDInst(Res, "store", "", "u", VectorIR::VWidth::W128, VIL[R].DT,
+      //               {"&" + AuxArray + "[" + std::to_string(R) + "]", Res},
+      //               SIMDType::VSTORE, &IL);
+      // }
     }
     if (NumRedux == 1) {
       // A simple conversion
-      auto Res = getNextAuxRegister(VIL[0].VOPResult.Name);
-      auto Suf = VIL[0].DT == VectorIR::VDataType::DOUBLE ? "f64" : "f32";
-      auto Type = VIL[0].DT == VectorIR::VDataType::DOUBLE
-                      ? VectorIR::VDataType::SDOUBLE
-                      : VectorIR::VDataType::SFLOAT;
-      genSIMDInst(VRedux[0], "cvt", "", Suf, VectorIR::VWidth::W128, Type,
-                  {Res}, SIMDType::VSEQ, &IL);
+      // auto Res = getNextAuxRegister(VIL[0].VOPResult.Name);
+      // auto Suf = VIL[0].DT == VectorIR::VDataType::DOUBLE ? "f64" : "f32";
+      // auto Type = VIL[0].DT == VectorIR::VDataType::DOUBLE
+      //                 ? VectorIR::VDataType::SDOUBLE
+      //                 : VectorIR::VDataType::SFLOAT;
+      // genSIMDInst(VRedux[0], "cvt", "", Suf, VectorIR::VWidth::W128, Type,
+      //             {Res}, SIMDType::VSEQ, &IL);
     } else {
       // FIXME: not sure this works properly
       for (int R = 0; R < NumRedux; ++R) {
@@ -1209,8 +1210,6 @@ std::vector<std::string> AVX512Gen::getInitValues(VectorIR::VectorOP V) {
   // Fuck, this is awful...
   if (getAccmReg(Reg) != "") {
     Reg = getAccmReg(Reg);
-  } else if (getAuxReg(Reg) != "") {
-    Reg = getAuxReg(Reg);
   }
   InitReg.push_back(createSIMDInst("set", Reg, getMapWidth(V.R.Width),
                                    getMapType(V.R.DType), "", "", InitValList,

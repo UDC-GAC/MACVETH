@@ -105,6 +105,9 @@ public:
   bool hasRawDependencies(SIMDGenerator::SIMDInstListType L,
                           SIMDGenerator::SIMDInst I);
 
+  bool reductionIsContiguous(SIMDGenerator::SIMDInstListType L,
+                             SIMDGenerator::SIMDInst I);
+
   /// Fusing reductions: peephole optimization
   SIMDGenerator::SIMDInstListType
   fuseReductions(SIMDGenerator::SIMDInstListType I);
@@ -116,6 +119,9 @@ public:
   /// Generate mask given a number of elements and width
   std::string getMask(unsigned int MaskVect, int NElems,
                       VectorIR::VWidth Width);
+
+  std::string getMask(unsigned int MaskVect, int NElems, VectorIR::VWidth Width,
+                      VectorIR::VDataType Type);
 
   /// Get name of AVX architecture
   virtual std::string getNArch() override { return AVX2Gen::NArch; }

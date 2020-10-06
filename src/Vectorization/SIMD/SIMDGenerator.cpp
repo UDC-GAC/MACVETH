@@ -219,9 +219,6 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
 // ---------------------------------------------
 SIMDGenerator::SIMDInfo SIMDGenerator::computeCostModel(CDAG *G,
                                                         SIMDGenerator *SG) {
-  // Be clean
-  // VectorIR::clearMappigs();
-
   // Set placement according to the desired algorithm
   Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
 
@@ -280,13 +277,16 @@ std::string SIMDGenerator::SIMDInst::render() {
   std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
                              ? FN
                              : Result + " = " + FN;
-  if ((SType == SIMDType::VSEQ) || (Args.size() == 0))
+  if ((SType == SIMDType::VSEQ) ||
+      ((Args.size() == 0) && (SType == SIMDType::VOPT))) {
     return FullFunc;
+  }
   int i = 0;
   FullFunc += "(";
   for (auto Op = Args.begin(); Op != Args.end(); ++Op) {
-    FullFunc += (i++ == (Args.size() - 1)) ? (*Op + ")") : (*Op + ", ");
+    FullFunc += (i++ == (Args.size() - 1)) ? (*Op) : (*Op + ", ");
   }
+  FullFunc += ")";
   return FullFunc;
 }
 
@@ -296,7 +296,7 @@ SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
   std::map<std::string, long> NumOp;
   std::list<std::string> L;
   long TotCost = 0;
-  for (SIMDInst I : S) {
+  for (auto I : S) {
     CostOp[I.FuncName] = I.Cost;
     NumOp[I.FuncName]++;
     TotCost += I.Cost.Latency;
@@ -344,12 +344,12 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     //
     // We will say it is a set if we have to explicitly set the values of the
     // vector operand
-    bool EqualVal = equalValues(V.VSize, V.UOP);
-    bool ContMem = V.MemOp && (V.Contiguous);
-    bool ScatterMem = V.MemOp && !ContMem;
-    bool ExpVal = !V.MemOp;
+    auto EqualVal = equalValues(V.VSize, V.UOP);
+    auto ContMem = V.MemOp && (V.Contiguous);
+    auto ScatterMem = V.MemOp && !ContMem;
+    auto ExpVal = !V.MemOp;
 
-    bool NullIndex = false;
+    auto NullIndex = false;
     if (V.Idx.size() > 0) {
       auto I0 = V.Idx[0];
       for (int i = 1; i < V.VSize; ++i) {
