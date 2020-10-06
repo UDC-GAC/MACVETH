@@ -216,9 +216,7 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
 
   if (SI.isPreOrder()) {
     renderSIMDInstBeforePlace(SI, SL);
-  }
-
-  if (SI.isPosOrder()) {
+  } else if (SI.isPosOrder()) {
     renderSIMDInstAfterPlace(SI, SL);
   } else {
     // Rest of SIMD operations

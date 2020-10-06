@@ -575,8 +575,8 @@ AVX2Gen::fuseReductionsList(SIMDGenerator::SIMDInstListType L) {
   // FIXME: Clean accumulators
   for (auto R : L) {
     auto Accm = getAccmReg(R.VOPResult.getName());
-    if (!isAccmClean(R.Result)) {
-      genSIMDInst(R.Result, "setzero", "", "", R.W, R.DT, {}, SIMDType::VSET,
+    if (!isAccmClean(Accm)) {
+      genSIMDInst(Accm, "setzero", "", "", R.W, R.DT, {}, SIMDType::VSET,
                   &FusedRedux, R.VOPResult.Order,
                   MVSourceLocation::Position::PREORDER);
     }
