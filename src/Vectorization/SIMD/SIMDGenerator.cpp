@@ -83,21 +83,14 @@ std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInst
-SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
-                              SIMDGenerator::SIMDType SType,
-                              SIMDGenerator::SIMDInstListType *IL, int Order,
-                              MVSourceLocation::Position P) {
+SIMDGenerator::SIMDInst SIMDGenerator::addNonSIMDInst(
+    VectorIR::VectorOP OP, SIMDGenerator::SIMDType SType, MVSourceLocation MVSL,
+    SIMDGenerator::SIMDInstListType *IL) {
   // Generate SIMD inst
   std::string Rhs;
   std::string Lhs = OP.R.getName();
-  auto O = Order;
-  if (O == -1) {
-    O = OP.Order;
-  }
-  SIMDGenerator::SIMDInst I(Lhs, Rhs, O);
-  I.MVSL.setOrder(O);
-  I.MVSL.setPosition(P);
+
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, MVSL);
   // Retrieving cost of function
   I.SType = SType;
 
@@ -121,7 +114,9 @@ repeat:
   // This is where magic should happen
   while (!NL.empty()) {
     if ((Cursor > 0) &&
-        (NL.front()->getScop()[0] != VOps[Cursor - 1]->getScop()[0])) {
+        ((NL.front()->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
+         (NL.front()->belongsToAReduction() !=
+          VOps[Cursor - 1]->belongsToAReduction()))) {
       break;
     }
     // Consume the first one
@@ -139,13 +134,15 @@ repeat:
     // 06/25/2020: not sure if reductions should be handled that way...
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
-      Utils::printDebug("CDAG", "Full OPS of same type and placement = " +
-                                    VOps[Cursor - 1]->getValue() + "; (" +
-                                    VOps[Cursor]->getValue() + ")");
+      Utils::printDebug("SIMDGenerator",
+                        "Full OPS of same type and placement = " +
+                            VOps[Cursor - 1]->getValue() + "; (" +
+                            VOps[Cursor]->getValue() + ")");
       break;
     }
     NL.erase(NL.begin());
     if (++Cursor == VL) {
+      Utils::printDebug("SIMDGenerator", "Full vector");
       break;
     }
   }
@@ -168,10 +165,10 @@ repeat:
   // Debugging
   for (int n = 0; n < Cursor; ++n) {
     std::string B = IsUnary ? "" : VLoadB[n]->getRegisterValue() + "; ";
-    Utils::printDebug("CDAG", VOps[n]->getRegisterValue() + " = " +
-                                  VLoadA[n]->getRegisterValue() + " " +
-                                  VOps[n]->getValue() + " " + B +
-                                  VOps[n]->getSchedInfoStr());
+    Utils::printDebug("SIMDGenerator", VOps[n]->getRegisterValue() + " = " +
+                                           VLoadA[n]->getRegisterValue() + " " +
+                                           VOps[n]->getValue() + " " + B +
+                                           VOps[n]->getSchedInfoStr());
   }
 
   if (Cursor != 0) {
@@ -202,15 +199,15 @@ std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
   Node::NodeListType NL(NList);
 
   //
-  Utils::printDebug("CDAG", "Detecting reductions");
+  Utils::printDebug("SIMDGenerator", "Detecting reductions");
   Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
   if (NRedux.size() == 0) {
-    Utils::printDebug("CDAG", "No reductions detected");
+    Utils::printDebug("SIMDGenerator", "No reductions detected");
   }
 
-  Utils::printDebug("CDAG", "General case");
+  Utils::printDebug("SIMDGenerator", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
-  Utils::printDebug("CDAG", "Reductions case");
+  Utils::printDebug("SIMDGenerator", "Reductions case");
   VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
 
   return VList;
@@ -224,7 +221,7 @@ SIMDGenerator::SIMDInfo SIMDGenerator::computeCostModel(CDAG *G,
 
   // Debugging
   for (auto N : NL) {
-    Utils::printDebug("CDAG", N->toString());
+    Utils::printDebug("SIMDGenerator", N->toString());
   }
 
   // Setting CDAG
@@ -250,18 +247,10 @@ SIMDGenerator::SIMDInfo SIMDGenerator::computeCostModel(CDAG *G,
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInst
-SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
-                              SIMDGenerator::SIMDType SType,
-                              SIMDGenerator::SIMDInstListType *IL, int Order,
-                              MVSourceLocation::Position P) {
-  auto O = Order;
-  if (O == -1) {
-    O = IL->back().TacID;
-  }
-  SIMDGenerator::SIMDInst I(Lhs, Rhs, O);
-  I.MVSL.setOrder(O);
-  I.MVSL.setPosition(P);
+SIMDGenerator::SIMDInst SIMDGenerator::addNonSIMDInst(
+    std::string Lhs, std::string Rhs, SIMDGenerator::SIMDType SType,
+    MVSourceLocation MVSL, SIMDGenerator::SIMDInstListType *IL) {
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, MVSL);
 
   // Retrieving cost of function
   I.SType = SType;
@@ -360,14 +349,14 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
       }
     }
 
-    Utils::printDebug("SIMDGenerator",
-                      "V = " + V.Name +
-                          "; EqualVal = " + std::to_string(EqualVal) +
-                          "; ContMem = " + std::to_string(ContMem) +
-                          "; ScatterMem = " + std::to_string(ScatterMem) +
-                          "; SameVec = " + std::to_string(V.SameVector) +
-                          "; ExpVal = " + std::to_string(ExpVal) +
-                          "; NullIndex = " + std::to_string(NullIndex));
+    // Utils::printDebug("SIMDGenerator",
+    //                   "V = " + V.Name +
+    //                       "; EqualVal = " + std::to_string(EqualVal) +
+    //                       "; ContMem = " + std::to_string(ContMem) +
+    //                       "; ScatterMem = " + std::to_string(ScatterMem) +
+    //                       "; SameVec = " + std::to_string(V.SameVector) +
+    //                       "; ExpVal = " + std::to_string(ExpVal) +
+    //                       "; NullIndex = " + std::to_string(NullIndex));
 
     // Load contiguous from memory
     if ((!EqualVal) && (ContMem) && (!ScatterMem)) {

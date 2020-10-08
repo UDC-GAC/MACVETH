@@ -176,6 +176,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
                                              std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
+      // renderSIMDInstAfterPlace(SI, S->getListStmt());
       if (auto L = renderSIMDInstAfterPlace(SI, S->getListStmt())) {
         Rewrite.InsertTextAfterToken(
             S->getClangStmt()->getEndLoc(),
@@ -185,7 +186,15 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
     } else {
       for (auto T : S->getTacList()) {
         if (SI.getSourceLocationOrder() == T.getTacID()) {
-          return true;
+          if (!S->isInLoop()) {
+            Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
+                                         SI.render() + ";\t// latency = " +
+                                             std::to_string(SI.Cost.Latency) +
+                                             "\n");
+            return false;
+          } else {
+            return true;
+          }
         }
       }
     }
@@ -198,12 +207,13 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
   // Sequential case: is this needed?
   if (SI.isSequential() && SI.isInOrder()) {
+    Utils::printDebug("MVFuncVisitor",
+                      "Sequential rendering for " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
         if (SI.getSourceLocationOrder() == T.getTacID()) {
-          // Utils::printDebug("MVFuncVisitor", "This is sequential in order = "
-          // + std::to_string(T.getTacID()));
-          renderTACInPlace({S}, SI.getSourceLocationOrder());
+          renderTACInPlace({S}, SI.getSourceLocationOrder(),
+                           SI.getSourceLocationOffset());
           return;
         }
       }
@@ -211,6 +221,10 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
   }
 
   if (SI.isReduction()) {
+    return;
+  }
+
+  if (SI.render() == "") {
     return;
   }
 
@@ -239,16 +253,20 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID) {
+void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID,
+                                     int Offset) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      renderTACInPlace(S->getListStmt(), TacID);
+      renderTACInPlace(S->getListStmt(), TacID, Offset);
       continue;
     }
-    if ((TacID == S->getTacList().back().getTacID()) || (TacID == -1)) {
+    if (((TacID == S->getTacList().back().getTacID()) &&
+         (Offset == S->getTacList().back().getUnrollFactor())) ||
+        (TacID == -1)) {
       S->setNotVectorized();
       Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         TAC::renderTacAsStmt(S->getTacList()), true, true);
+                         TAC::renderTacAsStmt(S->getTacList(), Offset), true,
+                         true);
     }
   }
 }
@@ -333,7 +351,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       MVInfo("[MVConsumer] "
              "No SIMD code to generate, just writing "
              "the code with the desired unrolling options");
-      renderTACInPlace(SL, -1);
+      renderTACInPlace(SL, -1, -1);
       // Rewriting loops
       DimsDeclFunc.splice(DimsDeclFunc.end(),
                           rewriteLoops(SL, &Rewrite, DimsDeclFunc));
@@ -345,8 +363,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       // Computing the cost model of the CDAG created
       auto SInfo = SIMDGenerator::computeCostModel(G, SIMDGen);
 
-      // Vectorize according to the SIMD cost model selected and the total cost
-      // of the SIMD operations
+      // Vectorize according to the SIMD cost model selected and the total
+      // cost of the SIMD operations
       auto Vectorize =
           ((MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED) ||
            ((MVOptions::SIMDCostModel == MVSIMDCostModel::CONSERVATIVE) &&

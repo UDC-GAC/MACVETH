@@ -186,7 +186,9 @@ public:
   /// Get the name of the loop surrounding this Stmt
   std::string getInnerLoopName() { return this->InnerLoopName; }
 
-    void setNotVectorized() { this->Vectorized = false; }
+  bool isInLoop() { return this->InnerLoopName != ""; }
+
+  void setNotVectorized() { this->Vectorized = false; }
   bool isVectorized() { return this->Vectorized; }
 
   /// Get scop

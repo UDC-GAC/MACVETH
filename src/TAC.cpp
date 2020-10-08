@@ -94,11 +94,14 @@ std::string replaceTmpTac(std::map<std::string, std::vector<std::string>> T,
 }
 
 // ---------------------------------------------
-std::string TAC::renderTacAsStmt(TacListType TL) {
+std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
   std::list<std::string> TmpList;
   std::map<std::string, std::vector<std::string>> TmpResToReplace;
   TacListType TCopy(TL);
   for (auto T : TCopy) {
+    if (T.getUnrollFactor() != Offset) {
+      continue;
+    }
     auto A = T.getA()->getExprStr();
     auto B = T.getB()->getExprStr();
     std::string C = "";
@@ -114,10 +117,12 @@ std::string TAC::renderTacAsStmt(TacListType TL) {
   TCopy.reverse();
   std::string FinalStr = "";
   for (auto T : TCopy) {
+    if (T.getUnrollFactor() != Offset) {
+      continue;
+    }
     auto A = T.getA()->getExprStr();
     auto B = T.getB()->getExprStr();
     std::string C = "";
-    // auto Op = T.getMVOP().toString();
     if (T.getC() != nullptr) {
       C = T.getC()->getExprStr();
     }
@@ -196,9 +201,6 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     }
     Op = MVOp(Utils::getStringFromExpr(F->getCallee()));
   }
-  // Utils::printDebug("TAC", "S1 = " + std::to_string(S1 != nullptr));
-  // Utils::printDebug("TAC", "S2 = " + std::to_string(S2 != nullptr));
-  // Utils::printDebug("TAC", "Unary = " + std::to_string(IsUnary));
 
   assert(((S1 != nullptr) && ((IsUnary) || (S2 != nullptr))) &&
          "Something went wrong...");
@@ -254,7 +256,7 @@ TacListType TAC::stmtToTAC(clang::Stmt *ST) {
 
   // Check if the expression is binary
   clang::BinaryOperator *SBin = nullptr;
-  bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
+  auto STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
   if (STypeBin) {
     stmtToTACRecursive(SBin, &TL, -1);
     return TL;
@@ -280,6 +282,7 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
                   ? Tac->getC()->unrollExpr(UnrollC, LoopLevel)
                   : nullptr;
   auto UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
+  UnrolledTac->TUnroll = S * UnrollFactor;
   UnrolledTac->setScop(Tac->getScop());
   UnrolledTac->setLoopName(Tac->getLoopName());
   return UnrolledTac;
@@ -289,7 +292,7 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
 TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
                                int UpperBound, std::string LoopLevel) {
   TacListType TacListOrg;
-  int Steps = UpperBound / UnrollFactor;
+  auto Steps = UpperBound / UnrollFactor;
   for (int S = 0; S < Steps; S++) {
     for (auto T : TacList) {
       auto NT = (TAC::unroll(&T, UnrollFactor, S, 0x000000, LoopLevel));

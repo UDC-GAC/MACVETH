@@ -18,7 +18,9 @@ std::string Node::toString() {
   Str += "\tTacID\t\t= " + std::to_string(this->getSchedInfo().TacID) + "\n";
   Str += "\tPlcmnt\t\t= " + std::to_string(this->getSchedInfo().Plcmnt) + "\n";
   Str += "\tNodeID\t\t= " + std::to_string(this->getSchedInfo().NodeID) + "\n";
-  Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
+  if (this->getNodeType() != Node::NODE_MEM) {
+    Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
+  }
   for (int i = 0; i < this->getInputs().size(); ++i) {
     if (this->getInputs()[i] != nullptr) {
       Str += "\tInput " + std::to_string(i) +

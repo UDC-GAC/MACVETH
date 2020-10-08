@@ -49,6 +49,8 @@ public:
     int NodeID = -1;
     /// TAC order
     int TacID = 0;
+    /// Unroll factor
+    int UnrollFactor = -1;
     /// Scope within program
     std::vector<int> Scop = {0};
     /// Topological order of this node
@@ -58,6 +60,8 @@ public:
     /// TODO this value stands for the scheduling order of this node; should
     /// be also calculated when the placement
     int Sched = 0;
+    /// If this node belongs to a reduction
+    bool IsReduction = false;
   };
 
   /// If the node is NODE_OP type, then it will hold a result value
@@ -83,6 +87,10 @@ public:
     return O;
   }
 
+  void setNodeAsReduction() { this->SI.IsReduction = true; }
+  void setNodeAsNonReduction() { this->SI.IsReduction = false; }
+  bool belongsToAReduction() { return this->SI.IsReduction; }
+
   /// Setting the scheduling info without any other information
   void setSchedInfo() { this->SI.NodeID = Node::UUID++; }
 
@@ -93,6 +101,7 @@ public:
   void setSchedInfo(TAC T) {
     this->SI.NodeID = Node::UUID++;
     this->SI.TacID = T.getTacID();
+    this->SI.UnrollFactor = T.getUnrollFactor();
     // FIXME: vector of scops
     this->SI.Scop[0] = T.getScop();
   }
@@ -170,6 +179,7 @@ public:
       if (I->T == NodeType::NODE_MEM) {
         I->SI.Scop = this->getScop();
         I->SI.TacID = this->getTacID();
+        I->SI.UnrollFactor = this->getUnrollFactor();
       }
     }
   }
@@ -212,6 +222,8 @@ public:
   SchedInfo getSchedInfo() { return this->SI; }
   /// Get TAC order
   int getTacID() { return this->SI.TacID; }
+  /// Get unrolling factor
+  int getUnrollFactor() { return this->SI.UnrollFactor; }
   /// Set the type of the node
   void setNodeType(NodeType T) { this->T = T; }
 

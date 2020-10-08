@@ -65,7 +65,7 @@ private:
   //// Add includes to files if needed
   void addHeaders(std::list<std::string> S, FileID FID);
   /// Rewrite TAC as regular statements
-  void renderTACInPlace(std::list<StmtWrapper *> SL, long TacID);
+  void renderTACInPlace(std::list<StmtWrapper *> SL, long TacID, int Offset);
   /// Render SIMD instructions where they should be (regular map operations)
   void renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                              std::list<StmtWrapper *> SL);

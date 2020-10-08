@@ -98,8 +98,6 @@ public:
     static inline unsigned int UID = 0;
     /// Unique identifier
     unsigned int SIMD_UID = 0;
-    /// TAC order
-    int TacID = -1;
     /// Source location according to our TACs
     MVSourceLocation MVSL;
     /// Result register name
@@ -149,6 +147,8 @@ public:
 
     /// Get MVSourceLocation order
     unsigned int getSourceLocationOrder() { return this->MVSL.getOrder(); }
+    /// Get MVSourceLocation offset
+    int getSourceLocationOffset() { return this->MVSL.getOffset(); }
 
     /// Comparison operator
     bool operator==(const SIMDInst &S) const {
@@ -164,15 +164,16 @@ public:
     SIMDInst(){};
 
     /// Constructor for not SIMD code
-    SIMDInst(std::string LHS, std::string RHS, int TacID)
-        : Result(LHS), FuncName(RHS), TacID(TacID) {
+    SIMDInst(std::string LHS, std::string RHS, MVSourceLocation SL)
+        : Result(LHS), FuncName(RHS), MVSL(SL) {
       this->SIMD_UID = SIMDInst::UID++;
     }
     /// Constructor
     SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
-             std::string MVFunc, std::list<std::string> MVArgs, int TacID)
+             std::string MVFunc, std::list<std::string> MVArgs,
+             MVSourceLocation SL)
         : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFunc),
-          MVArgs(MVArgs), TacID(TacID) {
+          MVArgs(MVArgs), MVSL(SL) {
       this->SIMD_UID = SIMDInst::UID++;
     }
   };
@@ -214,17 +215,17 @@ public:
 
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions, given a VectorOP
-  SIMDGenerator::SIMDInst addNonSIMDInst(
-      VectorIR::VectorOP OP, SIMDGenerator::SIMDType SType,
-      SIMDGenerator::SIMDInstListType *IL, int Order = -1,
-      MVSourceLocation::Position P = MVSourceLocation::Position::INORDER);
+  SIMDGenerator::SIMDInst addNonSIMDInst(VectorIR::VectorOP OP,
+                                         SIMDGenerator::SIMDType SType,
+                                         MVSourceLocation MVSL,
+                                         SIMDGenerator::SIMDInstListType *IL);
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions specifying explicitly the LHS
   /// and the RHS
-  SIMDGenerator::SIMDInst addNonSIMDInst(
-      std::string Lhs, std::string Rhs, SIMDGenerator::SIMDType SType,
-      SIMDGenerator::SIMDInstListType *IL, int Order = -1,
-      MVSourceLocation::Position P = MVSourceLocation::Position::INORDER);
+  SIMDGenerator::SIMDInst addNonSIMDInst(std::string Lhs, std::string Rhs,
+                                         SIMDGenerator::SIMDType SType,
+                                         MVSourceLocation MVSL,
+                                         SIMDGenerator::SIMDInstListType *IL);
 
   // VectorAPI: instructions to implement by the specific backends
 
@@ -294,12 +295,52 @@ public:
   /// Map of VectorIR types to the concrete architecture
   virtual std::string getMapType(VectorIR::VDataType D) = 0;
 
+  /// Generate the declaration of the necessary registers for the operations
+  virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S) = 0;
+
+  /// Perform some peephole optimizations after generating SIMD instructions
+  virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) = 0;
+
+  /// Get initial values of a VectorOP. Must be implemented
+  virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V) = 0;
+
+  /// Add SIMD instruction
+  virtual SIMDGenerator::SIMDInst
+  genSIMDInst(std::string Result, std::string Op, std::string PrefS,
+              std::string SuffS, VectorIR::VWidth Width,
+              VectorIR::VDataType Type, std::list<std::string> Args,
+              SIMDGenerator::SIMDType SType, MVSourceLocation SL,
+              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
+              std::string MVFunc = "", std::list<std::string> MVArgs = {},
+              MVOp MVOP = MVOp()) = 0;
+
+  virtual SIMDGenerator::SIMDInst
+  genSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
+              std::string SuffS, std::list<std::string> OPS,
+              SIMDGenerator::SIMDType SType, MVSourceLocation SL,
+              SIMDGenerator::SIMDInstListType *IL = nullptr,
+              std::string NameOp = "", std::string MVFunc = "",
+              std::list<std::string> MVArgs = {}, MVOp MVOP = MVOp()) = 0;
+
+  /// Get headers needed (include files)
+  virtual std::list<std::string> getHeadersNeeded() = 0;
+
+  /// Get maximum vector operands size
+  virtual int getMaxVectorSize(std::string Type) {
+    return getMaxWidth() / (SizeOf[Type] * 8);
+  };
+
+  /// Clean the list of registers declared
+  static void clearMappings();
+
   /// Populate the table only when creating the object, to avoid overloading the
   /// memory from the start
   static void populateTable(MVISA ISA);
 
-  /// Generate the declaration of the necessary registers for the operations
-  virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S) = 0;
+  /// Auxiliary function for replacing patterns in a string
+  static std::string replacePatterns(std::string Pattern, std::string W,
+                                     std::string D, std::string P,
+                                     std::string S);
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
@@ -311,21 +352,10 @@ public:
   /// Just compute the cost of each SIMD inst
   SIMDInfo computeSIMDCost(SIMDInstListType S);
 
-  /// Get initial values of a VectorOP. Must be implemented
-  virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V) = 0;
-
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);
 
   std::string genGenericFunc(std::string F, std::vector<std::string> L);
-
-  /// Auxiliary function for replacing patterns in a string
-  static std::string replacePatterns(std::string Pattern, std::string W,
-                                     std::string D, std::string P,
-                                     std::string S);
-
-  /// Perform some peephole optimizations after generating SIMD instructions
-  virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) = 0;
 
   /// Entry point: this method basically redirects to any of the operations
   /// supported
@@ -334,28 +364,6 @@ public:
   /// Basically calls its other overloaded function iterating over the input
   /// list of VectorOP
   SIMDInstListType getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList);
-
-  /// Auxiliary function for generating a SIMD instruction. If IL specified
-  /// it also adds it to that list
-  virtual SIMDGenerator::SIMDInst genSIMDInst(
-      VectorIR::VOperand V, std::string Op, std::string PrefS,
-      std::string SuffS, std::list<std::string> OPS,
-      SIMDGenerator::SIMDType SType,
-      SIMDGenerator::SIMDInstListType *IL = nullptr, int Order = -1,
-      MVSourceLocation::Position P = MVSourceLocation::Position::INORDER,
-      std::string NameOp = "", std::string MVFunc = "",
-      std::list<std::string> MVArgs = {}, MVOp MVOP = MVOp()) = 0;
-
-  /// Clean the list of registers declared
-  static void clearMappings();
-
-  /// Get headers needed (include files)
-  virtual std::list<std::string> getHeadersNeeded() = 0;
-
-  /// Get maximum vector operands size
-  virtual int getMaxVectorSize(std::string Type) {
-    return getMaxWidth() / (SizeOf[Type] * 8);
-  };
 
   /// Get list of initializations
   SIMDInstListType getInitReg() { return InitReg; }

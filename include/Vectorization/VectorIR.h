@@ -129,7 +129,7 @@ public:
   static inline unsigned int VID = 0;
   /// Keeping track of the correspondence between the registers name and the
   /// new naming
-  static inline std::map<std::tuple<std::string, VectorIR::VWidth>,std::string>
+  static inline std::map<std::tuple<std::string, VectorIR::VWidth>, std::string>
       MapRegToVReg;
   /// Keeping track of the loads in the program
   static inline std::list<std::tuple<std::vector<int>, std::string>> MapLoads;
@@ -192,6 +192,8 @@ public:
     bool IsStore = false;
     /// Order of the vector operation
     int Order = -1;
+    /// Offset of the vector operation
+    int Offset = -1;
     /// Check if there is a vector already assigned wraping the same values
     bool checkIfVectorAssigned(int VL, Node *V[], VectorIR::VWidth);
     /// Get width
@@ -255,6 +257,8 @@ public:
     VOperand R;
     /// Order of the vector operation
     int Order = -1;
+    /// Offset regarding the original order
+    int Offset = -1;
     /// Cost associated to this concrete VectorOP
     unsigned int Cost = 0;
     /// Check if it is a BinaryOperation

@@ -93,16 +93,22 @@ std::string VectorIR::VOperand::toString() {
     Str += ", " + (UOP[i]->getRegisterValue());
   }
   Str += "]";
+  Str += " (" + std::to_string(this->Order) +
+         (this->Offset == -1 ? ")" : std::to_string(this->Offset) + ")");
   return Str;
 }
 
 // ---------------------------------------------
 std::string VectorIR::VectorOP::toString() {
   if (this->VT == VectorIR::VType::SEQ) {
-    return "Sequential " + this->R.Name;
+    return "Sequential: (" + std::to_string(this->Order) +
+           (this->Offset == -1 ? ")"
+                               : ", " + std::to_string(this->Offset) + ")");
   }
   auto B = (IsUnary) ? "" : "," + OpB.toString();
   auto Str = R.toString() + " = " + VN + "(" + OpA.toString() + B + ")";
+  Str += " (" + std::to_string(this->Order);
+  Str += this->Offset == -1 ? ")" : ", " + std::to_string(this->Offset) + ")";
   return Str;
 }
 
@@ -190,7 +196,8 @@ VectorIR::VOperand::VOperand(){/* empty constructor */};
 VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   // Init list of unit operands
   this->UOP = (Node **)malloc(sizeof(Node *) * VL);
-
+  this->Order = V[0]->getTacID();
+  this->Offset = V[0]->getUnrollFactor();
   // This is the number of elements in this Vector
   this->VSize = VL;
 
@@ -368,6 +375,7 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
+  this->Offset = VOps[0]->getUnrollFactor();
   // By design, if the operand is an assignment, is because the operation is
   // unary, therefore: R = R OP B
   if (VOps[0]->getOutputInfo().MVOP.isAssignment()) {
@@ -415,9 +423,4 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // Data type: vector operation will have the same data type as the original
   // result
   this->DT = this->R.DType;
-
-  // Ordering
-  this->OpA.Order = this->Order;
-  this->OpB.Order = this->Order;
-  this->R.Order = this->Order;
 }
