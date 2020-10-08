@@ -188,9 +188,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
         if (SI.getSourceLocationOrder() == T.getTacID()) {
           if (!S->isInLoop()) {
             Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
-                                         SI.render() + ";\t// latency = " +
-                                             std::to_string(SI.Cost.Latency) +
-                                             "\n");
+                                         "\n" + SI.render());
             return false;
           } else {
             return true;
