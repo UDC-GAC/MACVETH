@@ -29,7 +29,6 @@ Main options available:
 
     --all|-a: execute all tests (default)
     --help|-h: show help message
-    --unit|-u: execute "unittests" (description below)
     --full|-f: execute "fulltests" (description below)
     --must|-m: execute "mustpass" (description below)
 
@@ -53,20 +52,6 @@ There are two main sets: unittest and fulltest. Then, there is another
 "optional" suite meant to describe the cases that compiler *MUST* pass. Its name
 is self-descriptive: "mustpass"
 
-** Unittest:
-------------
-
-You will want to add a new test for testing the shape of the code itself by
-creating a new case in 'unittest'
-
-    * Original code: for being compiled by macveth
-    * SIMD code: the expected output to be compared to macveth's output. Must
-      end with the suffix "_exp.c" in order to the script to recognize it.
-
-This way, the testing script will compile the original code and generate a SIMD
-version of it and will compare it against the "_exp.c" version, ignoring any
-withespace, newline, tab or comment in the code.
-
 ** Fulltest:
 ------------
 
@@ -83,3 +68,17 @@ As its name suggests, this set of tests describe cases that the compiler must
 not fail. It follows the same procedure as the "Fulltest"s: compare the output
 of the sequential and SIMD code. Therefore, the only difference is the directory
 where these tests are.
+
+** Unittest (deprecated):
+-------------------------
+
+You will want to add a new test for testing the shape of the code itself by
+creating a new case in 'unittest'
+
+    * Original code: for being compiled by macveth
+    * SIMD code: the expected output to be compared to macveth's output. Must
+      end with the suffix "_exp.c" in order to the script to recognize it.
+
+This way, the testing script will compile the original code and generate a SIMD
+version of it and will compare it against the "_exp.c" version, ignoring any
+withespace, newline, tab or comment in the code.

@@ -10,7 +10,7 @@ endif
 ifeq ($(COMP),icc)
 	CC=icc
 	CXX=icpc
-	VFLAGS= $(VF) -vec-threshold0 -unroll0 -qoverride-limits -qopt-report=5 -mavx2 -mfma
+	VFLAGS= $(VF) -vec-threshold0 -qoverride-limits -march=native -mfma
 	SUFFIX=_icc
 else
 	COMP=gcc

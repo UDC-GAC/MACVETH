@@ -1,13 +1,3 @@
-"""
- This is the default license template.
- 
- File: compile.py
- Author: markoshorro
- Copyright (c) 2020 markoshorro
- 
- To edit this license information: Press Ctrl+Shift+P and press 'Create new License Template...'.
-"""
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # File              : unittest.py

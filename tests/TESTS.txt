@@ -4,8 +4,8 @@
 This document describes the test suite: the aim of each set of benchmarks and a
 brief description of each case. This will help to understand what is missing.
 
-* unittest:
------------
+* unittest (now this is legacy):
+--------------------------------
 
 These tests are meant to compare the form/shape of the code. The diff between
 the expected file and the one that creates MACVETH must be exactly zero. The
@@ -107,9 +107,9 @@ Current test cases (21):
     * test_dumb_3darray.c - as its name suggests, dumb tests just for
       robustness: nothing is computed, only values are set.
 
-** TODO **
 * mustpass (experimental):
 --------------------------
 
 This is a set of the minimum cases where the compiler should always work. We use
-the same approach that fulltest/ tests do.
+the same approach that fulltest/ tests do. These are the most important tests
+in the suite as they represent the target cases of the MACVETH compiler.

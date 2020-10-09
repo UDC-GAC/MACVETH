@@ -28,8 +28,9 @@ output_file = output_dir + sys.argv[5]
 
 files = []
 for c in it.product(comp, vect):
-    files += [results_dir + c[0] + "_" + c[1] + "_" + bench + ".csv"]
-    files += [results_dir + c[0] + "_" + c[1] + "_" + bench + "_macveth.csv"]
+    files += [results_dir + c[0] + "_" + c[1] + "_" + bench + "_TIME.csv"]
+    files += [results_dir + c[0] + "_" +
+              c[1] + "_" + bench + "_TIME_macveth.csv"]
 
 files = [pd.read_csv(f) for f in files]
 
