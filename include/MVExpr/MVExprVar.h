@@ -30,6 +30,10 @@ public:
       this->setTempInfo(MVExprInfo::TAC_EXPR);
     }
   }
+
+  /// To string
+  virtual std::string toString() const { return this->getExprStrRaw(); }
+
   /// Unroll expression
   virtual MVExpr *unrollExpr(int UF, std::string LL);
   /// Check if this has been unrolled

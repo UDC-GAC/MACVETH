@@ -32,6 +32,7 @@
 #include "include/CDAG.h"
 #include "include/MVPragmaHandler.h"
 #include "include/StmtWrapper.h"
+#include "include/Vectorization/SIMD/SIMDGenerator.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/Tooling.h"
@@ -64,7 +65,7 @@ private:
   //// Add includes to files if needed
   void addHeaders(std::list<std::string> S, FileID FID);
   /// Rewrite TAC as regular statements
-  void renderTACInPlace(std::list<StmtWrapper *> SL, long TacID);
+  void renderTACInPlace(std::list<StmtWrapper *> SL, long TacID, int Offset);
   /// Render SIMD instructions where they should be (regular map operations)
   void renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                              std::list<StmtWrapper *> SL);

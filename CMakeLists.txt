@@ -1,5 +1,5 @@
 # Minimum version required
-cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
 # Minimum C++ std
 set(CMAKE_CXX_STANDARD 17)
@@ -19,7 +19,7 @@ set(LLVM_BIN_PATH ${LLVM_BUILD_PATH}/bin)
 set(CURSES_USE_NCURSES TRUE)
 
 # Custom flags
-set(CUSTOM_CXXFLAGS " -g -fno-rtti -O0 ")
+set(CUSTOM_CXXFLAGS " -g -fno-rtti -Ofast ")
 add_definitions(${CUSTOM_CXXFLAGS})
 
 ############################################################

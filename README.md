@@ -145,9 +145,9 @@ account when using this compiler:
 
         + Reductions should look like:
 
-            S = S + <expr>
+            S = S + <expr> || S += <expr>
           
-          in order to be detected properly (FIXME)
+          in order to be detected properly
 
     - Declarations within scop:
         + Not permitted any kind or type of declaration within, e.g. int var = 42;

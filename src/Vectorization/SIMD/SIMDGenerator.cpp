@@ -8,6 +8,7 @@
 
 #include "include/Vectorization/SIMD/SIMDGenerator.h"
 #include "include/MVOptions.h"
+#include "include/PlcmntAlgo.h"
 #include "include/Utils.h"
 #include "include/Vectorization/SIMD/CostTable.h"
 #include "clang/AST/OperationKinds.h"
@@ -32,7 +33,7 @@ void SIMDGenerator::populateTable(MVISA ISA) {
   std::string Arch = MVArchStr[MVOptions::Arch];
   std::ifstream F(PathISA);
   std::string L, W;
-  Utils::printDebug("CostsTable", "PathISA = " + PathISA);
+  // Utils::printDebug("CostsTable", "PathISA = " + PathISA);
   if (F.is_open()) {
     while (getline(F, L)) {
       if ((L.rfind("#", 0) == 0) || (L == "")) {
@@ -70,23 +71,26 @@ void SIMDGenerator::populateTable(MVISA ISA) {
 std::string SIMDGenerator::getOpName(VectorIR::VOperand V, bool Ptr,
                                      bool RegVal) {
   if ((Ptr) && (V.IsStore || V.IsLoad)) {
+    // Pointer to Rvalue
     return "&" + V.getRegName();
   }
   if (RegVal) {
+    // Rvalue
     return V.getRegName();
   }
+  // Other
   return V.Name;
 }
 
 // ---------------------------------------------
-SIMDGenerator::SIMDInst
-SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
-                              SIMDGenerator::SIMDType SType,
-                              SIMDGenerator::SIMDInstListType *IL) {
+SIMDGenerator::SIMDInst SIMDGenerator::addNonSIMDInst(
+    VectorIR::VectorOP OP, SIMDGenerator::SIMDType SType, MVSourceLocation MVSL,
+    SIMDGenerator::SIMDInstListType *IL) {
   // Generate SIMD inst
   std::string Rhs;
   std::string Lhs = OP.R.getName();
-  SIMDGenerator::SIMDInst I(Lhs, Rhs, OP.Order);
+
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, MVSL);
   // Retrieving cost of function
   I.SType = SType;
 
@@ -95,12 +99,159 @@ SIMDGenerator::addNonSIMDInst(VectorIR::VectorOP OP,
   return I;
 }
 
+//---------------------------------------------
+std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType NL,
+                                                SIMDGenerator *SG) {
+  std::list<VectorIR::VectorOP> VList;
+  Node *VLoadA[64];
+  Node *VLoadB[64];
+  Node *VOps[64];
+  int Cursor = 0;
+repeat:
+  bool IsUnary = false;
+  // Consume nodes
+  int VL = 4;
+  // This is where magic should happen
+  while (!NL.empty()) {
+    if ((Cursor > 0) &&
+        ((NL.front()->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
+         (NL.front()->belongsToAReduction() !=
+          VOps[Cursor - 1]->belongsToAReduction()))) {
+      break;
+    }
+    // Consume the first one
+    VOps[Cursor] = NL.front();
+    // Get vector length
+    VL = SG->getMaxVectorSize(VOps[Cursor]->getDataType());
+    // NOTE: how do you solve this? I mean, for reductions, for instance,
+    // you will have different Plcmnts, something like: 1,2,3,4; but this
+    // algorithm should be able to select them. So maybe when selecting
+    // operations you should only look at the type of operations, but not at
+    // the Plcmnt or schedule.
+    // 06/03/2020: I think this is solved by tackling reductions as a non
+    // standard case and, then, detecting them before going onto the general
+    // case.
+    // 06/25/2020: not sure if reductions should be handled that way...
+    if ((Cursor > 0) &&
+        (VOps[Cursor]->getValue().compare(VOps[Cursor - 1]->getValue()))) {
+      Utils::printDebug("SIMDGenerator",
+                        "Full OPS of same type and placement = " +
+                            VOps[Cursor - 1]->getValue() + "; (" +
+                            VOps[Cursor]->getValue() + ")");
+      break;
+    }
+    NL.erase(NL.begin());
+    if (++Cursor == VL) {
+      Utils::printDebug("SIMDGenerator", "Full vector");
+      break;
+    }
+  }
+
+  // Compute memory operands for the operations fetched above
+  int i = 0;
+  while ((i < Cursor) && (VOps[i] != nullptr)) {
+    auto Aux = VOps[i]->getInputs();
+    VLoadA[i] = Aux[0];
+    if (Aux[1] != nullptr) {
+      VLoadB[i] = Aux[1];
+      Aux.erase(Aux.begin());
+      IsUnary = false;
+    } else {
+      IsUnary = true;
+    }
+    i++;
+  }
+
+  // Debugging
+  for (int n = 0; n < Cursor; ++n) {
+    std::string B = IsUnary ? "" : VLoadB[n]->getRegisterValue() + "; ";
+    Utils::printDebug("SIMDGenerator", VOps[n]->getRegisterValue() + " = " +
+                                           VLoadA[n]->getRegisterValue() + " " +
+                                           VOps[n]->getValue() + " " + B +
+                                           VOps[n]->getSchedInfoStr());
+  }
+
+  if (Cursor != 0) {
+    // Compute the vector cost
+    auto NewVectInst =
+        VectorIR::VectorOP(Cursor, VOps, VLoadA, (IsUnary) ? nullptr : VLoadB);
+    VList.push_back(NewVectInst);
+  }
+
+  // Repeat process if list not empty
+  if (!NL.empty()) {
+    Cursor = 0;
+    for (int i = 0; i < VL; ++i) {
+      VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
+    }
+    goto repeat;
+  }
+  return VList;
+}
+
+//---------------------------------------------
+std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
+                                                  SIMDGenerator *SG) {
+  // Returning list
+  std::list<VectorIR::VectorOP> VList;
+
+  // Working with a copy
+  Node::NodeListType NL(NList);
+
+  //
+  Utils::printDebug("SIMDGenerator", "Detecting reductions");
+  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  if (NRedux.size() == 0) {
+    Utils::printDebug("SIMDGenerator", "No reductions detected");
+  }
+
+  Utils::printDebug("SIMDGenerator", "General case");
+  VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
+  Utils::printDebug("SIMDGenerator", "Reductions case");
+  VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
+
+  return VList;
+}
+
 // ---------------------------------------------
-SIMDGenerator::SIMDInst
-SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
-                              SIMDGenerator::SIMDType SType,
-                              SIMDGenerator::SIMDInstListType *IL) {
-  SIMDGenerator::SIMDInst I(Lhs, Rhs, IL->back().TacID);
+SIMDGenerator::SIMDInfo SIMDGenerator::computeCostModel(CDAG *G,
+                                                        SIMDGenerator *SG) {
+  // Set placement according to the desired algorithm
+  Node::NodeListType NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
+
+  // Debugging
+  for (auto N : NL) {
+    Utils::printDebug("SIMDGenerator", N->toString());
+  }
+
+  // Setting CDAG
+  SG->setCDAG(G);
+
+  // Execute greedy algorithm
+  std::list<VectorIR::VectorOP> VList = getVectorOpFromCDAG(NL, SG);
+
+  // Order Vector Operations by TAC ID
+  VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {
+    return V1.Order < V2.Order;
+  });
+
+  // If debug enabled, it will print the VectorOP obtained
+  for (auto V : VList) {
+    Utils::printDebug("VectorIR", V.toString());
+  }
+
+  // Generate the SIMD list
+  SIMDGenerator::SIMDInstListType S = SG->getSIMDfromVectorOP(VList);
+
+  return SG->computeSIMDCost(S);
+}
+
+// ---------------------------------------------
+SIMDGenerator::SIMDInst SIMDGenerator::addNonSIMDInst(
+    std::string Lhs, std::string Rhs, SIMDGenerator::SIMDType SType,
+    MVSourceLocation MVSL, SIMDGenerator::SIMDInstListType *IL) {
+  SIMDGenerator::SIMDInst I(Lhs, Rhs, MVSL);
+
   // Retrieving cost of function
   I.SType = SType;
 
@@ -112,19 +263,19 @@ SIMDGenerator::addNonSIMDInst(std::string Lhs, std::string Rhs,
 // ---------------------------------------------
 std::string SIMDGenerator::SIMDInst::render() {
   std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
-  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
-                          (SType == SIMDType::VSTORER))
+  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
                              ? FN
                              : Result + " = " + FN;
-  if (((SType == SIMDType::VSEQR) || (SType == SIMDType::VSEQ)) &&
-      (Args.size() == 0))
+  if ((SType == SIMDType::VSEQ) ||
+      ((Args.size() == 0) && (SType == SIMDType::VOPT))) {
     return FullFunc;
-  FullFunc += "(";
-  std::list<std::string>::iterator Op;
-  int i = 0;
-  for (Op = Args.begin(); Op != Args.end(); ++Op) {
-    FullFunc += (i++ == (Args.size() - 1)) ? (*Op + ")") : (*Op + ", ");
   }
+  int i = 0;
+  FullFunc += "(";
+  for (auto Op = Args.begin(); Op != Args.end(); ++Op) {
+    FullFunc += (i++ == (Args.size() - 1)) ? (*Op) : (*Op + ", ");
+  }
+  FullFunc += ")";
   return FullFunc;
 }
 
@@ -134,7 +285,7 @@ SIMDGenerator::SIMDInfo SIMDGenerator::computeSIMDCost(SIMDInstListType S) {
   std::map<std::string, long> NumOp;
   std::list<std::string> L;
   long TotCost = 0;
-  for (SIMDInst I : S) {
+  for (auto I : S) {
     CostOp[I.FuncName] = I.Cost;
     NumOp[I.FuncName]++;
     TotCost += I.Cost.Latency;
@@ -182,30 +333,42 @@ bool SIMDGenerator::getSIMDVOperand(VectorIR::VOperand V,
     //
     // We will say it is a set if we have to explicitly set the values of the
     // vector operand
-    bool EqualVal = equalValues(V.VSize, V.UOP);
-    bool ContMem = V.MemOp && (V.Contiguous);
-    bool ScatterMem = V.MemOp && !ContMem;
-    bool ExpVal = !V.MemOp;
+    auto EqualVal = equalValues(V.VSize, V.UOP);
+    auto ContMem = V.MemOp && (V.Contiguous);
+    auto ScatterMem = V.MemOp && !ContMem;
+    auto ExpVal = !V.MemOp;
 
-    Utils::printDebug("SIMDGenerator",
-                      "V = " + V.Name +
-                          "; EqualVal = " + std::to_string(EqualVal) +
-                          "; ContMem = " + std::to_string(ContMem) +
-                          "; ScatterMem = " + std::to_string(ScatterMem) +
-                          "; SameVec = " + std::to_string(V.SameVector) +
-                          "; ExpVal = " + std::to_string(ExpVal));
+    auto NullIndex = false;
+    if (V.Idx.size() > 0) {
+      auto I0 = V.Idx[0];
+      for (int i = 1; i < V.VSize; ++i) {
+        if (V.Idx[i] == I0) {
+          NullIndex = true;
+          break;
+        }
+      }
+    }
 
-    // 0, 1, 0, 0
+    // Utils::printDebug("SIMDGenerator",
+    //                   "V = " + V.Name +
+    //                       "; EqualVal = " + std::to_string(EqualVal) +
+    //                       "; ContMem = " + std::to_string(ContMem) +
+    //                       "; ScatterMem = " + std::to_string(ScatterMem) +
+    //                       "; SameVec = " + std::to_string(V.SameVector) +
+    //                       "; ExpVal = " + std::to_string(ExpVal) +
+    //                       "; NullIndex = " + std::to_string(NullIndex));
+
+    // Load contiguous from memory
     if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
       TIL = vpack(V);
-      // 0, X, 1
-    } else if ((!EqualVal) && (ScatterMem) && (V.SameVector)) {
+      // Load from memory but not contiguous
+    } else if ((!EqualVal) && (ScatterMem) && (V.SameVector) && (!NullIndex)) {
       TIL = vgather(V);
-      // 1, X, 0, 1
+      // Replicate value
     } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {
       TIL = vbcast(V);
     } else {
-      // 1, X, 0, 1
+      // Set values directly
       TIL = vset(V);
     }
 
@@ -254,7 +417,11 @@ void SIMDGenerator::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
 
   // If there is a store
   if (V.R.IsStore) {
-    TIL.splice(TIL.end(), vstore(V));
+    if (V.R.Contiguous) {
+      TIL.splice(TIL.end(), vstore(V));
+    } else {
+      TIL.splice(TIL.end(), vscatter(V));
+    }
   }
   TI->splice(TI->end(), TIL);
 }
@@ -283,15 +450,12 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   // Arranging the operation
   switch (V.VT) {
   case VectorIR::VType::MAP:
-    Utils::printDebug("SIMDGen", "map");
     mapOperation(V, &IL);
     break;
   case VectorIR::VType::REDUCE:
-    Utils::printDebug("SIMDGen", "reduce");
     reduceOperation(V, &IL);
     break;
   case VectorIR::VType::SEQ:
-    Utils::printDebug("SIMDGen", "sequential");
     return vseq(V);
   };
 
@@ -307,20 +471,18 @@ SIMDGenerator::getSIMDfromVectorOP(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDGenerator::SIMDInstListType
 SIMDGenerator::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
-  SIMDInstListType I;
+  SIMDInstListType IL;
 
   // Get list of SIMD instructions
   for (VectorIR::VectorOP V : VList) {
-    for (SIMDInst Inst : getSIMDfromVectorOP(V)) {
-      I.push_back(Inst);
-    }
+    IL.splice(IL.end(), getSIMDfromVectorOP(V));
   }
 
   // Then optimizations can be done, for instance, combine operatios such as
   // addition + multiplication. It will depend on the architecture/ISA.
-  I = peepholeOptimizations(I);
+  IL = peepholeOptimizations(IL);
 
-  return I;
+  return IL;
 }
 
 // ---------------------------------------------
@@ -395,4 +557,5 @@ void SIMDGenerator::clearMappings() {
   AccmReg = 0;
   AuxRegId = 0;
   AuxReg.clear();
+  InitReg.clear();
 }

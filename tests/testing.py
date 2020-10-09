@@ -6,8 +6,11 @@
 import os
 import filecmp
 import re
+import subprocess
 from utils.utilities import pr_col
 from utils.utilities import colors as c
+
+# Some path declarations
 build_path = "../build"
 unittest_path = "unittest/"
 fulltest_path = "fulltest/"
@@ -16,7 +19,6 @@ macveth_path = "macveth_dir/"
 fail_path = "failed_tests/"
 tmp_path = "tmpfiles/"
 test_report = "test_report.txt"
-
 
 # File extensions
 file_t = ".c"
@@ -28,7 +30,7 @@ cc = "gcc"
 
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
-mv_poly_flags = " --extra-arg-before='-Itests/fulltest/utilities' "
+mv_poly_flags = " --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/fulltest/utilities' "
 
 # Discussion:
 # is POLYBENCH_USE_C99_PROTO needed?
@@ -74,14 +76,19 @@ def compile_macveth():
     if (out != 0):
         print("Something went wrong compiling MACVETH! Exiting...")
         exit(0)
-    os.system("cp %s/macveth ." % build_path)
     return True
 
 
-def compile_test_with_macveth(org_file, out_file, args=""):
+def compile_test_with_macveth(org_file, out_file, args=" "):
     # Compiling the tests
-    os.system("./macveth %s %s -o=%s 2>> macveth_compiler.log" %
+    # print("DEBUG: macveth %s %s -o=%s 2>> macveth_compiler.log" %
+    #      (args, org_file, out_file))
+    os.system("macveth %s %s -o=%s 2>> macveth_compiler.log" %
               (args, org_file, out_file))
+    # For some reason, sometimes there is a bad descriptor error when compiling...
+    line = subprocess.check_output(['tail', '-1', "macveth_compiler.log"])
+    if "LLVM ERROR" in str(line):
+        return False
     return True
 
 
@@ -156,10 +163,10 @@ def unittest_suite():
         print("{:<80}".format("execution test of " + org_test + "..."), end="")
         if (test_output(exp_test, comp_test, True)):
             passed_tests.append(comp_test)
-            pr_col(c.fg.green, " [PASSED]")
+            pr_col(c.fg.green, " [PASS]")
         else:
             failed_tests.append(comp_test)
-            pr_col(c.fg.red, " [FAILED]")
+            pr_col(c.fg.red, " [FAIL]")
 
     # Print results obtained
     print_results("unittest", passed_tests, failed_tests, tests_name)
@@ -186,7 +193,11 @@ def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
         org_t = path_suite + test + file_t
 
         # Compile with macveth the test
-        compile_test_with_macveth(org_t, macveth_t, mv_poly_flags)
+        n_attemps = 3
+        while (n_attemps > 0):
+            if compile_test_with_macveth(org_t, macveth_t, mv_poly_flags):
+                break
+            n_attemps -= 1
         print("{:<80}".format("execution test of " + org_t + "..."), end="")
 
         pref = tmp_path + test
@@ -207,10 +218,10 @@ def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
         if (test_output(tmp_org_out,
                         tmp_mv_out)):
             passed_tests.append(macveth_t)
-            pr_col(c.fg.green, " [PASSED]")
+            pr_col(c.fg.green, " [PASS]")
         else:
             failed_tests.append(macveth_t)
-            pr_col(c.fg.red, " [FAILED]")
+            pr_col(c.fg.red, " [FAIL]")
 
     # Write results obtained
     print_results(path_suite, passed_tests, failed_tests, tests_name)
@@ -222,11 +233,8 @@ clean_previous_files()
 # Compiling macveth
 compile_macveth()
 
-# Unittest
-# unittest_suite()
-
 # Fulltest
-# exectest_suite(fulltest_path)
+exectest_suite(fulltest_path)
 
 # "MUST PASS" tests
 exectest_suite(mustpass_path, "must")

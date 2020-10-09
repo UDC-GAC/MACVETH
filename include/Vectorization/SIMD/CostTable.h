@@ -34,7 +34,7 @@ public:
   };
 
   /// Each Table identifies an architecture
-  typedef std::map<std::string, Row> Table;
+  using Table = std::map<std::string, Row>;
 
   /// This acts like a database using the std::map to identify each arhitecture
   /// and its correspondant Table, which is basically another map where each

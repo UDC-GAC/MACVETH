@@ -35,6 +35,10 @@ bool checkIfIndexIsAffine(const Expr *E) {
   if (dyn_cast<IntegerLiteral>(E->IgnoreImpCasts())) {
     return true;
   }
+  if (auto Op = dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
+    return (((Op->getOpcode() == UnaryOperator::Opcode::UO_Minus) ||
+             (Op->getOpcode() == UnaryOperator::Opcode::UO_Plus)));
+  }
   if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
     return checkIfIndexIsAffine(Op->getLHS()) &&
            checkIfIndexIsAffine(Op->getRHS());
@@ -45,13 +49,13 @@ bool checkIfIndexIsAffine(const Expr *E) {
 //------------------------------------------------
 const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
                                                  IdxVector &Idxs) {
-  const Expr *BaseE = NULL;
+  const Expr *BaseE = nullptr;
   while (ASE) {
     auto IdxE = ASE->getIdx();
     assert(checkIfIndexIsAffine(IdxE) && "Index must be affine");
     BaseE = ASE->getBase()->IgnoreParenCasts();
     ASE = dyn_cast<ArraySubscriptExpr>(BaseE);
-    Idxs.push_back(MVAffineIndex(IdxE));
+    Idxs.push_back(IdxE);
   }
 
   std::reverse(Idxs.begin(), Idxs.end());
@@ -61,7 +65,7 @@ const Expr *MVExprArray::getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,
 //------------------------------------------------
 const Expr *MVExprArray::getArrayBaseExprAndIdxs(const CXXOperatorCallExpr *C,
                                                  IdxVector &Idxs) {
-  Expr *BaseE = NULL;
+  Expr *BaseE = nullptr;
   CXXOperatorCallExpr *CXX = const_cast<CXXOperatorCallExpr *>(C);
   while (CXX) {
     if (CXX->getDirectCallee()->getNameAsString() != "operator[]") {

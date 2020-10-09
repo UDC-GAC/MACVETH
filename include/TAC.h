@@ -107,6 +107,8 @@ public:
   long getScop() { return this->TScop; }
   /// Get that TacID value
   int getTacID() { return this->TacID; }
+  /// Get the unroll factor
+  int getUnrollFactor() { return this->TUnroll; }
   /// Set loop name
   void setLoopName(std::string LoopName) { this->LoopName = LoopName; }
   /// Get loop name
@@ -117,12 +119,14 @@ public:
 
   /// To string method
   std::string toString() {
-    auto C = (this->getC() != NULL) ? ", " + this->getC()->getExprStr() : "";
+    auto C = (this->getC() != nullptr) ? ", " + this->getC()->getExprStr() : "";
     auto Op = this->MVOP.toString();
     Op = "t: " + this->getA()->getExprStr() + ", " +
          this->getB()->getExprStr() + C + ", " + Op +
          "; (loop = " + this->getLoopName() +
-         "; scop = " + std::to_string(this->getScop()) + ")";
+         "; scop = " + std::to_string(this->getScop()) +
+         "); ID = " + std::to_string(this->getTacID()) +
+         "; UnrollID = " + std::to_string(this->getUnrollFactor());
     return Op;
   }
 
@@ -134,7 +138,7 @@ public:
   static std::list<TAC> stmtToTAC(clang::Stmt *ST);
 
   /// Print/render TAC as regular statements
-  static std::string renderTacAsStmt(std::list<TAC> TL);
+  static std::string renderTacAsStmt(std::list<TAC> TL, int Offset);
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
@@ -159,12 +163,14 @@ private:
   /// TAC identifier: as TAC may be unrolled, the ID is only meant for
   /// identifying it
   int TacID = -1;
+  /// TAC Unroll factor from the original, as unrolled TACs have the same ID
+  int TUnroll = -1;
   /// Represents with a unique ID the part of the
   long TScop = 0;
 };
 
 /// List of TACs
-typedef std::list<TAC> TacListType;
+using TacListType = std::list<TAC>;
 
 } // namespace macveth
 #endif /* !MACVETH_TAC_H */

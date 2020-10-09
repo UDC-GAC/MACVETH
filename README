@@ -56,7 +56,7 @@ $> ./macveth <input_file.c>
 
 For displaying all the available options, type:
 
-`$> ./macveth --help` 
+$> ./macveth --help
 
 ** Documentation:
 -----------------
@@ -144,9 +144,12 @@ account when using this compiler:
 
         + Reductions should look like:
 
-            S = S + <expr>
+            S = S + <expr> || S += <expr>
           
-          in order to be detected properly (FIXME)
+          in order to be detected properly
+
+    - C Standard:
+        + "restrict": use "__restrict" instead
 
     - Declarations within scop:
         + Not permitted any kind or type of declaration within, e.g. int var = 42;

@@ -2,9 +2,8 @@
  * File					 : src/TAC.cpp
  * Author				 : Marcos Horro
  * Date					 : Wed 03 Jun 2020 04:24 +02:00
- *
  * Last Modified : Wed 10 Jun 2020 10:21 +02:00
- * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal)
  *
  * MIT License
  *
@@ -36,6 +35,7 @@
 #include "include/MVExpr/MVExprLiteral.h"
 #include "include/MVExpr/MVExprVar.h"
 #include "clang/AST/Expr.h"
+#include "clang/Basic/LangOptions.h"
 #include "clang/Lex/Lexer.h"
 #include <llvm-10/llvm/Support/ErrorHandling.h>
 
@@ -94,17 +94,20 @@ std::string replaceTmpTac(std::map<std::string, std::vector<std::string>> T,
 }
 
 // ---------------------------------------------
-std::string TAC::renderTacAsStmt(TacListType TL) {
+std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
   std::list<std::string> TmpList;
   std::map<std::string, std::vector<std::string>> TmpResToReplace;
   TacListType TCopy(TL);
   for (auto T : TCopy) {
+    if (T.getUnrollFactor() != Offset) {
+      continue;
+    }
     auto A = T.getA()->getExprStr();
     auto B = T.getB()->getExprStr();
     std::string C = "";
     auto Op = T.getMVOP().toString();
     auto TOP = T.getMVOP().T == MVOpType::CLANG_BINOP ? "BinOp" : "Func";
-    if (T.getC() != NULL) {
+    if (T.getC() != nullptr) {
       C = T.getC()->getExprStr();
     }
     if ((T.getA()->getTempInfo() == MVExpr::MVExprInfo::TMP_RES)) {
@@ -114,11 +117,13 @@ std::string TAC::renderTacAsStmt(TacListType TL) {
   TCopy.reverse();
   std::string FinalStr = "";
   for (auto T : TCopy) {
+    if (T.getUnrollFactor() != Offset) {
+      continue;
+    }
     auto A = T.getA()->getExprStr();
     auto B = T.getB()->getExprStr();
     std::string C = "";
-    // auto Op = T.getMVOP().toString();
-    if (T.getC() != NULL) {
+    if (T.getC() != nullptr) {
       C = T.getC()->getExprStr();
     }
     // If this, then it is an assignment (by design)
@@ -141,11 +146,29 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   MVOp Op;
   auto S = dyn_cast<BinaryOperator>(ST);
   auto F = dyn_cast<CallExpr>(ST);
+  // This is something like Lhs [+-]= Rhs
   if (S) {
     S1 = S->getLHS()->IgnoreImpCasts();
     S2 = S->getRHS()->IgnoreImpCasts();
-    clang::BinaryOperator *LhsBin = NULL;
-    clang::BinaryOperator *RhsBin = NULL;
+    clang::BinaryOperator *LhsBin = nullptr;
+    clang::BinaryOperator *RhsBin = nullptr;
+    Op = MVOp(S->getOpcode());
+    if (S->getOpcode() == BinaryOperator::Opcode::BO_AddAssign) {
+      auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Add,
+                                         S1->getType(), S1->getValueKind(),
+                                         S1->getObjectKind(), S1->getBeginLoc(),
+                                         clang::FPOptions());
+      S2 = &NewOp;
+      Op = MVOp(BinaryOperator::Opcode::BO_Assign);
+    }
+    if (S->getOpcode() == BinaryOperator::Opcode::BO_SubAssign) {
+      auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Sub,
+                                         S1->getType(), S1->getValueKind(),
+                                         S1->getObjectKind(), S1->getBeginLoc(),
+                                         clang::FPOptions());
+      S2 = &NewOp;
+      Op = MVOp(BinaryOperator::Opcode::BO_Assign);
+    }
     if ((LhsBin = getBinOp(S1))) {
       S1 = LhsBin;
     }
@@ -154,7 +177,6 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     }
     IsTerminalS1 = isTerminal(S1);
     IsTerminalS2 = isTerminal(S2);
-    Op = MVOp(S->getOpcode());
   } else if (F) {
     auto Args = F->getArgs();
     assert((F->getNumArgs() <= 2) && "Function not binary!! Not supported yet");
@@ -233,8 +255,8 @@ TacListType TAC::stmtToTAC(clang::Stmt *ST) {
   TacListType TL;
 
   // Check if the expression is binary
-  clang::BinaryOperator *SBin = NULL;
-  bool STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
+  clang::BinaryOperator *SBin = nullptr;
+  auto STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
   if (STypeBin) {
     stmtToTACRecursive(SBin, &TL, -1);
     return TL;
@@ -256,9 +278,11 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
 
   auto NewA = Tac->getA()->unrollExpr(UnrollA, LoopLevel);
   auto NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
-  auto NewC =
-      Tac->getC() != NULL ? Tac->getC()->unrollExpr(UnrollC, LoopLevel) : NULL;
+  auto NewC = Tac->getC() != nullptr
+                  ? Tac->getC()->unrollExpr(UnrollC, LoopLevel)
+                  : nullptr;
   auto UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
+  UnrolledTac->TUnroll = S * UnrollFactor;
   UnrolledTac->setScop(Tac->getScop());
   UnrolledTac->setLoopName(Tac->getLoopName());
   return UnrolledTac;
@@ -268,14 +292,14 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
 TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
                                int UpperBound, std::string LoopLevel) {
   TacListType TacListOrg;
-  int Steps = UpperBound / UnrollFactor;
+  auto Steps = UpperBound / UnrollFactor;
   for (int S = 0; S < Steps; S++) {
     for (auto T : TacList) {
       auto NT = (TAC::unroll(&T, UnrollFactor, S, 0x000000, LoopLevel));
-      if (NT != NULL) {
+      if (NT != nullptr) {
         TacListOrg.push_back(*NT);
       }
-      if ((NT == NULL) && (S == 0)) {
+      if ((NT == nullptr) && (S == 0)) {
         TacListOrg.push_back(T);
       }
     }

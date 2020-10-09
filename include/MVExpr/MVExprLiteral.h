@@ -29,6 +29,11 @@ public:
   /// Unroll expression
   virtual MVExpr *unrollExpr(int UF, std::string LL);
 
+  /// To string
+  virtual std::string toString() const {
+    return Utils::getStringFromExpr(this->getClangExpr());
+  }
+
   /// In order to be able to use RTTI
   static bool classof(const MVExpr *S) { return S->getKind() == MVK_Literal; }
 };

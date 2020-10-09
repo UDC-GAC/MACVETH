@@ -5,7 +5,7 @@
  * Last Modified Date: Lun 23 Mar 2020 18:29:59 CET
  * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
  *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
+ * Copyright (c) 2019-2020 Marcos Horro <marcos.horro@udc.gal>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,11 +46,11 @@ long StmtWrapper::getCost() {
     }
   } else {
     for (auto T : this->getTacList()) {
-      // FIXME:
+      // FIXME: this is a very _naïve_ (i.e. stupid) metric...
       Tot += MVOp::getOperationCost(T.getMVOP());
       Tot += (T.getA()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
       Tot += (T.getB()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
-      if (T.getC() != NULL) {
+      if (T.getC() != nullptr) {
         Tot += (T.getC()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
       }
     }
@@ -77,7 +77,6 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
   ScopHandler::visitScop(*Scop);
   for (auto StmtWithin : CS->body()) {
     auto ST = dyn_cast<Stmt>(StmtWithin);
-    Utils::printDebug("StmtWrapper", "visiting scop");
     if (!ST) {
       continue;
     }
@@ -87,9 +86,8 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
         Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
     if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
       Utils::printDebug("StmtWrapper genStmtWraps",
-                        "new StmtWrapper => " + Utils::getStringFromStmt(ST));
+                        "new StmtWrapper =\n" + Utils::getStringFromStmt(ST));
       StmtWrapper *NewStmt = new StmtWrapper(ST);
-      TAC::TacScop++;
       SList.push_back(NewStmt);
     } else {
       // Could be inside the loop the region of interest
@@ -107,10 +105,9 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
                 Utils::getSourceMgr()->getExpansionLineNumber(B->getEndLoc());
             if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
               Utils::printDebug("StmtWrapper genStmtWraps",
-                                "new StmtWrapper => " +
+                                "new StmtWrapper =\n" +
                                     Utils::getStringFromStmt(B));
               StmtWrapper *NewStmt = new StmtWrapper(B);
-              TAC::TacScop++;
               SList.push_back(NewStmt);
             }
           }
@@ -128,8 +125,8 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
   if (auto Loop = dyn_cast<ForStmt>(S)) {
     this->LoopL = getLoop(Loop);
     auto Body = dyn_cast<CompoundStmt>(Loop->getBody());
-    TAC::TacScop++;
     if (Body) {
+      TAC::TacScop++;
       for (auto S : Body->body()) {
         auto SW = new StmtWrapper(S);
         SW->setInnerLoopName(this->getLoopInfo().Dim);
@@ -140,6 +137,7 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
           T.printTAC();
         }
       }
+      TAC::TacScop++;
     } else {
       auto SW = new StmtWrapper(Loop->getBody());
       SW->setInnerLoopName(this->getLoopInfo().Dim);
@@ -166,20 +164,27 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   const DeclStmt *NameValInit = dyn_cast<DeclStmt>(ForLoop->getInit());
   const BinaryOperator *ValInit;
   const VarDecl *V = nullptr;
-  /// FIXME:
+  // FIXME:
   if (NameValInit != nullptr) {
+    // In cases like: int i = <expr>; i.e. the declaration of the variable
+    // itself
     clang::Expr::EvalResult R;
     V = dyn_cast<VarDecl>(NameValInit->getSingleDecl());
-    if (V->getInit()->EvaluateAsInt(R, *Utils::getCtx())) {
-      Loop.InitVal = (long)R.Val.getInt().getExtValue();
+    if (V != nullptr) {
+      Loop.InitVal = Utils::getIntFromExpr(V->getInit(), Utils::getCtx());
+      Loop.StrInitVal = Utils::getStringFromStmt(V->getInit());
     } else {
       Loop.StrInitVal = Utils::getStringFromStmt(NameValInit);
     }
     Loop.Dim = V->getDeclName().getAsString();
   } else {
+    // In case the declaration is sth like: i = <expr>; i.e. i = t, i = 0, etc.
     ValInit = dyn_cast<BinaryOperator>(ForLoop->getInit());
     if (ValInit != nullptr) {
       Loop.InitVal = Utils::getIntFromExpr(ValInit->getRHS(), Utils::getCtx());
+      if (Loop.InitVal == -1) {
+        Loop.StrInitVal = Utils::getStringFromStmt(ValInit->getRHS());
+      }
     } else {
       Loop.StrInitVal = Utils::getStringFromStmt(ForLoop->getInit());
     }
@@ -195,10 +200,19 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
 
   // Get UpperBound
   const BinaryOperator *Cond = dyn_cast<BinaryOperator>(ForLoop->getCond());
+  Loop.UpperBoundComp = Cond->getOpcode();
   const Expr *UpperBoundExpr = Cond->getRHS();
   if (UpperBoundExpr != nullptr) {
     Loop.StrUpperBound = Utils::getStringFromExpr(UpperBoundExpr);
     Loop.UpperBound = Utils::getIntFromExpr(UpperBoundExpr, Utils::getCtx());
+    if (Loop.UpperBound != -1) {
+      if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_LE) {
+        Loop.UpperBound++;
+      }
+      if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_GE) {
+        Loop.UpperBound--;
+      }
+    }
   }
 
   // Get step value
@@ -270,6 +284,7 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   }
   std::list<StmtWrapper *> SVec = SWrap->ListStmt;
   LoopInfo Loop = SWrap->getLoopInfo();
+  // FIXME:
   // Write new epilogs
   // auto EpiInit = Loop.Dim + " = " +
   //                ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
@@ -298,8 +313,9 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
     for (auto D : Scop->PA.UnrollDim) {
       if (this->LoopL.Dim == std::get<0>(D)) {
         if (Scop->PA.FullUnroll[this->LoopL.Dim]) {
-          MVAssert(this->LoopL.knownBounds(),
-                   "Can not full unroll if upperbound is not known");
+          MVAssertSkip(this->LoopL.knownBounds(),
+                       "Can not full unroll if upperbound is not known",
+                       GotoStartScop);
           this->LoopL.UnrollFactor = this->LoopL.UpperBound;
           this->LoopL.FullyUnrolled = true;
         } else {
@@ -329,12 +345,13 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
 bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
   bool FullUnroll = true;
   if (this->isLoop()) {
-    Utils::printDebug("StmtWrapper", "unrollByDim loop");
+    // Utils::printDebug("StmtWrapper", "unrollByDim loop");
     for (auto D : Scop->PA.UnrollDim) {
       if (this->LoopL.Dim == std::get<0>(D)) {
         if (Scop->PA.FullUnroll[this->LoopL.Dim]) {
-          MVAssert(this->LoopL.knownBounds(),
-                   "Can not full unroll if upperbound is not known");
+          MVAssertSkip(this->LoopL.knownBounds(),
+                       "Can not full unroll if upperbound is not known",
+                       GotoStartScop);
           this->LoopL.UnrollFactor = this->LoopL.UpperBound;
           this->LoopL.FullyUnrolled = true;
         } else {

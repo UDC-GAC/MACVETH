@@ -7,6 +7,7 @@
  */
 
 #include "include/Utils.h"
+#include <filesystem>
 #include <llvm-10/llvm/ADT/APFloat.h>
 
 using namespace macveth;
@@ -15,9 +16,10 @@ using namespace macveth;
 #include <direct.h>
 //-------------------------------------------------------------
 std::string Utils::getExePath() {
+  // FIXME:
   char result[MAX_PATH];
   int found;
-  GetModuleFileName(NULL, result, MAX_PATH);
+  GetModuleFileName(nullptr, result, MAX_PATH);
   found = string(result).find_last_of("\\");
   return (string(result).substr(0, found) + "\\");
 }
@@ -25,10 +27,13 @@ std::string Utils::getExePath() {
 #include <unistd.h>
 //-------------------------------------------------------------
 std::string Utils::getExePath() {
-  char result[PATH_MAX];
-  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-  std::size_t found = std::string(result).find_last_of("/");
-  return std::string(result).substr(0, found) + "/";
+  // This function has been programmed in many different ways, being the use of
+  // PWD environment variable the only one fittable. This is because MACVETH
+  // wants to know the absolute path where it is being executed, regardless
+  // where it has been executed or where the executable is located (e.g.
+  // /usr/bin/). Thus, PWD provides this absolute location.
+  // FIXME: is PWD POSIX?
+  return getenv("PWD") + std::string("/");
 }
 #endif
 
@@ -41,16 +46,6 @@ bool Utils::contains(std::list<T> listOfElements, T element) {
   // means element does not exists in list
   return it != listOfElements.end();
 }
-
-//-------------------------------------------------------------
-// template <typename T>
-// bool Utils::contains(std::list<T> &listOfElements, const T &element) {
-//  // Find the iterator if element in list
-//  auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
-//  // return if iterator points to end or not. It points to end then it
-//  // means element does not exists in list
-//  return it != listOfElements.end();
-//}
 
 //-------------------------------------------------------------
 SourceManager *Utils::getSourceMgr() { return Utils::SourceMgr; }

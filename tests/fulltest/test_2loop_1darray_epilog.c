@@ -19,12 +19,17 @@
 /* Default data type is double, default size is N=1024. */
 #include "definitions.h"
 
+#ifdef N
+#undef N
+#define N 8
+#endif
+
 /* Array initialization. */
 static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   int i, j;
 
   for (i = 0; i < n; i++)
-    x[i] = 42;
+    x[i] = 2;
 }
 
 static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
@@ -32,7 +37,7 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
   for (i = 0; i < n; i++)
     for (j = 0; j < n; j++)
-      C[i][j] = 42;
+      C[i][j] = 2;
 }
 
 /* DCE code. Must scan the entire live-out data.
@@ -40,10 +45,11 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
   int i, j;
 
-  for (i = 0; i < n; i++)
+  for (i = 0; i < n; i++) {
     fprintf(stderr, DATA_PRINTF_MODIFIER, C[i]);
-  if (i % 20 == 0)
-    fprintf(stderr, "\n");
+    if (i % 20 == 0)
+      fprintf(stderr, "\n");
+  }
   fprintf(stderr, "\n");
 }
 
@@ -52,11 +58,12 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 static void print_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
   int i, j;
 
-  for (i = 0; i < n; i++)
-    for (j = 0; j < n; j++)
+  for (i = 0; i < n; i++) {
+    for (j = 0; j < n; j++) {
       fprintf(stderr, DATA_PRINTF_MODIFIER, C[i][j]);
-  if (i % 20 == 0)
+    }
     fprintf(stderr, "\n");
+  }
   fprintf(stderr, "\n");
 }
 
@@ -65,7 +72,7 @@ static void print_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 static void kernel_template(int n, DATA_TYPE POLYBENCH_2D(A, N, N, n, n)) {
 #pragma macveth
   for (int i = 0; i < 7; i++) {
-    for (int j = 0; j < 7; j++) {
+    for (int j = 0; j < 8; j++) {
       A[i][j] = A[i][j] * i + 42.3f;
     }
   }
@@ -74,7 +81,7 @@ static void kernel_template(int n, DATA_TYPE POLYBENCH_2D(A, N, N, n, n)) {
 
 int main(int argc, char **argv) {
   /* Retrieve problem size. */
-  int n = N;
+  int n = 8;
 
   /* Variable declaration/allocation. */
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);

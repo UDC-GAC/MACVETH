@@ -15,7 +15,7 @@ int computeMaxDepth(Node *N) {
   if (N->getInputNum() == 0) {
     return 0;
   } else {
-    int Max = 0;
+    int Max = N->getSchedInfo().FreeSched;
     for (Node *T : N->getInputs()) {
       Max = std::max(Max, 1 + computeMaxDepth(T));
     }
@@ -30,7 +30,6 @@ void PlcmntAlgo::computeFreeSchedule(Node *N) {
 
 // ---------------------------------------------
 void PlcmntAlgo::computeFreeSchedule(Node::NodeListType NL) {
-  // Compute RAW
   for (Node *N : NL) {
     N->setFreeSchedInfo(computeMaxDepth(N));
   }
@@ -42,7 +41,7 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   Node::NodeListType LRedux;
   Node::NodeListType Visited;
   Node::NodeListType Reduction;
-  bool ReductionFound = false;
+  auto ReductionFound = false;
 
   std::reverse(std::begin(NCopy), std::end(NCopy));
   NL->clear();
@@ -53,8 +52,6 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
       continue;
     }
     Visited.push_back(R);
-
-    // Reduction.push_front(R);
     Reduction.insert(Reduction.begin(), R);
     auto S = R->getInputs();
   loop:
@@ -66,25 +63,37 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
       // Since we are checking the inputs of a node, we are do not have to check
       // if there are any RAW dependencies, because there are. Some conditions
       // we are checking:
-      // 1.- Check if same type (getValue())
-      // 2.- Check if sequential (FreeSched)
-      // 3.- Check if they belong to the same TAC (after unrolling, do not need
-      // to check scope then)
+      // 1 .- Check if same type (getValue())
+      // 2 .- Check if sequential (FreeSched)
+      // 3a.- Check if they belong to the same TAC
+      // 3b.- Check if same scop
       if ((R->getValue() == In->getValue()) &&
           (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched)) &&
-          (R->getSchedInfo().TacID == (In->getSchedInfo().TacID))) {
+          ((R->getSchedInfo().TacID == (In->getSchedInfo().TacID)) ||
+           R->getSchedInfo().Scop[0] == (In->getSchedInfo().Scop[0]))) {
         Utils::printDebug("PlcmntAlgo",
                           "Reduction found for " + In->getRegisterValue());
         ReductionFound = true;
         Reduction.push_back(In);
         Visited.push_back(In);
+        for (auto Sin : S) {
+          if (Sin != nullptr) {
+            Sin->setNodeAsReduction();
+          }
+        }
         S = In->getInputs();
+        R->setNodeAsReduction();
+        In->setNodeAsReduction();
+        for (auto Sin : S) {
+          if (Sin != nullptr) {
+            Sin->setNodeAsReduction();
+          }
+        }
         goto loop;
       }
     }
     if (ReductionFound) {
       for (auto RNode : Reduction) {
-        // LRedux.push_front(RNode);
         LRedux.insert(LRedux.begin(), RNode);
       }
     } else {
@@ -93,7 +102,6 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     Reduction.clear();
   }
   std::reverse(std::begin(*NL), std::end(*NL));
-  // NL->reverse();
   return LRedux;
 }
 

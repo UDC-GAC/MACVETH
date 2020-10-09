@@ -35,7 +35,7 @@ public:
   static void restart() { Node::UUID = 0; }
 
   /// Definition of NodeListType
-  typedef std::vector<Node *> NodeListType;
+  using NodeListType = std::vector<Node *>;
 
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_STORE, NODE_OP, UNDEF };
@@ -49,8 +49,10 @@ public:
     int NodeID = -1;
     /// TAC order
     int TacID = 0;
+    /// Unroll factor
+    int UnrollFactor = -1;
     /// Scope within program
-    long Scop = 0;
+    std::vector<int> Scop = {0};
     /// Topological order of this node
     int FreeSched = 0;
     /// TODO this value should be calculated by an algorithm
@@ -58,12 +60,12 @@ public:
     /// TODO this value stands for the scheduling order of this node; should
     /// be also calculated when the placement
     int Sched = 0;
+    /// If this node belongs to a reduction
+    bool IsReduction = false;
   };
 
   /// If the node is NODE_OP type, then it will hold a result value
   struct OutputInfo {
-    /// Name of the register or memory variable as output
-    std::string Name = "";
     /// MVExpr of output
     MVExpr *E;
     /// If the target variable is in memory it will be a MEM_STORE; TEMP_STORE
@@ -79,21 +81,29 @@ public:
   OutputInfo setOutputInfo(TAC T) {
     OutputInfo O;
     O.E = T.getA();
-    O.Name = T.getA()->getExprStr();
     O.Type = (T.getMVOP().isAssignment()) ? MEM_STORE : TEMP_STORE;
     O.MVOP = T.getMVOP();
     O.IsBinaryOp = T.getMVOP().getType() == MVOpType::CLANG_BINOP;
     return O;
   }
 
+  void setNodeAsReduction() { this->SI.IsReduction = true; }
+  void setNodeAsNonReduction() { this->SI.IsReduction = false; }
+  bool belongsToAReduction() { return this->SI.IsReduction; }
+
   /// Setting the scheduling info without any other information
   void setSchedInfo() { this->SI.NodeID = Node::UUID++; }
+
+  /// Update the output expression
+  void setOutputExpr(MVExpr *E) { this->O.E = E; }
 
   /// Setting the scheduling info without any other information than the TAC
   void setSchedInfo(TAC T) {
     this->SI.NodeID = Node::UUID++;
     this->SI.TacID = T.getTacID();
-    this->SI.Scop = T.getScop();
+    this->SI.UnrollFactor = T.getUnrollFactor();
+    // FIXME: vector of scops
+    this->SI.Scop[0] = T.getScop();
   }
 
   /// When creating a Node from a TempExpr, the connections will be created by
@@ -106,14 +116,14 @@ public:
   }
 
   /// Copy constructor for cloning
-  Node(const Node &rhs) {
-    this->I = rhs.I;
-    this->O = rhs.O;
-    this->OutNodes = rhs.OutNodes;
-    this->SI = rhs.SI;
-    this->T = rhs.T;
-    this->Value = rhs.Value;
-    this->LoopName = rhs.LoopName;
+  Node(const Node &Rhs) {
+    this->I = Rhs.I;
+    this->O = Rhs.O;
+    this->OutNodes = Rhs.OutNodes;
+    this->SI = Rhs.SI;
+    this->T = Rhs.T;
+    this->Value = Rhs.Value;
+    this->LoopName = Rhs.LoopName;
   }
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
@@ -126,7 +136,7 @@ public:
     setSchedInfo(T);
     this->LoopName = T.getLoopName();
     connectInput(new Node(T.getB()));
-    if (T.getC() != NULL) {
+    if (T.getC() != nullptr) {
       connectInput(new Node(T.getC()));
     }
     updateIfStore();
@@ -142,15 +152,15 @@ public:
     setSchedInfo(T);
     this->LoopName = T.getLoopName();
     auto NB = findOutputNode(T.getB()->getExprStr(), L);
-    if (NB == NULL || this->getScop() != NB->getScop()) {
+    if (NB == nullptr || this->getScop()[0] != NB->getScop()[0]) {
       connectInput(new Node(T.getB()));
     } else {
       connectInput(NB);
     }
-    Node *NC = NULL;
-    if (T.getC() != NULL) {
+    Node *NC = nullptr;
+    if (T.getC() != nullptr) {
       NC = findOutputNode(T.getC()->getExprStr(), L);
-      if (NC == NULL || this->getScop() != NC->getScop()) {
+      if (NC == nullptr || this->getScop()[0] != NC->getScop()[0]) {
         connectInput(new Node(T.getC()));
       } else {
         connectInput(NC);
@@ -164,6 +174,13 @@ public:
   void updateIfStore() {
     if (this->O.Type == MEM_STORE) {
       this->getInputs().front()->T = NODE_STORE;
+    }
+    for (auto I : this->getInputs()) {
+      if (I->T == NodeType::NODE_MEM) {
+        I->SI.Scop = this->getScop();
+        I->SI.TacID = this->getTacID();
+        I->SI.UnrollFactor = this->getUnrollFactor();
+      }
     }
   }
 
@@ -183,23 +200,20 @@ public:
   /// Check if Node N is already in node list L
   static Node *findOutputNode(std::string NodeName, NodeListType L);
 
-  /// Get Node
-  static Node *findWARDataRace(Node *N, Node::NodeListType NL);
-
   /// Connect a Node as input
   void connectInput(Node *N);
 
   /// Get the scope of the node
-  long getScop() { return this->SI.Scop; }
+  std::vector<int> getScop() { return this->SI.Scop; }
 
   /// Get the number of inputs in this Node
   int getOutputNum() { return this->OutNodes.size(); }
   /// Get the output Nodes
-  NodeListType getOuputNodes() { return this->OutNodes; }
+  NodeListType getOutputNodes() { return this->OutNodes; }
   /// Get the output information
   OutputInfo getOutputInfo() { return this->O; }
   /// Get the output information
-  std::string getOutputInfoName() { return this->O.Name; }
+  std::string getOutputInfoName() { return this->O.E->toString(); }
   /// Get the number of inputs in this Node
   int getInputNum() { return this->I.size(); }
   /// Get the list of node inputs in this Node
@@ -208,6 +222,8 @@ public:
   SchedInfo getSchedInfo() { return this->SI; }
   /// Get TAC order
   int getTacID() { return this->SI.TacID; }
+  /// Get unrolling factor
+  int getUnrollFactor() { return this->SI.UnrollFactor; }
   /// Set the type of the node
   void setNodeType(NodeType T) { this->T = T; }
 
@@ -243,13 +259,13 @@ public:
   /// Returns the variable/register value
   std::string getRegisterValue() const {
     if (this->T != NodeType::NODE_MEM) {
-      return this->O.Name;
+      return this->O.E->toString();
     }
     return this->getValue();
   }
 
   /// Setting the name of the output value
-  void setOutputName(std::string S) { this->O.Name = S; }
+  // void setOutputName(std::string S) { this->O.Name = S; }
 
   /// Get loop name of the loop
   std::string getLoopName() { return this->LoopName; }
@@ -290,11 +306,17 @@ public:
 
   /// For debugging purposes: show information regarding the node
   std::string getSchedInfoStr() {
-    return "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
-           "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
-           "; TacID = " + std::to_string(getSchedInfo().TacID) +
-           "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
-           "; Scop = " + std::to_string(getSchedInfo().Scop);
+    std::string S =
+        "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
+        "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
+        "; TacID = " + std::to_string(getSchedInfo().TacID) +
+        "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
+        "; Scops = ";
+    for (int i = 0; i < getSchedInfo().Scop.size() - 1; ++i) {
+      S += std::to_string(getSchedInfo().Scop[i]) + ", ";
+    }
+    S += std::to_string(getSchedInfo().Scop[getSchedInfo().Scop.size() - 1]);
+    return S;
   }
 
 private:
@@ -311,9 +333,9 @@ private:
   /// Info regarding the output register/node. This field only makes sense if
   /// we are dealing with an operation node
   OutputInfo O;
-  /// List of output nodes for this node
+  /// FIXME: List of output nodes for this node. Is this needed?
   NodeListType OutNodes;
-  /// Loop variable where it belongs
+  /// FIXME: Loop variable where it belongs. This is awful.
   std::string LoopName = "";
 };
 } // namespace macveth

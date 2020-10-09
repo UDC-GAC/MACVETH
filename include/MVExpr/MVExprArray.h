@@ -23,9 +23,9 @@ public:
   /// Abstraction to handle affine indices in MACVETH
   struct MVAffineIndex {
     /// Left part of the expression, if it has
-    MVAffineIndex *LHS;
+    MVAffineIndex *LHS = nullptr;
     /// Right part of the expression, if it has
-    MVAffineIndex *RHS;
+    MVAffineIndex *RHS = nullptr;
     /// Value of the expression (we do not care of its type, we handle strings)
     std::string Val = "";
     /// Unrolled
@@ -38,19 +38,136 @@ public:
       return ((Val != "") && (LHS == nullptr) && (RHS == nullptr));
     }
 
+    /// Copy constructor
+    static MVAffineIndex copy(MVAffineIndex O) {
+      MVAffineIndex New;
+      New.Val = O.Val;
+      New.Unrolled = O.Unrolled;
+      New.OP = O.OP;
+      New.LHS = nullptr;
+      if (O.LHS != nullptr) {
+        New.LHS = new MVAffineIndex(O.LHS);
+      }
+      New.RHS = nullptr;
+      if (O.RHS != nullptr) {
+        New.RHS = new MVAffineIndex(O.RHS);
+      }
+      return New;
+    }
+
+    /// Empty constructor
+    MVAffineIndex() {}
+
+    /// Create a copy of an MVAffineIndex
+    MVAffineIndex(MVAffineIndex *M) {
+      if (M == nullptr) {
+        return;
+      }
+      this->Val = M->Val;
+      this->Unrolled = M->Unrolled;
+      this->OP = M->OP;
+      if (M->LHS != nullptr) {
+        this->LHS = new MVAffineIndex(M->LHS);
+      }
+      if (M->RHS != nullptr) {
+        this->RHS = new MVAffineIndex(M->RHS);
+      }
+    }
+
+    /// If we set a Val, then there it has no leaves
+    void setVal(std::string Val) {
+      this->Val = Val;
+      this->LHS = nullptr;
+      this->RHS = nullptr;
+    }
+
+    /// Delete safely the LHS of the expression
+    void deleteLhs() {
+      this->Val = this->RHS->Val;
+      if (this->RHS->isTerminal()) {
+        this->LHS = nullptr;
+        this->RHS = nullptr;
+      } else {
+        auto Rhs = this->RHS;
+        this->LHS = Rhs->LHS;
+        this->RHS = Rhs->RHS;
+        this->OP = Rhs->OP;
+      }
+    }
+
+    /// Delete safely the RHS of the expression
+    void deleteRhs() {
+      this->Val = this->LHS->Val;
+      if (this->LHS->isTerminal()) {
+        this->LHS = nullptr;
+        this->RHS = nullptr;
+      } else {
+        auto Lhs = this->LHS;
+        this->LHS = Lhs->LHS;
+        this->RHS = Lhs->RHS;
+        this->OP = Lhs->OP;
+      }
+    }
+
+    /// Simplify expression in order to better calculate indices and so
+    void simplifyIndex() {
+      if (this->isTerminal()) {
+        return;
+      }
+      // Addition or substraction: E +/-
+      if ((this->OP == BinaryOperator::Opcode::BO_Add) ||
+          (this->OP == BinaryOperator::Opcode::BO_Sub)) {
+        if (this->LHS->isTerminal() && (this->LHS->Val == "0")) {
+          deleteLhs();
+          return;
+        }
+        if (this->RHS->isTerminal() && (this->RHS->Val == "0")) {
+          deleteRhs();
+          return;
+        }
+      }
+      // Multiplication: E * 0 or E * 1
+      if (this->OP == BinaryOperator::Opcode::BO_Mul) {
+        if ((this->LHS->isTerminal() && (this->LHS->Val == "0")) ||
+            (this->RHS->isTerminal() && (this->RHS->Val == "0"))) {
+          this->setVal("0");
+          return;
+        }
+        if (this->LHS->isTerminal() && (this->LHS->Val == "1")) {
+          deleteLhs();
+          return;
+        }
+        if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
+          deleteRhs();
+          return;
+        }
+      }
+      // Division: N / 1
+      if (this->OP == BinaryOperator::Opcode::BO_Div) {
+        if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
+          deleteRhs();
+          return;
+        }
+      }
+    }
+
     /// Main constructor
     MVAffineIndex(const Expr *E) {
       if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
-          dyn_cast<IntegerLiteral>(E->IgnoreImpCasts())) {
+          dyn_cast<IntegerLiteral>(E->IgnoreImpCasts()) ||
+          dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
         this->Val = Utils::getStringFromExpr(E);
         this->LHS = nullptr;
         this->RHS = nullptr;
       }
       if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
         this->LHS = new MVAffineIndex(Op->getLHS());
+        this->LHS->simplifyIndex();
         this->RHS = new MVAffineIndex(Op->getRHS());
+        this->RHS->simplifyIndex();
         this->OP = Op->getOpcode();
         this->Val = "";
+        this->simplifyIndex();
       }
     }
 
@@ -101,27 +218,51 @@ public:
         if (M.OP != this->OP) {
           return INT_MIN;
         }
-        auto Lhs = ((*M.LHS) - (*this->LHS));
-        auto Rhs = ((*M.RHS) - (*this->RHS));
+        auto Lhs = ((*this->LHS) - (*M.LHS));
+        auto Rhs = ((*this->RHS) - (*M.RHS));
+        auto StrLhs = std::to_string(Lhs);
+        auto StrRhs = std::to_string(Rhs);
         if ((Lhs == INT_MIN + 2) || (Rhs == INT_MIN + 2)) {
           return INT_MIN;
         } else {
+          if (this->OP == BinaryOperator::Opcode::BO_Mul) {
+            if ((Lhs == 0) && (this->LHS->isTerminal())) {
+              char *P = nullptr;
+              auto I = strtol(this->LHS->Val.c_str(), &P, 10);
+              if (!(*P)) {
+                Lhs = I;
+              }
+            }
+            if ((Rhs == 0) && (this->RHS->isTerminal())) {
+              char *P = nullptr;
+              auto I = strtol(this->RHS->Val.c_str(), &P, 10);
+              if (!(*P)) {
+                Rhs = I;
+              }
+            }
+            return Lhs * Rhs;
+          }
+          if (this->OP == BinaryOperator::Opcode::BO_Add) {
+            return Lhs + Rhs;
+          }
+          if (this->OP == BinaryOperator::Opcode::BO_Sub) {
+            return Lhs - Rhs;
+          }
           return std::max(Lhs, Rhs);
         }
       } else {
-        if (M.Val == this->Val) {
+        char *P0 = nullptr, *P1 = nullptr;
+        auto I0 = strtol(M.Val.c_str(), &P0, 10);
+        auto I1 = strtol(this->Val.c_str(), &P1, 10);
+        auto IsANumber = !((*P0) || (*P1));
+        auto SameVal = M.Val == this->Val;
+        if (SameVal) {
           return 0;
         }
-        char *pEnd = NULL;
-        auto I1 = strtol(M.Val.c_str(), &pEnd, 10);
-        if (*pEnd) {
+        if (!IsANumber) {
           return INT_MIN + 2;
         }
-        auto I0 = strtol(this->Val.c_str(), &pEnd, 10);
-        if (*pEnd) {
-          return INT_MIN + 2;
-        }
-        return abs(I1 - I0);
+        return I1 - I0;
       }
       return INT_MIN;
     }
@@ -137,9 +278,14 @@ public:
       }
     }
   }; /* !MVAffineIndex */
-  typedef std::vector<MVAffineIndex> IdxVector;
 
+  /// Definition of a vector of indices
+  using IdxVector = std::vector<MVAffineIndex>;
+
+  /// Destructor
   virtual ~MVExprArray(){};
+
+  /// Basic constructor
   MVExprArray(Expr *E) : MVExpr(MVK_Array, E) {
     if (ArraySubscriptExpr *ASE =
             dyn_cast<clang::ArraySubscriptExpr>(E->IgnoreImpCasts())) {
@@ -155,9 +301,14 @@ public:
     }
     llvm::llvm_unreachable_internal();
   }
+
+  /// Copy constructor
   MVExprArray(MVExprArray *E) : MVExpr(MVK_Array, E->getClangExpr()) {
     this->BaseName = E->BaseName;
-    IdxVector Copy(E->Idx);
+    IdxVector Copy;
+    for (auto I : E->Idx) {
+      Copy.push_back(MVAffineIndex::copy(I));
+    }
     this->Idx = Copy;
   }
 
@@ -167,6 +318,15 @@ public:
   /// Get index
   IdxVector getIndex() { return this->Idx; }
 
+  /// To string
+  virtual std::string toString() const {
+    std::string T = this->BaseName;
+    for (auto I : this->Idx) {
+      T += "[" + I.toString() + "]";
+    }
+    return T;
+  }
+
   /// Implementation of unrolling for arrays. In this case we will need to
   /// create a new MVExpr
   virtual MVExpr *unrollExpr(int UF, std::string LL) override;
@@ -174,7 +334,7 @@ public:
   /// As we may not know the total size of the array at compilation time, we
   /// can only know the difference between two indices
   virtual int operator-(const MVExpr &MVE) override {
-    if ((getClangExpr() != NULL) && (MVE.getClangExpr() != NULL)) {
+    if ((getClangExpr() != nullptr) && (MVE.getClangExpr() != nullptr)) {
       int Diff = 0;
       return Diff;
     } else {

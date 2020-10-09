@@ -110,11 +110,13 @@ public:
 
   /// Set info
   void setTempInfo(MVExprInfo TempInfo) { this->TempInfo = TempInfo; }
+
   /// Get MVExpr info
   MVExprInfo getTempInfo() { return this->TempInfo; }
 
   /// Set clang::Expr attribute
   void setClangExpr(clang::Expr *ClangExpr) { this->ClangExpr = ClangExpr; }
+
   /// Get clang::Expr attribute
   clang::Expr *getClangExpr() const { return this->ClangExpr; }
 
@@ -123,27 +125,40 @@ public:
     // This is a fucking hack: treat const as if they are not const...
     // Thus, typing is easier. Do we really need to know if a variable is
     // constant or not? I think we do not.
-    auto LastNotNullToken = TypeStr;
+    auto LastNotNullptrToken = TypeStr;
     char *dup = strdup(TypeStr.c_str());
     auto Tok = strtok(dup, " ");
-    while (Tok != NULL) {
-      LastNotNullToken = Tok;
-      Tok = strtok(NULL, " ");
+    while (Tok != nullptr) {
+      LastNotNullptrToken = Tok;
+      Tok = strtok(nullptr, " ");
     }
-    this->TypeStr = LastNotNullToken;
+    this->TypeStr = LastNotNullptrToken;
     // At least be clean
     free(dup);
   }
+
   /// Get type as a string
   std::string getTypeStr() { return this->TypeStr; }
 
   /// Set expression as an string
   void setExprStr(std::string ExprStr) { this->ExprStr = ExprStr; }
+
+  /// To string function
+  virtual std::string toString() const = 0;
+
   /// Get expression as an string
-  std::string getExprStr() const { return this->ExprStr; }
+  std::string getExprStr() const { return this->toString(); }
+
+  /// Get the expression as a "raw" string. Should avoid this if the object is
+  /// volatile meaning for that it _can_ change, e.g. a[i] when parsed can be
+  /// converted as a string "a[i]". However, if we unroll the value then we
+  /// will still have "a[i]" instead of "a[i+unroll]". That is why toString()
+  /// is way more powerful
+  std::string getExprStrRaw() const { return this->ExprStr; }
 
   /// Set kind of the expression
   void setKind(MVExprKind Kind) { this->MK = Kind; }
+
   /// Get kind of the expression
   MVExprKind getKind() const { return this->MK; }
 
@@ -153,6 +168,7 @@ public:
 
   /// Given a MVExpr it will return its unrolled version
   virtual MVExpr *unrollExpr(int UF, std::string LL) = 0;
+
   /// Given a MVExpr and the map of unrolled,loop_level, it will return the
   /// unrolled version
   virtual MVExpr *unrollExpr(std::unordered_map<int, std::string> LList) {
@@ -161,6 +177,7 @@ public:
 
   /// If this function is called, then the expression is in memory
   void setLoadFromMem() { this->NeedsMemLoad = true; }
+
   /// If this function is called, then the expression is not in memory
   void setDoNotLoadFromMem() { this->NeedsMemLoad = false; }
 
@@ -172,6 +189,7 @@ public:
   bool operator==(const MVExpr &MVE) const {
     return !getExprStr().compare(MVE.getExprStr());
   }
+
   /// Two expressions are not equal if and only if their name or original code
   /// expression is not equal.
   bool operator!=(MVExpr &MVE) { return !operator==(MVE); }
@@ -187,7 +205,7 @@ private:
   /// Type of data in string
   std::string TypeStr = "";
   /// Expresion as Clang's
-  clang::Expr *ClangExpr = NULL;
+  clang::Expr *ClangExpr = nullptr;
   /// Expression as string
   std::string ExprStr = "";
   /// Need to be loaded from mem

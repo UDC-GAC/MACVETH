@@ -19,6 +19,11 @@
 /* Default data type is double, default size is N=1024. */
 #include "definitions.h"
 
+#ifdef DATA_TYPE
+#undef DATA_TYPE
+#define DATA_TYPE double
+#endif
+
 /* Array initialization. */
 static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   int i, j;
@@ -79,21 +84,22 @@ static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n),
                             DATA_TYPE POLYBENCH_2D(C, N, N, n, n),
                             DATA_TYPE POLYBENCH_3D(A, N, N, N, n, n, n)) {
   int j, k;
-#pragma macveth
+  double alpha = 0.0;
+#pragma macveth i 1 j 1 k 4
   for (int i = 0; i < _PB_N; i++) {
     for (j = 0; j < _PB_N; j++) {
       for (k = 0; k < _PB_N; k++) {
-        A[i][j][k] = 42.3;
+        A[i][j][k] = 42.3f;
       }
     }
   }
-  for (int i = 0; i < _PB_N; i++) {
-    for (j = 0; j < _PB_N; j++) {
-      for (k = 0; k < _PB_N; k++) {
-        A[i][j][k] = 42.3;
-      }
-    }
-  }
+  // for (int i = 0; i < _PB_N; i++) {
+  //   for (j = 0; j < _PB_N; j++) {
+  //     for (k = 0; k < _PB_N; k++) {
+  //       A[i][j][k] = 42.3;
+  //     }
+  //   }
+  // }
 #pragma endmacveth
 }
 

@@ -53,10 +53,22 @@ static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static llvm::cl::opt<std::string>
     OutputFile("o", cl::cat(MacvethCategory),
                llvm::cl::desc("Output file to write the code, otherwise "
-                              "it will just print int std outputt"));
+                              "it will just print int std output"));
+static llvm::cl::opt<std::string> TargetFunc("func", cl::cat(MacvethCategory),
+                                             llvm::cl::desc("Target function"));
 static llvm::cl::opt<std::string>
     CDAGInFile("input-cdag", cl::cat(MacvethCategory),
                llvm::cl::desc("Input file to read the custom CDAG placement"));
+
+static llvm::cl::opt<MVSIMDCostModel> SIMDCostModel(
+    "simd-cost-model", llvm::cl::desc("SIMD cost model"),
+    llvm::cl::init(MVSIMDCostModel::CONSERVATIVE), cl::cat(MacvethCategory),
+    llvm::cl::values(
+        clEnumValN(MVSIMDCostModel::CONSERVATIVE, "conservative",
+                   "Vectorize if and only if the sequential estimation is "
+                   "worse than the vectorized"),
+        clEnumValN(MVSIMDCostModel::UNLIMITED, "unlimited",
+                   "Unlimited SIMD cost, i.e. vectorize regardless the cost")));
 
 static llvm::cl::opt<MVISA>
     ISA("misa", llvm::cl::desc("Target ISA"), llvm::cl::init(MVISA::NATIVE),
@@ -100,6 +112,12 @@ static llvm::cl::opt<bool> FMA("fma",
                                llvm::cl::desc("Explicitly tell if FMA support"),
                                llvm::cl::init(false),
                                llvm::cl::cat(MacvethCategory));
+
+/// Disable Intrinsics SVML
+static llvm::cl::opt<bool> NoSVML("no-svml",
+                                  llvm::cl::desc("Disable Intrinsics SVML"),
+                                  llvm::cl::init(false),
+                                  llvm::cl::cat(MacvethCategory));
 
 /// Disable FMA support flag
 static llvm::cl::opt<bool> DisableFMA(
@@ -155,6 +173,9 @@ int main(int argc, const char **argv) {
   MVOptions::Debug = Debug.getValue();
   MVOptions::MacroCode = MacroCode.getValue();
   MVOptions::Headers = !NoHeaders.getValue();
+  MVOptions::SIMDCostModel = SIMDCostModel.getValue();
+  MVOptions::IntrinsicsSVML = !NoSVML.getValue();
+  MVOptions::TargetFunc = TargetFunc.getValue();
 
   /// Check incompatible options:
   assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&

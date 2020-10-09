@@ -7,11 +7,21 @@ macveth
 *.s
 *__tmp*
 .vscode/*
+*.spf
+*.o
+*.tar.xz
+*.bz2
+*.s
 
 # Results
 *.csv
+*.output
+*/SPF_org/*
 
 # Temp files
+output/
+outputs/
+results/
 tmp/
 tmpfiles/
 tests/warn
@@ -26,7 +36,7 @@ benchmark
 # Plugins and all this stuff
 .idea/
 .color_coded
- 
+
 # Inputs
 inputs/
 
@@ -88,3 +98,7 @@ compile_commands.json
 
 # Python
 __pycache__/
+
+# Latex
+*.fls
+*.fdb*

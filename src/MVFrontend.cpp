@@ -27,6 +27,7 @@
  */
 
 #include "include/MVFrontend.h"
+#include "include/MVAssert.h"
 #include "include/MVOptions.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
@@ -38,6 +39,8 @@
 #include "clang/Frontend/FrontendActions.h"
 #include <llvm-10/llvm/Support/ErrorHandling.h>
 
+jmp_buf GotoStartScop, GotoEndScop;
+
 // ---------------------------------------------
 ScopLoc *getScopLoc(StmtWrapper *S) {
   auto SLoc = S->getClangStmt()->getBeginLoc();
@@ -47,12 +50,12 @@ ScopLoc *getScopLoc(StmtWrapper *S) {
       return ScopHandler::List[n];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 // ---------------------------------------------
 void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
-  bool CouldFullyUnroll = false;
+  auto CouldFullyUnroll = false;
   std::list<StmtWrapper::LoopInfo> LI;
   for (auto S : SL) {
     if (S->isLeftOver()) {
@@ -60,14 +63,13 @@ void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
     }
     auto SLoc = S->getClangStmt()->getBeginLoc();
     auto Scop = getScopLoc(S);
-    assert(Scop != NULL && "Scop not found for these statements");
+    assert(Scop != nullptr && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
       Utils::printDebug("MVConsumer", "unroll and jam...");
       CouldFullyUnroll = S->unrollAndJam(LI, Scop);
       assert(CouldFullyUnroll &&
              "Need to be able to full unroll when having leftovers");
     } else if (Scop->PA.Unroll) {
-      Utils::printDebug("MVConsumer", "unroll by dim...");
       CouldFullyUnroll = S->unrollByDim(LI, Scop);
     }
   }
@@ -106,7 +108,7 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
     Rewrite->ReplaceText(Loop.SRVarInc,
                          Loop.Dim + " += " + std::to_string(Loop.StepUnrolled));
     if (Loop.Declared) {
-      std::list<std::string> L = StmtWrapper::LoopInfo::DimDeclared;
+      auto L = StmtWrapper::LoopInfo::DimDeclared;
       if ((!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) &&
           (!(std::find(DimsDeclared.begin(), DimsDeclared.end(), Loop.Dim) !=
              DimsDeclared.end())) &&
@@ -116,9 +118,11 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
         DimsDeclared.push_back(Loop.Dim);
       }
     }
-    // If it has been fully unrolled
-    std::string Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
-    Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
+    // If it has been fully unrolled no need to write the epilog of it
+    if (!Loop.FullyUnrolled) {
+      auto Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
+      Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
+    }
     rewriteLoops(SWrap->getListStmt(), Rewrite, DimAlreadyDecl);
   }
   // Declare variables
@@ -138,52 +142,36 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
     }
     if (S->isVectorized()) {
       Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         "// vectorized: ", true, true);
+                         "// stmt vectorized: ", true, true);
     } else {
       Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         "// replaced: ", true, true);
+                         "// stmt not vectorized: ", true, true);
     }
   }
 }
-
-// // --------------------------------------------
-// StmtWrapper *loopContainsSIMD(SIMDGenerator::SIMDInst SI,
-//                               std::list<StmtWrapper *> SL) {
-//   for (auto S : SL) {
-//     if (S->isLoop()) {
-//       for (auto B : S->getListStmt()) {
-//         if (B->isLoop()) {
-//           auto L = loopContainsSIMD(SI, B->getListStmt());
-//           if (L != NULL) {
-//             return B;
-//           }
-//         }
-//         for (auto T : B->getTacList()) {
-//           if (SI.TacID == T.getTacID()) {
-//             return S;
-//           }
-//         }
-//       }
-//     }
-//   }
-//   return NULL;
-// }
 
 // ---------------------------------------------
 bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
                                               std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      auto L = renderSIMDInstBeforePlace(SI, S->getListStmt());
-      if (L) {
+      if (auto L = renderSIMDInstBeforePlace(SI, S->getListStmt())) {
         Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                            SI.render() + ";\t// latency = " +
                                std::to_string(SI.Cost.Latency) + "\n");
       }
-      return false;
     } else {
       for (auto T : S->getTacList()) {
-        if (SI.TacID == T.getTacID()) {
+        if (SI.getSourceLocationOrder() == T.getTacID()) {
+          if (!S->isInLoop()) {
+            Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
+                                     SI.render() + ";\t// latency = " +
+                                         std::to_string(SI.Cost.Latency) +
+                                         "\n");
+            return false;
+          } else {
+            return true;
+          }
           return true;
         }
       }
@@ -197,18 +185,25 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
                                              std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      auto L = renderSIMDInstAfterPlace(SI, S->getListStmt());
-      if (L) {
+      // renderSIMDInstAfterPlace(SI, S->getListStmt());
+      if (auto L = renderSIMDInstAfterPlace(SI, S->getListStmt())) {
         Rewrite.InsertTextAfterToken(
             S->getClangStmt()->getEndLoc(),
             SI.render() + ";\t// latency = " + std::to_string(SI.Cost.Latency) +
                 "\n");
       }
-      return false;
     } else {
       for (auto T : S->getTacList()) {
-        if (SI.TacID == T.getTacID()) {
-          return true;
+        if (SI.getSourceLocationOrder() == T.getTacID()) {
+          if (!S->isInLoop()) {
+            Rewrite.InsertTextAfterToken(
+                S->getClangStmt()->getEndLoc().getLocWithOffset(1),
+                "\n" + SI.render() +
+                    ";\t// latency = " + std::to_string(SI.Cost.Latency));
+            return false;
+          } else {
+            return true;
+          }
         }
       }
     }
@@ -219,20 +214,32 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
 // ---------------------------------------------
 void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
-
-  if (SI.SType == SIMDGenerator::SIMDType::VSEQ) {
+  // Sequential case: is this needed?
+  if (SI.isSequential() && SI.isInOrder()) {
+    Utils::printDebug("MVFuncVisitor",
+                      "Sequential rendering for " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
-        if (SI.TacID == T.getTacID()) {
-          renderTACInPlace({S}, SI.TacID);
+        if (SI.getSourceLocationOrder() == T.getTacID()) {
+          renderTACInPlace({S}, SI.getSourceLocationOrder(),
+                           SI.getSourceLocationOffset());
           return;
         }
       }
     }
   }
-  if ((SI.SType == SIMDGenerator::SIMDType::VREDUC) ||
-      (SI.SType == SIMDGenerator::SIMDType::VSTORER) ||
-      (SI.SType == SIMDGenerator::SIMDType::VSEQR)) {
+
+  if (SI.isReduction()) {
+    return;
+  }
+
+  if (SI.render() == "") {
+    return;
+  }
+
+  if (SI.isPreOrder()) {
+    renderSIMDInstBeforePlace(SI, SL);
+  } else if (SI.isPosOrder()) {
     renderSIMDInstAfterPlace(SI, SL);
   } else {
     // Rest of SIMD operations
@@ -241,7 +248,7 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
         renderSIMDInstInPlace(SI, S->getListStmt());
       } else {
         for (auto T : S->getTacList()) {
-          if (SI.TacID == T.getTacID()) {
+          if (SI.getSourceLocationOrder() == T.getTacID()) {
             Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                                SI.render() + ";\t// latency = " +
                                    std::to_string(SI.Cost.Latency) + "\n",
@@ -255,17 +262,20 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID) {
+void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID,
+                                     int Offset) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      renderTACInPlace(S->getListStmt(), TacID);
+      renderTACInPlace(S->getListStmt(), TacID, Offset);
       continue;
     }
-    if ((TacID == S->getTacList().back().getTacID()) || (TacID == -1)) {
+    if (((TacID == S->getTacList().back().getTacID()) &&
+         (Offset == S->getTacList().back().getUnrollFactor())) ||
+        (TacID == -1)) {
       S->setNotVectorized();
-      Utils::printDebug("MVFuncVisitor", TAC::renderTacAsStmt(S->getTacList()));
       Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         TAC::renderTacAsStmt(S->getTacList()), true, true);
+                         TAC::renderTacAsStmt(S->getTacList(), Offset), true,
+                         true);
     }
   }
 }
@@ -273,9 +283,17 @@ void MVFuncVisitor::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID) {
 // ---------------------------------------------
 void MVFuncVisitor::addHeaders(std::list<std::string> S, FileID FID) {
   auto SM = Utils::getSourceMgr();
+  if (S.size() > 0) {
+    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
+                       "// begin MACVETH: headers added\n", true, true);
+  }
   for (auto I : S) {
     Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
                        "#include <" + I + ">\n", true, true);
+  }
+  if (S.size() > 0) {
+    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1), "// end MACVETH\n",
+                       true, true);
   }
 }
 
@@ -286,28 +304,43 @@ void clearAllMappings() {
   TAC::clear();
   // VectorIR
   VectorIR::clear();
+  // SIMDGenerator
+  SIMDGenerator::clearMappings();
 }
 
 // ---------------------------------------------
 void MVFuncVisitor::scanScops(FunctionDecl *fd) {
-  CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
+  auto CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
     llvm::llvm_unreachable_internal();
   }
 
+  int Code = setjmp(GotoStartScop);
+  if (Code == MVSkipCode) {
+    return;
+  }
+
   std::list<std::string> DimsDeclFunc = {};
+  // std::map<std::string, std::set<std::string>> RegistersDeclared;
+  SIMDGenerator::RegistersMapT RegistersDeclared;
 
-  // Clear all kind of mappings, since this is a new function
-  clearAllMappings();
-
+  SourceLocation RegDeclLoc;
+  auto Scops = ScopHandler::funcGetScops(fd);
   // For each scop in the function
-  for (auto Scop : ScopHandler::funcGetScops(fd)) {
+  for (auto Scop : Scops) {
+    auto IsFirstScop = (Scop == Scops[0]);
+    auto IsLastScop = (Scop == Scops[Scops.size() - 1]);
+
     // Check if ST is within the ROI or not
     Utils::printDebug("MVConsumer",
                       "scop = " + std::to_string(Scop->StartLine));
 
     // Get the info about the loops surrounding this statement
-    std::list<StmtWrapper *> SL = StmtWrapper::genStmtWraps(CS, Scop);
+    auto SL = StmtWrapper::genStmtWraps(CS, Scop);
+
+    if (IsFirstScop) {
+      RegDeclLoc = SL.front()->getClangStmt()->getBeginLoc();
+    }
 
     Utils::printDebug("MVConsumer", "list of stmt wrappers parsed = " +
                                         std::to_string(SL.size()));
@@ -327,31 +360,44 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       MVInfo("[MVConsumer] "
              "No SIMD code to generate, just writing "
              "the code with the desired unrolling options");
-      renderTACInPlace(SL, -1);
+      renderTACInPlace(SL, -1, -1);
       // Rewriting loops
       DimsDeclFunc.splice(DimsDeclFunc.end(),
                           rewriteLoops(SL, &Rewrite, DimsDeclFunc));
     } else {
       // Creating the CDAG
-      CDAG *G = CDAG::createCDAGfromTAC(TL);
+      auto G = CDAG::createCDAGfromTAC(TL);
       // Get SIMD generator according to the option chosen
-      SIMDGenerator *SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
+      auto SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
       // Computing the cost model of the CDAG created
-      auto SInfo = CDAG::computeCostModel(G, SIMDGen);
+      auto SInfo = SIMDGenerator::computeCostModel(G, SIMDGen);
 
-      if (SInfo.TotCost < StmtWrapper::computeSequentialCostStmtWrapper(SL)) {
-        //// Printing the registers we are going to use
-        for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-          Rewrite.InsertText(SL.front()->getClangStmt()->getBeginLoc(),
-                             InsSIMD + "\n", true, true);
+      // Vectorize according to the SIMD cost model selected and the total
+      // cost of the SIMD operations
+      auto Vectorize =
+          ((MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED) ||
+           ((MVOptions::SIMDCostModel == MVSIMDCostModel::CONSERVATIVE) &&
+            (SInfo.TotCost <
+             StmtWrapper::computeSequentialCostStmtWrapper(SL))));
+
+      if (Vectorize) {
+        // Render the registers we are going to use, declarations
+        if (IsLastScop) {
+          for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+            Rewrite.InsertText(RegDeclLoc, InsSIMD + "\n", true, true);
+          }
         }
+
+        // Render initializations if needed for special cases such as
+        // reductions
         for (auto InitRedux : SIMDGen->getInitReg()) {
           renderSIMDInstBeforePlace(InitRedux, SL);
         }
+        // Render
         for (auto InsSIMD : SInfo.SIMDList) {
           renderSIMDInstInPlace(InsSIMD, SL);
         }
-        // Rewriting loops
+        // Rewrite loops
         DimsDeclFunc.splice(DimsDeclFunc.end(),
                             rewriteLoops(SL, &Rewrite, DimsDeclFunc));
 
@@ -360,9 +406,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
           addHeaders(SIMDGen->getHeadersNeeded(), Scop->FID);
           MVOptions::Headers = false;
         }
-
-        /// Clear mappings
-        // SIMDGen->clearMappings();
 
         // Comment statements
         commentReplacedStmts(SL);
@@ -381,12 +424,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
             "; Sequential cost = " +
             std::to_string(StmtWrapper::computeSequentialCostStmtWrapper(SL)));
       }
-      delete G;
-    }
-
-    // Be clean
-    for (auto SWrap : SL) {
-      delete SWrap;
     }
   }
 
@@ -394,27 +431,28 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
 }
 
 // ---------------------------------------------
-bool areAllScopsScanned() {
-  bool Scanned = true;
-  for (auto S : ScopHandler::List) {
-    if (!S->ScopHasBeenScanned) {
-      return false;
-    }
-  }
-  return Scanned;
-}
-
-// ---------------------------------------------
 bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
   // Continue if empty function
-  if (!F->hasBody())
+  if (!F->hasBody()) {
     return true;
+  }
+
   // Check if pragmas to parse
-  if (!ScopHandler::funcHasROI(F))
+  if (!ScopHandler::funcHasROI(F)) {
     return true;
+  }
+
+  /// Be clean
+  clearAllMappings();
+
+  if ((MVOptions::TargetFunc != "") &&
+      (F->getNameAsString() != MVOptions::TargetFunc)) {
+    return true;
+  }
 
   // If the function has scops to parse, then scan them
   this->scanScops(F);
+
   return true;
 }
 
@@ -425,8 +463,8 @@ MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
   Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
                  &CI.getASTContext());
   // Parsing pragmas
-  Preprocessor &PP = CI.getPreprocessor();
-  ScopHandler *Scops = new ScopHandler();
+  auto &PP = CI.getPreprocessor();
+  auto Scops = new ScopHandler();
   PP.AddPragmaHandler(new PragmaScopHandler(Scops));
   PP.AddPragmaHandler(new PragmaEndScopHandler(Scops));
 
@@ -447,9 +485,9 @@ void MVFrontendAction::EndSourceFileAction() {
   // buffer. Original buffer is modified before calling this function,
   // from the ASTConsumer
 
-  SourceManager &SM = TheRewriter.getSourceMgr();
+  auto &SM = TheRewriter.getSourceMgr();
   std::error_code ErrorCode;
-  std::string OutFileName = Utils::getExePath() + MVOptions::OutFile;
+  auto OutFileName = Utils::getExePath() + MVOptions::OutFile;
   llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
 }

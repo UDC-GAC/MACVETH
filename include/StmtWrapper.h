@@ -70,6 +70,8 @@ public:
     std::string StrInitVal = "";
     /// Upperbound value (-1 if not known)
     long UpperBound = 0;
+    /// Comparator upperbound
+    BinaryOperator::Opcode UpperBoundComp = BinaryOperator::Opcode::BO_LT;
     /// Upperbound as string
     std::string StrUpperBound = "";
     /// Stride or step
@@ -116,7 +118,7 @@ public:
   };
 
   /// LoopInfo list type
-  typedef std::list<LoopInfo> LoopList;
+  using LoopList = std::list<LoopInfo>;
 
   /// Generate a list of StmtWrapper
   static std::list<StmtWrapper *> genStmtWraps(CompoundStmt *CS, ScopLoc *Scop);
@@ -142,25 +144,34 @@ public:
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
   TacListType unroll(LoopInfo L);
+
   /// Unrolls the TAC list in all the possible dimensions
   bool unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop);
+
   /// Unrolls the TAC list in the specified dimensions
   bool unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop);
+
   /// Get list of stmts
   std::list<StmtWrapper *> getListStmt() { return this->ListStmt; }
+
   /// Get LoopInfo
   LoopInfo getLoopInfo() { return this->LoopL; }
+
   /// Get Clang Stmt
   Stmt *getClangStmt() { return this->ClangStmt; };
+
   /// Get TAC list
   TacListType getTacList() { return TacList; };
 
   /// Set TAC list
   void setTacList(TacListType TacList) { this->TacList = TacList; };
+
   /// Check if it is a loop
   bool isLoop() { return dyn_cast<ForStmt>(this->ClangStmt); }
+
   /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
   bool isLeftOver() { return !this->isLoop(); }
+
   /// Set the name of the loop surrounding this Stmt
   void setInnerLoopName(std::string InnerLoopName) {
     this->InnerLoopName = InnerLoopName;
@@ -174,6 +185,8 @@ public:
   }
   /// Get the name of the loop surrounding this Stmt
   std::string getInnerLoopName() { return this->InnerLoopName; }
+
+  bool isInLoop() { return this->InnerLoopName != ""; }
 
   void setNotVectorized() { this->Vectorized = false; }
   bool isVectorized() { return this->Vectorized; }
