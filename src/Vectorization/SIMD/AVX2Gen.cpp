@@ -579,12 +579,14 @@ AVX2Gen::fuseReductionsList(SIMDGenerator::SIMDInstListType L) {
     FusedRedux = generalReductionFusion(L);
   }
 
-  // FIXME: Clean accumulators
+  // Clean accumulators
   for (auto R : L) {
     auto Accm = getAccmReg(R.VOPResult.getName());
     if (!isAccmClean(Accm)) {
-      genSIMDInst(Accm, "setzero", "", "", R.W, R.DT, {}, SIMDType::VSET,
-                  R.MVSL, &FusedRedux);
+      MVSourceLocation MVSL(MVSourceLocation::Position::PREORDER,
+                            R.MVSL.getOrder(), R.MVSL.getOffset());
+      genSIMDInst(Accm, "setzero", "", "", R.W, R.DT, {}, SIMDType::VSET, MVSL,
+                  &FusedRedux);
     }
   }
   /// Mark accumulators
@@ -1302,13 +1304,15 @@ std::vector<std::string> AVX2Gen::getInitValues(VectorIR::VectorOP V) {
   if (getAccmReg(Reg) != "") {
     Reg = getAccmReg(Reg);
   }
-  MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order);
+  MVSourceLocation MVSL(MVSourceLocation::Position::PREORDER, V.R.Order,
+                        V.R.Offset);
   if (V.isBinOp() &&
       ((V.getBinOp() == clang::BO_Mul) || (V.getBinOp() == clang::BO_Div))) {
     InitReg.push_back(createSIMDInst("set", Reg, getMapWidth(V.R.Width),
                                      getMapType(V.R.DType), "", "", InitValList,
                                      SIMDType::INIT, MVSL));
   } else {
+    Utils::printDebug("AVX2Gen", "init reg");
     InitReg.push_back(createSIMDInst("setzero", Reg, getMapWidth(V.R.Width),
                                      getMapType(V.R.DType), "", "", {},
                                      SIMDType::INIT, MVSL));

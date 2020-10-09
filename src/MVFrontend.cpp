@@ -163,6 +163,15 @@ bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
     } else {
       for (auto T : S->getTacList()) {
         if (SI.getSourceLocationOrder() == T.getTacID()) {
+          if (!S->isInLoop()) {
+            Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
+                                     SI.render() + ";\t// latency = " +
+                                         std::to_string(SI.Cost.Latency) +
+                                         "\n");
+            return false;
+          } else {
+            return true;
+          }
           return true;
         }
       }
@@ -187,8 +196,10 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
       for (auto T : S->getTacList()) {
         if (SI.getSourceLocationOrder() == T.getTacID()) {
           if (!S->isInLoop()) {
-            Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
-                                         "\n" + SI.render());
+            Rewrite.InsertTextAfterToken(
+                S->getClangStmt()->getEndLoc().getLocWithOffset(1),
+                "\n" + SI.render() +
+                    ";\t// latency = " + std::to_string(SI.Cost.Latency));
             return false;
           } else {
             return true;
@@ -299,7 +310,7 @@ void clearAllMappings() {
 
 // ---------------------------------------------
 void MVFuncVisitor::scanScops(FunctionDecl *fd) {
-  CompoundStmt *CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
+  auto CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
     llvm::llvm_unreachable_internal();
   }
@@ -373,7 +384,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         // Render the registers we are going to use, declarations
         if (IsLastScop) {
           for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-
             Rewrite.InsertText(RegDeclLoc, InsSIMD + "\n", true, true);
           }
         }
