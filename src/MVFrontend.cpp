@@ -185,7 +185,6 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
                                              std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      // renderSIMDInstAfterPlace(SI, S->getListStmt());
       if (auto L = renderSIMDInstAfterPlace(SI, S->getListStmt())) {
         Rewrite.InsertTextAfterToken(
             S->getClangStmt()->getEndLoc(),
@@ -321,7 +320,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   }
 
   std::list<std::string> DimsDeclFunc = {};
-  // std::map<std::string, std::set<std::string>> RegistersDeclared;
   SIMDGenerator::RegistersMapT RegistersDeclared;
 
   SourceLocation RegDeclLoc;
@@ -367,8 +365,10 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     } else {
       // Creating the CDAG
       auto G = CDAG::createCDAGfromTAC(TL);
+
       // Get SIMD generator according to the option chosen
       auto SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
+
       // Computing the cost model of the CDAG created
       auto SInfo = SIMDGenerator::computeCostModel(G, SIMDGen);
 
