@@ -97,6 +97,9 @@ public:
     if (isa<clang::TypedefType>(E->getType())) {
       auto T = dyn_cast<clang::TypedefType>(E->getType());
       if (!T->isSugared()) {
+        Utils::printDebug(
+            "MVExpr",
+            "This is not 'sugared'... That is an error... Unreachable");
         llvm::llvm_unreachable_internal();
       }
       auto ET = dyn_cast<ElaboratedType>(T->desugar());

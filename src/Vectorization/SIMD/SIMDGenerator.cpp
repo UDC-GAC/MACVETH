@@ -26,7 +26,9 @@ using namespace macveth;
 
 // ---------------------------------------------
 void SIMDGenerator::populateTable(MVISA ISA) {
-  std::string PathISA = "/ISA/" + MVISAStr[ISA];
+  std::string PathISA =
+      "/ISA/" + MVISAStr[ISA] + "/" + MVArchStr[MVOptions::Arch];
+  Utils::printDebug("SIMDGenerator", PathISA + " path");
   std::string dir(__FILE__);
   dir = dir.substr(0, dir.find_last_of("\\/"));
   PathISA = dir + PathISA;

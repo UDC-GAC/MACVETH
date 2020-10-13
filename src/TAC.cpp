@@ -211,6 +211,7 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   if (isa<clang::TypedefType>(S1->getType())) {
     auto aT = dyn_cast<clang::TypedefType>(S1->getType());
     if (!aT->isSugared()) {
+      Utils::printDebug("TAC", "Not sugared!!");
       llvm::llvm_unreachable_internal();
     }
     auto ET = dyn_cast<ElaboratedType>(aT->desugar());

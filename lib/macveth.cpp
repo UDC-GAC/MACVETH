@@ -67,13 +67,15 @@ static llvm::cl::opt<MVSIMDCostModel> SIMDCostModel(
         clEnumValN(MVSIMDCostModel::CONSERVATIVE, "conservative",
                    "Vectorize if and only if the sequential estimation is "
                    "worse than the vectorized"),
+        clEnumValN(MVSIMDCostModel::AGGRESSIVE, "aggressive",
+                   "Vectorize partially if benefitial according to cost model"),
         clEnumValN(MVSIMDCostModel::UNLIMITED, "unlimited",
                    "Unlimited SIMD cost, i.e. vectorize regardless the cost")));
 
 static llvm::cl::opt<MVISA>
-    ISA("misa", llvm::cl::desc("Target ISA"), llvm::cl::init(MVISA::NATIVE),
+    ISA("misa", llvm::cl::desc("Target ISA"), llvm::cl::init(MVISA::AUTODETECT),
         llvm::cl::cat(MacvethCategory),
-        llvm::cl::values(clEnumValN(MVISA::NATIVE, "native",
+        llvm::cl::values(clEnumValN(MVISA::AUTODETECT, "native",
                                     "Detect ISA of the architecture"),
                          clEnumValN(MVISA::AVX, "sse", "SSE ISA"),
                          clEnumValN(MVISA::AVX, "avx", "AVX ISA"),
@@ -82,9 +84,9 @@ static llvm::cl::opt<MVISA>
 
 static llvm::cl::opt<MVArch> Architecture(
     "march", llvm::cl::desc("Target architecture"),
-    llvm::cl::init(MVArch::AUTODETECT), llvm::cl::cat(MacvethCategory),
+    llvm::cl::init(MVArch::NATIVE), llvm::cl::cat(MacvethCategory),
     llvm::cl::values(
-        clEnumValN(MVArch::AUTODETECT, "native", "Detect the architecture"),
+        clEnumValN(MVArch::NATIVE, "native", "Detect the architecture"),
         clEnumValN(MVArch::Nehalem, "nehalem",
                    "Intel Nehalem (2009) architecture (tock): SSE4.2"),
         clEnumValN(MVArch::Westmere, "westmere",
@@ -105,7 +107,11 @@ static llvm::cl::opt<MVArch> Architecture(
                    "Intel Coffee Lake (2017) architecture (tock): AVX2"),
         clEnumValN(MVArch::CascadeLake, "cascadelake",
                    "Intel Cascade Lake (2019) architecture (tock): AVX512"),
-        clEnumValN(MVArch::Zen, "Zen", "AMD Zen (2019) architecture: AVX2")));
+        clEnumValN(MVArch::IceLake, "icelake",
+                   "Intel Ice Lake (2020) architecture (tick): AVX512"),
+        clEnumValN(MVArch::Zen, "Zen", "AMD Zen (2019) architecture: AVX2"),
+        clEnumValN(MVArch::Zen2, "Zen2",
+                   "AMD Zen 2 (2020) architecture: AVX2")));
 
 /// FMA support flag
 static llvm::cl::opt<bool> FMA("fma",
@@ -177,9 +183,8 @@ int main(int argc, const char **argv) {
   MVOptions::IntrinsicsSVML = !NoSVML.getValue();
   MVOptions::TargetFunc = TargetFunc.getValue();
 
-  /// Check incompatible options:
-  assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&
-         "FMA support enabled and disabled at the same time is not possible!");
+  // Check if there are incompatible options
+  MVOptions::validateOptions();
 
   /// Create needed files
   Utils::initFile(MVOptions::OutFile);

@@ -311,6 +311,7 @@ void clearAllMappings() {
 void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   auto CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
+    Utils::printDebug("MVFuncVisitor", "scanScops: no CompoundStmt");
     llvm::llvm_unreachable_internal();
   }
 

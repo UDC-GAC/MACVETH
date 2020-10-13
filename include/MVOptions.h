@@ -1,6 +1,8 @@
 #ifndef MACVETH_MVOPTIONS_H
 #define MACVETH_MVOPTIONS_H
 
+#include "include/CPUID.h"
+
 #include <algorithm>
 #include <cassert>
 #include <list>
@@ -10,8 +12,8 @@
 namespace macveth {
 /// Supported ISA
 enum MVISA {
-  /// TODO: detect architecture
-  NATIVE = -1,
+  /// TODO: detect ISA
+  AUTODETECT = -1,
   /// SSE support
   SSE = 10,
   /// AVX support
@@ -28,12 +30,17 @@ enum MVSIMDCostModel {
   UNLIMITED,
   /// If the sequential code vs the SIMDized code has a better estimation, then
   /// MACVETH does not vectorize the code
-  CONSERVATIVE
+  CONSERVATIVE,
+  /// Region to vectorize can have parts where vectorization provides better
+  /// performance
+  AGGRESSIVE
 };
 
 /// Map costs models to strings
 static std::map<MVSIMDCostModel, std::string> CostModelStr = {
-    {UNLIMITED, "unlimited"}, {CONSERVATIVE, "conservative"}};
+    {UNLIMITED, "unlimited"},
+    {CONSERVATIVE, "conservative"},
+    {AGGRESSIVE, "conservative"}};
 
 /// Mapping ISAs
 static std::map<MVISA, std::string> MVISAStr = {
@@ -43,33 +50,41 @@ static std::map<MVISA, std::string> MVISAStr = {
 /// different architectures may differ in the latencies and thoughputs of
 /// operations for the same ISA
 enum MVArch {
-  /// TODO Autodetect the architecture underlying
-  AUTODETECT,
-  /// Intel Nehalem (2009) architecture (tock): SSE4.2
+  /// TODO: Autodetect the architecture underlying
+  NATIVE,
+  /// Default or not specified
+  DEFAULT,
+  /// 1st-gen Intel Nehalem (2009) architecture (tock): SSE4.2
   Nehalem,
-  /// Intel Westmere (2010) architecture (tick): SSE4.2
+  /// 1st-gen (and 2) Intel Westmere (2010) architecture (tick): SSE4.2
   Westmere,
-  /// Intel Sandy Bridge (2011) architecture (tock): AVX
+  /// 2nd-gen Intel Sandy Bridge (2011) architecture (tock): AVX
   SandyBridge,
-  /// Intel Ivy Bridge (2012) architecture (tick): AVX
+  /// 3rd-gen Intel Ivy Bridge (2012) architecture (tick): AVX
   IvyBridge,
-  /// Intel Haswell (2013) architecture (tock): AVX2
+  /// 4th-gen Intel Haswell (2013) architecture (tock): AVX2
   Haswell,
-  /// Intel Broadwell (2014) architecture: AVX2
+  /// 5th-gen Intel Broadwell (2014) architecture (tick): AVX2
   Broadwell,
-  /// Intel Skylake (2015) architecture: AVX2, AVX512 (Skylake-SP)
+  /// 6th-gen Intel Skylake (2015) architecture (tock): AVX2, AVX512
+  /// (Skylake-SP)
   Skylake,
-  /// Intel Kaby Lake (2016) architecture: AVX2
+  /// 7th-gen Intel Kaby Lake (2016) architecture: AVX2
   KabyLake,
-  /// Intel Coffee Lake (2017) architecture: AVX2
+  /// 8-9th-gen Intel Coffee Lake (2017) architecture: AVX2
   CoffeeLake,
-  /// Intel Cascade Lake (2019) architecture: AVX512
+  /// 8th-gen (server) Intel Cascade Lake (2019) architecture: AVX512
   CascadeLake,
+  /// 10th-gen Intel Cascade Lake (2019) architecture: AVX512
+  IceLake,
   /// AMD Zen architecture: AVX2
   Zen,
+  /// AMD Zen2 architecture: AVX2
+  Zen2,
 };
 
-static std::map<MVArch, std::string> MVArchStr = {{Nehalem, "Nehalem"},
+static std::map<MVArch, std::string> MVArchStr = {{DEFAULT, "Default"},
+                                                  {Nehalem, "Nehalem"},
                                                   {Westmere, "Westmere"},
                                                   {SandyBridge, "SandyBridge"},
                                                   {IvyBridge, "IvyBridge"},
@@ -79,19 +94,22 @@ static std::map<MVArch, std::string> MVArchStr = {{Nehalem, "Nehalem"},
                                                   {KabyLake, "KabyLake"},
                                                   {CoffeeLake, "CoffeeLake"},
                                                   {CascadeLake, "CascadeLake"},
-                                                  {Zen, "Zen"}};
+                                                  {IceLake, "IceLake"},
+                                                  {Zen, "Zen"},
+                                                  {Zen2, "Zen2"}};
 
 /// Mapping between the ISA and supported architectures
 static std::map<MVISA, std::list<MVArch>> SupportedISAArch = {
     {SSE,
      {Nehalem, Westmere, SandyBridge, IvyBridge, Haswell, Broadwell, Skylake,
-      KabyLake, CoffeeLake, CascadeLake}},
+      KabyLake, CoffeeLake, CascadeLake, IceLake, Zen, Zen2}},
     {AVX,
      {SandyBridge, IvyBridge, Haswell, Broadwell, Skylake, KabyLake, CoffeeLake,
-      CascadeLake}},
+      CascadeLake, IceLake, Zen, Zen2}},
     {AVX2,
-     {Haswell, Broadwell, Skylake, KabyLake, CoffeeLake, CascadeLake, Zen}},
-    {AVX512, {Skylake, CascadeLake}}};
+     {Haswell, Broadwell, Skylake, KabyLake, CoffeeLake, CascadeLake, IceLake,
+      Zen, Zen2}},
+    {AVX512, {Skylake, CascadeLake, IceLake}}};
 
 enum DebugLevel {
   /// All levels below
@@ -117,9 +135,9 @@ struct MVOptions {
   /// Name of the output debug file (-report-file=<file>)
   static inline std::string ReportFile = "";
   /// Target ISA
-  static inline MVISA ISA = MVISA::NATIVE;
+  static inline MVISA ISA = MVISA::AUTODETECT;
   /// Target architecture
-  static inline MVArch Arch = MVArch::AUTODETECT;
+  static inline MVArch Arch = MVArch::DEFAULT;
   /// FMA support
   static inline bool FMASupport = false;
   /// Disable FMA support
@@ -139,10 +157,32 @@ struct MVOptions {
   /// Target function
   static inline std::string TargetFunc = "";
 
+  static MVArch getMVArch() {
+    CPUInfo CInfo;
+    // TODO: parse vendor string
+    return MVArch::Broadwell;
+  }
+
+  static MVISA getMVISA() {
+    CPUInfo CInfo;
+    if (CInfo.isAVX512F()) {
+      return MVISA::AVX512;
+    }
+    if (CInfo.isAVX2()) {
+      return MVISA::AVX2;
+    }
+    if (CInfo.isAVX()) {
+      return MVISA::AVX;
+    }
+    if (CInfo.isSSE42()) {
+      return MVISA::SSE;
+    }
+    return MVISA::AVX2;
+  }
+
   /// Print options as a string for reports and so
   static std::string toString() {
-    std::string S;
-    S += "-------------------------------\n";
+    std::string S = "-------------------------------\n";
     S += "\toutput file\t= " + OutFile + "\n";
     S += "\tCDAG file\t= " + InCDAGFile + "\n";
     S += "\toutput debug\t= " + OutDebugFile + "\n";
@@ -156,24 +196,25 @@ struct MVOptions {
 
   /// Main function to check options of the compiler
   static void validateOptions() {
-    // TODO:
-    if (MVOptions::ISA == MVISA::NATIVE) {
+    if (MVOptions::ISA == MVISA::AUTODETECT) {
+      MVOptions::ISA = getMVISA();
     }
-    if (MVOptions::Arch == MVArch::AUTODETECT) {
+    if (MVOptions::Arch == MVArch::NATIVE) {
+      MVOptions::Arch = getMVArch();
     }
     checkIfArchISACompatible();
   }
 
   /// Dumb method to check compatibility between options
   static void checkIfArchISACompatible() {
-    if ((MVOptions::ISA == MVISA::NATIVE) ||
-        (MVOptions::Arch == MVArch::AUTODETECT)) {
-      return;
-    }
     auto LArch = SupportedISAArch[MVOptions::ISA];
     assert((std::find(LArch.begin(), LArch.end(), MVOptions::Arch) !=
             LArch.end()) &&
            "Incompatible architecture and ISA");
+    /// Check incompatible options:
+    assert(
+        !(MVOptions::FMASupport && MVOptions::DisableFMA) &&
+        "FMA support enabled and disabled at the same time is not possible!");
   }
 };
 }; // namespace macveth

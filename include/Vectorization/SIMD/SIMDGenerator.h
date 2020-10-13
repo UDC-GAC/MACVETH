@@ -37,7 +37,6 @@ public:
     VSET,
     /// Store values in contiguous memory
     VSTORE,
-    // VSTORER,
     /// Store values in a scattered fashion
     VSCATTER,
     /// Multiplication
@@ -56,7 +55,6 @@ public:
     VREDUC,
     /// Sequential operation
     VSEQ,
-    // VSEQR,
     /// If the SIMD instruction is the result of an optimization (e.g. fuse
     /// multiply-accumulation) we will call it VOPT
     VOPT,
@@ -77,6 +75,8 @@ public:
     int Penalty = -1;
     /// TODO: we may add heuristics for some architectures
     int Preference = -1;
+    /// Number of ports used
+    std::map<int, int> NoPorts;
     /// Default constructor
     SIMDCostInfo() {}
     SIMDCostInfo(int L, float T, int Pen, int Pref, int U)
@@ -210,6 +210,38 @@ public:
       std::cout << "-------- END SIMD REPORT --------\n";
     }
   };
+
+  /// Table of equivalences between C/C++ basic numeric types and VectorIR's
+  static inline std::map<VectorIR::VDataType, std::string> VDTypeToCType = {
+      {VectorIR::VDataType::DOUBLE, "double"},
+      {VectorIR::VDataType::FLOAT, "float"},
+      {VectorIR::VDataType::INT32, "int"},
+      {VectorIR::VDataType::INT64, "long"},
+      {VectorIR::VDataType::UINT32, "unsigned int"},
+      {VectorIR::VDataType::UINT64, "unsigned long"},
+  };
+
+  /// Map data types to their size in bytes
+  inline static std::map<std::string, int> SizeOf = {
+      {"double", 8},
+      {"float", 4},
+      {"const unsigned long", 8},
+      {"const long", 8},
+      {"const float", 4},
+      {"const double", 8},
+      {"const char", 1},
+      {"char", 1},
+      {"const int", 4},
+      {"const unsigned int", 4},
+      {"unsigned int", 4},
+      {"int", 4},
+      {"long", 8},
+      {"long long", 16},
+      {"signed long long", 16},
+      {"long long int", 16},
+      {"signed long long int", 16}};
+
+  /// Empty constructor
 
   static SIMDGenerator::SIMDInfo computeCostModel(CDAG *C, SIMDGenerator *SG);
 
@@ -368,40 +400,12 @@ public:
   /// Get list of initializations
   SIMDInstListType getInitReg() { return InitReg; }
 
-  /// Table of equivalences between C/C++ basic numeric types and VectorIR's
-  static inline std::map<VectorIR::VDataType, std::string> VDTypeToCType = {
-      {VectorIR::VDataType::DOUBLE, "double"},
-      {VectorIR::VDataType::FLOAT, "float"},
-      {VectorIR::VDataType::INT32, "int"},
-      {VectorIR::VDataType::INT64, "long"},
-      {VectorIR::VDataType::UINT32, "unsigned int"},
-      {VectorIR::VDataType::UINT64, "unsigned long"},
-  };
-
+  /// Setting CDAG
   void setCDAG(CDAG *C) { this->C = C; }
+
+  /// Getting CDAG
   CDAG *getCDAG() { return this->C; }
 
-  /// Map data types to their size in bytes
-  inline static std::map<std::string, int> SizeOf = {
-      {"double", 8},
-      {"float", 4},
-      {"const unsigned long", 8},
-      {"const long", 8},
-      {"const float", 4},
-      {"const double", 8},
-      {"const char", 1},
-      {"char", 1},
-      {"const int", 4},
-      {"const unsigned int", 4},
-      {"unsigned int", 4},
-      {"int", 4},
-      {"long", 8},
-      {"long long", 16},
-      {"signed long long", 16},
-      {"long long int", 16},
-      {"signed long long int", 16}};
-
-  /// Empty constructor
   SIMDGenerator(){};
 
   /// Destructor

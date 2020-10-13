@@ -299,6 +299,7 @@ public:
       this->BaseName = Utils::getStringFromExpr(TmpExpr);
       return;
     }
+    Utils::printDebug("MVExprArray", "This is not a std::vector nor array[]");
     llvm::llvm_unreachable_internal();
   }
 

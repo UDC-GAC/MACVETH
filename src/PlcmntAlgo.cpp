@@ -135,7 +135,7 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
           continue;
         } else {
           if (!(L.find_first_not_of("0123456789") == std::string::npos)) {
-            llvm::outs() << "CDAG input file is not correct!\n";
+            Utils::printDebug("PlcmntAlgo", "CDAG input file is not correct!");
             llvm::llvm_unreachable_internal();
           }
           // Clang does not allow to perform any type of exception handling in
@@ -150,7 +150,7 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
       }
     }
   } else {
-    assert(false && "");
+    Utils::printDebug("PlcmntAlgo", "CDAG input file can not be opened");
     llvm::llvm_unreachable_internal();
   }
   CF.close();
