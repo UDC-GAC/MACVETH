@@ -1,9 +1,9 @@
 /*
- * File					 : include/MVExpr/MVExprFactory.h
+ * File					 : include/CostModel/SIMDCostInfo.h
  * Author				 : Marcos Horro
- * Date					 : Tue 14 Jul 2020 05:03 +02:00
+ * Date					 : Tue 20 Oct 2020 11:59 +02:00
  *
- * Last Modified : Tue 20 Oct 2020 12:35 +02:00
+ * Last Modified : Tue 20 Oct 2020 12:34 +02:00
  * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
  *
  * MIT License
@@ -29,30 +29,41 @@
  * SOFTWARE.
  */
 
-#ifndef MACVETH_MVEXPRFACTORY_H
-#define MACVETH_MVEXPRFACTORY_H
+#ifndef MACVETH_SIMDCOSTINFO_H
+#define MACVETH_SIMDCOSTINFO_H
 
-#include "include/MVExpr/MVExpr.h"
+#include "include/CostModel/CostTable.h"
+#include <map>
 
 using namespace macveth;
 
 namespace macveth {
-
-/// Create MVExpr depending on the dynamic cast clang does
-class MVExprFactory {
-public:
-  /// Types available:
-  /// * ARRAY, e.g. a[i], b[i][j]
-  /// * LITERAL, e.g. 5.0, 42
-  /// * VARIABLE, otherwise
-  enum MVExprType { ARRAY, LITERAL, VARIABLE };
-
-  /// Detect the type of MVExpr
-  static MVExprType getTempTypeFromExpr(Expr *E);
-  /// Create MVExpr from Clang expression
-  static MVExpr *createMVExpr(Expr *E);
-  /// Create temporal MVExpr (as MVExprVar)
-  static MVExpr *createMVExpr(std::string E, bool Temp, std::string Type);
+/// Cost of SIMD
+struct SIMDCostInfo {
+  /// Number of micro-instructions issued by the SIMD instruction
+  int UOps = 1;
+  /// Number of cycles wasted by the instruction
+  int Latency = 1;
+  /// Issue latency: the lower the better. On Intel architectures it
+  /// represents the velocity of issuing another uop
+  double Throughput = 1;
+  /// TODO: some SIMD instructions may have penalties due to ports or others
+  int Penalty = -1;
+  /// TODO: we may add heuristics for some architectures
+  int Preference = -1;
+  /// Number of ports used
+  std::map<int, int> NoPorts;
+  /// Default constructor
+  SIMDCostInfo() {}
+  SIMDCostInfo(int L, float T, int Pen, int Pref, int U)
+      : Latency(L), Throughput(T), Penalty(Pen), Preference(Pref), UOps(U) {}
+  /// Default constructor
+  SIMDCostInfo(CostTable::Row R) {
+    UOps = R.NUops;
+    Latency = R.Latency;
+    Throughput = R.Throughput;
+  }
 };
 } // namespace macveth
-#endif /* !MACVETH_MVEXPRFACTORY_H */
+
+#endif /* !MACVETH_SIMDCOSTINFO_H */

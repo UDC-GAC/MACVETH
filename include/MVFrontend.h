@@ -1,22 +1,25 @@
-/**
- * File              : MVFrontend.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 13 Mar 2020 12:27:21 CET
- * Last Modified Date: Mér 18 Mar 2020 15:22:20 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- *
- * Copyright (c) 2020 Marcos Horro <marcos.horro@udc.gal>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
+/*
+ * File					 : include/MVFrontend.h
+ * Author				 : Marcos Horro
+ * Date					 : Fri 09 Oct 2020 04:53 +02:00
+ * 
+ * Last Modified : Tue 20 Oct 2020 12:38 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ * 
+ * MIT License
+ * 
+ * Copyright (c) 2020 Colorado State University
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE

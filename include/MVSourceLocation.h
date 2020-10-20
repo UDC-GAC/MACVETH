@@ -1,11 +1,14 @@
-/**
- * File              : MVSourceLocation.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 02 Out 2020 09:43:25 CET
- * Last Modified Date: Ven 02 Out 2020 09:43:25 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+/*
+ * File					 : include/MVSourceLocation.h
+ * Author				 : Marcos Horro
+ * Date					 : Fri 09 Oct 2020 04:53 +02:00
  *
- * Copyright (c) 2020 Marcos Horro <marcos.horro@udc.gal>
+ * Last Modified : Tue 20 Oct 2020 12:38 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal

@@ -1,17 +1,46 @@
-/**
- * File              : SIMDGenerator.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 20 Dec 2019 15:32:33 MST
- * Last Modified Date: Mér 15 Xan 2020 10:57:54 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+/*
+ * File					 : include/Vectorization/SIMD/SIMDGenerator.h
+ * Author				 : Marcos Horro
+ * Date					 : Fri 09 Oct 2020 04:53 +02:00
+ * 
+ * Last Modified : Tue 20 Oct 2020 12:40 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ * 
+ * MIT License
+ * 
+ * Copyright (c) 2020 Colorado State University
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
+
+
+
+
+
 
 #ifndef MACVETH_SIMDGENERATOR_H
 #define MACVETH_SIMDGENERATOR_H
 
 #include "include/CDAG.h"
+#include "include/CostModel/CostTable.h"
+#include "include/CostModel/SIMDCostInfo.h"
 #include "include/MVSourceLocation.h"
-#include "include/Vectorization/SIMD/CostTable.h"
 #include "include/Vectorization/VectorIR.h"
 
 using namespace macveth;
@@ -60,33 +89,6 @@ public:
     VOPT,
     /// Initializing some value, for instance, in reductions
     INIT
-  };
-
-  /// Cost of SIMD
-  struct SIMDCostInfo {
-    /// Number of micro-instructions issued by the SIMD instruction
-    int UOps = 1;
-    /// Number of cycles wasted by the instruction
-    int Latency = 1;
-    /// Issue latency: the lower the better. On Intel architectures it
-    /// represents the velocity of issuing another uop
-    double Throughput = 1;
-    /// TODO: some SIMD instructions may have penalties due to ports or others
-    int Penalty = -1;
-    /// TODO: we may add heuristics for some architectures
-    int Preference = -1;
-    /// Number of ports used
-    std::map<int, int> NoPorts;
-    /// Default constructor
-    SIMDCostInfo() {}
-    SIMDCostInfo(int L, float T, int Pen, int Pref, int U)
-        : Latency(L), Throughput(T), Penalty(Pen), Preference(Pref), UOps(U) {}
-    /// Default constructor
-    SIMDCostInfo(CostTable::Row R) {
-      UOps = R.NUops;
-      Latency = R.Latency;
-      Throughput = R.Throughput;
-    }
   };
 
   /// Wrap for representing the SIMDInst not just as single strings to print,
@@ -181,36 +183,6 @@ public:
   /// Alias for list of SIMDInst structures
   using SIMDInstListType = std::list<SIMDInst>;
 
-  /// Return value when generating new code
-  struct SIMDInfo {
-    /// List of SIMD instructions generated
-    SIMDInstListType SIMDList;
-    /// Cost of operations
-    std::map<std::string, SIMDCostInfo> CostOp;
-    /// Number of operations of each type
-    std::map<std::string, long> NumOp;
-    /// Total cost
-    long TotCost;
-
-    /// Constructor
-    SIMDInfo(SIMDInstListType S, std::map<std::string, SIMDCostInfo> CostOp,
-             std::map<std::string, long> NumOp, long TotCost)
-        : SIMDList(S), CostOp(CostOp), NumOp(NumOp), TotCost(TotCost) {}
-
-    /// Printing the total cost of the operations
-    void printCost() {
-      std::cout << "---------- SIMD REPORT ----------\n";
-      for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {
-        std::cout << It->first + "\t=\t" +
-                         std::to_string(NumOp[It->first] * It->second.Latency) +
-                         "\t(" + std::to_string(NumOp[It->first]) + ")"
-                  << std::endl;
-      }
-      std::cout << " TOTAL = " + std::to_string(TotCost) << std::endl;
-      std::cout << "-------- END SIMD REPORT --------\n";
-    }
-  };
-
   /// Table of equivalences between C/C++ basic numeric types and VectorIR's
   static inline std::map<VectorIR::VDataType, std::string> VDTypeToCType = {
       {VectorIR::VDataType::DOUBLE, "double"},
@@ -243,8 +215,6 @@ public:
 
   /// Empty constructor
 
-  static SIMDGenerator::SIMDInfo computeCostModel(CDAG *C, SIMDGenerator *SG);
-
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions, given a VectorOP
   SIMDGenerator::SIMDInst addNonSIMDInst(VectorIR::VectorOP OP,
@@ -258,6 +228,9 @@ public:
                                          SIMDGenerator::SIMDType SType,
                                          MVSourceLocation MVSL,
                                          SIMDGenerator::SIMDInstListType *IL);
+
+  std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
+                                                    SIMDGenerator *SG);
 
   // VectorAPI: instructions to implement by the specific backends
 
@@ -380,9 +353,6 @@ public:
 
   /// Auxiliary function to retrieve properly the operands
   std::string getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal);
-
-  /// Just compute the cost of each SIMD inst
-  SIMDInfo computeSIMDCost(SIMDInstListType S);
 
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);

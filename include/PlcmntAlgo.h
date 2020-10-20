@@ -1,10 +1,34 @@
-/**
- * File              : PlcmntAlgo.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Lun 02 Mar 2020 15:29:56 CET
- * Last Modified Date: Lun 02 Mar 2020 16:56:51 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+/*
+ * File					 : include/PlcmntAlgo.h
+ * Author				 : Marcos Horro
+ * Date					 : Tue 14 Jul 2020 05:03 +02:00
+ *
+ * Last Modified : Tue 20 Oct 2020 12:37 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
+
 #ifndef MACVETH_PLCMNTALGO_H
 #define MACVETH_PLCMNTALGO_H
 

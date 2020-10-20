@@ -1,22 +1,25 @@
-/**
- * File              : StmtWrapper.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 22 Nov 2019 09:05:09 MST
- * Last Modified Date: Lun 23 Mar 2020 18:33:25 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
+/*
+ * File					 : include/StmtWrapper.h
+ * Author				 : Marcos Horro
+ * Date					 : Fri 09 Oct 2020 04:53 +02:00
+ * 
+ * Last Modified : Tue 20 Oct 2020 12:37 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ * 
+ * MIT License
+ * 
+ * Copyright (c) 2020 Colorado State University
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -134,10 +137,7 @@ public:
 
   /// Constructor
   StmtWrapper(clang::Stmt *S);
-
-  /// Compute the sequential cost
-  static long computeSequentialCostStmtWrapper(std::list<StmtWrapper *> SL);
-
+  
   /// Compute the cost of the statments within
   long getCost();
 
