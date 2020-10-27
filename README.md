@@ -1,18 +1,19 @@
-![MACVETH](https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg)
+![MACVETH][macveth-logo]
 
 # MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors in HPC 
 
 [![Build Status][travis-badge]][travis-link]
 [![codecov][codecov-badge]][codecov-link]
+[![License: MIT][mit-badge]][mit-link]
 
-Copyright (c) 2019-2020 the Colorado State University.
 
-Marcos Horro Varela (marcos.horro@udc.es)
+Main authors (refer to [License](#license) section for further details):
 
-Dr. Louis-Noël Pouchet (pouchet@colostate.edu)
+* Marcos Horro Varela (marcos.horro@udc.es)
+* Dr. Louis-Noël Pouchet (pouchet@colostate.edu)
 
-MACVETH is a source-to-source compiler from C/C++ codes to SIMD. It is platform
-or ISA and architecture dependent.
+MACVETH is a source-to-source compiler for C/C++ codes to compilable
+SIMD-fashion codes. It is platform or ISA and architecture dependent.
 
 MACVETH stands for Multi-Array C-compiler for VEctorizating Tensors in HPC
 apps. Besides, Macbeth, tragedy written by William Shakespeare, represents the 
@@ -28,10 +29,10 @@ three fleurons, as the Three Witches in the very first Act of the tragedy.
 
 ## Main dependencies:
 
-* Clang     >= 10.0.0
-* CMake     >= 3.12
-* GNU/GCC   >= 8.3.0
-* Doxygen   >= 1.8.13
+* Clang/LLVM >= 10.0.0
+* CMake      >= 3.12
+* GNU/GCC    >= 8.3.0
+* Doxygen    >= 1.8.13
 
 ## Getting started:
 
@@ -44,7 +45,7 @@ Recommended steps for a clean building of the project:
 ``` 
 $> mkdir -p build && cd build
 $> CXX=[C++ compiler] CC=[C compiler] cmake -G "Unix Makefiles" ..
-$> make -j4 && sudo ln -sf $PWD/macveth /usr/local/bin/macveth
+$> make -j8 && sudo ln -sf $PWD/macveth /usr/local/bin/macveth
 ```
 
 This will create an executable in the same folder called 'macveth', and also
@@ -54,14 +55,14 @@ will create a symbolic link to its executable.
 
 User may execute the compiler just typing:
 
-`$> ./macveth <input_file.c>` 
+`$> macveth <input_file.c>` 
 
 This will generate a macro-fashion SIMD code (if possible) onto a file named
 macveth_output.c/cpp.
 
 For displaying all the available options, type:
 
-`$> ./macveth --help` 
+`$> macveth --help` 
 
 ## Documentation
 
@@ -77,15 +78,23 @@ In this section we will comment in detail all the options available:
     --debug: Print debug comments, from TAC creation to the backend generator
     --debug-file=<file>: Print debug output to file
 
+    --func=<string>: target function to vectorize. Useful for large documents whith many functions
+    in order to avoid the overhead of analyzing all LOCs in a program.
+
     --input-cdag=<file>: Input file with placements for the CDAG created as IR
 
-    --macro-code: TODO yet, generate code using a macro fashion code, not ad-hoc 
+    --macro-code: _TODO_ yet, generate code using a macro fashion code, not ad-hoc 
         intrinsics code.
 
     --march=<arch>: Target architecture (not implemented yet)
     --misa=<isa>: Target ISA (only AVX2 right now)
     --fma: FMA support in the architecture
     --nofma: do not generate FMA instructions even if they are available in the architecture
+    --no-headers: do not print headers in output file
+    --no-svml: disable SVML Intel library (math functions, basically)
+
+    --simd-cost-model=[conservative|aggressive|unlimited]: different algorithms selected
+    by the compiler to decide whether to vectorize or not a concrete region.
 
     -o=<output>: Output file, otherwise macveth_output.c
     -p=<path>: Build path
@@ -96,20 +105,31 @@ The compiler recognizes the region-of-interest (ROI from now on) by the
 delimitation of the pragmas:
 
     #pragma macveth [options]
-    // code
+    /*
+        region-of-interest
+    */
+    #pragma endmacveth
+    ...
+    #pragma macveth [options]
+    /*
+        another region-of-interest
+    */
     #pragma endmacveth
 
-Available options for each scop are:
+A program can hold different scops, even a function, but scops can never be nested.
+
+Available options for scops are:
+
+    - unroll_factor [var0 val0] [[var1 val1] [...]]: explicitly tell the compiler the 
+    unroll factor of each dimension of the nested loop/s. val# can be either 'full' 
+    or a positive integer. This is the default option so it does not have to be explicit.
 
     - nounroll: avoid unrolling the code within. This may be useful if we have 
     a irregular code and we just want to vectorize it.
 
-    - unroll_factor [val1] [[val2] [...]]: explicitly tell the compiler the 
-    unroll factor of each dimension of the nested loop/s.
+    - unroll_and_jam: perform unroll-and-jam in the loops within the scop.
 
-    - unrollandjam: perform unroll-and-jam in the loops within the scop.
-
-    - nosimd: do not generate SIMD code; useful for only unrolling code.
+    - nosimd: do not generate SIMD code; useful, for instance, for only unrolling code.
 
 Pragmas to be implemented (soon):
 
@@ -122,6 +142,11 @@ Pragmas to be implemented (soon):
 
     - li val1 val2 [val21 val22 [...]]: loop interchange, interchanges the val1
         with val2, and so on.
+
+## SIMD Cost model
+
+We have described in [§CLI Options](#cli-options) the  `--simd-cost-model`
+option. 
 
 ## Limitations/restrictions and assumptions:
 
@@ -139,15 +164,15 @@ account when using this compiler:
 
             (*S) = (*S) + A[i];
 
-          This may be a common scenario when writing reductions in the code
-          (when passing variables to the function by reference). You can simply
-          avoid this issue by using a temporal variable.
+            This may be a common scenario when writing reductions in the code
+            (when passing variables to the function by reference). You can simply
+            avoid this issue by using a temporal variable.
 
         + Reductions should look like:
 
             S = S + <expr> || S += <expr>
-          
-          in order to be detected properly
+            
+            in order to be detected properly
 
     - Declarations within scop:
         + Not permitted any kind or type of declaration within, e.g. int var = 42;
@@ -159,27 +184,20 @@ account when using this compiler:
             
             Syntax ::= <Statement>
 
-            Statement ::= (non-terminal)
+            Statement ::=
                 | <expr> = <S>
 
-            S ::= (non-terminal)
+            S ::=
                 | for(<expr> = <expr>; <expr> < <expr>; <expr>) { 
                     <S>; }
-                | <S> op <S>
+                | <S> binary_op <S>
                 | f(<S>,<S>)
                 | f(<S>)
                 | <expr>
 
-            op ::= (terminal)
-                | +,-,/,*,%
+            binary_op ::= + | - | / | * | % 
 
-            expr ::= (terminal)
-                | array
-                | literal
-                | var
-
-        "op" may be a function (with two arguments) or a binary operation. This 
-        limitation imposes that either functions and operations must be binary.
+            expr ::= array | literal | var
 
     - Loop related:
         + Only "for" loops are supported
@@ -187,14 +205,14 @@ account when using this compiler:
 
                 for (int i = 0; ...
 
-          Also declaration outside the loop is allowed, e.g.:
+            Also declaration outside the loop is allowed, e.g.:
 
                 int i;
                 ...
                 for (i = 0; ...
 
-          Nonetheless, some compilers may allow declarations in both sides,
-          MACVETH does not, e.g.:
+            Nonetheless, some compilers may allow declarations in both sides,
+            MACVETH does not, e.g.:
 
                 int i;
                 ...
@@ -215,11 +233,17 @@ Specification (https://semver.org/spec/v2.0.0.html)
 
 ## License
 
-(C) Copyright 2019-2020 the Colorado State University.
+MIT License.
 
-No warranties. Under development, code disclosed under request.
+Copyright (c) 2019-2020 the Colorado State University.
+Copyright (c) 2020 Universidade da Coruña.
+
+Under development, code disclosed only under request.
 
 [travis-badge]:    https://travis-ci.com/markoshorro/MACVETH.svg?token=NvjC6fzdrgxL3SFrS5bJ&branch=develop
 [travis-link]:     https://travis-ci.org/markoshorro/MACVETH
 [codecov-badge]:   https://codecov.io/gh/markoshorro/MACVETH/branch/develop/graph/badge.svg
 [codecov-link]:    https://codecov.io/gh/markoshorro/MACVETH
+[mit-badge]:       https://img.shields.io/badge/License-MIT-yellow.svg
+[mit-link]:        https://opensource.org/licenses/MIT
+[macveth-logo]:    https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg
