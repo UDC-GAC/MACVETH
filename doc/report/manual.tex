@@ -10,6 +10,8 @@
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{graphicx}
 \usepackage{amsthm}
+\usepackage{tikz}
+\usetikzlibrary{arrows}
 
 %\theoremstyle{definition}
 \newtheorem{definition}{Definition}[]
@@ -20,7 +22,7 @@
 
 % Title Page
 \title{\textbf{MACVETH}: \textbf{M}ulti-dimensional \textbf{A}rray
-    \textbf{C}-compiler for \textbf{VE}ctorizating
+    \textbf{C}-compiler for \textbf{VE}ctorizing
     \textbf{T}ensors for \textbf{H}PC applications}
 \author{Marcos Horro}
 \date{}
@@ -102,7 +104,7 @@ interested in a small set of operations, so we created basically a wrap for this
 purpose. MVExpr is an abstract class that can be specialized for any type we
 want to represent from the Clang AST. Besides, the idea of this class is to
 provide a set of non-standard transformations for the expressions, e.g.
-unrolling. Thus, MVExpr are chosen using a factory.
+unrolling. Thus, MVExpr are instantiated using a factory.
 
 We have implemented the following specializations, which are enough in order to
 represent any value reference:
@@ -111,7 +113,9 @@ represent any value reference:
 	\item \textbf{MVExprArray}: represents any N-dimensional expression in the
 	      code. It
 	      holds information of the number of dimensions and name or value of the
-	      indices.
+	      indices. This class is very useful when performing unrolling, as it 
+	      provides methods for computing deltas between two indices of the same 
+	      or different form, e.g. $(i+1)*2$ vs. $(i+1)*4$.
 	\item \textbf{MVExprVar}: regardless the type of the variable, this
 	      abstraction
 	      represents, basically, any \texttt{DeclRefExpr} from the Clang AST.
@@ -148,16 +152,23 @@ Corollary~\ref{cor:TAC}).
 	\SetAlgoLined
 	\KwIn{Stmt S}
 	\KwResult{Set of TAC}
+	L $\leftarrow$ \{\}\;
+	Res $\leftarrow$ getResultOrTempReg(S)\;
 	Lhs $\leftarrow$ getLHS(S)\;
 	Rhs $\leftarrow$ getRHS(S)\;
-	\If{isDivisible(Lhs)}{
+	\If{isNonTerminal(Lhs)}{
 		TAC $\leftarrow$ translateStmtToTAC(Lhs)\;
+		addTacToList(L, TAC)\;
+		Lhs $\leftarrow$ TAC.Res\;
 	}
-	\If{isDivisible(Rhs)}{
+	\If{isNonTerminal(Rhs)}{
 		TAC $\leftarrow$ translateStmtToTAC(Rhs)\;
+		addTacToList(L, TAC)\;
+		Rhs $\leftarrow$ TAC.Res\;
 	}
-	addTacToList(TAC)\;
-	\caption{Translation from statement to TAC format (translateStmtToTAC)}
+	addTacToList(L, \{Res, Lhs, Rhs, getOp(S)\})\;
+	return L\;
+	\caption{translateStmtToTAC}
 \end{algorithm}
 
 \begin{corollary}\label{cor:TAC}
@@ -167,7 +178,8 @@ Corollary~\ref{cor:TAC}).
 
 This representation is widely used in compilers. The main advantages of it
 resides in the simplicity of handling operations with the same number of
-operands.
+operands. Besides, this format is very easy to handle in programmatically terms.
+
 
 Unrolling is also performed using this format, following the iterative process
 listed in
@@ -175,9 +187,9 @@ Algorithm~\ref{alg:TACunrolling}.
 
 \begin{algorithm}[H]\label{alg:TACunrolling}
 	\SetAlgoLined
-	\KwIn{Set of TAC T, Unrolling Factor UF, Loop nests LN}
-	\KwResult{Set of TAC T}
-	TacList = \{\}\;
+	\KwIn{TAC list $T$, Unrolling Factor $UF$, Loop nests $LN$}
+	\KwResult{TAC list $T'$}
+	$T'$ = \{\}\;
 	\ForEach{LN} {
 		\For{step = 0; step++ $<$ UF;} {
 			\ForEach{TAC in T} {
@@ -186,20 +198,20 @@ Algorithm~\ref{alg:TACunrolling}.
 					NewExpr $\leftarrow$ unrollExpr(step, LN, Expr)\;
 					NewTac $\leftarrow$ placeExprInTac(NewExpr)\;
 				}
-				TacList $\leftarrow$ add(NewTac)\;
+				$T'$ $\leftarrow$ add(NewTac)\;
 			}
 		}
 	}
-	return TacList\;
-	\caption{Unrolling set of TAC}
+	return $T'$\;
+	\caption{Unrolling TAC list}
 \end{algorithm}
 
 
-\section{Computational Directed Acyclic Graph (CDAG)}
+\section{Computation Directed Acyclic Graph (CDAG)}
 When it comes to schedule the different TACs in the ROI of our program, we need
 a representation which can handle the dependencies between the statements and
 some structures that store the information about the placement of them in the
-execution. For this purpose we use a Computational Directed Acyclic Graph or
+execution. For this purpose we use a Computation Directed Acyclic Graph or
 CDAG~\cite{bib:CDAGdefinition}. Informally, it is a forest that represents the
 TACs as a set of nodes, where
 each node can be a memory operation (load, store) or any other type of
@@ -212,11 +224,64 @@ of the definition given in~\cite{bib:CDAGdefinition}.
 \theoremstyle{definition}
 \begin{definition}\label{def:CDAG}
 	A computation directed acyclic graph (CDAG) is a 4-tuple C=(I,V,E,O) of
-	finite sets such that: (1) $I \subseteq V, O \subseteq V$; (2) $E
+	finite sets such that: (1) $I \subseteq V, O \subseteq (V-I)$; (2) $E
 		\subseteq V
-		\times V$ is the set of arcs; (3) $G=(V,E) \subseteq C$
+		\times V$ is the set of arcs; (3) $G=(V,E) \subseteq C$ is a subgraph 
+		of C
 \end{definition}
 
+The importance of this structure is, in essence, to detect data races and to 
+perform any kind of variation in the placement of operations, if possible. 
+Nonetheless, this topic is not to be discussed in this work, since MACVETH uses 
+the CDAG for sorting nodes in a topological order and detect patterns such as 
+reductions.
+
+\begin{figure}[h]
+	\centering
+\begin{tikzpicture}[
+	->,
+	>=stealth',
+	shorten >=.2pt,
+	auto,
+	node distance=2cm,
+	thick,
+	tmp node/.style={circle,draw,font=\large\bfseries},
+	in node/.style={circle,draw=blue!100,font=\large\bfseries},
+	out node/.style={circle,draw=red!90,font=\large\bfseries}
+]
+
+\node[in node] (1) {I};
+\node[in node] (2) [right of=1] {I};
+\node[tmp node] (3) [below of=2] {T};
+\node[in node] (4) [right of=3] {I};
+\node[out node] (5) [below of=4] {O};
+%\node[main node] (1) {In};
+%\node[main node] (2) [below left of=1] {2};
+%\node[main node] (3) [below right of=2] {3};
+%\node[main node] (4) [below right of=1] {4};
+
+\path[every node/.style={font=\sffamily\small}]
+(1) edge node [left] {} (3)
+(2) edge node [left] {} (3)
+(3) edge node [left] {} (5)
+(4) edge node [left] {} (5)
+;
+%(1) edge node [left] {0.6} (4)
+%%edge [bend right] node[left] {0.3} (2)
+%edge [loop above] node {0.1} (1)
+%(2) edge node [right] {0.4} (1)
+%edge node {0.3} (4)
+%edge [loop left] node {0.4} (2)
+%edge [bend right] node[left] {0.1} (3)
+%(3) edge node [right] {0.8} (2)
+%edge [bend right] node[right] {0.2} (4)
+%(4) edge node [left] {0.2} (3)
+%edge [loop right] node {0.6} (4)
+%edge [bend right] node[right] {0.2} (1);
+\end{tikzpicture}
+\caption{Graphical example of CDAG}
+\label{fig:GraphCDAG}
+\end{figure}
 
 \section{VectorIR}
 In order to approach the different architectures when generating instructions,
@@ -234,7 +299,7 @@ operations and, therefore, not for integers. It would be pointless to tackle
 all these issues in this representation that is why this is done in the AVX
 backend instead.
 
-\section{SIMDGenerator: \textit{the} backend}
+\section{SIMDBackEnd: \textit{the} backend}
 In order to synthesize the vector operations gathered in the VectorIR, there
 must exists a target-specific backend for each ISA. MACVETH disposes a general
 interface called SIMDGenerator, which is connected to the front-end in order to
