@@ -49,19 +49,18 @@ typedef unsigned __int32 uint32_t;
 namespace macveth {
 
 class CPUID {
-  // EAX, EBX, ECX, EDX
+  /// EAX, EBX, ECX, EDX
   uint32_t Regs[4];
 
 public:
   explicit CPUID(unsigned FuncId, unsigned SubFuncId) {
+    // ECX is set to zero for CPUID function 4
 #ifdef _WIN32
     __cpuidex((int *)Regs, (int)FuncId, (int)SubFuncId);
-
 #else
     asm volatile("cpuid"
                  : "=a"(Regs[0]), "=b"(Regs[1]), "=c"(Regs[2]), "=d"(Regs[3])
                  : "a"(FuncId), "c"(SubFuncId));
-    // ECX is set to zero for CPUID function 4
 #endif
   }
 
@@ -175,9 +174,13 @@ public:
       ModelName += std::string((const char *)&CpuID.EDX(), 4);
     }
   }
+  /// Get vendor name
   std::string vendor() const { return VendorId; }
+  /// Get model name
   std::string model() const { return ModelName; }
+  /// Get number of cores
   int cores() const { return NumCores; }
+  /// Get speed in MHz
   float cpuSpeedInMHz() const { return CPUMHz; }
   bool isSSE() const { return IsSSE; }
   bool isSSE2() const { return IsSSE2; }
@@ -261,4 +264,4 @@ private:
 };
 
 } // namespace macveth
-#endif
+#endif /* !MACVETH_CPUID_H */

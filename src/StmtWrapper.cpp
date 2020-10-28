@@ -38,37 +38,6 @@ using namespace clang;
 using namespace macveth;
 
 // ---------------------------------------------
-long StmtWrapper::getCost() {
-  long Tot = 0;
-  if (this->isLoop()) {
-    for (auto S : this->getListStmt()) {
-      Tot += S->getCost();
-    }
-  } else {
-    for (auto T : this->getTacList()) {
-      // FIXME: this is a very _naïve_ (i.e. stupid) metric...
-      Tot += MVOp::getOperationCost(T.getMVOP());
-      Tot += (T.getA()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
-      Tot += (T.getB()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
-      if (T.getC() != nullptr) {
-        Tot += (T.getC()->getKind() == MVExpr::MVK_Array) ? 2 : 0;
-      }
-    }
-  }
-  return Tot;
-}
-
-// ---------------------------------------------
-long StmtWrapper::computeSequentialCostStmtWrapper(
-    std::list<StmtWrapper *> SL) {
-  long TotalCost = 0;
-  for (auto S : SL) {
-    TotalCost += S->getCost();
-  }
-  return TotalCost;
-}
-
-// ---------------------------------------------
 std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
                                                    ScopLoc *Scop) {
   std::list<StmtWrapper *> SList;

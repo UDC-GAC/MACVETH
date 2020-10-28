@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # Project name
 set(PROJECT_NAME MACVETH)
-project(${PROJECT_NAME} VERSION 0.1)
+project(${PROJECT_NAME} VERSION 0.1.0)
 
 # LLVM version
 set(LLVM_VER llvm-10)

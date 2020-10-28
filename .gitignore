@@ -4,7 +4,6 @@ macveth
 *.bin
 *_report.txt
 *.warn
-*.s
 *__tmp*
 .vscode/*
 *.spf
@@ -12,11 +11,14 @@ macveth
 *.tar.xz
 *.bz2
 *.s
+*.S
+*.xml
 
 # Results
 *.csv
 *.output
 */SPF_org/*
+macveth_output_arch_isa
 
 # Temp files
 output/
@@ -28,6 +30,7 @@ tests/warn
 tests/macveth_output.c
 tests/test
 results/
+macveth_output.c
 
 # Benchmarking
 ubench
@@ -98,6 +101,10 @@ compile_commands.json
 
 # Python
 __pycache__/
+*.pyc
+
+# Assembly
+*.asm
 
 # Latex
 *.fls

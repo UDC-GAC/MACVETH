@@ -32,6 +32,7 @@
 #ifndef MACVETH_VECTORIR_H
 #define MACVETH_VECTORIR_H
 
+#include "include/MVExpr/MVDataType.h"
 #include "include/Node.h"
 
 using namespace macveth;
@@ -51,108 +52,41 @@ public:
     /// use this type in order to detect these special cases which can be
     /// optimized
     REDUCE,
+    /// Inductions, e.g. A[i] = x
+    INDUCTION,
     /// In any other case, we just say that the vector operation must be
     /// sequential
     SEQ
   };
 
-  /// Vector data types: most of them are self explanatory
-  enum VDataType {
-    /// This is the direct translation to "pd"
-    DOUBLE,
-    /// This is the direct translation onto "sd"
-    SDOUBLE,
-    /// This is the direct translation to "ps"
-    FLOAT,
-    /// This is the direct translation to "ss"
-    SFLOAT,
-    /// Unsigned 8-bit integer
-    UINT8,
-    /// Unsigned 16-bit integer
-    UINT16,
-    /// Unsigned 32-bit integer
-    UINT32,
-    /// Unsigned 64-bit integer
-    UINT64,
-    /// Signed 8-bit integer
-    INT8,
-    /// Signed 16-bit integer
-    INT16,
-    /// Signed 32-bit integer
-    INT32,
-    /// Signed 64-bit integer
-    INT64,
-    /// 128 bits, undefined type
-    UNDEF128,
-    /// 256 bits, undefined type
-    UNDEF256,
-    /// Input vector is INT128, output can be different
-    IN_INT128,
-    /// Input vector is FLOAT128, output can be different
-    IN_FLOAT128,
-    /// Input vector is DOUBLE128, output can be different
-    IN_DOUBLE128,
-    /// Input vector is INT256, output can be different
-    IN_INT256,
-    /// Input vector is FLOAT256, output can be different
-    IN_FLOAT256,
-    /// Input vector is DOUBLE256, output can be different
-    IN_DOUBLE256
-  };
-
-  /// Table of equivalences between C/C++ basic numeric types and VectorIR's
-  static inline std::map<std::string, VDataType> CTypeToVDataType = {
-      {"double", DOUBLE},   {"float", FLOAT},     {"uint8_t", UINT8},
-      {"uint16_t", UINT16}, {"uint32_t", UINT32}, {"uint64_t", UINT64},
-      {"int8_t", INT8},     {"int16_t", INT16},   {"int32_t", INT32},
-      {"int64_t", INT64},   {"int", INT32},       {"long", INT64},
-  };
-
-  /// Table of equivalences between the VDataTypes and the number of bits of
-  /// type
-  static inline std::map<VDataType, int> VDataTypeWidthBits = {
-      {DOUBLE, 64}, {FLOAT, 32},  {SDOUBLE, 64}, {SFLOAT, 32},
-      {UINT8, 8},   {UINT16, 16}, {UINT32, 32},  {UINT64, 64},
-      {INT8, 8},    {INT16, 16},  {INT32, 32},   {INT64, 64},
-  };
-
-  /// Vector width possible types
-  enum VWidth {
-    W8 = 8,
-    W16 = 16,
-    W32 = 32,
-    W64 = 64,
-    W128 = 128,
-    W256 = 256,
-    W512 = 512
-  };
-
   /// Compute the vector width needed from the number of operands and the type
   /// them
-  static VWidth getWidthFromVDataType(int NOps, VDataType VData) {
-    int Bits = VDataTypeWidthBits[VData] * NOps;
+  static MVDataType::VWidth getWidthFromVDataType(int NOps,
+                                                  MVDataType::VDataType VData) {
+    int Bits = MVDataType::VDataTypeWidthBits[VData] * NOps;
     // Utils::printDebug("VectorIR", "bits = " + std::to_string(Bits));
     if (Bits > 256) {
-      return VWidth::W512;
+      return MVDataType::VWidth::W512;
     } else if (Bits > 128) {
-      return VWidth::W256;
+      return MVDataType::VWidth::W256;
     } else if (Bits > 64) {
-      return VWidth::W128;
+      return MVDataType::VWidth::W128;
     } else if (Bits > 32) {
-      return VWidth::W64;
+      return MVDataType::VWidth::W64;
     } else if (Bits > 16) {
-      return VWidth::W32;
+      return MVDataType::VWidth::W32;
     } else if (Bits > 8) {
-      return VWidth::W16;
+      return MVDataType::VWidth::W16;
     }
-    return VWidth::W8;
+    return MVDataType::VWidth::W8;
   }
 
   /// Unique identifier for the operand
   static inline unsigned int VID = 0;
   /// Keeping track of the correspondence between the registers name and the
   /// new naming
-  static inline std::map<std::tuple<std::string, VectorIR::VWidth>, std::string>
+  static inline std::map<std::tuple<std::string, MVDataType::VWidth>,
+                         std::string>
       MapRegToVReg;
   /// Keeping track of the loads in the program
   static inline std::list<std::tuple<std::vector<int>, std::string>> MapLoads;
@@ -183,13 +117,11 @@ public:
     /// creating the object
     Node **UOP = nullptr;
     /// Data type
-    VDataType DType = VDataType::DOUBLE;
+    MVDataType::VDataType DType = MVDataType::VDataType::DOUBLE;
     /// Width of this operand
-    VWidth Width = VWidth::W256;
+    MVDataType::VWidth Width = MVDataType::VWidth::W256;
     /// Mask for shuffling if necessary
     std::vector<long> Idx;
-    /// Mask for shuffling if necessary
-    unsigned int Shuffle = 0x0;
     /// Mask to avoid elements if necessary
     unsigned int Mask = 0x0;
     /// UOPS are all the same
@@ -218,12 +150,13 @@ public:
     /// Offset of the vector operation
     int Offset = -1;
     /// Check if there is a vector already assigned wraping the same values
-    bool checkIfVectorAssigned(int VL, Node *V[], VectorIR::VWidth);
+    bool checkIfVectorAssigned(int VL, Node::NodeListType &V,
+                               MVDataType::VWidth);
     /// Get width
-    VWidth getWidth() { return Width; }
+    MVDataType::VWidth getWidth() { return Width; }
     /// Get data type of the operand: assumption that all elements are the same
     /// type
-    VDataType getDataType() {
+    MVDataType::VDataType getDataType() {
       // Be careful with this
       return DType;
     }
@@ -250,7 +183,7 @@ public:
     std::string toString();
 
     /// Basic constructor
-    VOperand(int VL, Node *V[], bool Res);
+    VOperand(int VL, Node::NodeListType &V, bool Res);
 
     /// Empty constructor
     VOperand();
@@ -267,9 +200,9 @@ public:
     /// Name of the vector operation
     std::string VN = "";
     /// Vector Width of data used in this operation
-    VWidth VW = VWidth::W256;
+    MVDataType::VWidth VW = MVDataType::VWidth::W256;
     /// Vector data type used
-    VDataType DT = VDataType::DOUBLE;
+    MVDataType::VDataType DT = MVDataType::VDataType::DOUBLE;
     /// Vector first operand
     VOperand OpA;
     /// Vector second operand
@@ -291,7 +224,8 @@ public:
     /// Get the MVOp
     MVOp getMVOp();
     /// Constructor from the CDAG
-    VectorOP(int VL, Node *VOps[], Node *VLoadA[], Node *VLoadB[]);
+    VectorOP(int VL, Node::NodeListType &VOps, Node::NodeListType &VLoadA,
+             Node::NodeListType &VLoadB);
     /// Check if operation is sequential or not
     bool isSequential() { return this->VT == VType::SEQ; }
     /// Render vector operation as string

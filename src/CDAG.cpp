@@ -32,7 +32,6 @@
 #include "include/CDAG.h"
 #include "include/PlcmntAlgo.h"
 #include "include/Utils.h"
-#include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
 #include "include/Vectorization/VectorIR.h"
 #include "clang/AST/Expr.h"
 #include <llvm-10/llvm/Support/ErrorHandling.h>

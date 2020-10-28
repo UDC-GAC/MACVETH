@@ -35,7 +35,7 @@
 #include "include/CostModel/SIMDCostInfo.h"
 #include "include/MVOptions.h"
 #include "include/StmtWrapper.h"
-#include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include <map>
 
 using namespace macveth;
@@ -44,67 +44,38 @@ namespace macveth {
 
 class MVCostModel {
 public:
-  /// Result of computation
-  enum VectorizationType {
-    /// Do not vectorize anything
-    NONE,
-    /// Perform partial vectorization
-    PARTIAL,
-    /// Perform full vectorization
-    FULL
-  };
+  /// Compute cost of a concrete statement
+  static InstCostInfo computeCostForStmtWrapper(StmtWrapper *S);
 
-  /// Return value when generating new code
-  struct SIMDInfo {
-    /// List of SIMD instructions generated
-    SIMDGenerator::SIMDInstListType SIMDList;
-    /// Cost of operations
-    std::map<std::string, SIMDCostInfo> CostOp;
-    /// Number of operations of each type
-    std::map<std::string, long> NumOp;
-    /// Total cost
-    long TotCost;
-    /// Vectorization type
-    VectorizationType Vectorize;
+  /// Compute cost of a region or set of statements
+  static InstCostInfo
+  computeCostForStmtWrapperList(std::list<StmtWrapper *> SL);
 
-    /// Constructor
-    SIMDInfo(SIMDGenerator::SIMDInstListType S,
-             std::map<std::string, SIMDCostInfo> CostOp,
-             std::map<std::string, long> NumOp, long TotCost)
-        : SIMDList(S), CostOp(CostOp), NumOp(NumOp), TotCost(TotCost) {}
+  /// Compute cost of a concrete node
+  static InstCostInfo computeCostForNode(Node *N);
 
-    /// Do we have to vectorize
-    bool isThereAnyVectorization() {
-      return Vectorize != VectorizationType::NONE;
-    }
+  /// Compute cost of a region or set of nodes
+  static InstCostInfo computeCostForNodeList(Node::NodeListType NL);
 
-    /// Printing the total cost of the operations
-    void printCost() {
-      std::cout << "---------- SIMD REPORT ----------\n";
-      for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {
-        std::cout << It->first + "\t=\t" +
-                         std::to_string(NumOp[It->first] * It->second.Latency) +
-                         "\t(" + std::to_string(NumOp[It->first]) + ")"
-                  << std::endl;
-      }
-      std::cout << " TOTAL = " + std::to_string(TotCost) << std::endl;
-      std::cout << "-------- END SIMD REPORT --------\n";
-    }
-  };
+  /// Compute cost of a vector operation generated in the Vector IR
+  static InstCostInfo computeVectorOPCost(VectorIR::VectorOP V,
+                                          SIMDBackEnd *SG);
 
-  using MVCost = std::map<std::string, long>;
+  /// Compute the cost model according to the latency-uops
+  static SIMDInfo computeCostModel(std::list<StmtWrapper *> SL,
+                                   SIMDBackEnd *SG);
 
-  static long computeSequentialCostStmtWrapper(std::list<StmtWrapper *> SL);
+  /// Generate report, basically
+  static SIMDInfo generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S);
 
-  /// Compute the cost model according to the latency-uops-
-  static SIMDInfo computeCostModel(CDAG *G, SIMDGenerator *SG);
+  /// Get the vector operations from the CDAG
+  static std::list<VectorIR::VectorOP>
+  getVectorOpFromCDAG(Node::NodeListType NList, SIMDBackEnd *SG);
 
-  static SIMDInfo computeSIMDCost(SIMDGenerator::SIMDInstListType S);
-
-private:
-  MVCostModel *_instance;
+  /// Greedy algorithm for consuming nodes in the CDAG
+  static std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType NL,
+                                                         SIMDBackEnd *SG);
 };
 
 } // namespace macveth
-
 #endif /* !MACVETH_COSTMODEL_H */

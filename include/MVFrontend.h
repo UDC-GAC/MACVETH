@@ -2,24 +2,24 @@
  * File					 : include/MVFrontend.h
  * Author				 : Marcos Horro
  * Date					 : Fri 09 Oct 2020 04:53 +02:00
- * 
+ *
  * Last Modified : Tue 20 Oct 2020 12:38 +02:00
  * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
- * 
+ *
  * MIT License
- * 
+ *
  * Copyright (c) 2020 Colorado State University
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is furnished to do
- * so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -35,7 +35,7 @@
 #include "include/CDAG.h"
 #include "include/MVPragmaHandler.h"
 #include "include/StmtWrapper.h"
-#include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/Tooling.h"
@@ -70,13 +70,13 @@ private:
   /// Rewrite TAC as regular statements
   void renderTACInPlace(std::list<StmtWrapper *> SL, long TacID, int Offset);
   /// Render SIMD instructions where they should be (regular map operations)
-  void renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
+  void renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
                              std::list<StmtWrapper *> SL);
   /// Render SIMD after a statement (for reductions, for instance)
-  bool renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
+  bool renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
                                 std::list<StmtWrapper *> SL);
   /// Render SIMD before a statement (for initializing reductions, for instance)
-  bool renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
+  bool renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
                                  std::list<StmtWrapper *> SL);
   /// Holds information regarding the ROI
   ScopHandler *SL;

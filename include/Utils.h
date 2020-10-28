@@ -77,6 +77,13 @@ public:
   /// Check whether expression is or not numeric
   static bool isNumericValue(Expr *E);
 
+  /// String to uppercase
+  static std::string toUppercase(std::string S) {
+    std::transform(S.begin(), S.end(), S.begin(),
+                   [](unsigned char C) { return std::toupper(C); });
+    return S;
+  }
+
   /// For printing debug information to file if specified
   static void printDebug(std::string M, std::string Msg) {
     if (MVOptions::Debug) {

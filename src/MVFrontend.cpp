@@ -1,11 +1,14 @@
-/**
- * File              : MVFrontend.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 13 Mar 2020 12:28:45 CET
- * Last Modified Date: Lun 23 Mar 2020 18:33:47 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+/*
+ * File					 : src/MVFrontend.cpp
+ * Author				 : Marcos Horro
+ * Date					 : Fri 09 Oct 2020 04:53 +02:00
  *
- * Copyright (c) 2020 Marcos Horro <marcos.horro@udc.gal>
+ * Last Modified : Tue 20 Oct 2020 05:01 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,11 +30,12 @@
  */
 
 #include "include/MVFrontend.h"
+#include "include/CostModel/MVCostModel.h"
 #include "include/MVAssert.h"
 #include "include/MVOptions.h"
 #include "include/TAC.h"
 #include "include/Utils.h"
-#include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
+#include "include/Vectorization/SIMD/SIMDBackEndFactory.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
@@ -140,34 +144,25 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
       commentReplacedStmts(S->getListStmt());
       continue;
     }
-    if (S->isVectorized()) {
-      Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         "// stmt vectorized: ", true, true);
-    } else {
-      Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         "// stmt not vectorized: ", true, true);
-    }
+    Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), "// ", true, true);
   }
 }
 
 // ---------------------------------------------
-bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
+bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
                                               std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
       if (auto L = renderSIMDInstBeforePlace(SI, S->getListStmt())) {
         Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                           SI.render() + ";\t// latency = " +
-                               std::to_string(SI.Cost.Latency) + "\n");
+                           SI.render() + ";\t\n");
       }
     } else {
       for (auto T : S->getTacList()) {
         if (SI.getSourceLocationOrder() == T.getTacID()) {
           if (!S->isInLoop()) {
             Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
-                                     SI.render() + ";\t// latency = " +
-                                         std::to_string(SI.Cost.Latency) +
-                                         "\n");
+                                     SI.render() + ";\t\n");
             return false;
           } else {
             return true;
@@ -181,15 +176,13 @@ bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDGenerator::SIMDInst SI,
 }
 
 // ---------------------------------------------
-bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
+bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
                                              std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
       if (auto L = renderSIMDInstAfterPlace(SI, S->getListStmt())) {
-        Rewrite.InsertTextAfterToken(
-            S->getClangStmt()->getEndLoc(),
-            SI.render() + ";\t// latency = " + std::to_string(SI.Cost.Latency) +
-                "\n");
+        Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
+                                     SI.render() + ";\t\n");
       }
     } else {
       for (auto T : S->getTacList()) {
@@ -197,8 +190,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
           if (!S->isInLoop()) {
             Rewrite.InsertTextAfterToken(
                 S->getClangStmt()->getEndLoc().getLocWithOffset(1),
-                "\n" + SI.render() +
-                    ";\t// latency = " + std::to_string(SI.Cost.Latency));
+                "\n" + SI.render() + ";\t");
             return false;
           } else {
             return true;
@@ -211,7 +203,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDGenerator::SIMDInst SI,
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
+void MVFuncVisitor::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
   // Sequential case: is this needed?
   if (SI.isSequential() && SI.isInOrder()) {
@@ -249,9 +241,7 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDGenerator::SIMDInst SI,
         for (auto T : S->getTacList()) {
           if (SI.getSourceLocationOrder() == T.getTacID()) {
             Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                               SI.render() + ";\t// latency = " +
-                                   std::to_string(SI.Cost.Latency) + "\n",
-                               true, true);
+                               SI.render() + ";\t\n", true, true);
             return;
           }
         }
@@ -284,15 +274,15 @@ void MVFuncVisitor::addHeaders(std::list<std::string> S, FileID FID) {
   auto SM = Utils::getSourceMgr();
   if (S.size() > 0) {
     Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
-                       "// begin MACVETH: headers added\n", true, true);
+                       "/* begin INFO MACVETH: headers added */\n", true, true);
   }
   for (auto I : S) {
     Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
                        "#include <" + I + ">\n", true, true);
   }
   if (S.size() > 0) {
-    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1), "// end MACVETH\n",
-                       true, true);
+    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
+                       "/* end INFO MACVETH */\n", true, true);
   }
 }
 
@@ -303,8 +293,8 @@ void clearAllMappings() {
   TAC::clear();
   // VectorIR
   VectorIR::clear();
-  // SIMDGenerator
-  SIMDGenerator::clearMappings();
+  // SIMDBackEnd
+  SIMDBackEnd::clearMappings();
 }
 
 // ---------------------------------------------
@@ -321,7 +311,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   }
 
   std::list<std::string> DimsDeclFunc = {};
-  SIMDGenerator::RegistersMapT RegistersDeclared;
+  SIMDBackEnd::RegistersMapT RegistersDeclared;
 
   SourceLocation RegDeclLoc;
   auto Scops = ScopHandler::funcGetScops(fd);
@@ -347,14 +337,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     // Perform unrolling according to the pragmas
     unrollOptions(SL);
 
-    // Get all the TAC from all the Stmts
-    TacListType TL;
-    for (auto SWrap : SL) {
-      for (auto S : SWrap->getTacList()) {
-        S.printTAC();
-        TL.push_back(S);
-      }
-    }
     if (!Scop->PA.SIMDCode) {
       MVInfo("[MVConsumer] "
              "No SIMD code to generate, just writing "
@@ -364,24 +346,13 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       DimsDeclFunc.splice(DimsDeclFunc.end(),
                           rewriteLoops(SL, &Rewrite, DimsDeclFunc));
     } else {
-      // Creating the CDAG
-      auto G = CDAG::createCDAGfromTAC(TL);
-
-      // Get SIMD generator according to the option chosen
-      auto SIMDGen = SIMDGeneratorFactory::getBackend(MVOptions::ISA);
+      // Get SIMD back end according to the option chosen
+      auto SIMDGen = SIMDBackEndFactory::getBackend(MVOptions::ISA);
 
       // Computing the cost model of the CDAG created
-      auto SInfo = SIMDGenerator::computeCostModel(G, SIMDGen);
+      auto SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
-      // Vectorize according to the SIMD cost model selected and the total
-      // cost of the SIMD operations
-      auto Vectorize =
-          ((MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED) ||
-           ((MVOptions::SIMDCostModel == MVSIMDCostModel::CONSERVATIVE) &&
-            (SInfo.TotCost <
-             StmtWrapper::computeSequentialCostStmtWrapper(SL))));
-
-      if (Vectorize) {
+      if (SInfo.isThereAnyVectorization()) {
         // Render the registers we are going to use, declarations
         if (IsLastScop) {
           for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
@@ -412,18 +383,17 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         commentReplacedStmts(SL);
 
         // FIXME: generate report
-        // SInfo.printCost();
-        MVInfo(
-            "Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
-            "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
-            "; Sequential cost = " +
-            std::to_string(StmtWrapper::computeSequentialCostStmtWrapper(SL)));
+        // SInfo.generateReport();
+        MVInfo("Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
+               "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
+               "; Sequential cost = " +
+               MVCostModel::computeCostForStmtWrapperList(SL).toString());
       } else {
         MVWarn(
             "Region not vectorized (SCOP = " + std::to_string(Scop->StartLine) +
             "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
             "; Sequential cost = " +
-            std::to_string(StmtWrapper::computeSequentialCostStmtWrapper(SL)));
+            MVCostModel::computeCostForStmtWrapperList(SL).toString());
       }
     }
   }

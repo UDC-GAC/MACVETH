@@ -35,7 +35,7 @@
 #include <algorithm>
 
 // ---------------------------------------------
-bool opsAreSequential(int VL, Node *VOps[]) {
+bool opsAreSequential(int VL, Node::NodeListType &VOps) {
   for (int i = 1; i < VL; ++i) {
     if ((VOps[i - 1]->getSchedInfo().FreeSched <
          VOps[i]->getSchedInfo().FreeSched)) {
@@ -47,7 +47,8 @@ bool opsAreSequential(int VL, Node *VOps[]) {
 }
 
 // ---------------------------------------------
-bool rawDependencies(int VL, Node *VOps[], Node *VLoad[]) {
+bool rawDependencies(int VL, Node::NodeListType &VOps,
+                     Node::NodeListType &VLoad) {
   for (int i = 0; i < VL - 1; ++i) {
     if (VOps[i]->getOutputInfoName() == VLoad[i + 1]->getRegisterValue()) {
       return true;
@@ -58,7 +59,7 @@ bool rawDependencies(int VL, Node *VOps[], Node *VLoad[]) {
 }
 
 // ---------------------------------------------
-bool isAtomic(int VL, Node *VOps[], Node *VLoad[]) {
+bool isAtomic(int VL, Node::NodeListType &VOps, Node::NodeListType &VLoad) {
   for (int i = 0; i < VL; ++i) {
     if (VOps[i]->getSchedInfo().FreeSched <=
         VLoad[i]->getSchedInfo().FreeSched) {
@@ -69,8 +70,8 @@ bool isAtomic(int VL, Node *VOps[], Node *VLoad[]) {
 }
 
 // ---------------------------------------------
-bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node *V[],
-                                               VectorIR::VWidth Width) {
+bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node::NodeListType &V,
+                                               MVDataType::VWidth Width) {
   for (int n = 0; n < VL; ++n) {
     if (MapRegToVReg.find(std::make_tuple(V[n]->getRegisterValue(), Width)) ==
         MapRegToVReg.end()) {
@@ -128,7 +129,7 @@ MVOp VectorIR::VectorOP::getMVOp() {
 }
 
 // ---------------------------------------------
-bool areInSameVector(int VL, Node *V[], bool Store) {
+bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
   auto E = (Store) ? V[0]->getOutputInfo().E : V[0]->getMVExpr();
   auto A0 = dyn_cast<MVExprArray>(E);
   if (!A0) {
@@ -148,7 +149,8 @@ bool areInSameVector(int VL, Node *V[], bool Store) {
 }
 
 // ---------------------------------------------
-std::vector<long> getMemIdx(int VL, Node *V[], unsigned int Mask, bool Store) {
+std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
+                            bool Store) {
   std::vector<long> Idx(VL);
   Idx[0] = 0;
   auto E = (Store) ? V[0]->getOutputInfo().E : V[0]->getMVExpr();
@@ -168,18 +170,7 @@ std::vector<long> getMemIdx(int VL, Node *V[], unsigned int Mask, bool Store) {
 }
 
 // ---------------------------------------------
-unsigned int getShuffle(int VL, int Width, Node *V[]) {
-  // TODO: don't know if this is worthable
-  unsigned int Shuffle = 0x0;
-  int Bits = Width / 4;
-  for (int n = 0; n < VL; ++n) {
-  }
-
-  return Shuffle;
-}
-
-// ---------------------------------------------
-unsigned int getMask(int VL, Node *V[]) {
+unsigned int getMask(int VL, Node::NodeListType &V) {
   unsigned int Mask = 0x00;
   for (int n = 0; n < VL; ++n) {
     if (V[n] != nullptr) {
@@ -193,7 +184,7 @@ unsigned int getMask(int VL, Node *V[]) {
 VectorIR::VOperand::VOperand(){/* empty constructor */};
 
 // ---------------------------------------------
-VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
+VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Init list of unit operands
   this->UOP = (Node **)malloc(sizeof(Node *) * VL);
   this->Order = V[0]->getTacID();
@@ -204,17 +195,17 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
   auto PrimaryNode = V[0];
 
   // Get data type
-  this->DType = CTypeToVDataType[PrimaryNode->getDataType()];
+  this->DType = MVDataType::CTypeToVDataType[PrimaryNode->getDataType()];
   if ((this->EqualVal) && (this->MemOp)) {
-    if ((this->DType == VectorIR::VDataType::FLOAT) ||
-        (this->DType == VectorIR::VDataType::DOUBLE)) {
-      this->DType = VectorIR::VDataType(this->DType + 1);
+    if ((this->DType == MVDataType::VDataType::FLOAT) ||
+        (this->DType == MVDataType::VDataType::DOUBLE)) {
+      this->DType = MVDataType::VDataType(this->DType + 1);
     }
   }
 
   // Computing data width
   this->Width = getWidthFromVDataType(this->VSize, this->DType);
-  this->Size = this->Width / VDataTypeWidthBits[this->DType];
+  this->Size = this->Width / MVDataType::VDataTypeWidthBits[this->DType];
 
   // Check whether the operand is a store or not
   if ((PrimaryNode->getNodeType() == Node::NODE_STORE) && (Res)) {
@@ -300,14 +291,13 @@ VectorIR::VOperand::VOperand(int VL, Node *V[], bool Res) {
         this->Contiguous = T;
       }
     }
-    // TODO: Get shuffle index
-    this->Shuffle = getShuffle(VL, this->getWidth(), V);
   }
 };
 
 // ---------------------------------------------
-VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
-                                Node *VLoadB[]) {
+VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
+                                Node::NodeListType &VLoadA,
+                                Node::NodeListType &VLoadB) {
   // Premises of our algorithm
   // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
@@ -340,7 +330,8 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[],
 }
 
 // ---------------------------------------------
-VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[]) {
+VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
+                                Node::NodeListType &VLoadA) {
   // Premises of our algorithm
   // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
@@ -370,8 +361,9 @@ VectorIR::VType getVectorOpType(int VL, Node *VOps[], Node *VLoadA[]) {
 }
 
 // ---------------------------------------------
-VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
-                             Node *VLoadB[]) {
+VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
+                             Node::NodeListType &VLoadA,
+                             Node::NodeListType &VLoadB) {
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
@@ -380,9 +372,9 @@ VectorIR::VectorOP::VectorOP(int VL, Node *VOps[], Node *VLoadA[],
   // unary, therefore: R = R OP B
   if (VOps[0]->getOutputInfo().MVOP.isAssignment()) {
     VLoadA = VLoadB;
-    VLoadB = nullptr;
+    VLoadB[0] = nullptr;
   }
-  if (VLoadB != nullptr) {
+  if (VLoadB[0] != nullptr) {
     // Vector type will depend on the operations and operations, logically
     this->VT = getVectorOpType(VL, VOps, VLoadA, VLoadB);
   } else {

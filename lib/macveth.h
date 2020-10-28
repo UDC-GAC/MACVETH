@@ -1,11 +1,14 @@
-/**
- * File              : macveth_translator.h.in
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Ven 22 Nov 2019 15:15:46 MST
- * Last Modified Date: Ven 06 Dec 2019 16:37:39 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+/*
+ * File					 : lib/macveth.h
+ * Author				 : Marcos Horro
+ * Date					 : Mon 03 Feb 2020 09:59 +01:00
  *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
+ * Last Modified : Tue 20 Oct 2020 04:06 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,3 +35,4 @@
 /// Versioning of the compiler
 #define MACVETH_VERSION_MAJOR @MACVETH_VERSION_MAJOR @
 #define MACVETH_VERSION_MINOR @MACVETH_VERSION_MINOR @
+#define MACVETH_VERSION_PATCH @MACVETH_VERSION_PATCH @

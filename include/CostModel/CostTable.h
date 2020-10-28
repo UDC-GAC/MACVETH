@@ -32,7 +32,10 @@
 #ifndef MACVETH_COSTTABLE_H
 #define MACVETH_COSTTABLE_H
 
+#include "include/Utils.h"
+#include <list>
 #include <map>
+#include <sstream>
 #include <string.h>
 
 namespace macveth {
@@ -41,79 +44,211 @@ namespace macveth {
 /// different architectures
 class CostTable {
 public:
+  static const inline std::string NullValue = "NA";
+  static const inline std::string SeqValue = "seq";
+
+  /// Latency helper class to parse properly latencies format
+  struct Latency {
+    /// Minimum latency
+    unsigned int MinLatency = 0;
+    /// Maximum latency
+    unsigned int MaxLatency = 0;
+    /// Address latency
+    unsigned int AddrLatency = 0;
+    /// Memory latency
+    unsigned int MemLatency = 0;
+    /// Determine whether latency has been set or not
+    bool Undefined = true;
+
+    /// Get latency
+    unsigned int getLatency() {
+      if (Undefined) {
+        return 1;
+      }
+      if (MinLatency == MaxLatency) {
+        return MinLatency;
+      } else {
+        return (MaxLatency + MinLatency) / 2;
+      }
+    }
+
+    /// Get memory or address latency
+    unsigned int getLatency(std::string K) {
+      if ((K == "addr") && (AddrLatency != 0)) {
+        return AddrLatency;
+      }
+      if ((K == "mem") && (MemLatency != 0)) {
+        return MemLatency;
+      }
+      return getLatency();
+    }
+
+    /// Empty constructor
+    Latency(){};
+
+    /// Latency constructor based on format: # | [#;#] | [#;(#,#)] where # is a
+    /// integer
+    Latency(std::string L) {
+      if (L == NullValue) {
+        return;
+      }
+      auto open = L.find("[") + 1;
+      auto close = L.find("]") - 1;
+      Undefined = false;
+      if (open == std::string::npos) {
+        // # case
+        MinLatency = MaxLatency = std::stoi(L.c_str());
+        return;
+      } else {
+        // [#;something] case
+        std::string W;
+        auto SubStr = L.substr(open, close);
+        std::stringstream TMP(SubStr);
+        while (getline(TMP, W, ';')) {
+          auto open = W.find("(") + 1;
+          auto close = W.find(")") - 1;
+          if (open == std::string::npos) {
+            if (MinLatency == 0) {
+              MinLatency = std::stoi(W.c_str());
+            } else {
+              MaxLatency = std::stoi(W.c_str());
+            }
+            continue;
+          }
+          auto SubSubStr = W.substr(open, close);
+          std::stringstream TMPin(SubSubStr);
+          std::string Win;
+          while (getline(TMPin, Win, ',')) {
+            if (AddrLatency == 0) {
+              AddrLatency = std::stoi(Win.c_str());
+            } else {
+              MemLatency = std::stoi(Win.c_str());
+            }
+          }
+        }
+      }
+    };
+  };
+  /// This is a future feature, if is implemented any port algorithm
+  struct Ports {
+    /// Number of micro-instructions
+    unsigned int NUops = 0;
+    /// List of usable ports
+    std::list<int> P;
+  };
+
+  using PortList = std::list<Ports>;
+
   /// Structure to define the table of costs for the architectures
   struct Row {
+    /// MVOP
+    std::string MVOP = "";
+    /// Intrinsics
+    std::string Intrinsics = "";
+    /// XED iform
+    /// More documentation on:
+    std::string XED_iform = "";
+    /// ASM
+    std::string Asm = "";
+    /// CPUID
+    std::string CPUID = "";
     /// Latency of the operation
-    unsigned int Latency = 1;
+    Latency Lat;
     /// Throughput of the operation: number of cycles it takes to the processor
     /// to perform the calculations or operations of that instruction
     double Throughput = 0;
-    /// Number of units available for executing this type of operation
-    /// simultaneously
-    unsigned int NUnits = 0;
     /// Number of micro-instructions issued
-    unsigned int NUops = 1;
-    /// Pattern of the instruction
-    std::string Pattern = "";
+    int NUops = 1;
+    /// Number of ports
+    PortList NPorts = {};
+
+    /// Empty constructor for initialization reasons
+    Row(){};
+
+    Row(std::string XED_iform, std::string Asm, std::string CPUID, Latency Lat,
+        double Throughput, int NUops)
+        : XED_iform(XED_iform), Asm(Asm), CPUID(CPUID), Lat(Lat),
+          Throughput(Throughput), NUops(NUops){};
   };
 
   /// Each Table identifies an architecture
   using Table = std::map<std::string, Row>;
 
-  /// This acts like a database using the std::map to identify each arhitecture
-  /// and its correspondant Table, which is basically another map where each
-  /// operation identifies each Row, that holds information regarding the
-  /// latency, througput, number of units, and the pattern
-  // static inline std::map<std::string, Table> Tables;
-  static inline Table Tables;
+  /// Table map for intrinsics
+  static inline Table Tintrin;
 
-  /// Get row of table
-  static CostTable::Row getRow(std::string Arch, std::string Op) {
-    return CostTable::Tables[Op];
+  /// Table map for MVOP
+  static inline Table TMVOP;
+
+  /// Table map for XED iform
+  static inline Table TXED;
+
+  /// Get row of table for intrinsics
+  static CostTable::Row getOpInfo(std::string Op) {
+    return CostTable::Tintrin[Op];
   }
 
-  /// Get latency of operation given an architecture and the desired operation
-  /// Op
-  static unsigned int getLatency(std::string Arch, std::string Op) {
-    return CostTable::Tables[Op].Latency;
+  /// Get row of table for intrinsics
+  static CostTable::Row getOpInfoMVOP(std::string Op) {
+    return CostTable::TMVOP[Op];
   }
 
-  /// Get throughput of operation given an architecture and the desired
-  /// operation
-  static double getThroughput(std::string Arch, std::string Op) {
-    return CostTable::Tables[Op].Throughput;
+  /// Get latency according to the XED iform
+  static unsigned int getLatency(std::string Op) {
+    return CostTable::TXED[Op].Lat.getLatency();
   }
 
-  /// Get number of units available for executing this type of operation
-  static unsigned int getUnits(std::string Arch, std::string Op) {
-    return CostTable::Tables[Op].NUnits;
+  /// Get latency of operation given an architecture and the desired intrinsics
+  /// instruction, e.g. _mm256_set_pd()
+  static unsigned int getLatencyIntrin(std::string Op) {
+    if (CostTable::Tintrin[Op].Asm == SeqValue) {
+      unsigned int Lat = 0;
+      if (CostTable::Tintrin[Op].XED_iform == SeqValue) {
+        /// FIXME: why this value...
+        return 10;
+      }
+      std::string W;
+      std::stringstream TMP(CostTable::Tintrin[Op].XED_iform);
+      while (getline(TMP, W, ';')) {
+        Lat += CostTable::getLatency(W);
+      }
+      return Lat;
+    }
+    return CostTable::Tintrin[Op].Lat.getLatency();
   }
 
-  /// Get Row given an architecture and the desired operation Op
-  static std::string getPattern(std::string Arch, std::string Op) {
-    return CostTable::Tables[Op].Pattern;
+  /// Get latency according to the MACVETH's operation
+  static unsigned int getLatencyMVOP(std::string Op) {
+    if (CostTable::TMVOP.find(Op) != CostTable::TMVOP.end()) {
+      return CostTable::getLatency(CostTable::TMVOP[Op].XED_iform);
+    }
+    return 100;
   }
 
-  /// Add Row to Arch Table but with throughput 1 and number of units 1
-  static void addRow(std::string Arch, std::string Op, unsigned int Cost,
-                     std::string Pattern) {
-    CostTable::Tables[Op] = {Cost, 0, 0, 1, Pattern};
+  static Row getIntrinRow(std::string Intrin) {
+    return CostTable::Tintrin[Intrin];
   }
 
-  /// Add Row to Arch Table taking into account all parameters described in
-  /// the Row
-  static void addRow(std::string Arch, std::string Op, unsigned int C,
-                     double TP, unsigned int NU, std::string Pattern) {
-    CostTable::Tables[Op] = {C, TP, NU, 1, Pattern};
-  }
-  /// Add Row to Arch Table taking into account all parameters described in
-  /// the Row
-  static void addRow(std::string Arch, std::string Op, unsigned int C,
-                     double TP, unsigned int NU, unsigned int NUops,
-                     std::string Pattern) {
-    CostTable::Tables[Op] = {C, TP, NU, NUops, Pattern};
+  static Row getMVOPRow(std::string MVOP) { return CostTable::TMVOP[MVOP]; }
+
+  /// Add row to table
+  static void addRow(std::string MVOP, std::string Intrinsics, std::string ASM,
+                     std::string XED_iform, std::string Lat, std::string Th,
+                     std::string Uops, std::string Ports) {
+    Row R(XED_iform, ASM, "", Latency(Lat), std::atof(Th.c_str()),
+          std::atoi(Uops.c_str()));
+    if (MVOP != NullValue) {
+      CostTable::TMVOP[MVOP] = R;
+    }
+    if (Intrinsics != NullValue) {
+      CostTable::Tintrin[Intrinsics] = R;
+    }
+    if (XED_iform != SeqValue) {
+      CostTable::TXED[XED_iform] = R;
+    }
   }
 };
+
 } // namespace macveth
 
 #endif /* !MACVETH_COSTTABLE_H */

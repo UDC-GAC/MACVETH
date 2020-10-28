@@ -1,5 +1,5 @@
 /*
- * File	: include/Vectorization/SIMD/SIMDGeneratorFactory.h
+ * File	: include/Vectorization/SIMD/SIMDBackEndFactory.h
  * Author				 : Marcos Horro
  * Date					 : Fri 09 Oct 2020 04:53 +02:00
  *
@@ -33,19 +33,19 @@
 #define MACVETH_SIMDGENERATORFACTORY_H
 
 #include "include/MVOptions.h"
-#include "include/Vectorization/SIMD/AVX2Gen.h"
-#include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include "include/Vectorization/SIMD/AVX2/AVX2BackEnd.h"
+#include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include <string>
 
 namespace macveth {
 
 /// Wrapper for avoiding low level details when creating the different
 /// backends
-class SIMDGeneratorFactory {
+class SIMDBackEndFactory {
 public:
   /// Return a specific backend given as input
-  static SIMDGenerator *getBackend(MVISA ISA) {
-    SIMDGenerator *G = nullptr;
+  static SIMDBackEnd *getBackend(MVISA ISA) {
+    SIMDBackEnd *G = nullptr;
     /// TODO: only AVX2 implemented yet...
     switch (ISA) {
     case SSE:
@@ -56,7 +56,7 @@ public:
     // FIXME: remove this at some point: native case should be determined at
     // some point, not to be contemplated exactly here
     case AVX2:
-      G = AVX2Gen::getSingleton();
+      G = AVX2BackEnd::getSingleton();
       if (G != nullptr) {
         return G;
       }

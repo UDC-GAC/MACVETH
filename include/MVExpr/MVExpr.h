@@ -32,6 +32,7 @@
 #ifndef MACVETH_MVEXPR_H
 #define MACVETH_MVEXPR_H
 
+#include "include/MVExpr/MVDataType.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/Expr.h"
@@ -109,6 +110,7 @@ public:
     } else {
       this->setTypeStr(E->getType().getAsString());
     }
+    this->MVDT = MVDataType::CTypeToVDataType[this->getTypeStr()];
   }
 
   /// Set info
@@ -207,6 +209,8 @@ private:
   MVExprInfo TempInfo = TMP_RES;
   /// Type of data in string
   std::string TypeStr = "";
+  /// MACVETH's datatype
+  MVDataType::VDataType MVDT = MVDataType::VDataType::UNDEF;
   /// Expresion as Clang's
   clang::Expr *ClangExpr = nullptr;
   /// Expression as string

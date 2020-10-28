@@ -1,5 +1,5 @@
-# Syntax:
----------
+# DEPRECATED Syntax:
+--------------------
 
 These files follow a CSV-style format. Each architecture contains a set of rows
 which follow the next pattern:

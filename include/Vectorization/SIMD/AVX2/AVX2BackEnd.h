@@ -1,5 +1,5 @@
 /*
- * File					 : include/Vectorization/SIMD/AVX2Gen.h
+ * File	: include/Vectorization/SIMD/AVX2BackEnd.h
  * Author				 : Marcos Horro
  * Date					 : Fri 09 Oct 2020 04:53 +02:00
  *
@@ -32,7 +32,7 @@
 #ifndef MACVETH_AVX2GEN_H
 #define MACVETH_AVX2GEN_H
 
-#include "include/Vectorization/SIMD/SIMDGenerator.h"
+#include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include "include/Vectorization/VectorIR.h"
 
 using namespace macveth;
@@ -40,7 +40,7 @@ using namespace macveth;
 namespace macveth {
 
 /// SIMD generator for AVX2 architectures
-class AVX2Gen : public SIMDGenerator {
+class AVX2BackEnd : public SIMDBackEnd {
 public:
   /// Name of the architecture
   static inline std::string NArch = "x86";
@@ -51,7 +51,7 @@ public:
 
   /// Get headers
   virtual std::list<std::string> getHeadersNeeded() override {
-    return AVX2Gen::Headers;
+    return AVX2BackEnd::Headers;
   }
 
   // Operand operations
@@ -107,162 +107,160 @@ public:
   virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S);
 
   /// One of the optimizations included in AVX2
-  SIMDGenerator::SIMDInstListType
-  fuseAddSubMult(SIMDGenerator::SIMDInstListType I);
+  SIMDBackEnd::SIMDInstListType fuseAddSubMult(SIMDBackEnd::SIMDInstListType I);
 
   /// Horizontal reduction approach
-  SIMDGenerator::SIMDInstListType
-  horizontalSingleReduction(SIMDGenerator::SIMDInstListType TIL);
+  SIMDBackEnd::SIMDInstListType
+  horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL);
 
   /// Horizontal reduction approach
-  SIMDGenerator::SIMDInstListType
-  horizontalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
+  SIMDBackEnd::SIMDInstListType
+  horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL);
 
   /// General reduction approach, based on vertical operations
-  SIMDGenerator::SIMDInstListType
-  generalReductionFusion(SIMDGenerator::SIMDInstListType TIL);
+  SIMDBackEnd::SIMDInstListType
+  generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL);
 
-  SIMDGenerator::SIMDInstListType
-  fuseReductionsList(SIMDGenerator::SIMDInstListType TIL);
+  SIMDBackEnd::SIMDInstListType
+  fuseReductionsList(SIMDBackEnd::SIMDInstListType TIL);
 
-  bool hasRawDependencies(SIMDGenerator::SIMDInstListType L,
-                          SIMDGenerator::SIMDInst I);
+  bool hasRawDependencies(SIMDBackEnd::SIMDInstListType L,
+                          SIMDBackEnd::SIMDInst I);
 
-  bool reductionIsContiguous(SIMDGenerator::SIMDInstListType L,
-                             SIMDGenerator::SIMDInst I);
+  bool reductionIsContiguous(SIMDBackEnd::SIMDInstListType L,
+                             SIMDBackEnd::SIMDInst I);
 
   /// Fusing reductions: peephole optimization
-  SIMDGenerator::SIMDInstListType
-  fuseReductions(SIMDGenerator::SIMDInstListType I);
+  SIMDBackEnd::SIMDInstListType fuseReductions(SIMDBackEnd::SIMDInstListType I);
 
   /// Peephole optimization for fusing reductions
-  SIMDGenerator::SIMDInst genMultAccOp(SIMDGenerator::SIMDInst Mul,
-                                       SIMDGenerator::SIMDInst Acc);
+  SIMDBackEnd::SIMDInst genMultAccOp(SIMDBackEnd::SIMDInst Mul,
+                                     SIMDBackEnd::SIMDInst Acc);
 
   /// Generate mask given a number of elements and width
   std::string getMask(unsigned int MaskVect, int NElems,
-                      VectorIR::VWidth Width);
+                      MVDataType::VWidth Width);
 
-  std::string getMask(unsigned int MaskVect, int NElems, VectorIR::VWidth Width,
-                      VectorIR::VDataType Type);
-
-  /// Get name of AVX architecture
-  virtual std::string getNArch() override { return AVX2Gen::NArch; }
+  std::string getMask(unsigned int MaskVect, int NElems,
+                      MVDataType::VWidth Width, MVDataType::VDataType Type);
 
   /// Get name of AVX architecture
-  virtual std::string getNISA() override { return AVX2Gen::NISA; }
+  virtual std::string getNArch() override { return AVX2BackEnd::NArch; }
+
+  /// Get name of AVX architecture
+  virtual std::string getNISA() override { return AVX2BackEnd::NISA; }
 
   /// Get the translation between VectorIR data widths and AVX2's
-  virtual std::string getMapWidth(VectorIR::VWidth V) override {
-    MVAssert((V != VectorIR::VWidth::W512),
+  virtual std::string getMapWidth(MVDataType::VWidth V) override {
+    MVAssert((V != MVDataType::VWidth::W512),
              "Width too wide for AVX2 (512 bits not supported)!!");
     if (V <= 128) {
-      return MapWidth[VectorIR::VWidth::W128];
+      return MapWidth[MVDataType::VWidth::W128];
     } else {
-      return MapWidth[VectorIR::VWidth::W256];
+      return MapWidth[MVDataType::VWidth::W256];
     }
   }
 
   /// Get the translation between VectorIR data types and AVX2's
-  virtual std::string getMapType(VectorIR::VDataType D) override {
+  virtual std::string getMapType(MVDataType::VDataType D) override {
     return MapType[D];
   }
 
   /// Get max width
-  virtual int getMaxWidth() override { return AVX2Gen::MaxWidth; }
+  virtual int getMaxWidth() override { return AVX2BackEnd::MaxWidth; }
 
   /// Get the type of register according to the VDataType and VWidth. This
   /// method is abstract because each architecture may have different types.
-  virtual std::string getRegisterType(VectorIR::VDataType DT,
-                                      VectorIR::VWidth W) override;
+  virtual std::string getRegisterType(MVDataType::VDataType DT,
+                                      MVDataType::VWidth W) override;
 
   /// Get initial values of a VectorOP
   virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V);
 
   /// Destructor
-  virtual ~AVX2Gen(){};
+  virtual ~AVX2BackEnd(){};
 
   /// Singleton pattern
-  static SIMDGenerator *getSingleton() {
-    if (AVX2Gen::_instance == 0) {
-      AVX2Gen::_instance = new AVX2Gen();
+  static SIMDBackEnd *getSingleton() {
+    if (AVX2BackEnd::_instance == nullptr) {
+      AVX2BackEnd::_instance = new AVX2BackEnd();
     }
-    return AVX2Gen::_instance;
+    return AVX2BackEnd::_instance;
   };
 
 private:
   /// Constructor
-  AVX2Gen() : SIMDGenerator() { SIMDGenerator::populateTable(MVISA::AVX2); }
+  AVX2BackEnd() : SIMDBackEnd() { SIMDBackEnd::populateTable(MVISA::AVX2); }
 
   /// Singletton pattern
-  static inline SIMDGenerator *_instance = 0;
+  static inline SIMDBackEnd *_instance = 0;
 
   /// Add SIMD instruction
-  virtual SIMDGenerator::SIMDInst
+  virtual SIMDBackEnd::SIMDInst
   genSIMDInst(std::string Result, std::string Op, std::string PrefS,
-              std::string SuffS, VectorIR::VWidth Width,
-              VectorIR::VDataType Type, std::list<std::string> Args,
-              SIMDGenerator::SIMDType SType, MVSourceLocation SL,
-              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
+              std::string SuffS, MVDataType::VWidth Width,
+              MVDataType::VDataType Type, std::list<std::string> Args,
+              SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
+              SIMDBackEnd::SIMDInstListType *IL, std::string NameOp = "",
               std::string MVFunc = "", std::list<std::string> MVArgs = {},
               MVOp MVOP = MVOp()) override;
 
   /// Auxiliary function for generating the SIMDInst to the list
-  virtual SIMDGenerator::SIMDInst
+  virtual SIMDBackEnd::SIMDInst
   genSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
               std::string SuffS, std::list<std::string> OPS,
-              SIMDGenerator::SIMDType SType, MVSourceLocation SL,
-              SIMDGenerator::SIMDInstListType *IL = nullptr,
+              SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
+              SIMDBackEnd::SIMDInstListType *IL = nullptr,
               std::string NameOp = "", std::string MVFunc = "",
               std::list<std::string> MVArgs = {}, MVOp MVOP = MVOp()) override;
 
   /// Shuffle method for reductions
   std::string shuffleArguments(std::string A1, std::string A2,
-                               VectorIR::VWidth Width,
-                               SIMDGenerator::SIMDInst I, int Pos);
+                               MVDataType::VWidth Width,
+                               SIMDBackEnd::SIMDInst I, int Pos);
   /// Shuffle method for reductions
   std::string permuteArguments(std::string A1, std::string A2,
-                               SIMDGenerator::SIMDInst I, int Pos);
+                               SIMDBackEnd::SIMDInst I, int Pos);
 
   /// Extract high or low part
-  std::string extractArgument(std::string A, SIMDGenerator::SIMDInst I, int Hi);
+  std::string extractArgument(std::string A, SIMDBackEnd::SIMDInst I, int Hi);
 
   /// Auxiliary method for declaring auxiliary arrays
-  std::string declareAuxArray(VectorIR::VDataType DT);
+  std::string declareAuxArray(MVDataType::VDataType DT);
 
   /// Specific instruction for loading data according to the operand
-  bool genLoadInst(VectorIR::VOperand V, SIMDGenerator::SIMDInstListType *L);
+  bool genLoadInst(VectorIR::VOperand V, SIMDBackEnd::SIMDInstListType *L);
 
   /// Max width
   static inline const int MaxWidth = 256;
 
   /// Mapping the width types with its name in AVX2
-  static inline std::map<VectorIR::VWidth, std::string> MapWidth = {
-      {VectorIR::VWidth::W128, ""}, {VectorIR::VWidth::W256, "256"}};
+  static inline std::map<MVDataType::VWidth, std::string> MapWidth = {
+      {MVDataType::VWidth::W128, ""}, {MVDataType::VWidth::W256, "256"}};
 
   /// Map of VectorIR types and its translation in the AVX2 architecture
-  static inline std::map<VectorIR::VDataType, std::string> MapType = {
-      {VectorIR::VDataType::FLOAT, "ps"},
-      {VectorIR::VDataType::SFLOAT, "ss"},
-      {VectorIR::VDataType::DOUBLE, "pd"},
-      {VectorIR::VDataType::SDOUBLE, "sd"},
-      {VectorIR::VDataType::INT8, "epi8"},
-      {VectorIR::VDataType::INT16, "epi16"},
-      {VectorIR::VDataType::INT32, "epi32"},
-      {VectorIR::VDataType::INT64, "epi64"},
-      {VectorIR::VDataType::UINT8, "epu8"},
-      {VectorIR::VDataType::UINT16, "epu16"},
-      {VectorIR::VDataType::UINT32, "epu32"},
-      {VectorIR::VDataType::UINT64, "epu64"},
-      {VectorIR::VDataType::UNDEF128, "si128"},
-      {VectorIR::VDataType::UNDEF256, "si256"},
-      {VectorIR::VDataType::IN_INT128, "m128i"},
-      {VectorIR::VDataType::IN_INT256, "m256i"},
-      {VectorIR::VDataType::IN_FLOAT128, "m128"},
-      {VectorIR::VDataType::IN_FLOAT256, "m256"},
-      {VectorIR::VDataType::IN_DOUBLE128, "m128d"},
-      {VectorIR::VDataType::IN_DOUBLE256, "m128d"}};
+  static inline std::map<MVDataType::VDataType, std::string> MapType = {
+      {MVDataType::VDataType::FLOAT, "ps"},
+      {MVDataType::VDataType::SFLOAT, "ss"},
+      {MVDataType::VDataType::DOUBLE, "pd"},
+      {MVDataType::VDataType::SDOUBLE, "sd"},
+      {MVDataType::VDataType::INT8, "epi8"},
+      {MVDataType::VDataType::INT16, "epi16"},
+      {MVDataType::VDataType::INT32, "epi32"},
+      {MVDataType::VDataType::INT64, "epi64"},
+      {MVDataType::VDataType::UINT8, "epu8"},
+      {MVDataType::VDataType::UINT16, "epu16"},
+      {MVDataType::VDataType::UINT32, "epu32"},
+      {MVDataType::VDataType::UINT64, "epu64"},
+      {MVDataType::VDataType::UNDEF128, "si128"},
+      {MVDataType::VDataType::UNDEF256, "si256"},
+      {MVDataType::VDataType::IN_INT128, "m128i"},
+      {MVDataType::VDataType::IN_INT256, "m256i"},
+      {MVDataType::VDataType::IN_FLOAT128, "m128"},
+      {MVDataType::VDataType::IN_FLOAT256, "m256"},
+      {MVDataType::VDataType::IN_DOUBLE128, "m128d"},
+      {MVDataType::VDataType::IN_DOUBLE256, "m128d"}};
 };
 
 } // namespace macveth
-#endif /* !MACVETH_AVX2GEN_H */
+#endif /* !MACVETH_AVX2BACKEND_H */

@@ -33,17 +33,29 @@
 #define MACVETH_SIMDCOSTINFO_H
 
 #include "include/CostModel/CostTable.h"
+#include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include <map>
 
 using namespace macveth;
 
 namespace macveth {
+
+/// Result of computation
+enum VectorizationType {
+  /// Do not vectorize anything
+  NONE,
+  /// Perform partial vectorization
+  PARTIAL,
+  /// Perform full vectorization
+  FULL
+};
+
 /// Cost of SIMD
-struct SIMDCostInfo {
+struct InstCostInfo {
   /// Number of micro-instructions issued by the SIMD instruction
   int UOps = 1;
   /// Number of cycles wasted by the instruction
-  int Latency = 1;
+  int Latency = 0;
   /// Issue latency: the lower the better. On Intel architectures it
   /// represents the velocity of issuing another uop
   double Throughput = 1;
@@ -54,16 +66,68 @@ struct SIMDCostInfo {
   /// Number of ports used
   std::map<int, int> NoPorts;
   /// Default constructor
-  SIMDCostInfo() {}
-  SIMDCostInfo(int L, float T, int Pen, int Pref, int U)
+  InstCostInfo() {}
+  InstCostInfo(int L, float T, int Pen, int Pref, int U)
       : Latency(L), Throughput(T), Penalty(Pen), Preference(Pref), UOps(U) {}
   /// Default constructor
-  SIMDCostInfo(CostTable::Row R) {
+  InstCostInfo(CostTable::Row R) {
     UOps = R.NUops;
-    Latency = R.Latency;
+    Latency = R.Lat.getLatency();
     Throughput = R.Throughput;
   }
-};
-} // namespace macveth
 
+  std::string toString() { return std::to_string(Latency); }
+
+  long operator-(const InstCostInfo &R) { return this->Latency - R.Latency; }
+  InstCostInfo operator+=(const InstCostInfo &R) {
+    this->Latency += R.Latency;
+    return *this;
+  }
+  InstCostInfo operator+(const InstCostInfo &R) {
+    this->Latency += R.Latency;
+    return *this;
+  }
+  bool operator<(const InstCostInfo &R) { return this->Latency < R.Latency; }
+  bool operator<=(const InstCostInfo &R) { return this->Latency <= R.Latency; }
+};
+
+/// Return value when generating new code
+struct SIMDInfo {
+  /// List of SIMD instructions generated
+  SIMDBackEnd::SIMDInstListType SIMDList;
+  /// Cost of operations
+  std::map<std::string, InstCostInfo> CostOp;
+  /// Number of operations of each type
+  std::map<std::string, long> NumOp;
+  /// Total cost
+  long TotCost = 0;
+  /// Vectorization type
+  VectorizationType Vectorize = VectorizationType::NONE;
+
+  /// Constructor
+  SIMDInfo(SIMDBackEnd::SIMDInstListType S,
+           std::map<std::string, InstCostInfo> CostOp,
+           std::map<std::string, long> NumOp, long TotCost)
+      : SIMDList(S), CostOp(CostOp), NumOp(NumOp), TotCost(TotCost) {}
+
+  /// Do we have to vectorize
+  bool isThereAnyVectorization() {
+    return Vectorize != VectorizationType::NONE;
+  }
+
+  /// TODO: Generate cost report
+  void generateCostReport() {
+    std::cout << "---------- SIMD REPORT ----------\n";
+    for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {
+      std::cout << It->first + "\t=\t" +
+                       std::to_string(NumOp[It->first] * It->second.Latency) +
+                       "\t(" + std::to_string(NumOp[It->first]) + ")"
+                << std::endl;
+    }
+    std::cout << " TOTAL = " + std::to_string(TotCost) << std::endl;
+    std::cout << "-------- END SIMD REPORT --------\n";
+  }
+};
+
+} // namespace macveth
 #endif /* !MACVETH_SIMDCOSTINFO_H */

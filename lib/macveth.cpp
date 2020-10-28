@@ -1,11 +1,14 @@
-/**
- * File              : macveth.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mar 17 Mar 2020 18:58:40 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
+/*
+ * File					 : lib/macveth.cpp
+ * Author				 : Marcos Horro
+ * Date					 : Fri 09 Oct 2020 04:53 +02:00
  *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
+ * Last Modified : Tue 20 Oct 2020 04:06 +02:00
+ * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
+ *
+ * MIT License
+ *
+ * Copyright (c) 2020 Colorado State University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -77,7 +80,7 @@ static llvm::cl::opt<MVISA>
         llvm::cl::cat(MacvethCategory),
         llvm::cl::values(clEnumValN(MVISA::AUTODETECT, "native",
                                     "Detect ISA of the architecture"),
-                         clEnumValN(MVISA::AVX, "sse", "SSE ISA"),
+                         clEnumValN(MVISA::SSE, "sse", "SSE ISA"),
                          clEnumValN(MVISA::AVX, "avx", "AVX ISA"),
                          clEnumValN(MVISA::AVX2, "avx2", "AVX2 ISA"),
                          clEnumValN(MVISA::AVX512, "avx512", "AVX512 ISA")));
@@ -109,9 +112,11 @@ static llvm::cl::opt<MVArch> Architecture(
                    "Intel Cascade Lake (2019) architecture (tock): AVX512"),
         clEnumValN(MVArch::IceLake, "icelake",
                    "Intel Ice Lake (2020) architecture (tick): AVX512"),
-        clEnumValN(MVArch::Zen, "Zen", "AMD Zen (2019) architecture: AVX2"),
-        clEnumValN(MVArch::Zen2, "Zen2",
-                   "AMD Zen 2 (2020) architecture: AVX2")));
+        clEnumValN(MVArch::Zen, "zen", "AMD Zen (2019) architecture: AVX2"),
+        clEnumValN(MVArch::Zen2, "zen2", "AMD Zen 2 (2020) architecture: AVX2"),
+        clEnumValN(MVArch::AMDDef, "amd", "AMD architecture not specified"),
+        clEnumValN(MVArch::IntelDef, "intel",
+                   "Intel architecture not specified")));
 
 /// FMA support flag
 static llvm::cl::opt<bool> FMA("fma",

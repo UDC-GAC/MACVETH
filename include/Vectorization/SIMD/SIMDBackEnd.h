@@ -1,25 +1,25 @@
 /*
- * File					 : include/Vectorization/SIMD/SIMDGenerator.h
+ * File          : include/Vectorization/SIMD/SIMDBackEnd.h
  * Author				 : Marcos Horro
  * Date					 : Fri 09 Oct 2020 04:53 +02:00
- * 
+ *
  * Last Modified : Tue 20 Oct 2020 12:40 +02:00
  * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
- * 
+ *
  * MIT License
- * 
+ *
  * Copyright (c) 2020 Colorado State University
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is furnished to do
- * so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,17 +29,13 @@
  * SOFTWARE.
  */
 
-
-
-
-
-
 #ifndef MACVETH_SIMDGENERATOR_H
 #define MACVETH_SIMDGENERATOR_H
 
 #include "include/CDAG.h"
 #include "include/CostModel/CostTable.h"
-#include "include/CostModel/SIMDCostInfo.h"
+//#include "include/CostModel/SIMDCostInfo.h"
+#include "include/MVExpr/MVDataType.h"
 #include "include/MVSourceLocation.h"
 #include "include/Vectorization/VectorIR.h"
 
@@ -50,7 +46,7 @@ namespace macveth {
 /// Abstract class implemented by each architecture (AVX, AVX2, AVX512, etc.) to
 /// generate specific intrinsics and calculate the associated cost for the
 /// operations provided by the VectorAPI
-class SIMDGenerator {
+class SIMDBackEnd {
 public:
   /// Types of SIMD instructions
   enum SIMDType {
@@ -117,17 +113,17 @@ public:
     /// List of *sorted* arguments of the function (macro approach)
     std::list<std::string> MVArgs;
     /// Cost of the instruction
-    SIMDCostInfo Cost;
+    // InstCostInfo Cost;
     /// Data type
-    VectorIR::VDataType DT;
+    MVDataType::VDataType DT;
     /// Width
-    VectorIR::VWidth W;
+    MVDataType::VWidth W;
 
     /// Render instruction as a string
     std::string render();
 
     /// Check if type is sequential
-    bool isSequential() { return this->SType == SIMDGenerator::SIMDType::VSEQ; }
+    bool isSequential() { return this->SType == SIMDBackEnd::SIMDType::VSEQ; }
 
     /// Check whether position is posorder or not
     bool isPreOrder() {
@@ -183,54 +179,21 @@ public:
   /// Alias for list of SIMDInst structures
   using SIMDInstListType = std::list<SIMDInst>;
 
-  /// Table of equivalences between C/C++ basic numeric types and VectorIR's
-  static inline std::map<VectorIR::VDataType, std::string> VDTypeToCType = {
-      {VectorIR::VDataType::DOUBLE, "double"},
-      {VectorIR::VDataType::FLOAT, "float"},
-      {VectorIR::VDataType::INT32, "int"},
-      {VectorIR::VDataType::INT64, "long"},
-      {VectorIR::VDataType::UINT32, "unsigned int"},
-      {VectorIR::VDataType::UINT64, "unsigned long"},
-  };
-
-  /// Map data types to their size in bytes
-  inline static std::map<std::string, int> SizeOf = {
-      {"double", 8},
-      {"float", 4},
-      {"const unsigned long", 8},
-      {"const long", 8},
-      {"const float", 4},
-      {"const double", 8},
-      {"const char", 1},
-      {"char", 1},
-      {"const int", 4},
-      {"const unsigned int", 4},
-      {"unsigned int", 4},
-      {"int", 4},
-      {"long", 8},
-      {"long long", 16},
-      {"signed long long", 16},
-      {"long long int", 16},
-      {"signed long long int", 16}};
-
   /// Empty constructor
 
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions, given a VectorOP
-  SIMDGenerator::SIMDInst addNonSIMDInst(VectorIR::VectorOP OP,
-                                         SIMDGenerator::SIMDType SType,
-                                         MVSourceLocation MVSL,
-                                         SIMDGenerator::SIMDInstListType *IL);
+  SIMDBackEnd::SIMDInst addNonSIMDInst(VectorIR::VectorOP OP,
+                                       SIMDBackEnd::SIMDType SType,
+                                       MVSourceLocation MVSL,
+                                       SIMDBackEnd::SIMDInstListType *IL);
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions specifying explicitly the LHS
   /// and the RHS
-  SIMDGenerator::SIMDInst addNonSIMDInst(std::string Lhs, std::string Rhs,
-                                         SIMDGenerator::SIMDType SType,
-                                         MVSourceLocation MVSL,
-                                         SIMDGenerator::SIMDInstListType *IL);
-
-  std::list<VectorIR::VectorOP> getVectorOpFromCDAG(Node::NodeListType NList,
-                                                    SIMDGenerator *SG);
+  SIMDBackEnd::SIMDInst addNonSIMDInst(std::string Lhs, std::string Rhs,
+                                       SIMDBackEnd::SIMDType SType,
+                                       MVSourceLocation MVSL,
+                                       SIMDBackEnd::SIMDInstListType *IL);
 
   // VectorAPI: instructions to implement by the specific backends
 
@@ -282,8 +245,8 @@ public:
 
   /// Get the type of register according to the VDataType and VWidth. This
   /// method is abstract because each architecture may have different types.
-  virtual std::string getRegisterType(VectorIR::VDataType DT,
-                                      VectorIR::VWidth W) = 0;
+  virtual std::string getRegisterType(MVDataType::VDataType DT,
+                                      MVDataType::VWidth W) = 0;
 
   /// Get max width
   virtual int getMaxWidth() = 0;
@@ -295,10 +258,10 @@ public:
   virtual std::string getNArch() = 0;
 
   /// Map of VectorIR widths to the concrete architecture
-  virtual std::string getMapWidth(VectorIR::VWidth V) = 0;
+  virtual std::string getMapWidth(MVDataType::VWidth V) = 0;
 
   /// Map of VectorIR types to the concrete architecture
-  virtual std::string getMapType(VectorIR::VDataType D) = 0;
+  virtual std::string getMapType(MVDataType::VDataType D) = 0;
 
   /// Generate the declaration of the necessary registers for the operations
   virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S) = 0;
@@ -310,20 +273,20 @@ public:
   virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V) = 0;
 
   /// Add SIMD instruction
-  virtual SIMDGenerator::SIMDInst
+  virtual SIMDBackEnd::SIMDInst
   genSIMDInst(std::string Result, std::string Op, std::string PrefS,
-              std::string SuffS, VectorIR::VWidth Width,
-              VectorIR::VDataType Type, std::list<std::string> Args,
-              SIMDGenerator::SIMDType SType, MVSourceLocation SL,
-              SIMDGenerator::SIMDInstListType *IL, std::string NameOp = "",
+              std::string SuffS, MVDataType::VWidth Width,
+              MVDataType::VDataType Type, std::list<std::string> Args,
+              SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
+              SIMDBackEnd::SIMDInstListType *IL, std::string NameOp = "",
               std::string MVFunc = "", std::list<std::string> MVArgs = {},
               MVOp MVOP = MVOp()) = 0;
 
-  virtual SIMDGenerator::SIMDInst
+  virtual SIMDBackEnd::SIMDInst
   genSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
               std::string SuffS, std::list<std::string> OPS,
-              SIMDGenerator::SIMDType SType, MVSourceLocation SL,
-              SIMDGenerator::SIMDInstListType *IL = nullptr,
+              SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
+              SIMDBackEnd::SIMDInstListType *IL = nullptr,
               std::string NameOp = "", std::string MVFunc = "",
               std::list<std::string> MVArgs = {}, MVOp MVOP = MVOp()) = 0;
 
@@ -332,7 +295,7 @@ public:
 
   /// Get maximum vector operands size
   virtual int getMaxVectorSize(std::string Type) {
-    return getMaxWidth() / (SizeOf[Type] * 8);
+    return getMaxWidth() / (MVDataType::SizeOf[Type] * 8);
   };
 
   /// Clean the list of registers declared
@@ -376,16 +339,17 @@ public:
   /// Getting CDAG
   CDAG *getCDAG() { return this->C; }
 
-  SIMDGenerator(){};
+  SIMDBackEnd(){};
 
   /// Destructor
-  virtual ~SIMDGenerator(){};
+  virtual ~SIMDBackEnd(){};
 
   using RegistersMapT =
       std::map<std::string,
                std::vector<std::tuple<std::string, std::vector<std::string>>>>;
 
-  RegistersMapT getRegDeclared() { return SIMDGenerator::RegDeclared; }
+  /// Get list of registers declared
+  RegistersMapT getRegDeclared() { return SIMDBackEnd::RegDeclared; }
 
 private:
   /// Auxiliary function to dispatch the VectorOP operation
@@ -425,13 +389,14 @@ protected:
 
   /// Map of the operands mapped to the accumulator
   inline static std::map<std::string, int> AccmToReg;
+  /// Map of the operands mapped to the accumulator which are dirty
   inline static std::map<std::string, int> AccmDirty;
 
   /// Get the next available accumulator register
   static std::string getNextAccmRegister(std::string V) {
     if (AccmToReg.count(V) == 0) {
       AccmDirty[V] = 0;
-      AccmToReg[V] = SIMDGenerator::AccmReg++;
+      AccmToReg[V] = SIMDBackEnd::AccmReg++;
     }
     return VEC_PREFIX + std::to_string(AccmToReg.at(V));
   }
@@ -456,7 +421,7 @@ protected:
   /// Get the name of the auxiliar register for a operand and increment
   static std::string getNextAuxRegister(std::string V) {
     if (AuxReg.count(V) == 0) {
-      AuxReg[V] = SIMDGenerator::AuxRegId++;
+      AuxReg[V] = SIMDBackEnd::AuxRegId++;
     }
     return AUX_PREFIX + std::to_string(AuxReg.at(V));
   }

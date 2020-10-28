@@ -49,6 +49,14 @@ enum MVOpType {
 enum MVOpCode {
   /// Operation not known/defined
   UNDEF,
+  /// Addition
+  ADD,
+  /// Substraction
+  SUB,
+  /// Multiplication
+  MUL,
+  /// Division
+  DIV,
   /// Exponential
   EXP,
   /// Power
@@ -86,45 +94,6 @@ struct MVOp {
     MVOpCode MVOpC;
   };
 
-  /// Get operation cost
-  /// FIXME: this should be architecture-dependent
-  static long getOperationCost(MVOp Op) {
-    long Cost = 100000;
-    auto Type = Op.getType();
-    if (Type == MVOpType::MVFUNC) {
-      auto Code = Op.MVOpC;
-      switch (Code) {
-      case UNDEF:
-        return Cost;
-      case EXP:
-      case POW:
-      case MAX:
-      case MIN:
-      case AVG:
-      case CEIL:
-      case FLOOR:
-      case ROUND:
-      case SIN:
-      case COS:
-      default:
-        return 10000;
-      }
-    }
-    if (Type == MVOpType::CLANG_BINOP) {
-      Cost = 2;
-      if (Op.ClangOP == BinaryOperator::Opcode::BO_Mul) {
-        Cost = 12;
-      }
-      if (Op.ClangOP == BinaryOperator::Opcode::BO_Div) {
-        Cost = 20;
-      }
-      if (Op.ClangOP == BinaryOperator::Opcode::BO_Xor) {
-        Cost = 15;
-      }
-    }
-    return Cost;
-  }
-
   /// Given a string it returns the type of function based on the MVOpCode it
   /// is defined for this compiler
   static MVOpCode getTypeFromStr(std::string S) {
@@ -160,6 +129,14 @@ struct MVOp {
   /// Return the equivalent string given a MVOpCode
   std::string getStrFromMVCode(MVOpCode C) {
     switch (C) {
+    case MVOpCode::ADD:
+      return "add";
+    case MVOpCode::SUB:
+      return "sub";
+    case MVOpCode::DIV:
+      return "div";
+    case MVOpCode::MUL:
+      return "mul";
     case MVOpCode::EXP:
       return "exp";
     case MVOpCode::MAX:
@@ -183,21 +160,46 @@ struct MVOp {
     }
     return "undef";
   }
+
+  /// Return the equivalent string given a MVOpCode
+  std::string
+  getStrFromBinaryOperatorOpcode(clang::BinaryOperator::Opcode ClangOP) {
+    switch (ClangOP) {
+    case clang::BinaryOperator::Opcode::BO_Add:
+      return "add";
+    case clang::BinaryOperator::Opcode::BO_Sub:
+      return "sub";
+    case clang::BinaryOperator::Opcode::BO_Div:
+      return "div";
+    case clang::BinaryOperator::Opcode::BO_Mul:
+      return "mul";
+    default:
+      return "undef";
+    }
+    return "undef";
+  }
+
   /// Shortcut to check whether a MVOp is of type BO_Assign
   bool isAssignment() {
     return (getType() == MVOpType::CLANG_BINOP) &&
            (this->ClangOP == clang::BinaryOperator::Opcode::BO_Assign);
   }
 
+  std::string getTableMVOPstr(std::string T) {
+    std::string Suffix = "_" + Utils::toUppercase(T);
+    if (getType() == MVOpType::CLANG_BINOP) {
+      return Utils::toUppercase(getStrFromBinaryOperatorOpcode(this->ClangOP)) +
+             Suffix;
+    }
+    return Utils::toUppercase(getStrFromMVCode(this->MVOpC)) + Suffix;
+  }
+
   /// Convert MVOp to string
   std::string toString() {
     if (getType() == MVOpType::CLANG_BINOP) {
       return clang::BinaryOperator::getOpcodeStr(this->ClangOP);
-    } else if (getType() == MVOpType::MVFUNC) {
-      return getStrFromMVCode(this->MVOpC);
     }
-    MVAssert(false, "This can not ever happen!");
-    return "";
+    return getStrFromMVCode(this->MVOpC);
   }
 
   /// Return the type of the operation
@@ -220,7 +222,7 @@ struct MVOp {
     this->T = MVOpType::MVFUNC;
     this->MVOpC = MVOpCode::UNDEF;
   }
-}; // namespace macveth
+};
 
 } // namespace macveth
 #endif /* !MACVETH_MVOPS_H */
