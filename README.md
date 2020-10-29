@@ -96,6 +96,9 @@ In this section we will comment in detail all the options available:
     --simd-cost-model=[conservative|aggressive|unlimited]: different algorithms selected
     by the compiler to decide whether to vectorize or not a concrete region.
 
+    --simd-info=<file>: report with all the SIMD information retrieved
+    --simd-info-missed=<file>: report with all the SIMD opportunities missed due to SIMD cost model or other issues
+
     -o=<output>: Output file, otherwise macveth_output.c
     -p=<path>: Build path
 

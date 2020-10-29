@@ -1,0 +1,238 @@
+
+
+
+MACVETH compiler handles different abstraction levels or intermediate
+representations in order to facilitate the vectorization process. As MACVETH is 
+based in Clang/LLVM~\cite{bib:clang}, the first abstraction layer lays on the 
+Clang AST. This representation allows to identify the regions of interest for 
+the translation, to extract 
+
+\section{MACVETH Expressions: MVExpr}
+Clang implements complex expressions in order to handle any form or type of
+code. They
+provide many possibilities
+when it comes to parse exactly the code. Nonetheless, in our case we are
+interested in a small set of operations, so we created basically a wrap for this
+purpose. MVExpr is an abstract class that can be specialized for any type we
+want to represent from the Clang AST. Besides, the idea of this class is to
+provide a set of non-standard transformations for the expressions, e.g.
+unrolling. Thus, MVExpr are instantiated using a factory.
+
+We have implemented the following specializations, which are enough in order to
+represent any value reference:
+
+\begin{itemize}
+	\item \textbf{MVExprArray}: represents any N-dimensional expression in the
+	      code. It
+	      holds information of the number of dimensions and name or value of the
+	      indices. This class is very useful when performing unrolling, as it 
+	      provides methods for computing deltas between two indices of the same 
+	      or different form, e.g. $(i+1)*2$ vs. $(i+1)*4$.
+	\item \textbf{MVExprVar}: regardless the type of the variable, this
+	      abstraction
+	      represents, basically, any \texttt{DeclRefExpr} from the Clang AST.
+	\item \textbf{MVExprLiteral}: any integer, float, double, char, etc. value.
+	\item \textbf{MVExprFunc}: this is a recursive abstraction which holds the
+	      name of the function and the parameters it receives. Parameters are 
+	      also MVExpr type.
+\end{itemize}
+
+\section{Three-Address Code IR: TAC}
+Statements may differ in number of operations, data handled, or even types. 
+This makes difficult to handle them properly.  The Three-Address Code (TAC) 
+representation is used to translate any statement ($S$) into a
+set of Single Stament Assignment (SSA), which have the same length. There are 
+different ways of representing this format, but in our case we use quadruples, 
+as described in Definition~\ref{def:TAC}.
+
+\theoremstyle{definition}
+\begin{definition}\label{def:TAC}
+	A three-address code or TAC is a 4-tuple TAC=(a,b,c,$\oplus$) which 
+	represents the 	assignment of the $b \oplus c$ operation as $a=b \oplus c$. 
+	If the $\oplus$ operator is unary, then $c$ is null, so $a=\oplus b$.
+\end{definition}
+
+Thus, any statement of a program is composed by a concatenation of operations, 
+e.g. assignment ($=$, $+$, a function, etc.), 
+which are 
+split onto TACs respecting  their operational order. Thus, when any statement 
+generates more than one TAC, temporal registers are generated, in a 
+SSA-fashion. Those assignments are 
+responsible for connecting TACs and, therefore, represent the logical order of 
+the original statement. In essence, those TAC connections generate a tree 
+structure. In order to 
+perform this translation, we have 
+implemented a recursive process which is listed in 
+Algorithm~\ref{alg:stmtToTAC}. 
+
+\begin{algorithm}[h]\label{alg:stmtToTAC}
+	\SetAlgoLined
+	\KwIn{Stmt S}
+	\KwResult{Set of TAC}
+	L $\leftarrow$ \{\}\;
+	Res $\leftarrow$ getResultOrTempReg(S)\;
+	Lhs $\leftarrow$ getLHS(S)\;
+	Rhs $\leftarrow$ getRHS(S)\;
+	\If{isNonTerminal(Lhs)}{
+		TAC $\leftarrow$ translateStmtToTAC(Lhs)\;
+		addTacToList(L, TAC)\;
+		Lhs $\leftarrow$ TAC.Res\;
+	}
+	\If{isNonTerminal(Rhs)}{
+		TAC $\leftarrow$ translateStmtToTAC(Rhs)\;
+		addTacToList(L, TAC)\;
+		Rhs $\leftarrow$ TAC.Res\;
+	}
+	addTacToList(L, \{Res, Lhs, Rhs, getOp(S)\})\;
+	return L\;
+	\caption{translateStmtToTAC}
+\end{algorithm}
+
+\begin{corollary}\label{cor:TAC}
+	Any statement $S$ can be represented as a set of interconnected TACs:
+	$S = \{TAC\}$
+\end{corollary}
+
+This representation is widely used in compilers. The main advantages of it
+resides in the simplicity of handling operations with the same number of
+operands. Besides, this format is very easy to handle in programmatically terms.
+
+
+Unrolling is also performed using this format, following the iterative process
+listed in
+Algorithm~\ref{alg:TACunrolling}.
+
+\begin{algorithm}[H]\label{alg:TACunrolling}
+	\SetAlgoLined
+	\KwIn{TAC list $T$, Unrolling Factor $UF$, Loop nests $LN$}
+	\KwResult{TAC list $T'$}
+	$T'$ = \{\}\;
+	\ForEach{LN} {
+		\For{step = 0; step++ $<$ UF;} {
+			\ForEach{TAC in T} {
+				NewTac = \{\}\;
+				\ForEach{Expr in TAC} {
+					NewExpr $\leftarrow$ unrollExpr(step, LN, Expr)\;
+					NewTac $\leftarrow$ placeExprInTac(NewExpr)\;
+				}
+				$T'$ $\leftarrow$ add(NewTac)\;
+			}
+		}
+	}
+	return $T'$\;
+	\caption{Unrolling TAC list}
+\end{algorithm}
+
+
+\section{Computation Directed Acyclic Graph (CDAG)}
+When it comes to schedule the different TACs in the ROI of our program, we need
+a representation which can handle the dependencies between the statements and
+some structures that store the information about the placement of them in the
+execution. For this purpose we use a Computation Directed Acyclic Graph or
+CDAG~\cite{bib:CDAGdefinition}. Informally, it is a forest that represents the
+TACs as a set of nodes, where
+each node can be a memory operation (load, store) or any other type of
+operation (addition, multiplication, built-in function, etc.). Connections
+between those nodes represent data dependencies. Formal
+definition of the CDAG we have implemented can be found in
+Definition~\ref{def:CDAG}. It is, essentially, a slight variation
+of the definition given in~\cite{bib:CDAGdefinition}.
+
+\theoremstyle{definition}
+\begin{definition}\label{def:CDAG}
+	A computation directed acyclic graph (CDAG) is a 4-tuple C=(I,V,E,O) of
+	finite sets such that: (1) $I \subseteq V, O \subseteq (V-I)$; (2) $E
+		\subseteq V
+		\times V$ is the set of arcs; (3) $G=(V,E) \subseteq C$ is a subgraph 
+		of C
+\end{definition}
+
+The importance of this structure is, in essence, to detect data races and to 
+perform any kind of variation in the placement of operations, if possible. 
+Nonetheless, this topic is not to be discussed in this work, since MACVETH uses 
+the CDAG for sorting nodes in a topological order and detect patterns such as 
+reductions.
+
+\begin{figure}[h]
+	\centering
+\begin{tikzpicture}[
+	->,
+	>=stealth',
+	shorten >=.2pt,
+	auto,
+	node distance=2cm,
+	thick,
+	tmp node/.style={circle,draw,font=\large\bfseries},
+	in node/.style={circle,draw=blue!100,font=\large\bfseries},
+	out node/.style={circle,draw=red!90,font=\large\bfseries}
+]
+
+\node[in node] (1) {I};
+\node[in node] (2) [right of=1] {I};
+\node[tmp node] (3) [below of=2] {T};
+\node[in node] (4) [right of=3] {I};
+\node[out node] (5) [below of=4] {O};
+%\node[main node] (1) {In};
+%\node[main node] (2) [below left of=1] {2};
+%\node[main node] (3) [below right of=2] {3};
+%\node[main node] (4) [below right of=1] {4};
+
+\path[every node/.style={font=\sffamily\small}]
+(1) edge node [left] {} (3)
+(2) edge node [left] {} (3)
+(3) edge node [left] {} (5)
+(4) edge node [left] {} (5)
+;
+%(1) edge node [left] {0.6} (4)
+%%edge [bend right] node[left] {0.3} (2)
+%edge [loop above] node {0.1} (1)
+%(2) edge node [right] {0.4} (1)
+%edge node {0.3} (4)
+%edge [loop left] node {0.4} (2)
+%edge [bend right] node[left] {0.1} (3)
+%(3) edge node [right] {0.8} (2)
+%edge [bend right] node[right] {0.2} (4)
+%(4) edge node [left] {0.2} (3)
+%edge [loop right] node {0.6} (4)
+%edge [bend right] node[right] {0.2} (1);
+\end{tikzpicture}
+\caption{Graphical example of CDAG}
+\label{fig:GraphCDAG}
+\end{figure}
+
+Figure~\ref{fig:GraphCDAG} shows the graphical representation of a CDAG 
+generated from the code. Key idea of this IR is to provide information 
+regardin
+
+\section{VectorIR}
+In order to approach the different architectures when generating instructions,
+we need a generic vector representation of the vector instructions we want to
+have in our program. For this purpose, MACVETH uses the VectorIR, that basically
+wraps a set of nodes from the CDAG onto a common structure which represent a 
+vector operation.
+
+To wrap up: VectorIR is a generic way of representing vector operations for the 
+different
+architectures. Because of this, at this stage there is no fusing operations or
+any other kind of target-specific optimizations. The concrete backend will be in
+charge of doing this. For instance, AVX introduced the fuse add-multiplication
+instructions often called FMAs, which as their name suggest fuse additions and
+multiplication onto a single operation; however they are only available for FP
+operations and, therefore, not for integers. It would be pointless to tackle
+all these issues in this representation that is why this is done in the AVX
+backend instead.
+
+\section{SIMDBackEnd: \textit{the} backend}
+In order to synthesize the vector operations gathered in the VectorIR, there
+must exists a target-specific backend for each ISA. MACVETH disposes a general
+interface called \texttt{SIMDBackEnd}. This interface must be
+implemented by each architecture and/or ISA in order to generate
+target-specific code for each machine or system.
+
+Furthermore, each backend has a table with costs for all instructions and 
+operations, and their intrinsics equivalence, if they have. This table is 
+generated from data gathered in~\cite{bib:uops} and~\cite{bib:intrinsics}. 
+Thus, data for each ISA and architecture are provided to the compiler in 
+separate files. It is at runtime when compiler decides what file to read.
+
+
