@@ -57,6 +57,12 @@ static llvm::cl::opt<std::string>
     OutputFile("o", cl::cat(MacvethCategory),
                llvm::cl::desc("Output file to write the code, otherwise "
                               "it will just print int std output"));
+static llvm::cl::opt<std::string>
+    SIMDInfoFile("simd-info", cl::cat(MacvethCategory),
+                 llvm::cl::desc("Report with all the SIMD information"));
+static llvm::cl::opt<std::string> SIMDInfoMissedFile(
+    "simd-info-missed", cl::cat(MacvethCategory),
+    llvm::cl::desc("Report with all missed SIMD opportunities"));
 static llvm::cl::opt<std::string> TargetFunc("func", cl::cat(MacvethCategory),
                                              llvm::cl::desc("Target function"));
 static llvm::cl::opt<std::string>
@@ -75,47 +81,53 @@ static llvm::cl::opt<MVSIMDCostModel> SIMDCostModel(
         clEnumValN(MVSIMDCostModel::UNLIMITED, "unlimited",
                    "Unlimited SIMD cost, i.e. vectorize regardless the cost")));
 
-static llvm::cl::opt<MVISA>
-    ISA("misa", llvm::cl::desc("Target ISA"), llvm::cl::init(MVISA::AUTODETECT),
+static llvm::cl::opt<MVCPUInfo::MVISA>
+    ISA("misa", llvm::cl::desc("Target ISA"),
+        llvm::cl::init(MVCPUInfo::MVISA::AUTODETECT),
         llvm::cl::cat(MacvethCategory),
-        llvm::cl::values(clEnumValN(MVISA::AUTODETECT, "native",
+        llvm::cl::values(clEnumValN(MVCPUInfo::MVISA::AUTODETECT, "native",
                                     "Detect ISA of the architecture"),
-                         clEnumValN(MVISA::SSE, "sse", "SSE ISA"),
-                         clEnumValN(MVISA::AVX, "avx", "AVX ISA"),
-                         clEnumValN(MVISA::AVX2, "avx2", "AVX2 ISA"),
-                         clEnumValN(MVISA::AVX512, "avx512", "AVX512 ISA")));
+                         clEnumValN(MVCPUInfo::MVISA::SSE, "sse", "SSE ISA"),
+                         clEnumValN(MVCPUInfo::MVISA::AVX, "avx", "AVX ISA"),
+                         clEnumValN(MVCPUInfo::MVISA::AVX2, "avx2", "AVX2 ISA"),
+                         clEnumValN(MVCPUInfo::MVISA::AVX512, "avx512",
+                                    "AVX512 ISA")));
 
-static llvm::cl::opt<MVArch> Architecture(
+static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
     "march", llvm::cl::desc("Target architecture"),
-    llvm::cl::init(MVArch::NATIVE), llvm::cl::cat(MacvethCategory),
+    llvm::cl::init(MVCPUInfo::MVArch::NATIVE), llvm::cl::cat(MacvethCategory),
     llvm::cl::values(
-        clEnumValN(MVArch::NATIVE, "native", "Detect the architecture"),
-        clEnumValN(MVArch::Nehalem, "nehalem",
+        clEnumValN(MVCPUInfo::MVArch::NATIVE, "native",
+                   "Detect the architecture"),
+        clEnumValN(MVCPUInfo::MVArch::Nehalem, "nehalem",
                    "Intel Nehalem (2009) architecture (tock): SSE4.2"),
-        clEnumValN(MVArch::Westmere, "westmere",
+        clEnumValN(MVCPUInfo::MVArch::Westmere, "westmere",
                    "Intel Westmere (2010) architecture (tick): SSE4.2"),
-        clEnumValN(MVArch::SandyBridge, "sandybridge",
+        clEnumValN(MVCPUInfo::MVArch::SandyBridge, "sandybridge",
                    "Intel SandyBridge (2011) architecture (tock): AVX"),
-        clEnumValN(MVArch::IvyBridge, "ivybridge",
+        clEnumValN(MVCPUInfo::MVArch::IvyBridge, "ivybridge",
                    "Intel IvyBridge (2012) architecture (tick): AVX"),
-        clEnumValN(MVArch::Haswell, "haswell",
+        clEnumValN(MVCPUInfo::MVArch::Haswell, "haswell",
                    "Intel Haswell (2013) architecture (tock): AVX2"),
-        clEnumValN(MVArch::Broadwell, "broadwell",
+        clEnumValN(MVCPUInfo::MVArch::Broadwell, "broadwell",
                    "Intel Broadwell (2014) architecture (tick): AVX2"),
-        clEnumValN(MVArch::Skylake, "skylake",
+        clEnumValN(MVCPUInfo::MVArch::Skylake, "skylake",
                    "Intel Skylake (2015) architecture (tock): AVX512"),
-        clEnumValN(MVArch::KabyLake, "kabylake",
+        clEnumValN(MVCPUInfo::MVArch::KabyLake, "kabylake",
                    "Intel Kaby Lake (2016) architecture (tock): AVX2"),
-        clEnumValN(MVArch::CoffeeLake, "coffeelake",
+        clEnumValN(MVCPUInfo::MVArch::CoffeeLake, "coffeelake",
                    "Intel Coffee Lake (2017) architecture (tock): AVX2"),
-        clEnumValN(MVArch::CascadeLake, "cascadelake",
+        clEnumValN(MVCPUInfo::MVArch::CascadeLake, "cascadelake",
                    "Intel Cascade Lake (2019) architecture (tock): AVX512"),
-        clEnumValN(MVArch::IceLake, "icelake",
+        clEnumValN(MVCPUInfo::MVArch::IceLake, "icelake",
                    "Intel Ice Lake (2020) architecture (tick): AVX512"),
-        clEnumValN(MVArch::Zen, "zen", "AMD Zen (2019) architecture: AVX2"),
-        clEnumValN(MVArch::Zen2, "zen2", "AMD Zen 2 (2020) architecture: AVX2"),
-        clEnumValN(MVArch::AMDDef, "amd", "AMD architecture not specified"),
-        clEnumValN(MVArch::IntelDef, "intel",
+        clEnumValN(MVCPUInfo::MVArch::Zen, "zen",
+                   "AMD Zen (2019) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::Zen2, "zen2",
+                   "AMD Zen 2 (2020) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::AMDDef, "amd",
+                   "AMD architecture not specified"),
+        clEnumValN(MVCPUInfo::MVArch::IntelDef, "intel",
                    "Intel architecture not specified")));
 
 /// FMA support flag
