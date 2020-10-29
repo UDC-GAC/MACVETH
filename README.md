@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/markoshorro/MACVETH/f15ccc75e191319265c403e47c8f1acd0b257800/doc/report/img/MACVETHLOGO.svg?token=ABHMITE77FKBL6X6ASCYQQS7TLMHG">
+  <img src="https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg">
 </p>
 
 # MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors in HPC 
