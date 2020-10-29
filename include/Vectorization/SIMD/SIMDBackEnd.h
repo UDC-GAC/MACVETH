@@ -303,7 +303,7 @@ public:
 
   /// Populate the table only when creating the object, to avoid overloading the
   /// memory from the start
-  static void populateTable(MVISA ISA);
+  static void populateTable(MVCPUInfo::MVISA ISA);
 
   /// Auxiliary function for replacing patterns in a string
   static std::string replacePatterns(std::string Pattern, std::string W,

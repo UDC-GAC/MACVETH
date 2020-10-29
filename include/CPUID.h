@@ -64,15 +64,74 @@ public:
 #endif
   }
 
+  /// Return EAX register
   const uint32_t &EAX() const { return Regs[0]; }
+  /// Return EBX register
   const uint32_t &EBX() const { return Regs[1]; }
+  /// Return ECX register
   const uint32_t &ECX() const { return Regs[2]; }
+  /// Return EDX register
   const uint32_t &EDX() const { return Regs[3]; }
 };
 
-class CPUInfo {
+class MVCPUInfo {
 public:
-  CPUInfo() {
+  /// Supported ISA
+  enum MVISA {
+    /// TODO: detect ISA
+    AUTODETECT = -1,
+    /// SSE support
+    SSE = 10,
+    /// AVX support
+    AVX = 20,
+    /// AVX2 support
+    AVX2 = 21,
+    /// AVX512 support
+    AVX512 = 22
+  };
+
+  /// Supported architectures. This enum is util for computing the cost model,
+  /// as different architectures may differ in the latencies and thoughputs of
+  /// operations for the same ISA
+  enum MVArch {
+    /// TODO: Autodetect the architecture underlying
+    NATIVE,
+    /// Default or not specified
+    DEFAULT,
+    /// 1st-gen Intel Nehalem (2009) architecture (tock): SSE4.2
+    Nehalem,
+    /// 1st-gen (and 2) Intel Westmere (2010) architecture (tick): SSE4.2
+    Westmere,
+    /// 2nd-gen Intel Sandy Bridge (2011) architecture (tock): AVX
+    SandyBridge,
+    /// 3rd-gen Intel Ivy Bridge (2012) architecture (tick): AVX
+    IvyBridge,
+    /// 4th-gen Intel Haswell (2013) architecture (tock): AVX2
+    Haswell,
+    /// 5th-gen Intel Broadwell (2014) architecture (tick): AVX2
+    Broadwell,
+    /// 6th-gen Intel Skylake (2015) architecture (tock): AVX2, AVX512
+    /// (Skylake-SP)
+    Skylake,
+    /// 7th-gen Intel Kaby Lake (2016) architecture: AVX2
+    KabyLake,
+    /// 8-9th-gen Intel Coffee Lake (2017) architecture: AVX2
+    CoffeeLake,
+    /// 8th-gen (server) Intel Cascade Lake (2019) architecture: AVX512
+    CascadeLake,
+    /// 10th-gen Intel Cascade Lake (2019) architecture: AVX512
+    IceLake,
+    /// AMD Zen architecture: AVX2
+    Zen,
+    /// AMD Zen2 architecture: AVX2
+    Zen2,
+    /// AMD default
+    AMDDef,
+    /// Intel Default
+    IntelDef,
+  };
+
+  MVCPUInfo() {
     // Get vendor name EAX=0
     CPUID CpuID0(0, 0);
     uint32_t HFS = CpuID0.EAX();
@@ -81,6 +140,7 @@ public:
     VendorId += std::string((const char *)&CpuID0.ECX(), 4);
     // Get SSE instructions availability
     CPUID CpuID1(1, 0);
+    ArchName = getArchitectureFromEAX(CpuID1);
     IsHTT = CpuID1.EDX() & AVX_POS;
     IsSSE = CpuID1.EDX() & SSE_POS;
     IsSSE2 = CpuID1.EDX() & SSE2_POS;
@@ -162,7 +222,7 @@ public:
         NumCores = NumLogCpus = 1;
       }
     } else {
-      // MVErr("Unexpected vendor id");
+      // FIXME: put some error here
     }
     // Get processor brand std::string
     // This seems to be working for both Intel & AMD vendors
@@ -174,6 +234,10 @@ public:
       ModelName += std::string((const char *)&CpuID.EDX(), 4);
     }
   }
+  /// TODO: Get architecture name from values in EAX
+  std::string getArchitectureFromEAX(CPUID C) { return ""; }
+  /// Get architecture name
+  std::string getArchitecture() { return ArchName; }
   /// Get vendor name
   std::string vendor() const { return VendorId; }
   /// Get model name
@@ -199,67 +263,99 @@ public:
 private:
   // Bit positions for data extractions
   // EAX=1: Processor Info and Feature Bits - EBX
-  static const uint32_t SSE_POS = 0x02000000;
-  static const uint32_t SSE2_POS = 0x04000000;
-  static const uint32_t SSE3_POS = 0x00000001;
-  static const uint32_t SSE41_POS = 0x00080000;
-  static const uint32_t SSE42_POS = 0x00100000;
-  static const uint32_t AVX_POS = 0x10000000;
+  static constexpr uint32_t SSE_POS = 0x02000000;
+  static constexpr uint32_t SSE2_POS = 0x04000000;
+  static constexpr uint32_t SSE3_POS = 0x00000001;
+  static constexpr uint32_t SSE41_POS = 0x00080000;
+  static constexpr uint32_t SSE42_POS = 0x00100000;
+  static constexpr uint32_t AVX_POS = 0x10000000;
   // EAX=7, ECX=0: Extended Features - EBX
-  static const uint32_t AVX2_POS = 0x00000020;
-  static const uint32_t AVX512F_POS = 0x00010000;
-  static const uint32_t AVX512DQ_POS = 0x00020000;
-  static const uint32_t AVX512IFMA_POS = 0x00200000;
-  static const uint32_t AVX512PF_POS = 0x00400000;
-  static const uint32_t AVX512ER_POS = 0x00800000;
-  static const uint32_t AVX512CD_POS = 0x01000000;
-  static const uint32_t AVX512BW_POS = 0x04000000;
-  static const uint32_t AVX512VL_POS = 0x08000000;
+  static constexpr uint32_t AVX2_POS = 0x00000020;
+  static constexpr uint32_t AVX512F_POS = 0x00010000;
+  static constexpr uint32_t AVX512DQ_POS = 0x00020000;
+  static constexpr uint32_t AVX512IFMA_POS = 0x00200000;
+  static constexpr uint32_t AVX512PF_POS = 0x00400000;
+  static constexpr uint32_t AVX512ER_POS = 0x00800000;
+  static constexpr uint32_t AVX512CD_POS = 0x01000000;
+  static constexpr uint32_t AVX512BW_POS = 0x04000000;
+  static constexpr uint32_t AVX512VL_POS = 0x08000000;
   // EAX=7, ECX=0: Extended Features - ECX
-  static const uint32_t AVX512VBMI_POS = 0x00000002;
-  static const uint32_t AVX512VBMI2_POS = 0x00000040;
-  static const uint32_t AVX512VNNI_POS = 0x00000800;
-  static const uint32_t AVX512BITALG_POS = 0x00001000;
+  static constexpr uint32_t AVX512VBMI_POS = 0x00000002;
+  static constexpr uint32_t AVX512VBMI2_POS = 0x00000040;
+  static constexpr uint32_t AVX512VNNI_POS = 0x00000800;
+  static constexpr uint32_t AVX512BITALG_POS = 0x00001000;
   // EAX=7, ECX=0: Extended Features - EDX
-  static const uint32_t AVX5124VNNIW_POS = 0x00000004;
-  static const uint32_t AVX5124VFMAPS_POS = 0x00000008;
-  static const uint32_t AVX5124VP2INTERSECT_POS = 0x00000100;
+  static constexpr uint32_t AVX5124VNNIW_POS = 0x00000004;
+  static constexpr uint32_t AVX5124VFMAPS_POS = 0x00000008;
+  static constexpr uint32_t AVX5124VP2INTERSECT_POS = 0x00000100;
   // EAX=7, ECX=1: Extended Features - EAX
-  static const uint32_t AVX512BF16_POS = 0x00000020;
+  static constexpr uint32_t AVX512BF16_POS = 0x00000020;
 
-  static const uint32_t LVL_TYPE = 0x0000FF00;
-  static const uint32_t LVL_CORES = 0x0000FFFF;
+  static constexpr uint32_t LVL_TYPE = 0x0000FF00;
+  static constexpr uint32_t LVL_CORES = 0x0000FFFF;
 
-  // Attributes
+  /// Name of the architecture, e.g. "broadwell", "skylake", "knights landing"
+  std::string ArchName = "";
+  /// 12-character string which represent, basically, the manufacturer, e.g.
+  /// "AMDisbetter!", "AuthenticAMD", "GenuineIntel", etc.
   std::string VendorId = "";
+  /// Should work for AMD and Intel and represents the name of the processor
   std::string ModelName = "";
+  /// Number of threads
   int NumSMT = 1;
+  /// Number of physical cores
   int NumCores = 1;
+  /// Number of logical cores
   int NumLogCpus = 1;
+  /// CPU frequency in MHz
   float CPUMHz = 1000;
+  /// CPU with hyper-threading capability
   bool IsHTT = false;
+  /// SSE flag
   bool IsSSE = false;
+  /// SSE2 flag
   bool IsSSE2 = false;
+  /// SSE3 flag
   bool IsSSE3 = false;
+  /// SSE4.1 flag
   bool IsSSE41 = false;
+  /// SSE4.1 flag
   bool IsSSE42 = false;
+  /// AVX flag
   bool IsAVX = false;
+  /// AVX2 flag
   bool IsAVX2 = false;
+  /// AVX-512F flag
   bool IsAVX512F = false;
+  /// AVX-512DQ flag
   bool IsAVX512DQ = false;
+  /// AVX-512IFMA flag
   bool IsAVX512IFMA = false;
+  /// AVX-512PF flag
   bool IsAVX512PF = false;
+  /// AVX-512ER flag
   bool IsAVX512ER = false;
+  /// AVX-512CD flag
   bool IsAVX512CD = false;
+  /// AVX-512BW flag
   bool IsAVX512BW = false;
+  /// AVX-512VL flag
   bool IsAVX512VL = false;
+  /// AVX-512VBMI flag
   bool IsAVX512VBMI = false;
+  /// AVX-512VBMI2 flag
   bool IsAVX512VBMI2 = false;
+  /// AVX-512VBMI flag
   bool IsAVX512VNNI = false;
+  /// AVX-512BITALG flag
   bool IsAVX512BITALG = false;
+  /// AVX-5124VNNIW flag
   bool IsAVX5124VNNIW = false;
+  /// AVX-5124FMAPS flag
   bool IsAVX5124FMAPS = false;
+  /// AVX-512VP2INTERSECT flag
   bool IsAVX512VP2INTERSECT = false;
+  /// AVX-512BF16 flag
   bool IsAVX512BF16 = false;
 };
 

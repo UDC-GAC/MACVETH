@@ -36,8 +36,7 @@
 
 // ---------------------------------------------
 InstCostInfo getOperationCost(MVOp Op, std::string T) {
-  auto MVOP = Op.getTableMVOPstr(T);
-  InstCostInfo C(CostTable::getMVOPRow(MVOP));
+  InstCostInfo C(CostTable::getMVOPRow(Op.getTableMVOPstr(T)));
   return C;
 }
 
@@ -52,16 +51,18 @@ InstCostInfo getOperandCost(MVExpr *A, std::string T) {
 
 // ---------------------------------------------
 InstCostInfo MVCostModel::computeCostForNode(Node *N) {
-  InstCostInfo Tot;
-  auto MVOP = getOperationCost(N->getOutputInfo().MVOP, N->getDataType());
-  return Tot;
+  return getOperationCost(N->getOutputInfo().MVOP, N->getDataType());
 }
 
 // ---------------------------------------------
-InstCostInfo MVCostModel::computeCostForNodeList(Node::NodeListType NL) {
+InstCostInfo MVCostModel::computeCostForNodeList(int VL,
+                                                 Node::NodeListType &NL) {
   InstCostInfo TotalCost;
-  for (auto N : NL) {
-    TotalCost += computeCostForNode(N);
+  // FIXME: Dunno how to iterate vectors in C++...
+  // for (const auto &N : NL) {
+  // TotalCost += computeCostForNode(N);
+  for (int i = 0; i < VL; ++i) {
+    TotalCost += computeCostForNode(NL[i]);
   }
   return TotalCost;
 }
@@ -88,7 +89,7 @@ InstCostInfo MVCostModel::computeCostForStmtWrapper(StmtWrapper *S) {
 
 // ---------------------------------------------
 InstCostInfo
-MVCostModel::computeCostForStmtWrapperList(std::list<StmtWrapper *> SL) {
+MVCostModel::computeCostForStmtWrapperList(std::list<StmtWrapper *> &SL) {
   InstCostInfo TotalCost;
   for (auto S : SL) {
     TotalCost += computeCostForStmtWrapper(S);
@@ -131,7 +132,7 @@ SIMDInfo MVCostModel::generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S) {
 
 //---------------------------------------------
 std::list<VectorIR::VectorOP>
-MVCostModel::greedyOpsConsumer(Node::NodeListType NL, SIMDBackEnd *SG) {
+MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *SG) {
   std::list<VectorIR::VectorOP> VList;
   auto CopyNL = NL;
   Node::NodeListType VLoadA;
@@ -210,13 +211,16 @@ repeat:
   }
 
   if (Cursor != 0) {
-    Utils::printDebug("MVCostModel", "compute cost");
     // Compute the vector cost
     auto NewVectInst = VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB);
     auto CostVect = computeVectorOPCost(NewVectInst, SG);
-    Utils::printDebug("MVCostModel", "cost vect = " + CostVect.toString());
-    auto CostNodes = computeCostForNodeList(VOps);
-    Utils::printDebug("MVCostModel", "cost nodes = " + CostNodes.toString());
+    auto CostNodes = computeCostForNodeList(Cursor, VOps);
+    CostNodes += computeCostForNodeList(Cursor, VLoadA);
+    if (!IsUnary) {
+      CostNodes += computeCostForNodeList(Cursor, VLoadB);
+    }
+    Utils::printDebug("MVCostModel", "Cost Vect = " + CostVect.toString());
+    Utils::printDebug("MVCostModel", "Cost Nodes = " + CostNodes.toString());
     auto DoVectorize = (CostVect <= CostNodes);
     if ((DoVectorize) ||
         (MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
@@ -239,7 +243,7 @@ repeat:
 
 //---------------------------------------------
 std::list<VectorIR::VectorOP>
-MVCostModel::getVectorOpFromCDAG(Node::NodeListType NList, SIMDBackEnd *SG) {
+MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *SG) {
   // Returning list
   std::list<VectorIR::VectorOP> VList;
 

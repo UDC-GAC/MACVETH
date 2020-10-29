@@ -49,13 +49,13 @@ public:
 
   /// Compute cost of a region or set of statements
   static InstCostInfo
-  computeCostForStmtWrapperList(std::list<StmtWrapper *> SL);
+  computeCostForStmtWrapperList(std::list<StmtWrapper *> &SL);
 
   /// Compute cost of a concrete node
   static InstCostInfo computeCostForNode(Node *N);
 
   /// Compute cost of a region or set of nodes
-  static InstCostInfo computeCostForNodeList(Node::NodeListType NL);
+  static InstCostInfo computeCostForNodeList(int VL, Node::NodeListType &NL);
 
   /// Compute cost of a vector operation generated in the Vector IR
   static InstCostInfo computeVectorOPCost(VectorIR::VectorOP V,
@@ -70,10 +70,10 @@ public:
 
   /// Get the vector operations from the CDAG
   static std::list<VectorIR::VectorOP>
-  getVectorOpFromCDAG(Node::NodeListType NList, SIMDBackEnd *SG);
+  getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *SG);
 
   /// Greedy algorithm for consuming nodes in the CDAG
-  static std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType NL,
+  static std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType &NL,
                                                          SIMDBackEnd *SG);
 };
 

@@ -188,9 +188,15 @@ struct MVOp {
   std::string getTableMVOPstr(std::string T) {
     std::string Suffix = "_" + Utils::toUppercase(T);
     if (getType() == MVOpType::CLANG_BINOP) {
+      // Utils::printDebug(
+      //     "MVOps",
+      //     Utils::toUppercase(getStrFromBinaryOperatorOpcode(this->ClangOP)) +
+      //         Suffix);
       return Utils::toUppercase(getStrFromBinaryOperatorOpcode(this->ClangOP)) +
              Suffix;
     }
+    // Utils::printDebug(
+    //     "MVOps", Utils::toUppercase(getStrFromMVCode(this->MVOpC)) + Suffix);
     return Utils::toUppercase(getStrFromMVCode(this->MVOpC)) + Suffix;
   }
 

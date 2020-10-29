@@ -1,4 +1,6 @@
-![MACVETH][macveth-logo]
+<p align="center">
+  <img src="https://raw.githubusercontent.com/markoshorro/MACVETH/f15ccc75e191319265c403e47c8f1acd0b257800/doc/report/img/MACVETHLOGO.svg?token=ABHMITE77FKBL6X6ASCYQQS7TLMHG">
+</p>
 
 # MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors in HPC 
 
@@ -23,9 +25,12 @@ intermediate representations seeking for a common purpose: optmize vectorization
 Last but not least, the first and last letter of the acronym stand for the name
 of the main author (Marcos Horro).
 
-Regarding the logo, the image represents nodes in the CDAG structure that it
-uses. Same way, it also creates the shape of a crown, as Macbeth's, having
-three fleurons, as the Three Witches in the very first Act of the tragedy.
+Regarding the logo, the symbol within the ellipse is the 23rd letter of ancient
+greek's alphabet Psi. It represents the cost function for our SIMD model. 
+This letter is widely used in science (e.g. Schrödinger equations). 
+Besides, 'psi' can be translitered to 'ps', which is the suffix on Intel Intrinsics for 'packed-single'. 
+Same way, the shape of Psi greek letter has three fleurons, as the Three 
+Witches in the very first Act of the tragedy (or is this too twisted?)
 
 ## Main dependencies:
 

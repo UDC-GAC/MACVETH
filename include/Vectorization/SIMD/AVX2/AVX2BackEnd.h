@@ -29,8 +29,8 @@
  * SOFTWARE.
  */
 
-#ifndef MACVETH_AVX2GEN_H
-#define MACVETH_AVX2GEN_H
+#ifndef MACVETH_AVX2BACKEND_H
+#define MACVETH_AVX2BACKEND_H
 
 #include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include "include/Vectorization/VectorIR.h"
@@ -190,7 +190,9 @@ public:
 
 private:
   /// Constructor
-  AVX2BackEnd() : SIMDBackEnd() { SIMDBackEnd::populateTable(MVISA::AVX2); }
+  AVX2BackEnd() : SIMDBackEnd() {
+    SIMDBackEnd::populateTable(MVCPUInfo::MVISA::AVX2);
+  }
 
   /// Singletton pattern
   static inline SIMDBackEnd *_instance = 0;

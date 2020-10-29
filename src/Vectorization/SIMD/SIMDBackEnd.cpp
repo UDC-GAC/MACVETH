@@ -48,7 +48,7 @@
 using namespace macveth;
 
 // ---------------------------------------------
-void SIMDBackEnd::populateTable(MVISA ISA) {
+void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
   auto PathISA = "/ISA/" + MVISAStr[ISA] + "/" + MVArchStr[MVOptions::Arch];
   std::string dir(__FILE__);
   dir = dir.substr(0, dir.find_last_of("\\/"));
