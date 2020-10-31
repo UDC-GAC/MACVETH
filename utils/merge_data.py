@@ -109,6 +109,7 @@ def set_to_asm(s):
     width = pref_to_width_int[tok[1][2:]]
     dt = suff_to_dt_int[tok[3]]
     asm = "VMOV"
+    s = s.replace("256", "")
     if dt > 16:
         tmp = get_xed_iform_from_intrin(s, asm)
     else:
