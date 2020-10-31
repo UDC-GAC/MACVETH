@@ -57,19 +57,14 @@ public:
     unsigned int AddrLatency = 0;
     /// Memory latency
     unsigned int MemLatency = 0;
-    /// Determine whether latency has been set or not
-    bool Undefined = true;
 
-    /// Get latency
+    /// FIXME: Get latency
     unsigned int getLatency() {
-      if (Undefined) {
-        return 1;
-      }
-      if (MinLatency == MaxLatency) {
+      if ((MinLatency > MaxLatency) || (MinLatency == MaxLatency)) {
+        /// Is this garbage? Yyyyyes sir
         return MinLatency;
-      } else {
-        return (MaxLatency + MinLatency) / 2;
       }
+      return (MaxLatency + MinLatency) / 2;
     }
 
     /// Get memory or address latency
@@ -92,10 +87,9 @@ public:
       if (L == NullValue) {
         return;
       }
-      auto open = L.find("[") + 1;
+      auto open = L.find("[");
       auto close = L.find("]") - 1;
-      Undefined = false;
-      if (open == std::string::npos) {
+      if (open++ == std::string::npos) {
         // # case
         MinLatency = MaxLatency = std::stoi(L.c_str());
         return;
@@ -105,9 +99,9 @@ public:
         auto SubStr = L.substr(open, close);
         std::stringstream TMP(SubStr);
         while (getline(TMP, W, ';')) {
-          auto open = W.find("(") + 1;
+          auto open = W.find("(");
           auto close = W.find(")") - 1;
-          if (open == std::string::npos) {
+          if (open++ == std::string::npos) {
             if (MinLatency == 0) {
               MinLatency = std::stoi(W.c_str());
             } else {
@@ -115,9 +109,9 @@ public:
             }
             continue;
           }
+          std::string Win;
           auto SubSubStr = W.substr(open, close);
           std::stringstream TMPin(SubSubStr);
-          std::string Win;
           while (getline(TMPin, Win, ',')) {
             if (AddrLatency == 0) {
               AddrLatency = std::stoi(Win.c_str());
@@ -129,6 +123,7 @@ public:
       }
     };
   };
+
   /// This is a future feature, if is implemented any port algorithm
   struct Ports {
     /// Number of micro-instructions
@@ -165,10 +160,11 @@ public:
     /// Empty constructor for initialization reasons
     Row(){};
 
-    Row(std::string XED_iform, std::string Asm, std::string CPUID, Latency Lat,
-        double Throughput, int NUops)
-        : XED_iform(XED_iform), Asm(Asm), CPUID(CPUID), Lat(Lat),
-          Throughput(Throughput), NUops(NUops){};
+    Row(std::string MVOP, std::string Intrinsics, std::string XED_iform,
+        std::string Asm, std::string CPUID, Latency Lat, double Throughput,
+        int NUops)
+        : MVOP(MVOP), Intrinsics(Intrinsics), XED_iform(XED_iform), Asm(Asm),
+          CPUID(CPUID), Lat(Lat), Throughput(Throughput), NUops(NUops){};
   };
 
   /// Each Table identifies an architecture
@@ -222,6 +218,7 @@ public:
     if (CostTable::TMVOP.find(Op) != CostTable::TMVOP.end()) {
       return CostTable::getLatency(CostTable::TMVOP[Op].XED_iform);
     }
+    Utils::printDebug("CostTable", "Can not find MVOP = " + Op);
     return 100;
   }
 
@@ -235,8 +232,8 @@ public:
   static void addRow(std::string MVOP, std::string Intrinsics, std::string ASM,
                      std::string XED_iform, std::string Lat, std::string Th,
                      std::string Uops, std::string Ports) {
-    Row R(XED_iform, ASM, "", Latency(Lat), std::atof(Th.c_str()),
-          std::atoi(Uops.c_str()));
+    Row R(MVOP, Intrinsics, XED_iform, ASM, "", Latency(Lat),
+          std::atof(Th.c_str()), std::atoi(Uops.c_str()));
     if (MVOP != NullValue) {
       CostTable::TMVOP[MVOP] = R;
     }

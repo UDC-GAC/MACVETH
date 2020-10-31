@@ -7,7 +7,11 @@
  */
 
 #include "include/Utils.h"
+#if __GNUC__ >= 8
 #include <filesystem>
+#else
+#include <experimental/filesystem>
+#endif
 #include <llvm-10/llvm/ADT/APFloat.h>
 
 using namespace macveth;

@@ -151,7 +151,7 @@ public:
     int Offset = -1;
     /// Check if there is a vector already assigned wraping the same values
     bool checkIfVectorAssigned(int VL, Node::NodeListType &V,
-                               MVDataType::VWidth);
+                               MVDataType::VWidth W);
     /// Get width
     MVDataType::VWidth getWidth() { return Width; }
     /// Get data type of the operand: assumption that all elements are the same

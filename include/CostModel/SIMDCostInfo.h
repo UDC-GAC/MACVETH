@@ -50,6 +50,8 @@ enum VectorizationType {
   FULL
 };
 
+enum InstType { Intrin, MVOP };
+
 /// Cost of SIMD
 struct InstCostInfo {
   /// Number of micro-instructions issued by the SIMD instruction
@@ -70,9 +72,13 @@ struct InstCostInfo {
   InstCostInfo(int L, float T, int Pen, int Pref, int U)
       : Latency(L), Throughput(T), Penalty(Pen), Preference(Pref), UOps(U) {}
   /// Default constructor
-  InstCostInfo(CostTable::Row R) {
+  InstCostInfo(CostTable::Row R, InstType I) {
     UOps = R.NUops;
-    Latency = R.Lat.getLatency();
+    if (I == InstType::Intrin) {
+      Latency = CostTable::getLatencyIntrin(R.Intrinsics);
+    } else if (I == InstType::MVOP) {
+      Latency = CostTable::getLatencyMVOP(R.MVOP);
+    }
     Throughput = R.Throughput;
   }
 

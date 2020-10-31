@@ -36,7 +36,7 @@
 
 // ---------------------------------------------
 InstCostInfo getOperationCost(MVOp Op, std::string T) {
-  InstCostInfo C(CostTable::getMVOPRow(Op.getTableMVOPstr(T)));
+  InstCostInfo C(CostTable::getMVOPRow(Op.getTableMVOPstr(T)), InstType::MVOP);
   return C;
 }
 
@@ -44,7 +44,8 @@ InstCostInfo getOperationCost(MVOp Op, std::string T) {
 InstCostInfo getOperandCost(MVExpr *A, std::string T) {
   InstCostInfo C;
   if (A->needsToBeLoaded()) {
-    C = InstCostInfo(CostTable::getMVOPRow("LD_" + Utils::toUppercase(T)));
+    C = InstCostInfo(CostTable::getMVOPRow("LD_" + Utils::toUppercase(T)),
+                     InstType::MVOP);
   }
   return C;
 }
@@ -107,7 +108,12 @@ InstCostInfo MVCostModel::computeVectorOPCost(VectorIR::VectorOP V,
       C.Latency += 10;
       continue;
     }
-    C += InstCostInfo(CostTable::getIntrinRow(I.FuncName));
+    C += InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::Intrin);
+    Utils::printDebug(
+        "MVCostModel",
+        "SIMD inst = " + I.FuncName + " ( " + I.render() + "); cost = " +
+            InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::Intrin)
+                .toString());
   }
   return C;
 }
@@ -119,7 +125,8 @@ SIMDInfo MVCostModel::generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S) {
   std::list<std::string> L;
   long TotCost = 0;
   for (auto I : S) {
-    CostOp[I.FuncName] = InstCostInfo(CostTable::getIntrinRow(I.FuncName));
+    CostOp[I.FuncName] =
+        InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::Intrin);
     NumOp[I.FuncName]++;
     TotCost += CostOp[I.FuncName].Latency;
   }
@@ -219,7 +226,8 @@ repeat:
     if (!IsUnary) {
       CostNodes += computeCostForNodeList(Cursor, VLoadB);
     }
-    Utils::printDebug("MVCostModel", "Cost Vect = " + CostVect.toString());
+    Utils::printDebug("MVCostModel",
+                      "Cost Vect = " + CostVect.toString() + "; ");
     Utils::printDebug("MVCostModel", "Cost Nodes = " + CostNodes.toString());
     auto DoVectorize = (CostVect <= CostNodes);
     if ((DoVectorize) ||
