@@ -28,9 +28,10 @@ of the main author (Marcos Horro).
 Regarding the logo, the symbol within the ellipse is the 23rd letter of ancient
 greek's alphabet Psi. It represents the cost function for our SIMD model. 
 This letter is widely used in science (e.g. Schrödinger equations). 
-Besides, 'psi' can be translitered to 'ps', which is the suffix on Intel Intrinsics for 'packed-single'. 
-Same way, the shape of Psi greek letter has three fleurons, as the Three 
-Witches in the very first Act of the tragedy (or is this too twisted?)
+Besides, 'psi' can be translitered to 'ps', which is the suffix on Intel 
+Intrinsics for 'packed-single'. Same way, the shape of Psi greek letter has 
+three fleurons, as the Three Witches in the very first Act of the tragedy (or 
+is this too twisted?).
 
 ## Main dependencies:
 
