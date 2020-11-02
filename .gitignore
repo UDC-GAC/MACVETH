@@ -18,6 +18,8 @@ macveth
 *.gz
 *.tbz
 *.tar.xz
+*.tgz
+*_org/
 
 # Results
 *.csv

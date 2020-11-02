@@ -64,7 +64,6 @@ public:
   static MVDataType::VWidth getWidthFromVDataType(int NOps,
                                                   MVDataType::VDataType VData) {
     int Bits = MVDataType::VDataTypeWidthBits[VData] * NOps;
-    // Utils::printDebug("VectorIR", "bits = " + std::to_string(Bits));
     if (Bits > 256) {
       return MVDataType::VWidth::W512;
     } else if (Bits > 128) {

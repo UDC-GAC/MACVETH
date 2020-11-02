@@ -1,3 +1,11 @@
+'''
+Filename: tests/testing.py
+Created Date: Friday, October 9th 2020, 4:53:05 pm
+Author: Marcos Horro
+
+Copyright (c) 2020 Colorado State University
+'''
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
