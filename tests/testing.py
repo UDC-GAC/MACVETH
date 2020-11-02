@@ -30,7 +30,7 @@ cc = "gcc"
 
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
-mv_poly_flags = " --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/fulltest/utilities' "
+mv_poly_flags = " --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/fulltest/utilities' --misa=avx2 "
 
 # Discussion:
 # is POLYBENCH_USE_C99_PROTO needed?
@@ -198,6 +198,9 @@ def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
             if compile_test_with_macveth(org_t, macveth_t, mv_poly_flags):
                 break
             n_attemps -= 1
+        if (n_attemps == 0):
+            print("error...")
+            exit(-1)
         print("{:<80}".format("execution test of " + org_t + "..."), end="")
 
         pref = tmp_path + test

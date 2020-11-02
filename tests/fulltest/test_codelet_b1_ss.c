@@ -54,9 +54,9 @@ static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n),
                             DATA_TYPE POLYBENCH_1D(A, N, n)) {
   register int i0, i1, i2, i3, i4, i5, i6;
 #pragma macveth i0 full
-  // for (i0 = 0; i0 < 3; ++i0) {
-  //   y[0 * i0 + 0] = y[0 * i0 + 0] + A[1 * i0 + 0] * x[1 * i0 + 4];
-  // }
+  for (i0 = 0; i0 < 3; ++i0) {
+    y[0 * i0 + 0] = y[0 * i0 + 0] + A[1 * i0 + 0] * x[1 * i0 + 4];
+  }
   for (i0 = 0; i0 < 2; ++i0) {
     y[0 * i0 + 1] = y[0 * i0 + 1] + A[1 * i0 + 3] * x[1 * i0 + 0];
   }
