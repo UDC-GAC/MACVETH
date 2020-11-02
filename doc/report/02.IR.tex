@@ -209,7 +209,19 @@ In order to approach the different architectures when generating instructions,
 we need a generic vector representation of the vector instructions we want to
 have in our program. For this purpose, MACVETH uses the VectorIR, that basically
 wraps a set of nodes from the CDAG onto a common structure which represent a 
-vector operation.
+vector operation. This vector representation is linked to the target 
+architecture and ISA, as the maximum number of elements in a vector operation 
+depends on the type of data and the maximum vector width in the architecture. 
+Thus, each vector operation will also depend of two vector operands, which are, 
+as well, a wrap of set of memory or result nodes in the CDAG. 
+Definition~\ref{def:VectorIR} synthesis in a more formal manner this paragraph.
+
+\theoremstyle{definition}
+\begin{definition}\label{def:VectorIR}
+	A vector operation is a 4-tuple $VIR=(\oplus, VOp_{R}, VOp_{1}, 
+	VOp_{2})$ such that: (1) $|VOp_{i}| \leq ISA_{width}$, (2) $VOp_{i} 
+	\subseteq C$, (3) $\forall i,j / VOp_{i} \cap VOp_{j} = \emptyset$
+\end{definition}
 
 To wrap up: VectorIR is a generic way of representing vector operations for the 
 different
@@ -221,18 +233,5 @@ multiplication onto a single operation; however they are only available for FP
 operations and, therefore, not for integers. It would be pointless to tackle
 all these issues in this representation that is why this is done in the AVX
 backend instead.
-
-\section{SIMDBackEnd: \textit{the} backend}
-In order to synthesize the vector operations gathered in the VectorIR, there
-must exists a target-specific backend for each ISA. MACVETH disposes a general
-interface called \texttt{SIMDBackEnd}. This interface must be
-implemented by each architecture and/or ISA in order to generate
-target-specific code for each machine or system.
-
-Furthermore, each backend has a table with costs for all instructions and 
-operations, and their intrinsics equivalence, if they have. This table is 
-generated from data gathered in~\cite{bib:uops} and~\cite{bib:intrinsics}. 
-Thus, data for each ISA and architecture are provided to the compiler in 
-separate files. It is at runtime when compiler decides what file to read.
 
 

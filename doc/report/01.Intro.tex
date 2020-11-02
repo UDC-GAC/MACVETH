@@ -1,3 +1,22 @@
+% PACT ABSTRACT
+%Modern optimizing compilers implement robust auto-vectorization techniques 
+%targeting rich SIMD ISAs. However the typical practice is to generate 
+%machine-specific assembly code, which exploits the SIMD units of the targeted 
+%processor.  In this work we take a different approach, by developing a 
+%source-to-source compilation framework targeting the automatic vectorization 
+%of 
+%specific loop regions. We implement vectorization using an intrinsics-style 
+%approach, to facilitate portability to a variety of concrete SIMD ISAs. We 
+%develop machine-independent cost-driven algorithms to pack efficiently 
+%arbitrary operands and operations into SIMD vectors. Specifically, we support 
+%vector packing across multiple distinct loop nests to maximize vector 
+%occupancy 
+%in particular when loops have a very small trip count. Experimental results 
+%are 
+%presented for a large set of vectorizable loop shapes, and for several key 
+%deep 
+%learning inference programs, demonstrating the benefits of random vector 
+%packing for efficient and portable vectorization of highly rectangular loops.
 Despite of the extraordinary performance with regard to the optimizations that
 compilers (e.g. ICC, Clang/LLVM, gcc) may be able to do all over programs, they 
 also
