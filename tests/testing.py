@@ -30,7 +30,7 @@ cc = "gcc"
 
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
-mv_poly_flags = " --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/fulltest/utilities' --misa=avx2 "
+mv_poly_flags = " --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/utilities' --misa=avx2 "
 
 # Discussion:
 # is POLYBENCH_USE_C99_PROTO needed?
@@ -55,8 +55,8 @@ def clean_tmp_files():
 
 def poly_flags(p):
     return (
-        " -I%s -I %sutilities %sutilities/polybench.c -DPOLYBENCH_DUMP_ARRAYS" %
-        (p, p, p))
+        " -I%s -I utilities utilities/polybench.c -DPOLYBENCH_DUMP_ARRAYS" %
+        (p))
 
 
 def comp_cmd(flags, file, output):

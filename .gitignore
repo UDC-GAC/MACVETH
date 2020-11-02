@@ -14,6 +14,11 @@ macveth
 *.S
 *.xml
 
+# Compressed files
+*.gz
+*.tbz
+*.tar.xz
+
 # Results
 *.csv
 *.output
