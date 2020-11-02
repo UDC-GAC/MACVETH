@@ -170,10 +170,10 @@ std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
 }
 
 // ---------------------------------------------
-unsigned int getMask(int VL, Node::NodeListType &V) {
+unsigned int getMask(int VL, int VS, Node::NodeListType &V) {
   unsigned int Mask = 0x00;
-  for (int n = 0; n < VL; ++n) {
-    if (V[n] != nullptr) {
+  for (int n = 0; n < VS; ++n) {
+    if ((V[n] != nullptr) || (n < VL)) {
       Mask |= (1 << n);
     }
   }
@@ -264,7 +264,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   this->MemOp = IsMemOp;
 
   // Get data mask
-  this->Mask = getMask(this->Size, V);
+  this->Mask = getMask(this->VSize, this->Size, V);
 
   // Determine whether is partial or not
   this->IsPartial = !(this->Size == this->VSize);

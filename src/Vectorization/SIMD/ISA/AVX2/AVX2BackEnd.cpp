@@ -40,12 +40,25 @@
 using namespace macveth;
 
 // ---------------------------------------------
+std::map<std::string, std::string> OpEq = {
+    {"+", "add"},
+    {"-", "sub"},
+    {"*", "mul"},
+    {"/", "div"},
+};
+
+// ---------------------------------------------
 SIMDBackEnd::SIMDInst createSIMDInst(std::string Op, std::string Res,
                                      std::string Width, std::string DataType,
                                      std::string PrefS, std::string SuffS,
                                      std::list<std::string> Args,
                                      SIMDBackEnd::SIMDType SType,
                                      MVSourceLocation MVSL) {
+
+  if (OpEq[Op] != "") {
+    Op = OpEq[Op];
+  }
+
   // Replace fills in pattern
   auto AVXFunc =
       SIMDBackEnd::replacePatterns(Op, Width, DataType, PrefS, SuffS);
@@ -287,7 +300,8 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
   auto OP =
       (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "hadd" : "hsub";
 
-  auto Stride = VIL[0].DT == MVDataType::VDataType::DOUBLE ? 4 : 2;
+  auto Stride = 2;
+  Utils::printDebug("AVX2BackEnd", "Stride = " + std::to_string(Stride));
   MVSourceLocation MVSL(Pos, Loc, Off);
   while (true) {
     for (int i = 0; i < NumRedux; i += Stride) {
@@ -538,9 +552,18 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
   // they can be fused if and only if they are in the same loop dimension/name
   // and the same loop, basically (because they can have same name but be
   // different loops). This is important for coherence in the program
-  auto LInsSize = L.size();
-  auto OpReduxType = L.front().MVOP.T;
-  auto OpRedux = L.front().MVOP;
+  SIMDBackEnd::SIMDInstListType LC;
+  std::string Accm = "";
+  for (auto I : L) {
+    if (I.Args.front() != Accm) {
+      Accm = I.Args.front();
+      LC.push_back(I);
+    }
+  }
+
+  auto LInsSize = LC.size();
+  auto OpReduxType = LC.front().MVOP.T;
+  auto OpRedux = LC.front().MVOP;
   SIMDBackEnd::SIMDInstListType FusedRedux;
   if (LInsSize == 0) {
     return FusedRedux;
@@ -551,7 +574,7 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
   if (LInsSize == 1) {
     Utils::printDebug("AVX2BackEnd", "Single reduction approach (" +
                                          std::to_string(LInsSize) + ")");
-    FusedRedux = horizontalSingleReduction(L);
+    FusedRedux = horizontalSingleReduction(LC);
   } else if (((OpReduxType == MVOpType::CLANG_BINOP) &&
               ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
                (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)))) {
@@ -559,15 +582,15 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
     // reductions
     Utils::printDebug("AVX2BackEnd",
                       "Horizontal approach (" + std::to_string(LInsSize) + ")");
-    FusedRedux = horizontalReductionFusion(L);
+    FusedRedux = horizontalReductionFusion(LC);
   } else {
     Utils::printDebug("AVX2BackEnd", "General approach approach (" +
                                          std::to_string(LInsSize) + ")");
-    FusedRedux = generalReductionFusion(L);
+    FusedRedux = generalReductionFusion(LC);
   }
 
   // Clean accumulators
-  for (auto R : L) {
+  for (auto R : LC) {
     auto Accm = getAccmReg(R.VOPResult.getName());
     if (!isAccmClean(Accm)) {
       MVSourceLocation MVSL(MVSourceLocation::Position::PREORDER,
@@ -577,7 +600,7 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
     }
   }
   /// Mark accumulators
-  for (auto R : L) {
+  for (auto R : LC) {
     auto Accm = getAccmReg(R.VOPResult.getName());
     markDirtyAccm(Accm);
   }
@@ -748,9 +771,28 @@ SIMDBackEnd::SIMDInst AVX2BackEnd::genSIMDInst(
     MVSourceLocation SL, SIMDBackEnd::SIMDInstListType *IL, std::string NameOp,
     std::string MVFunc, std::list<std::string> MVArgs, MVOp MVOP) {
 
+  auto WStr = getMapWidth(Width);
+  auto TStr = getMapType(Type);
+
+  // Special case
+  // Almost all intrinsics are:
+  // _mm#W_#Pop#S_#D where #W is "" if width = 128 bits, "256" if width = 256
+  // bits. #P is a preffix, e.g. "mask_", #S is a suffix, e.g. "f128" for
+  // inserts. #D is the datatype, e.g. "epi8/.../ps/pd".
+  // Nonetheless, for cast intrinsics the format be like: _mm#W_op#P_#S
+  auto F = Op.find("cast");
+  if (F != std::string::npos) {
+    TStr = SuffS;
+    SuffS = PrefS;
+    PrefS = "";
+  }
+
+  if (OpEq[Op] != "") {
+    Op = OpEq[Op];
+  }
+
   // Replace fills in pattern
-  std::string AVXFunc =
-      replacePatterns(Op, getMapWidth(Width), getMapType(Type), PrefS, SuffS);
+  std::string AVXFunc = replacePatterns(Op, WStr, TStr, PrefS, SuffS);
 
   // Generate SIMD inst
   SIMDBackEnd::SIMDInst I(NameOp, AVXFunc, Args, MVFunc, MVArgs, SL);
@@ -780,6 +822,10 @@ SIMDBackEnd::SIMDInst AVX2BackEnd::genSIMDInst(
     std::list<std::string> Args, SIMDBackEnd::SIMDType SType,
     MVSourceLocation SL, SIMDBackEnd::SIMDInstListType *IL, std::string NameOp,
     std::string MVFunc, std::list<std::string> MVArgs, MVOp MVOP) {
+
+  if (OpEq[Op] != "") {
+    Op = OpEq[Op];
+  }
 
   // Replace fills in pattern
   std::string AVXFunc = replacePatterns(
