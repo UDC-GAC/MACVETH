@@ -52,10 +52,14 @@ public:
   computeCostForStmtWrapperList(std::list<StmtWrapper *> &SL);
 
   /// Compute cost of a concrete node
-  static InstCostInfo computeCostForNode(Node *N);
+  static InstCostInfo computeCostForNodeOp(Node *N);
 
-  /// Compute cost of a region or set of nodes
-  static InstCostInfo computeCostForNodeList(int VL, Node::NodeListType &NL);
+  /// Compute cost of a region or set of operation nodes
+  static InstCostInfo computeCostForNodeOpsList(int VL, Node::NodeListType &NL);
+
+  /// Compute cost of set of operand nodes
+  static InstCostInfo computeCostForNodeOperandsList(int VL,
+                                                     Node::NodeListType &NL);
 
   /// Compute cost of a vector operation generated in the Vector IR
   static InstCostInfo computeVectorOPCost(VectorIR::VectorOP V,
@@ -65,7 +69,7 @@ public:
   static SIMDInfo computeCostModel(std::list<StmtWrapper *> SL,
                                    SIMDBackEnd *SG);
 
-  /// Generate report, basically
+  /// Generate SIMD report, with all costs for different operations
   static SIMDInfo generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S);
 
   /// Get the vector operations from the CDAG

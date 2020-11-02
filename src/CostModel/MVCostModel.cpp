@@ -36,34 +36,56 @@
 
 // ---------------------------------------------
 InstCostInfo getOperationCost(MVOp Op, std::string T) {
-  InstCostInfo C(CostTable::getMVOPRow(Op.getTableMVOPstr(T)), InstType::MVOP);
-  return C;
+  if (Op.isAssignment()) {
+    return InstCostInfo(CostTable::getMVOPRow("ST_" + Utils::toUppercase(T)),
+                        InstType::MVOP);
+  }
+  return InstCostInfo(CostTable::getMVOPRow(Op.getTableMVOPstr(T)),
+                      InstType::MVOP);
 }
 
 // ---------------------------------------------
 InstCostInfo getOperandCost(MVExpr *A, std::string T) {
   InstCostInfo C;
   if (A->needsToBeLoaded()) {
-    C = InstCostInfo(CostTable::getMVOPRow("LD_" + Utils::toUppercase(T)),
-                     InstType::MVOP);
+    return InstCostInfo(CostTable::getMVOPRow("LD_" + Utils::toUppercase(T)),
+                        InstType::MVOP);
   }
   return C;
 }
 
 // ---------------------------------------------
-InstCostInfo MVCostModel::computeCostForNode(Node *N) {
+InstCostInfo MVCostModel::computeCostForNodeOp(Node *N) {
   return getOperationCost(N->getOutputInfo().MVOP, N->getDataType());
 }
 
 // ---------------------------------------------
-InstCostInfo MVCostModel::computeCostForNodeList(int VL,
-                                                 Node::NodeListType &NL) {
+InstCostInfo MVCostModel::computeCostForNodeOpsList(int VL,
+                                                    Node::NodeListType &NL) {
   InstCostInfo TotalCost;
-  // FIXME: Dunno how to iterate vectors in C++...
-  // for (const auto &N : NL) {
-  // TotalCost += computeCostForNode(N);
   for (int i = 0; i < VL; ++i) {
-    TotalCost += computeCostForNode(NL[i]);
+    TotalCost += computeCostForNodeOp(NL[i]);
+    Utils::printDebug("MVCostModel",
+                      "Node = " + NL[i]->toStringShort() +
+                          "; cost = " + computeCostForNodeOp(NL[i]).toString());
+  }
+  return TotalCost;
+}
+
+// ---------------------------------------------
+InstCostInfo
+MVCostModel::computeCostForNodeOperandsList(int VL, Node::NodeListType &NL) {
+  InstCostInfo TotalCost;
+  for (int i = 0; i < VL; ++i) {
+    auto M = NL[i]->getMVExpr();
+    if ((M == nullptr) || (M->isNotClang())) {
+      continue;
+    }
+    auto T = M->getTypeStr();
+    TotalCost += getOperandCost(M, T);
+    Utils::printDebug("MVCostModel",
+                      "Node = " + NL[i]->toStringShort() +
+                          "; cost = " + getOperandCost(M, T).toString());
   }
   return TotalCost;
 }
@@ -108,11 +130,11 @@ InstCostInfo MVCostModel::computeVectorOPCost(VectorIR::VectorOP V,
       C.Latency += 10;
       continue;
     }
-    C += InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::Intrin);
+    C += InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp);
     Utils::printDebug(
         "MVCostModel",
         "SIMD inst = " + I.FuncName + " ( " + I.render() + "); cost = " +
-            InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::Intrin)
+            InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp)
                 .toString());
   }
   return C;
@@ -126,7 +148,7 @@ SIMDInfo MVCostModel::generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S) {
   long TotCost = 0;
   for (auto I : S) {
     CostOp[I.FuncName] =
-        InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::Intrin);
+        InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp);
     NumOp[I.FuncName]++;
     TotCost += CostOp[I.FuncName].Latency;
   }
@@ -221,10 +243,10 @@ repeat:
     // Compute the vector cost
     auto NewVectInst = VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB);
     auto CostVect = computeVectorOPCost(NewVectInst, SG);
-    auto CostNodes = computeCostForNodeList(Cursor, VOps);
-    CostNodes += computeCostForNodeList(Cursor, VLoadA);
+    auto CostNodes = computeCostForNodeOpsList(Cursor, VOps);
+    CostNodes += computeCostForNodeOperandsList(Cursor, VLoadA);
     if (!IsUnary) {
-      CostNodes += computeCostForNodeList(Cursor, VLoadB);
+      CostNodes += computeCostForNodeOperandsList(Cursor, VLoadB);
     }
     Utils::printDebug("MVCostModel",
                       "Cost Vect = " + CostVect.toString() + "; ");

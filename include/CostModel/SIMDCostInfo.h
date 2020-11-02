@@ -50,31 +50,37 @@ enum VectorizationType {
   FULL
 };
 
-enum InstType { Intrin, MVOP };
+/// Types of instruction
+enum InstType {
+  /// SIMD type operation
+  SIMDOp,
+  /// MVOP is the same as sequential
+  MVOP
+};
 
-/// Cost of SIMD
+/// Wrapper for calculating the cost of instructions
 struct InstCostInfo {
-  /// Number of micro-instructions issued by the SIMD instruction
-  int UOps = 1;
   /// Number of cycles wasted by the instruction
   int Latency = 0;
-  /// Issue latency: the lower the better. On Intel architectures it
+  /// Number of micro-instructions issued by the SIMD instruction
+  int UOps = 1;
+  /// TODO: Issue latency: the lower the better. On Intel architectures it
   /// represents the velocity of issuing another uop
   double Throughput = 1;
-  /// TODO: some SIMD instructions may have penalties due to ports or others
-  int Penalty = -1;
-  /// TODO: we may add heuristics for some architectures
-  int Preference = -1;
-  /// Number of ports used
+  /// TODO: Number of ports used
   std::map<int, int> NoPorts;
-  /// Default constructor
+
+  /// Default empty constructor
   InstCostInfo() {}
-  InstCostInfo(int L, float T, int Pen, int Pref, int U)
-      : Latency(L), Throughput(T), Penalty(Pen), Preference(Pref), UOps(U) {}
-  /// Default constructor
+
+  /// Constructor with all parameters
+  InstCostInfo(int L, float T, int U) : Latency(L), Throughput(T), UOps(U) {}
+
+  /// Default constructor given a row from the CostTable and the type of
+  /// instruction
   InstCostInfo(CostTable::Row R, InstType I) {
     UOps = R.NUops;
-    if (I == InstType::Intrin) {
+    if (I == InstType::SIMDOp) {
       Latency = CostTable::getLatencyIntrin(R.Intrinsics);
     } else if (I == InstType::MVOP) {
       Latency = CostTable::getLatencyMVOP(R.MVOP);
@@ -85,15 +91,19 @@ struct InstCostInfo {
   std::string toString() { return std::to_string(Latency); }
 
   long operator-(const InstCostInfo &R) { return this->Latency - R.Latency; }
+
   InstCostInfo operator+=(const InstCostInfo &R) {
     this->Latency += R.Latency;
     return *this;
   }
+
   InstCostInfo operator+(const InstCostInfo &R) {
     this->Latency += R.Latency;
     return *this;
   }
+
   bool operator<(const InstCostInfo &R) { return this->Latency < R.Latency; }
+
   bool operator<=(const InstCostInfo &R) { return this->Latency <= R.Latency; }
 };
 
@@ -106,7 +116,7 @@ struct SIMDInfo {
   /// Number of operations of each type
   std::map<std::string, long> NumOp;
   /// Total cost
-  long TotCost = 0;
+  unsigned long TotCost = 0;
   /// Vectorization type
   VectorizationType Vectorize = VectorizationType::NONE;
 
@@ -121,17 +131,27 @@ struct SIMDInfo {
     return Vectorize != VectorizationType::NONE;
   }
 
-  /// TODO: Generate cost report
+  /// Generate cost report
   void generateCostReport() {
-    std::cout << "---------- SIMD REPORT ----------\n";
-    for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {
-      std::cout << It->first + "\t=\t" +
-                       std::to_string(NumOp[It->first] * It->second.Latency) +
-                       "\t(" + std::to_string(NumOp[It->first]) + ")"
-                << std::endl;
+    if (MVOptions::SIMDReportFile == "") {
+      return;
     }
-    std::cout << " TOTAL = " + std::to_string(TotCost) << std::endl;
-    std::cout << "-------- END SIMD REPORT --------\n";
+    std::ofstream F;
+    F.open(MVOptions::SIMDReportFile);
+    if (!F.is_open()) {
+      MVWarn("Cost report file could not be opened!");
+      return;
+    }
+    F << " === MACVETH: SIMD report" << std::endl;
+    for (auto It = CostOp.begin(); It != CostOp.end(); ++It) {
+      F << It->first + " \t = \t" +
+               std::to_string(NumOp[It->first] * It->second.Latency) + "\t(" +
+               std::to_string(NumOp[It->first]) + ")"
+        << std::endl;
+    }
+    F << " TOTAL COST = " + std::to_string(TotCost) << std::endl;
+    F << " === ENDMACVETH" << std::endl;
+    F.close();
   }
 };
 

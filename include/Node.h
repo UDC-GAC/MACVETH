@@ -297,6 +297,9 @@ public:
   /// Print node: debugging purposes
   std::string toString();
 
+  /// Print node in a short fashion
+  std::string toStringShort();
+
   /// This is useful for calculating the difference between two Nodes in terms
   /// of addresses, in some way
   int operator-(const Node &N) { return (*MV - *N.MV); }

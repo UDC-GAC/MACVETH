@@ -44,8 +44,12 @@ namespace macveth {
 /// different architectures
 class CostTable {
 public:
+  /// Null value in generated tables
   static const inline std::string NullValue = "NA";
+  /// Sequential value in generated tables
   static const inline std::string SeqValue = "seq";
+  /// Unknown cost value
+  static constexpr int UnknownCost = 10;
 
   /// Latency helper class to parse properly latencies format
   struct Latency {
@@ -200,8 +204,7 @@ public:
     if (CostTable::Tintrin[Op].Asm == SeqValue) {
       unsigned int Lat = 0;
       if (CostTable::Tintrin[Op].XED_iform == SeqValue) {
-        /// FIXME: why this value...
-        return 10;
+        return UnknownCost;
       }
       std::string W;
       std::stringstream TMP(CostTable::Tintrin[Op].XED_iform);
@@ -218,8 +221,7 @@ public:
     if (CostTable::TMVOP.find(Op) != CostTable::TMVOP.end()) {
       return CostTable::getLatency(CostTable::TMVOP[Op].XED_iform);
     }
-    Utils::printDebug("CostTable", "Can not find MVOP = " + Op);
-    return 100;
+    return UnknownCost;
   }
 
   static Row getIntrinRow(std::string Intrin) {
@@ -228,7 +230,8 @@ public:
 
   static Row getMVOPRow(std::string MVOP) { return CostTable::TMVOP[MVOP]; }
 
-  /// Add row to table
+  /// Add row to tables. This is an entry point, we will have different tables
+  /// according to the type of instruction we want to store
   static void addRow(std::string MVOP, std::string Intrinsics, std::string ASM,
                      std::string XED_iform, std::string Lat, std::string Th,
                      std::string Uops, std::string Ports) {
