@@ -31,7 +31,7 @@
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
-#include <llvm-10/llvm/Support/ErrorHandling.h>
+#include "llvm/Support/ErrorHandling.h"
 #include <string>
 
 using namespace clang;

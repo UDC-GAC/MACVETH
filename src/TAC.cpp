@@ -37,7 +37,7 @@
 #include "clang/AST/Expr.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Lex/Lexer.h"
-#include <llvm-10/llvm/Support/ErrorHandling.h>
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace clang;
 using namespace macveth;

@@ -1,5 +1,5 @@
 # Minimum version required
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
 # Minimum C++ std
 set(CMAKE_CXX_STANDARD 17)
@@ -9,9 +9,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(PROJECT_NAME MACVETH)
 project(${PROJECT_NAME} VERSION 0.1.0)
 
-# LLVM version
+
+############################################################
+# TODO: LLVM version
+# execute_process(
+#     COMMAND llvm-config --version
+#     OUTPUT_VARIABLE LLVM_VER)
+# message("-- Using LLVM ${LLVM_VER}")
+
+
 set(LLVM_VER llvm-10)
-message("-- Using LIBRARY ${LLVM_VER}")
 
 # Setting some paths, for comodity
 set(LLVM_BUILD_PATH /usr/lib/${LLVM_VER})
@@ -67,7 +74,6 @@ endif()
 
 ############################################################
 # Testing
-
 option (BUILD_TESTING "Build the testing tree." ON)
 # Only build tests if we are the top-level project
 # Allows this to be used by super projects with `add_subdirectory`
@@ -88,10 +94,10 @@ add_definitions(${LLVM_CXXFLAGS})
 
 ############################################################
 # Libraries Dynamic
-execute_process(
-    COMMAND ${LLVM_BIN_PATH}/llvm-config --ldflags --libs --system-libs
-    OUTPUT_VARIABLE CLANG_LIBS)
-add_definitions(${CLANG_LIBS})
+# execute_process(
+#     COMMAND ${LLVM_BIN_PATH}/llvm-config --ldflags --libs --system-libs
+#     OUTPUT_VARIABLE CLANG_LIBS)
+# add_definitions(${CLANG_LIBS})
 
 ############################################################
 # include dirs
@@ -101,6 +107,16 @@ execute_process(
 find_library(LibClang_LIBRARY NAMES clang HINTS /usr/lib/${LLVM_VER}/lib)
 set(LibClang_LIBRARIES ${LibClang_LIBRARY})
 set(LibClang_INCLUDE_DIRS ${CLANG_INCLUDE_DIR})
+
+if (NOT DEFINED LLVM_DIR)
+    set(LLVM_DIR /usr/lib/llvm)
+endif()
+
+include_directories(
+     ${LLVM_DIR}/build/llvm/
+     ${LLVM_DIR}/clang/include
+     ${LLVM_DIR}/build/tools/clang/include
+)
 
 # for generating compile_options.json for IDEs
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

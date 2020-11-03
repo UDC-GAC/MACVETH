@@ -33,7 +33,7 @@
 #define MACVETH_MVEXPRARRAY_H
 
 #include "include/MVExpr/MVExpr.h"
-#include <llvm-10/llvm/Support/Casting.h>
+#include "llvm/Support/Casting.h"
 #include <string.h>
 
 using namespace macveth;

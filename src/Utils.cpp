@@ -12,7 +12,7 @@
 #else
 #include <experimental/filesystem>
 #endif
-#include <llvm-10/llvm/ADT/APFloat.h>
+#include "llvm/ADT/APFloat.h"
 
 using namespace macveth;
 

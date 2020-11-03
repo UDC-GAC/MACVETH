@@ -41,7 +41,7 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
-#include <llvm-10/llvm/Support/ErrorHandling.h>
+#include "llvm/Support/ErrorHandling.h"
 
 jmp_buf GotoStartScop, GotoEndScop;
 

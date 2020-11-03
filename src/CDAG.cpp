@@ -34,8 +34,8 @@
 #include "include/Utils.h"
 #include "include/Vectorization/VectorIR.h"
 #include "clang/AST/Expr.h"
-#include <llvm-10/llvm/Support/ErrorHandling.h>
-#include <llvm-10/llvm/Support/raw_ostream.h>
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/raw_ostream.h"
 #include <stdexcept>
 
 using namespace macveth;
