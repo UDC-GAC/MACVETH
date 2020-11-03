@@ -5,8 +5,10 @@ import sys
 import pandas as pd
 from tqdm import tqdm
 
-tolerance = 0.15  # yeah yeah i know this is too high
+max_tolerance = 0.15  # yeah yeah i know this is too high
 n_exec = 7
+tmp_file = "___tmp_file_"
+
 
 # README:
 # Files must produce an output with the following format:
@@ -14,7 +16,7 @@ n_exec = 7
 # depending on compilation with TIME or PAPI counters
 
 
-def calculate_mean(bench, executions):
+def calculate_mean(bench, comp_opts, output, macveth, t, executions, tolerance=0.05):
     bench_dir = bench.split("/")[0]
     os.chdir("%s" % bench_dir)
     bench = bench.split("/")[1]
@@ -67,6 +69,5 @@ if __name__ == "__main__":
     t = sys.argv[5]
     if (len(sys.argv) == 7):
         n_exec = int(sys.argv[6])
-    tmp_file = "___tmp_file_"
 
-    calculate_mean(bench, n_exec)
+    calculate_mean(bench, comp_opts, output, macveth, t, n_exec, max_tolerance)
