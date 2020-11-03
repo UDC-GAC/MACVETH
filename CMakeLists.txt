@@ -64,7 +64,7 @@ if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -O0        # no optimization
         -g         # generate debug info
         --coverage # sets all required flags
-    )
+        )
     if(CMAKE_VERSION VERSION_GREATER "3.16")
         target_link_options(coverage_config INTERFACE --coverage)
     else()
@@ -106,17 +106,21 @@ execute_process(
     OUTPUT_VARIABLE CLANG_INCLUDE_DIR)
 find_library(LibClang_LIBRARY NAMES clang HINTS /usr/lib/${LLVM_VER}/lib)
 set(LibClang_LIBRARIES ${LibClang_LIBRARY})
-set(LibClang_INCLUDE_DIRS ${CLANG_INCLUDE_DIR})
+#set(LibClang_INCLUDE_DIRS ${CLANG_INCLUDE_DIR})
+
+message("LibClang_LIBRARIES ${LibClang_LIBRARY}")
 
 if (NOT DEFINED LLVM_DIR)
     set(LLVM_DIR /usr/lib/llvm)
 endif()
 
 include_directories(
-     ${LLVM_DIR}/build/llvm/
-     ${LLVM_DIR}/clang/include
-     ${LLVM_DIR}/build/tools/clang/include
-)
+    ${LLVM_DIR}/build/llvm/
+    ${LLVM_DIR}/build/include/
+    ${LLVM_DIR}/clang/include
+    ${LLVM_DIR}/llvm/include/
+    ${LLVM_DIR}/build/tools/clang/include
+    )
 
 # for generating compile_options.json for IDEs
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -149,6 +153,7 @@ target_link_libraries(macveth
 
 # Clang libraries needed
 target_link_libraries(macveth PRIVATE
+    #-L${LLVM_DIR}/build/lib
     clangTooling
     clangBasic
     clangASTMatchers

@@ -1,9 +1,9 @@
 /**
- * File					 : src/TAC.cpp
- * Author				 : Marcos Horro
- * Date					 : Wed 03 Jun 2020 04:24 +02:00
+ * File                  : src/TAC.cpp
+ * Author                : Marcos Horro
+ * Date                  : Wed 03 Jun 2020 04:24 +02:00
  * Last Modified : Wed 10 Jun 2020 10:21 +02:00
- * Modified By	 : Marcos Horro (marcos.horro@udc.gal)
+ * Modified By   : Marcos Horro (marcos.horro@udc.gal)
  *
  * MIT License
  *
@@ -159,13 +159,14 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
                                          S1->getType(), S1->getValueKind(),
                                          S1->getObjectKind(), S1->getBeginLoc(),
                                          clang::FPOptions());
+      S2 = &NewOp;
 #else
       auto NewOp = clang::BinaryOperator::Create(
-          Utils::getCtx(), S1, S2, BinaryOperator::Opcode::BO_Add,
+          *(Utils::getCtx()), S1, S2, BinaryOperator::Opcode::BO_Add,
           S1->getType(), S1->getValueKind(), S1->getObjectKind(),
           S1->getBeginLoc(), clang::FPOptions());
+      S2 = NewOp;
 #endif
-      S2 = &NewOp;
       Op = MVOp(BinaryOperator::Opcode::BO_Assign);
     }
     if (S->getOpcode() == BinaryOperator::Opcode::BO_SubAssign) {
@@ -174,13 +175,14 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
                                          S1->getType(), S1->getValueKind(),
                                          S1->getObjectKind(), S1->getBeginLoc(),
                                          clang::FPOptions());
+      S2 = &NewOp;
 #else
       auto NewOp = clang::BinaryOperator::Create(
-          Utils::getCtx(), S1, S2, BinaryOperator::Opcode::BO_Sub,
+          *(Utils::getCtx()), S1, S2, BinaryOperator::Opcode::BO_Sub,
           S1->getType(), S1->getValueKind(), S1->getObjectKind(),
           S1->getBeginLoc(), clang::FPOptions());
+      S2 = NewOp;
 #endif
-      S2 = &NewOp;
       Op = MVOp(BinaryOperator::Opcode::BO_Assign);
     }
     if ((LhsBin = getBinOp(S1))) {

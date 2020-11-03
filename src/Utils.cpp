@@ -99,7 +99,7 @@ std::string Utils::getStringFromStmt(const clang::Stmt *S) {
   LangOptions *LO = Utils::getLangOpts();
   clang::CharSourceRange CharRangeExpr =
       clang::CharSourceRange::getTokenRange(S->getSourceRange());
-  std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO);
+  std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO).str();
   return Text;
 }
 
@@ -109,6 +109,6 @@ std::string Utils::getStringFromExpr(const clang::Expr *E) {
   LangOptions *LO = Utils::getLangOpts();
   clang::CharSourceRange CharRangeExpr =
       clang::CharSourceRange::getTokenRange(E->getSourceRange());
-  std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO);
+  std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO).str();
   return Text;
 }
