@@ -153,6 +153,8 @@ struct MVOptions {
   static inline bool Debug = false;
   /// Debug level
   static inline DebugLevel DLevel = DebugLevel::ALL;
+  /// No reformatting the final code
+  static inline bool NoReformat = false;
   /// Generate or not macro-based code
   static inline bool MacroCode = false;
   /// Include headers (--no-headers)

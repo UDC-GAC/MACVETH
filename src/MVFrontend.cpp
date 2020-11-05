@@ -39,6 +39,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/Format/Format.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -448,8 +449,7 @@ MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
 #endif
 }
 
-#include "clang/Format/Format.h"
-
+// ---------------------------------------------
 static FileID createInMemoryFile(StringRef FileName, MemoryBuffer *Source,
                                  SourceManager &Sources, FileManager &Files,
                                  llvm::vfs::InMemoryFileSystem *MemFS) {
@@ -459,6 +459,7 @@ static FileID createInMemoryFile(StringRef FileName, MemoryBuffer *Source,
                               SrcMgr::C_User);
 }
 
+// ---------------------------------------------
 static bool fillRanges(MemoryBuffer *Code,
                        std::vector<tooling::Range> &Ranges) {
   IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> InMemoryFileSystem(
@@ -479,50 +480,49 @@ static bool fillRanges(MemoryBuffer *Code,
   return false;
 }
 
-/// This code is basically a copy of clang/tool/ClangFormat.cpp.
-/// Returns true on error.
+// ---------------------------------------------
 static bool formatMACVETH(StringRef FileName) {
-  // if (!OutputXML && Inplace && FileName == "-") {
+  /// This code is inspired (basically a copy) of clang/tool/ClangFormat.cpp [1]
+  /// https://github.com/llvm-mirror/clang/blob/master/tools/clang-format/ClangFormat.cpp
+  /// Some changes have been done in code.
+  /// Returns true on error.
   auto Inplace = true;
   if (FileName == "-") {
-    errs() << "error: cannot use -i when reading from stdin.\n";
     MVInfo("Formatting file failed: bad name");
     return false;
   }
+
   // On Windows, overwriting a file with an open file mapping doesn't work,
   // so read the whole file into memory when formatting in-place.
   ErrorOr<std::unique_ptr<MemoryBuffer>> CodeOrErr =
       MemoryBuffer::getFileAsStream(FileName);
   if (std::error_code EC = CodeOrErr.getError()) {
-    errs() << EC.message() << "\n";
-    MVInfo("Formatting file failed: error");
+    MVInfo("Formatting file failed: " + EC.message());
     return true;
   }
+
   std::unique_ptr<llvm::MemoryBuffer> Code = std::move(CodeOrErr.get());
   if (Code->getBufferSize() == 0) {
     MVInfo("File already formatted...");
     return false; // Empty files are formatted correctly.
   }
 
-  StringRef BufStr = Code->getBuffer();
-
+  auto BufStr = Code->getBuffer();
   std::vector<tooling::Range> Ranges;
-  if (fillRanges(Code.get(), Ranges))
+  if (fillRanges(Code.get(), Ranges)) {
     return true;
-  StringRef AssumedFileName = FileName;
-
-  llvm::Expected<clang::format::FormatStyle> FormatStyle =
-      clang::format::getStyle("LLVM", AssumedFileName, "LLVM",
-                              Code->getBuffer());
+  }
+  auto AssumedFileName = FileName;
+  auto FormatStyle = clang::format::getStyle("LLVM", AssumedFileName, "LLVM",
+                                             Code->getBuffer());
   if (!FormatStyle) {
     llvm::errs() << llvm::toString(FormatStyle.takeError()) << "\n";
     MVInfo("Formatting file failed: bad format style");
-
     return true;
   }
 
   unsigned CursorPosition = 0;
-  Replacements Replaces =
+  auto Replaces =
       clang::format::sortIncludes(*FormatStyle, Code->getBuffer(), Ranges,
                                   AssumedFileName, &CursorPosition);
   auto ChangedCode = tooling::applyAllReplacements(Code->getBuffer(), Replaces);
@@ -534,7 +534,7 @@ static bool formatMACVETH(StringRef FileName) {
   // Get new affected ranges after sorting `#includes`.
   Ranges = tooling::calculateRangesAfterReplacements(Replaces, Ranges);
   clang::format::FormattingAttemptStatus Status;
-  Replacements FormatChanges = clang::format::reformat(
+  auto FormatChanges = clang::format::reformat(
       *FormatStyle, *ChangedCode, Ranges, AssumedFileName, &Status);
   Replaces = Replaces.merge(FormatChanges);
 
@@ -548,8 +548,8 @@ static bool formatMACVETH(StringRef FileName) {
       new DiagnosticOptions);
 
   SourceManager Sources(Diagnostics, Files);
-  FileID ID = createInMemoryFile(AssumedFileName, Code.get(), Sources, Files,
-                                 InMemoryFileSystem.get());
+  auto ID = createInMemoryFile(AssumedFileName, Code.get(), Sources, Files,
+                               InMemoryFileSystem.get());
   Rewriter Rewrite(Sources, LangOptions());
   tooling::applyAllReplacements(Replaces, Rewrite);
   if (Rewrite.overwriteChangedFiles()) {
@@ -560,6 +560,7 @@ static bool formatMACVETH(StringRef FileName) {
   // Something went wrong
   return false;
 }
+
 // ---------------------------------------------
 void MVFrontendAction::EndSourceFileAction() {
   // 1.- Get RewriteBuffer from FileID
@@ -573,5 +574,7 @@ void MVFrontendAction::EndSourceFileAction() {
   auto OutFileName = Utils::getExePath() + MVOptions::OutFile;
   llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
-  formatMACVETH(OutFileName);
+  if (!MVOptions::NoReformat) {
+    formatMACVETH(OutFileName);
+  }
 }

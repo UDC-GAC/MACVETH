@@ -154,11 +154,14 @@ static llvm::cl::opt<bool> Debug("debug-mv",
                                  llvm::cl::desc("Print debug information"),
                                  llvm::cl::init(false),
                                  llvm::cl::cat(MacvethCategory));
-// /// Macro-free code
-// static llvm::cl::opt<bool> MacroCode(
-//         "macro-code",
-//         llvm::cl::desc("If set, *do* use macro for generating vectorized
-//         code"), llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
+/// Reformat code
+static llvm::cl::opt<bool> NoFormatCode(
+    "no-format",
+    llvm::cl::desc("MACVETH by defaults reformats code as "
+                   "clang-format does, using LLVM style. If this option is "
+                   "enabled, then no reformatting is applied"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
 /// Do not include headers in top of the file
 static llvm::cl::opt<bool> NoHeaders(
@@ -194,6 +197,7 @@ int main(int argc, const char **argv) {
   MVOptions::FMASupport = FMA.getValue();
   MVOptions::DisableFMA = DisableFMA.getValue();
   MVOptions::Debug = Debug.getValue();
+  MVOptions::NoReformat = NoFormatCode.getValue();
   // MVOptions::MacroCode = MacroCode.getValue();
   MVOptions::Headers = !NoHeaders.getValue();
   MVOptions::SIMDCostModel = SIMDCostModel.getValue();
