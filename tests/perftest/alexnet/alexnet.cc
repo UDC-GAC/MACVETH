@@ -41,7 +41,7 @@
 
 #ifdef DATA_TYPE_IS_FLOAT
 #define DATA_TYPE float
-#define DATA_PRINTF_MODIFIER "%0.2f "
+#define DATA_PRINTF_MODIFIER "%0.8f "
 #define SCALAR_VAL(x) x##f
 #define SQRT_FUN(x) sqrtf(x)
 #define EXP_FUN(x) expf(x)
@@ -276,8 +276,8 @@ int main(int argc, char **argv) {
   flops = relu_flops(conv2_rst);
   polybench_profile_one_function(relu(conv2_rst), "relu", "conv2_rst", flops,
                                  i);
-  polybench_prevent_dce(print_3darray(conv2_rst.size(), conv2_rst[0].size(),
-                                      conv2_rst[0][0].size(), conv2_rst));
+  // polybench_prevent_dce(print_3darray(conv2_rst.size(), conv2_rst[0].size(),
+  //                                    conv2_rst[0][0].size(), conv2_rst));
   // printf("relu2 done\n");
 
   ////////////////lrn2/////////////////

@@ -34,7 +34,7 @@ add_definitions(${CUSTOM_CXXFLAGS})
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
     # set input and output files
-    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.in)
+    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.cfg)
     set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
     set(abs_srcdir ${CMAKE_CURRENT_SOURCE_DIR})
     set(abs_builddir ${CMAKE_CURRENT_BINARY_DIR})
@@ -160,7 +160,6 @@ target_link_libraries(macveth PRIVATE
     clangAnalysis
     clangAST
     clangASTMatchers
-    clangAnalysis
     clangBasic
     clangDriver
     clangEdit
@@ -169,7 +168,6 @@ target_link_libraries(macveth PRIVATE
     clangLex
     clangParse
     clangSema
-    clangEdit
     clangRewrite
     clangRewriteFrontend
     clangStaticAnalyzerFrontend
@@ -179,6 +177,7 @@ target_link_libraries(macveth PRIVATE
     clangIndex
     clangSerialization
     clangToolingCore
+    clangToolingInclusions
     clangTooling
     clangFormat
     )

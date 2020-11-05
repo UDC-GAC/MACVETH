@@ -1,4 +1,6 @@
+/* begin INFO MACVETH: headers added */
 #include <immintrin.h>
+/* end INFO MACVETH */
 
 #include "layers.h"
 //#include "utilities/polybench.h"
@@ -42,13 +44,11 @@ void relu(quote_vector3D(bottom)) {
     for (h = 0; (h + 1) <= height; h += 1) {
       int w;
       for (w = 0; (w + 8) <= width; w += 8) {
-        __mv_vop0 =
-            _mm256_loadu_ps(&bottom[(c + 0)][(h + 0)][(w + 0)]); // latency = 1
-        __mv_vop1 = _mm256_set1_ps(0.0f);                        // latency = 1
-        __mv_vop0 = _mm256_max_ps(__mv_vop0, __mv_vop1);         // latency = 4
-        _mm256_storeu_ps(&bottom[(c + 0)][(h + 0)][(w + 0)],
-                         __mv_vop0); // latency = 1
-        // vectorized: bottom[c][h][w] = std::max(bottom[c][h][w], 0.0f);
+        __mv_vop0 = _mm256_loadu_ps(&bottom[(c + 0)][(h + 0)][(w + 0)]);
+        __mv_vop1 = _mm256_set1_ps(0.0f);
+        __mv_vop0 = _mm256_max_ps(__mv_vop0, __mv_vop1);
+        _mm256_storeu_ps(&bottom[(c + 0)][(h + 0)][(w + 0)], __mv_vop0);
+        // bottom[c][h][w] = std::max(bottom[c][h][w], 0.0f);
       }
       for (w = w; w < width; w += 1) {
         bottom[c][h][w] = std::max(bottom[c][h][w], 0.0f);
@@ -83,11 +83,11 @@ void relu(vector<float> &bottom) {
   int i;
   __m256 __mv_vop0, __mv_vop1;
   for (i = 0; (i + 8) <= count; i += 8) {
-    __mv_vop0 = _mm256_loadu_ps(&bottom[(i + 0)]);   // latency = 1
-    __mv_vop1 = _mm256_set1_ps(0.0f);                // latency = 1
-    __mv_vop0 = _mm256_max_ps(__mv_vop0, __mv_vop1); // latency = 4
-    _mm256_storeu_ps(&bottom[(i + 0)], __mv_vop0);   // latency = 1
-    // vectorized: bottom[i] = std::max(bottom[i], 0.0f);
+    __mv_vop0 = _mm256_loadu_ps(&bottom[(i + 0)]);
+    __mv_vop1 = _mm256_set1_ps(0.0f);
+    __mv_vop0 = _mm256_max_ps(__mv_vop0, __mv_vop1);
+    _mm256_storeu_ps(&bottom[(i + 0)], __mv_vop0);
+    // bottom[i] = std::max(bottom[i], 0.0f);
   }
   for (i = i; i < count; i += 1) {
     bottom[i] = std::max(bottom[i], 0.0f);
@@ -107,11 +107,11 @@ void dropout(vector<float> &bottom, float ratio) {
   int i;
   __m256 __mv_vop0, __mv_vop1;
   for (i = 0; (i + 8) <= count; i += 8) {
-    __mv_vop0 = _mm256_loadu_ps(&bottom[(i + 0)]);   // latency = 1
-    __mv_vop1 = _mm256_broadcast_ss(&ratio);         // latency = 8
-    __mv_vop0 = _mm256_mul_ps(__mv_vop0, __mv_vop1); // latency = 5
-    _mm256_storeu_ps(&bottom[(i + 0)], __mv_vop0);   // latency = 1
-    // vectorized: bottom[i] = bottom[i] * ratio;
+    __mv_vop0 = _mm256_loadu_ps(&bottom[(i + 0)]);
+    __mv_vop1 = _mm256_broadcast_ss(&ratio);
+    __mv_vop0 = _mm256_mul_ps(__mv_vop0, __mv_vop1);
+    _mm256_storeu_ps(&bottom[(i + 0)], __mv_vop0);
+    // bottom[i] = bottom[i] * ratio;
   }
   for (i = i; i < count; i += 1) {
     bottom[i] = bottom[i] * ratio;
@@ -140,13 +140,11 @@ void dropout(quote_vector3D(bottom), float ratio) {
     for (w = 0; (w + 1) <= width; w += 1) {
       int h;
       for (h = 0; (h + 8) <= height; h += 8) {
-        __mv_vop0 =
-            _mm256_loadu_ps(&bottom[(c + 0)][(w + 0)][(h + 0)]); // latency = 1
-        __mv_vop1 = _mm256_broadcast_ss(&ratio);                 // latency = 8
-        __mv_vop0 = _mm256_mul_ps(__mv_vop0, __mv_vop1);         // latency = 5
-        _mm256_storeu_ps(&bottom[(c + 0)][(w + 0)][(h + 0)],
-                         __mv_vop0); // latency = 1
-        // vectorized: bottom[c][w][h] = bottom[c][w][h] * ratio;
+        __mv_vop0 = _mm256_loadu_ps(&bottom[(c + 0)][(w + 0)][(h + 0)]);
+        __mv_vop1 = _mm256_broadcast_ss(&ratio);
+        __mv_vop0 = _mm256_mul_ps(__mv_vop0, __mv_vop1);
+        _mm256_storeu_ps(&bottom[(c + 0)][(w + 0)][(h + 0)], __mv_vop0);
+        // bottom[c][w][h] = bottom[c][w][h] * ratio;
       }
       for (h = h; h < height; h += 1) {
         bottom[c][w][h] = bottom[c][w][h] * ratio;
@@ -189,27 +187,30 @@ void fullconnection(const quote_vector3D(bottom), const quote_vector4D(weights),
   top.assign(num_output, 0);
 #pragma macveth n 1 c 1 h 1 w 8
   int n;
-  __m128 __mv_lo, __mv_hi;
+  __m128 __mv_lo256, __mv_hi256;
   __m256 __mv_vop2, __mv_vop0, __mv_vop1, __mv_accm0, __mv_vop3;
   for (n = 0; (n + 1) <= num_output; n += 1) {
     int c;
-    __mv_accm0 =
-        _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, top[(n + 0)]); // latency = 1
     for (c = 0; (c + 1) <= channel; c += 1) {
       int h;
       for (h = 0; (h + 1) <= height; h += 1) {
         int w;
+        __mv_accm0 = _mm256_setzero_ps();
         for (w = 0; (w + 8) <= width; w += 8) {
-          // top[n] += weights[n][c][h][w] * bottom[c][h][w];
-          __mv_vop0 = _mm256_loadu_ps(
-              &weights[(n + 0)][(c + 0)][(h + 0)][(w + 0)]); // latency = 1
-          __mv_vop1 = _mm256_loadu_ps(
-              &bottom[(c + 0)][(h + 0)][(w + 0)]); // latency = 1
-          __mv_accm0 =
-              _mm256_fmadd_ps(__mv_vop0, __mv_vop1, __mv_accm0); // latency = 5
-          // vectorized: top[n] = top[n] + weights[n][c][h][w] *
-          // bottom[c][h][w];
+          __mv_vop0 =
+              _mm256_loadu_ps(&weights[(n + 0)][(c + 0)][(h + 0)][(w + 0)]);
+          __mv_vop1 = _mm256_loadu_ps(&bottom[(c + 0)][(h + 0)][(w + 0)]);
+          __mv_accm0 = _mm256_fmadd_ps(__mv_vop0, __mv_vop1, __mv_accm0);
+          // top[n] = top[n] + weights[n][c][h][w] * bottom[c][h][w];
         }
+        __mv_lo256 = _mm256_castps256_ps128(__mv_accm0);
+        __mv_hi256 = _mm256_extractf128_ps(__mv_accm0, 0x1);
+        __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+        __mv_hi256 = _mm_movehl_ps(__mv_lo256, __mv_lo256);
+        __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+        __mv_hi256 = _mm_shuffle_ps(__mv_lo256, __mv_lo256, 0b00001110);
+        __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+        top[(n + 0)] = top[(n + 0)] + __mv_lo256[0];
 
         for (w = w; w < width; w += 1) {
           top[n] = top[n] + weights[n][c][h][w] * bottom[c][h][w];
@@ -217,7 +218,6 @@ void fullconnection(const quote_vector3D(bottom), const quote_vector4D(weights),
       }
       for (h = h; h < height; h += 1) {
         for (int w = 0; w < width; ++w) {
-          // top[n] += weights[n][c][h][w] * bottom[c][h][w];
           top[n] = top[n] + weights[n][c][h][w] * bottom[c][h][w];
         };
       }
@@ -225,29 +225,18 @@ void fullconnection(const quote_vector3D(bottom), const quote_vector4D(weights),
     for (c = c; c < channel; c += 1) {
       for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
-          // top[n] += weights[n][c][h][w] * bottom[c][h][w];
           top[n] = top[n] + weights[n][c][h][w] * bottom[c][h][w];
         }
       };
     }
-    __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
-    __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    top[(n + 0)] += _mm_cvtss_f32(__mv_lo);                 // latency = 1
 
-    // top[n] += bias[n];
     top[(n + 0)] = (top[(n + 0)] + bias[(n + 0)]);
-    // replaced: top[n] = top[n] + bias[n];
+    // top[n] = top[n] + bias[n];
   }
   for (n = n; n < num_output; n += 1) {
     for (int c = 0; c < channel; ++c) {
       for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
-          // top[n] += weights[n][c][h][w] * bottom[c][h][w];
           top[n] = top[n] + weights[n][c][h][w] * bottom[c][h][w];
         }
       }
@@ -272,36 +261,55 @@ void fullconnection(const vector<float> &bottom,
   int channel = bottom.size();
   int num_output = top.size();
   top.assign(num_output, 0);
-#pragma macveth n 1 c 8
+#pragma macveth n 8 c 8
   int n;
-  __m128 __mv_lo, __mv_hi;
-  __m256 __mv_vop2, __mv_vop0, __mv_vop1, __mv_accm0, __mv_vop3;
-  for (n = 0; (n + 1) <= num_output; n += 1) {
+  __m128 __mv_lo256, __mv_hi256;
+  __m256 __mv_vop2, __mv_vop0, __mv_vop1, __mv_vop4, __mv_vop3, __mv_vop6,
+      __mv_vop5, __mv_vop8, __mv_vop7, __mv_vop10, __mv_vop9, __mv_vop12,
+      __mv_vop11, __mv_vop14, __mv_vop13, __mv_vop16, __mv_vop15, __mv_accm0,
+      __mv_vop17, __mv_vop18;
+  for (n = 0; (n + 8) <= num_output; n += 8) {
     int c;
-    __mv_accm0 =
-        _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, top[(n + 0)]); // latency = 1
+    __mv_accm0 = _mm256_setzero_ps();
+    __mv_accm0 = _mm256_setzero_ps();
     for (c = 0; (c + 8) <= channel; c += 8) {
-      __mv_vop0 = _mm256_loadu_ps(&weights[(n + 0)][(c + 0)]); // latency = 1
-      __mv_vop1 = _mm256_loadu_ps(&bottom[(c + 0)]);           // latency = 1
-      __mv_accm0 =
-          _mm256_fmadd_ps(__mv_vop0, __mv_vop1, __mv_accm0); // latency = 5
-      // vectorized: top[n] = top[n] + weights[n][c] * bottom[c];
+      __mv_vop0 = _mm256_loadu_ps(&weights[(n + 0)][(c + 0)]);
+      __mv_vop1 = _mm256_loadu_ps(&bottom[(c + 0)]);
+      __mv_vop3 = _mm256_loadu_ps(&weights[(n + 1)][(c + 0)]);
+      __mv_vop5 = _mm256_loadu_ps(&weights[(n + 2)][(c + 0)]);
+      __mv_vop7 = _mm256_loadu_ps(&weights[(n + 3)][(c + 0)]);
+      __mv_vop9 = _mm256_loadu_ps(&weights[(n + 4)][(c + 0)]);
+      __mv_vop11 = _mm256_loadu_ps(&weights[(n + 5)][(c + 0)]);
+      __mv_vop13 = _mm256_loadu_ps(&weights[(n + 6)][(c + 0)]);
+      __mv_vop15 = _mm256_loadu_ps(&weights[(n + 7)][(c + 0)]);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop0, __mv_vop1, __mv_accm0);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop3, __mv_vop1, __mv_accm0);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop5, __mv_vop1, __mv_accm0);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop7, __mv_vop1, __mv_accm0);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop9, __mv_vop1, __mv_accm0);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop11, __mv_vop1, __mv_accm0);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop13, __mv_vop1, __mv_accm0);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop15, __mv_vop1, __mv_accm0);
+      // top[n] = top[n] + weights[n][c] * bottom[c];
     }
-    __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
-    __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    top[(n + 0)] = _mm_cvtss_f32(__mv_lo);                  // latency = 1
+    __mv_lo256 = _mm256_castps256_ps128(__mv_accm0);
+    __mv_hi256 = _mm256_extractf128_ps(__mv_accm0, 0x1);
+    __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+    __mv_hi256 = _mm_movehl_ps(__mv_lo256, __mv_lo256);
+    __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+    __mv_hi256 = _mm_shuffle_ps(__mv_lo256, __mv_lo256, 0b00001110);
+    __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+    top[(n + 0)] = top[(n + 0)] + __mv_lo256[0];
 
     for (c = c; c < channel; c += 1) {
       top[n] = top[n] + weights[n][c] * bottom[c];
     }
 
-    top[(n + 0)] = (top[(n + 0)] + bias[(n + 0)]);
-    // replaced: top[n] = top[n] + bias[n];
+    __mv_vop17 = _mm256_loadu_ps(&top[(n + 0)]);
+    __mv_vop18 = _mm256_loadu_ps(&bias[(n + 0)]);
+    __mv_vop17 = _mm256_add_ps(__mv_vop17, __mv_vop18);
+    _mm256_storeu_ps(&top[(n + 0)], __mv_vop17);
+    // top[n] = top[n] + bias[n];
   }
   for (n = n; n < num_output; n += 1) {
     for (int c = 0; c < channel; ++c) {
@@ -326,29 +334,62 @@ void fullconnection(const vector<float> &bottom,
   int channel = bottom.size();
   int num_output = top.size();
   top.assign(num_output, 0);
-#pragma macveth unroll n 1 c 8
+#pragma macveth unroll n 8 c 8
   int n;
-  __m128 __mv_lo, __mv_hi;
-  __m256 __mv_vop2, __mv_vop0, __mv_vop1, __mv_accm0, __mv_vop3;
-  for (n = 0; (n + 1) <= num_output; n += 1) {
+  __m256 __mv_vop2, __mv_vop0, __mv_vop1, __mv_vop4, __mv_vop3, __mv_vop6,
+      __mv_vop5, __mv_vop8, __mv_vop7, __mv_vop10, __mv_vop9, __mv_vop12,
+      __mv_vop11, __mv_vop14, __mv_vop13, __mv_vop16, __mv_vop15, __mv_accm0,
+      __mv_vop17, __mv_accm1, __mv_vop18, __mv_accm2, __mv_vop19, __mv_accm3,
+      __mv_vop20, __mv_accm4, __mv_vop21, __mv_accm5, __mv_vop22, __mv_accm6,
+      __mv_vop23, __mv_accm7, __mv_vop24;
+  for (n = 0; (n + 8) <= num_output; n += 8) {
     int c;
-    __mv_accm0 =
-        _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, top[(n + 0)]); // latency = 1
+    __mv_accm0 = _mm256_setzero_ps();
+    __mv_accm1 = _mm256_setzero_ps();
+    __mv_accm2 = _mm256_setzero_ps();
+    __mv_accm3 = _mm256_setzero_ps();
+    __mv_accm4 = _mm256_setzero_ps();
+    __mv_accm5 = _mm256_setzero_ps();
+    __mv_accm6 = _mm256_setzero_ps();
+    __mv_accm7 = _mm256_setzero_ps();
+    __mv_accm0 = _mm256_setzero_ps();
     for (c = 0; (c + 8) <= channel; c += 8) {
-      __mv_vop0 = _mm256_loadu_ps(&weights[(n + 0)][(c + 0)]); // latency = 1
-      __mv_vop1 = _mm256_loadu_ps(&bottom[(c + 0)]);           // latency = 1
-      __mv_accm0 =
-          _mm256_fmadd_ps(__mv_vop0, __mv_vop1, __mv_accm0); // latency = 5
-      // vectorized: top[n] = top[n] + weights[n][c] * bottom[c];
+      __mv_vop0 = _mm256_loadu_ps(&weights[(n + 0)][(c + 0)]);
+      __mv_vop1 = _mm256_loadu_ps(&bottom[(c + 0)]);
+      __mv_vop3 = _mm256_loadu_ps(&weights[(n + 1)][(c + 0)]);
+      __mv_vop5 = _mm256_loadu_ps(&weights[(n + 2)][(c + 0)]);
+      __mv_vop7 = _mm256_loadu_ps(&weights[(n + 3)][(c + 0)]);
+      __mv_vop9 = _mm256_loadu_ps(&weights[(n + 4)][(c + 0)]);
+      __mv_vop11 = _mm256_loadu_ps(&weights[(n + 5)][(c + 0)]);
+      __mv_vop13 = _mm256_loadu_ps(&weights[(n + 6)][(c + 0)]);
+      __mv_vop15 = _mm256_loadu_ps(&weights[(n + 7)][(c + 0)]);
+      __mv_accm0 = _mm256_fmadd_ps(__mv_vop0, __mv_vop1, __mv_accm0);
+      __mv_accm1 = _mm256_fmadd_ps(__mv_vop3, __mv_vop1, __mv_accm1);
+      __mv_accm2 = _mm256_fmadd_ps(__mv_vop5, __mv_vop1, __mv_accm2);
+      __mv_accm3 = _mm256_fmadd_ps(__mv_vop7, __mv_vop1, __mv_accm3);
+      __mv_accm4 = _mm256_fmadd_ps(__mv_vop9, __mv_vop1, __mv_accm4);
+      __mv_accm5 = _mm256_fmadd_ps(__mv_vop11, __mv_vop1, __mv_accm5);
+      __mv_accm6 = _mm256_fmadd_ps(__mv_vop13, __mv_vop1, __mv_accm6);
+      __mv_accm7 = _mm256_fmadd_ps(__mv_vop15, __mv_vop1, __mv_accm7);
+      // top[n] = top[n] + weights[n][c] * bottom[c];
     }
-    __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
-    __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
-    __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-    top[(n + 0)] = _mm_cvtss_f32(__mv_lo);                  // latency = 1
+    __mv_accm0 = _mm256_hadd_ps(__mv_accm0, __mv_accm1);
+    __mv_accm2 = _mm256_hadd_ps(__mv_accm2, __mv_accm3);
+    __mv_accm4 = _mm256_hadd_ps(__mv_accm4, __mv_accm5);
+    __mv_accm6 = _mm256_hadd_ps(__mv_accm6, __mv_accm7);
+    __mv_accm0 = _mm256_hadd_ps(__mv_accm0, __mv_accm2);
+    __mv_accm4 = _mm256_hadd_ps(__mv_accm4, __mv_accm6);
+    __mv_accm0 =
+        _mm256_add_ps(_mm256_blend_ps(__mv_accm0, __mv_accm4, 0b11110000),
+                      _mm256_permute2f128_ps(__mv_accm0, __mv_accm4, 0x21));
+    top[(n + 0)] = top[(n + 0)] + __mv_accm0[0];
+    top[(n + 1)] = top[(n + 1)] + __mv_accm0[1];
+    top[(n + 2)] = top[(n + 2)] + __mv_accm0[2];
+    top[(n + 3)] = top[(n + 3)] + __mv_accm0[3];
+    top[(n + 4)] = top[(n + 4)] + __mv_accm0[4];
+    top[(n + 5)] = top[(n + 5)] + __mv_accm0[5];
+    top[(n + 6)] = top[(n + 6)] + __mv_accm0[6];
+    top[(n + 7)] = top[(n + 7)] + __mv_accm0[7];
 
     for (c = c; c < channel; c += 1) {
       top[n] = top[n] + weights[n][c] * bottom[c];
@@ -407,27 +448,27 @@ void lrn(quote_vector3D(bottom), float k, float alpha, float beta,
         sum = 0;
 #pragma macveth unroll i 8
         int i;
-        __m128 __mv_lo, __mv_hi;
+        __m128 __mv_lo256, __mv_hi256;
         __m256 __mv_vop1, __mv_vop0, __mv_accm0, __mv_vop2;
-        __mv_accm0 = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, sum); // latency = 1
+        __mv_accm0 = _mm256_setzero_ps();
+        __mv_accm0 = _mm256_setzero_ps();
         for (i = c_start; (i + 8) <= c_end; i += 8) {
-          __mv_vop0 = _mm256_set_ps(
-              bottom[(i + 7)][h][w], bottom[(i + 6)][h][w],
-              bottom[(i + 5)][h][w], bottom[(i + 4)][h][w],
-              bottom[(i + 3)][h][w], bottom[(i + 2)][h][w],
-              bottom[(i + 1)][h][w], bottom[(i + 0)][h][w]); // latency = 1
-          __mv_accm0 =
-              _mm256_fmadd_ps(__mv_vop0, __mv_vop0, __mv_accm0); // latency = 5
-          // vectorized: sum = sum + bottom[i][h][w] * bottom[i][h][w];
+          __mv_vop0 =
+              _mm256_set_ps(bottom[(i + 7)][h][w], bottom[(i + 6)][h][w],
+                            bottom[(i + 5)][h][w], bottom[(i + 4)][h][w],
+                            bottom[(i + 3)][h][w], bottom[(i + 2)][h][w],
+                            bottom[(i + 1)][h][w], bottom[(i + 0)][h][w]);
+          __mv_accm0 = _mm256_fmadd_ps(__mv_vop0, __mv_vop0, __mv_accm0);
+          // sum = sum + bottom[i][h][w] * bottom[i][h][w];
         }
-        __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
-        __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        sum = _mm_cvtss_f32(__mv_lo);                           // latency = 1
+        __mv_lo256 = _mm256_castps256_ps128(__mv_accm0);
+        __mv_hi256 = _mm256_extractf128_ps(__mv_accm0, 0x1);
+        __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+        __mv_hi256 = _mm_movehl_ps(__mv_lo256, __mv_lo256);
+        __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+        __mv_hi256 = _mm_shuffle_ps(__mv_lo256, __mv_lo256, 0b00001110);
+        __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+        sum = sum + __mv_lo256[0];
 
         for (i = i; i < c_end; i += 1) {
           sum = sum + bottom[i][h][w] * bottom[i][h][w];
@@ -563,18 +604,26 @@ void pooling(quote_vector3D(bottom), int kernel_size, int stride, int pad,
 
 #pragma macveth i 1 j 8
         int i;
-        __m128 __mv_lo, __mv_hi;
+        __m128 __mv_lo256, __mv_hi256;
         __m256 __mv_accm0, __mv_vop0, __mv_vop1;
-        __mv_accm0 =
-            _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, max_value); // latency = 1
         for (i = h_start; (i + 1) <= h_end; i += 1) {
           int j;
+          __mv_accm0 = _mm256_setzero_ps();
+          __mv_accm0 = _mm256_setzero_ps();
           for (j = w_start; (j + 8) <= w_end; j += 8) {
-            __mv_vop1 =
-                _mm256_loadu_ps(&bottom[c][(i + 0)][(j + 0)]); // latency = 1
-            __mv_accm0 = _mm256_max_ps(__mv_vop1, __mv_accm0); // latency = 4
-            // vectorized: max_value = std::max(max_value, bottom[c][i][j]);
+            __mv_vop1 = _mm256_loadu_ps(&bottom[c][(i + 0)][(j + 0)]);
+            __mv_accm0 = _mm256_max_ps(__mv_vop1, __mv_accm0);
+            // max_value = std::max(max_value, bottom[c][i][j]);
+            // max_value2 = std::max(max_value2, bottom[c][i][j]);
           }
+          __mv_lo256 = _mm256_castps256_ps128(__mv_accm0);
+          __mv_hi256 = _mm256_extractf128_ps(__mv_accm0, 0x1);
+          __mv_lo256 = _mm_max_ps(__mv_lo256, __mv_hi256);
+          __mv_hi256 = _mm_movehl_ps(__mv_lo256, __mv_lo256);
+          __mv_lo256 = _mm_max_ps(__mv_lo256, __mv_hi256);
+          __mv_hi256 = _mm_shuffle_ps(__mv_lo256, __mv_lo256, 0b00001110);
+          __mv_lo256 = _mm_max_ps(__mv_lo256, __mv_hi256);
+          max_value = std::max(max_value, __mv_lo256[0]);
 
           for (j = j; j < w_end; j += 1) {
             max_value = std::max(max_value, bottom[c][i][j]);
@@ -587,14 +636,6 @@ void pooling(quote_vector3D(bottom), int kernel_size, int stride, int pad,
           };
         }
 
-        __mv_lo = _mm256_castps256_ps128(__mv_accm0);            // latency = 0
-        __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);        // latency = 3
-        __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                  // latency = 4
-        __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);               // latency = 1
-        __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                  // latency = 4
-        __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110);  // latency = 1
-        __mv_lo = _mm_max_ps(__mv_lo, __mv_hi);                  // latency = 4
-        max_value = std::max(max_value, _mm_cvtss_f32(__mv_lo)); // latency = 1
 #pragma endmacveth
         top[c][h][w] = max_value;
         //}
@@ -656,24 +697,31 @@ void convolution(quote_vector3D(bottom), int stride, int pad,
         sum = 0;
 #pragma macveth i 1 j 8 ci 1
         int ci;
-        __m128 __mv_lo, __mv_hi;
+        __m128 __mv_lo256, __mv_hi256;
         __m256 __mv_vop2, __mv_vop0, __mv_vop1, __mv_accm0, __mv_vop3;
-        __mv_accm0 = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, sum); // latency = 1
         for (ci = 0; (ci + 1) <= channel; ci += 1) {
           int i;
           for (i = h_start; (i + 1) <= h_end; i += 1) {
             int j;
+            __mv_accm0 = _mm256_setzero_ps();
+            __mv_accm0 = _mm256_setzero_ps();
             for (j = w_start; (j + 8) <= w_end; j += 8) {
               __mv_vop0 =
                   _mm256_loadu_ps(&weights[co][(ci + 0)][((i + 0) - h_start)]
-                                          [((j + 0) - w_start)]); // latency = 1
-              __mv_vop1 = _mm256_loadu_ps(
-                  &bottom[(ci + 0)][(i + 0)][(j + 0)]); // latency = 1
-              __mv_accm0 = _mm256_fmadd_ps(__mv_vop0, __mv_vop1,
-                                           __mv_accm0); // latency = 5
-              // vectorized: sum = sum + weights[co][ci][i - h_start][j -
-              // w_start] * bottom[ci][i][j];
+                                          [((j + 0) - w_start)]);
+              __mv_vop1 = _mm256_loadu_ps(&bottom[(ci + 0)][(i + 0)][(j + 0)]);
+              __mv_accm0 = _mm256_fmadd_ps(__mv_vop0, __mv_vop1, __mv_accm0);
+              // sum = sum + weights[co][ci][i - h_start][j - w_start] *
+              bottom[ci][i][j];
             }
+            __mv_lo256 = _mm256_castps256_ps128(__mv_accm0);
+            __mv_hi256 = _mm256_extractf128_ps(__mv_accm0, 0x1);
+            __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+            __mv_hi256 = _mm_movehl_ps(__mv_lo256, __mv_lo256);
+            __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+            __mv_hi256 = _mm_shuffle_ps(__mv_lo256, __mv_lo256, 0b00001110);
+            __mv_lo256 = _mm_add_ps(__mv_lo256, __mv_hi256);
+            sum = sum + __mv_lo256[0];
 
             for (j = j; j < w_end; j += 1) {
               sum = sum + weights[co][ci][i - h_start][j - w_start] *
@@ -695,14 +743,7 @@ void convolution(quote_vector3D(bottom), int stride, int pad,
             }
           };
         }
-        __mv_lo = _mm256_castps256_ps128(__mv_accm0);           // latency = 0
-        __mv_hi = _mm256_extractf128_ps(__mv_accm0, 0x1);       // latency = 3
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        __mv_hi = _mm_movehl_ps(__mv_lo, __mv_lo);              // latency = 1
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        __mv_hi = _mm_shuffle_ps(__mv_lo, __mv_lo, 0b00001110); // latency = 1
-        __mv_lo = _mm_add_ps(__mv_lo, __mv_hi);                 // latency = 4
-        sum += _mm_cvtss_f32(__mv_lo);                          // latency = 1
+
 #pragma endmacveth
 
         top[co][h][w] = sum + bias[co];
@@ -957,118 +998,4 @@ void PredictLayer(const vector<float> &bottom,
     for (int c = 0; c < channel; ++c) {
       top[n] += weights[n][c] * bottom[c];
     }
-    top[n] = top[n] + bias[n];
-  }
-}
-
-// ---------------------------------------------
-
-long Update_flops(int cont_input, vector<float> &hc_rst) {
-  int length = hc_rst.size();
-  return length;
-}
-
-void Update(int cont_input, vector<float> &hc_rst) {
-  int length = hc_rst.size();
-  for (int i = 0; i < length; i++) {
-    hc_rst[i] = cont_input * hc_rst[i];
-  }
-}
-
-// ---------------------------------------------
-
-long LSTMFullconnectionLayer_flops(const vector<float> &bottom,
-                                   const vector<vector<float>> &weights,
-                                   vector<float> &top) {
-  int channel = bottom.size();
-  int num_output = top.size();
-  return num_output * channel * 2;
-}
-
-void LSTMFullconnectionLayer(const vector<float> &bottom,
-                             const vector<vector<float>> &weights,
-                             vector<float> &top) {
-
-  int channel = bottom.size();
-  int num_output = top.size();
-  top.assign(num_output, 0);
-  for (int n = 0; n < num_output; ++n) {
-    for (int c = 0; c < channel; ++c) {
-      top[n] = top[n] + weights[n][c] * bottom[c];
-    }
-  }
-}
-
-// ---------------------------------------------
-
-long Add_Result_flops(vector<float> &gate_input_t,
-                      const vector<float> &xcstatic_rst,
-                      const vector<float> &Wxc_tm1,
-                      const vector<float> &Whc_tm1,
-                      const vector<float> &xc_bias) {
-  int length = gate_input_t.size();
-  return length;
-}
-
-void Add_Result(vector<float> &gate_input_t, const vector<float> &xcstatic_rst,
-                const vector<float> &Wxc_tm1, const vector<float> &Whc_tm1,
-                const vector<float> &xc_bias) {
-  int length = gate_input_t.size();
-  for (int i = 0; i < length; i++) {
-    gate_input_t[i] = xcstatic_rst[i] + Wxc_tm1[i] + Whc_tm1[i] + xc_bias[i];
-  }
-}
-
-// ---------------------------------------------
-
-long sigmoid_flops(float x) { return 3; }
-
-float sigmoid(float x) { return 1. / (1. + exp(-x)); }
-
-// float tanh(float x) {
-//  return 2. * sigmoid(2. * x) - 1.;
-//}
-
-// ---------------------------------------------
-
-long LSTMlayer_flops(int cont_input, const vector<float> &gate_input_t,
-                     vector<float> &c_tm1, vector<float> &hc_tm1) {
-  int length = gate_input_t.size();
-  return length / 4 * ((3 * sigmoid_flops(1.0)) + 7);
-}
-
-void LSTMlayer(int cont_input, const vector<float> &gate_input_t,
-               vector<float> &c_tm1, vector<float> &hc_tm1) {
-  int length = gate_input_t.size();
-  float it, ft, ot, gt;
-  for (int i = 0; i < length / 4; i++) {
-    it = sigmoid(gate_input_t[i]);
-    ft = sigmoid(gate_input_t[i + 1000]);
-    ot = sigmoid(gate_input_t[i + 2000]);
-    gt = tanh(gate_input_t[i + 3000]);
-    c_tm1[i] = cont_input * (ft * c_tm1[i]) + it * gt;
-    hc_tm1[i] = ot * tanh(c_tm1[i]);
-  }
-}
-
-// ---------------------------------------------
-
-long argmax_flops(const vector<float> &probs) {
-  int rst = -1;
-  float max = -1000000;
-  int length = probs.size();
-  return length;
-}
-
-int argmax(const vector<float> &probs) {
-  int rst = -1;
-  float max = -1000000;
-  int length = probs.size();
-  for (int i = 0; i < length; i++) {
-    if (max < probs[i]) {
-      max = probs[i];
-      rst = i;
-    }
-  }
-  return rst;
-}
+    top[

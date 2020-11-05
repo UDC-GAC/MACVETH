@@ -217,11 +217,6 @@ AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL) {
     // val = _mm_cvtsd_f64(op(lo,hi));
     genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
                 {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
-    // genSIMDInst(VIL[0].Result, "cvtsd", "", "f64", MVDataType::VWidth::W128,
-    // Type,
-    //             {LoRes}, SIMDType::VOPT, &IL, Loc, Pos);
-    addNonSIMDInst(VIL[0].Result, VIL[0].Result + OP + LoRes + "[0]",
-                   SIMDType::VOPT, MVSL, &IL);
   } else if (Type == MVDataType::VDataType::FLOAT) {
     // 8 elements
     if (NElems > 4) {
@@ -252,16 +247,20 @@ AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL) {
     // lo = op(lo,hi);
     genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
                 {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
-
-    // genSIMDInst(VIL[0].Result, "cvtss", "", "f32", MVDataType::VWidth::W128,
-    // Type,
-    //             {LoRes}, SIMDType::VOPT, &IL, Loc, Pos);
-    addNonSIMDInst(VIL[0].Result, VIL[0].Result + OP + LoRes + "[0]",
-                   SIMDType::VOPT, MVSL, &IL);
   } else {
     // FIXME: should we implement this for integer arithmetic?
     MVErr("Not implemented this approach yet for other types than float or "
           "doubles");
+  }
+  // The last dance
+  if (OpRedux.isBinaryOperation()) {
+    addNonSIMDInst(VIL[0].Result, VIL[0].Result + OP + LoRes + "[0]",
+                   SIMDType::VOPT, MVSL, &IL);
+  } else {
+    OP = OpRedux.getOpPrefix() + OP;
+    addNonSIMDInst(VIL[0].Result,
+                   OP + "(" + VIL[0].Result + ", " + LoRes + "[0])",
+                   SIMDType::VOPT, MVSL, &IL);
   }
 
   return IL;
@@ -276,7 +275,6 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
 
   int NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
   auto OpRedux = VIL[0].MVOP;
-  auto OpReduxType = OpRedux.getType();
   auto OpName = VIL[0].MVOP.toString();
   int NumRedux = TIL.size();
   auto Pos = MVSourceLocation::Position::POSORDER;
@@ -504,14 +502,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
   // intrisics design
 
   std::string AuxArray = declareAuxArray(VIL[0].DT);
-  if (NElems <= 4) {
-    for (int R = 0; R < NumRedux; ++R) {
-      std::string Idx = "[" + std::to_string(R) + "]";
-      addNonSIMDInst(VRedux[R], VRedux[R] + OP + VAccm[0] + Idx, SIMDType::VSEQ,
-                     MVSL, &IL);
-    }
-    return IL;
-  } else {
+  if (NElems > 4) {
     // Need to do the last extraction, shuffle and operation
     for (int R = 0; R < NumRedux; R += 4) {
       // op(shuffle(hi,lo,mask), shuffle(hi,lo,mask))
@@ -530,15 +521,17 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
                     SIMDType::VSTORE, MVSL, &IL);
       }
     }
-    if (NumRedux == 1) {
-      addNonSIMDInst(VRedux[0], VRedux[0] + OP + VAccm[0] + "[0]",
-                     SIMDType::VSEQ, MVSL, &IL);
+  }
+  for (int R = 0; R < NumRedux; ++R) {
+    std::string Idx = "[" + std::to_string(R) + "]";
+    if (OpRedux.isBinaryOperation()) {
+      addNonSIMDInst(VRedux[R], VRedux[R] + OP + VAccm[0] + Idx, SIMDType::VSEQ,
+                     MVSL, &IL);
     } else {
-      for (int R = 0; R < NumRedux; ++R) {
-        std::string Idx = "[" + std::to_string(R) + "]";
-        addNonSIMDInst(VRedux[R], VRedux[R] + OP + AuxArray + Idx,
-                       SIMDType::VSEQ, MVSL, &IL);
-      }
+      OP = OpRedux.getOpPrefix() + OP;
+      addNonSIMDInst(VRedux[R],
+                     OP + "(" + VRedux[R] + ", " + VAccm[0] + Idx + ")",
+                     SIMDType::VSEQ, MVSL, &IL);
     }
   }
   return IL;

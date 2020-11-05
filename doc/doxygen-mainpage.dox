@@ -1,4 +1,4 @@
-/// \mainpage MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors for HPC applications
-///
-/// \section main_intro Introduction
-/// Welcome to the MACVETH compiler.
+\mainpage MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors for HPC applications
+
+\section main_intro Introduction
+Welcome to the MACVETH compiler. 

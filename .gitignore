@@ -26,6 +26,7 @@ macveth
 *.output
 */SPF_org/*
 macveth_output_arch_isa
+*.dump
 
 # Temp files
 output/

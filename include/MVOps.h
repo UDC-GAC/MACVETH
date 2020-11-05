@@ -84,7 +84,9 @@ enum MVOpCode {
 /// a 'union' over 'std::variant' (C++14) since both possible types are enums
 /// and may have the same values; this way we can explicitly handle each case
 struct MVOp {
-  /// Tyep of the MVOp
+  /// Prefix
+  std::string Prefix = "";
+  /// Type of the MVOp
   MVOpType T;
   /// We can handle Clang BinOps or MVOps
   union {
@@ -185,6 +187,11 @@ struct MVOp {
            (this->ClangOP == clang::BinaryOperator::Opcode::BO_Assign);
   }
 
+  /// Check whether the operation is binary or not. An operation is binary if
+  /// it is placed between two operands, in other case if is a function
+  bool isBinaryOperation() { return (getType() == MVOpType::CLANG_BINOP); }
+
+  /// Get equivalent MVOP string for searching in the Table Cost
   std::string getTableMVOPstr(std::string T) {
     std::string Suffix = "_" + Utils::toUppercase(T);
     if (getType() == MVOpType::CLANG_BINOP) {
@@ -192,6 +199,16 @@ struct MVOp {
              Suffix;
     }
     return Utils::toUppercase(getStrFromMVCode(this->MVOpC)) + Suffix;
+  }
+
+  std::string getPrefixFromStr(std::string S) {
+    std::string P = "";
+    std::string NameSpace = "::";
+    auto FoundNameSpace = S.find(NameSpace);
+    if (FoundNameSpace != std::string::npos) {
+      P = S.substr(0, FoundNameSpace + NameSpace.size());
+    }
+    return P;
   }
 
   /// Convert MVOp to string
@@ -202,6 +219,9 @@ struct MVOp {
     return getStrFromMVCode(this->MVOpC);
   }
 
+  /// Get the prefix
+  std::string getOpPrefix() { return this->Prefix; }
+
   /// Return the type of the operation
   MVOpType getType() { return T; }
 
@@ -209,6 +229,7 @@ struct MVOp {
   MVOp(std::string S) {
     this->T = MVOpType::MVFUNC;
     this->MVOpC = getTypeFromStr(S);
+    this->Prefix = getPrefixFromStr(S);
   }
 
   /// Given a BinaryOperator::Opcode the MVOp will be of CLANG_BINOP type
