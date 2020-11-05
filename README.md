@@ -226,13 +226,13 @@ $$ -->
 
 <div align="center"><img src="https://render.githubusercontent.com/render/math?math=%5Csum%7BV%7D%20%5Clt%20%5Csum%7BS%7D%20%5CRightarrow%20vectorize"></div>
 
-Where $V$ is the set of vector instructions and $S$ the equivalent set of
+Where <!-- $V$ --> <img src="https://render.githubusercontent.com/render/math?math=V"> is the set of vector instructions and $S$ the equivalent set of
 sequential or scalar instructions. In our approach, our model is agnostic
 regarding instructions ''already in the pipeline'', so we do not consider
 throughput or port usage in first place. Comparison is done at VectorIR level:
 for a set of packable nodes it is generated the vector operation and,
 therefore, its SIMD equivalent (architecture dependent); cost of these SIMD
-instructions ($I$) should be lower than the scalar cost of the nodes ($N$).
+instructions (<!-- $I$ --> <img src="https://render.githubusercontent.com/render/math?math=I">) should be lower than the scalar cost of the nodes (<!-- $N$ --> <img src="https://render.githubusercontent.com/render/math?math=N">).
 
 <!-- $$
 \sum{I} \lt \sum{N} /\exists f:{I,N} \mapsto \mathbb{Z}^{+}
@@ -240,8 +240,8 @@ $$ -->
 
 <div align="center"><img src="https://render.githubusercontent.com/render/math?math=%5Csum%7BI%7D%20%5Clt%20%5Csum%7BN%7D%20%2F%5Cexists%20f%3A%7BI%2CN%7D%20%5Cmapsto%20%5Cmathbb%7BZ%7D%5E%7B%2B%7D"></div>
 
-Where $f$ is a function that given either a set of SIMD instructions ($I$) or a
-set of nodes ($N$) returns a cost integer positive value, according to the
+Where <!-- $f$ --> <img src="https://render.githubusercontent.com/render/math?math=f"> is a function that given either a set of SIMD instructions (<!-- $I$ --> <img src="https://render.githubusercontent.com/render/math?math=I">) or a
+set of nodes (<!-- $N$ --> <img src="https://render.githubusercontent.com/render/math?math=N">) returns a cost integer positive value, according to the
 latency table for that architecture and ISA.
 
 Complexity and increasing intelligence of compilers and their auto-vectorizers 
