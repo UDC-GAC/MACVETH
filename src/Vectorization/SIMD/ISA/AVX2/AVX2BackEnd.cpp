@@ -422,7 +422,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
   // TODO:
   // This is quite complex: it is not the same doing reductions of additions
   // subtractions than multiplications or divisions. This way, we have to
-  // explictly differentiate them. General algorithm (4 doubles) for those
+  // explicitly differentiate them. General algorithm (4 doubles) for those
   // cases:
   //          DATA IN YMM0
   //         ymm0 = _mm256_OP_pd(ymm0, _mm256_permute_pd(ymm0, 0x05));
@@ -499,7 +499,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
   }
 
   // Extract values depending if 4 or 8 elements, different approaches due to
-  // intrisics design
+  // intrinsics design
 
   std::string AuxArray = declareAuxArray(VIL[0].DT);
   if (NElems > 4) {

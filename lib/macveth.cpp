@@ -77,7 +77,7 @@ static llvm::cl::opt<MVSIMDCostModel> SIMDCostModel(
                    "Vectorize if and only if the sequential estimation is "
                    "worse than the vectorized"),
         clEnumValN(MVSIMDCostModel::AGGRESSIVE, "aggressive",
-                   "Vectorize partially if benefitial according to cost model"),
+                   "Vectorize partially if beneficial according to cost model"),
         clEnumValN(MVSIMDCostModel::UNLIMITED, "unlimited",
                    "Unlimited SIMD cost, i.e. vectorize regardless the cost")));
 

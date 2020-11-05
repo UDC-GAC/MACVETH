@@ -45,7 +45,7 @@ namespace macveth {
 enum MVSIMDCostModel {
   /// Vectorize always, despite the not vectorized estimation cost
   UNLIMITED,
-  /// If the sequential code vs the SIMDized code has a better estimation, then
+  /// If the sequential code vs the SIMD-zed code has a better estimation, then
   /// MACVETH does not vectorize the code
   CONSERVATIVE,
   /// Region to vectorize can have parts where vectorization provides better
