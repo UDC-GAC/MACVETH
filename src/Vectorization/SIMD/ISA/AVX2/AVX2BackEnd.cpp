@@ -252,6 +252,7 @@ AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL) {
     MVErr("Not implemented this approach yet for other types than float or "
           "doubles");
   }
+
   // The last dance
   if (OpRedux.isBinaryOperation()) {
     addNonSIMDInst(VIL[0].Result, VIL[0].Result + OP + LoRes + "[0]",
@@ -1309,12 +1310,9 @@ std::vector<std::string> AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
   }
   auto VS = V.R.VSize;
 
-  // for (int i = 0; i < VS - 1 + (VS % 2); ++i) {
   for (int i = 0; i < VS; ++i) {
     InitVal.push_back(NeutralValue);
   }
-  // InitVal.push_back(V.R.UOP[0]->getRegisterValue());
-
   std::list<std::string> InitValList(InitVal.begin(), InitVal.end());
   std::string Reg = V.R.Name;
   // Fuck, this is awful...

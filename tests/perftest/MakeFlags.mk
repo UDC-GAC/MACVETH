@@ -16,9 +16,6 @@ else
 	COMP=gcc
 	CC=gcc
 	CXX=g++
-	#VFLAGS= $(VF) -march=native -mfma -ftree-vectorize -ftree-loop-vectorize
-	#-fvect-cost-model=unlimited -fsimd-cost-model=unlimited
-	#-fprefetch-loop-arrays -unroll0
 	VFLAGS= $(VF) -march=native -mfma -ftree-vectorize -fvect-cost-model=unlimited -fsimd-cost-model=unlimited -fprefetch-loop-arrays
 	VFLAGSMV= $(VF) -march=native -mfma -ftree-vectorize 
 endif

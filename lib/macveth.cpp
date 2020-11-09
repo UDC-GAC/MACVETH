@@ -52,19 +52,25 @@ using namespace macveth;
 // Set up the command line options
 static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
 static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
+
 // Custom cmd options
 static llvm::cl::opt<std::string>
     OutputFile("o", cl::cat(MacvethCategory),
                llvm::cl::desc("Output file to write the code, otherwise "
                               "it will just print int std output"));
+
+//
 static llvm::cl::opt<std::string>
     SIMDInfoFile("simd-info", cl::cat(MacvethCategory),
                  llvm::cl::desc("Report with all the SIMD information"));
+
 static llvm::cl::opt<std::string> SIMDInfoMissedFile(
     "simd-info-missed", cl::cat(MacvethCategory),
     llvm::cl::desc("Report with all missed SIMD opportunities"));
+
 static llvm::cl::opt<std::string> TargetFunc("func", cl::cat(MacvethCategory),
                                              llvm::cl::desc("Target function"));
+
 static llvm::cl::opt<std::string>
     CDAGInFile("input-cdag", cl::cat(MacvethCategory),
                llvm::cl::desc("Input file to read the custom CDAG placement"));
@@ -130,32 +136,32 @@ static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
         clEnumValN(MVCPUInfo::MVArch::IntelDef, "intel",
                    "Intel architecture not specified")));
 
-/// FMA support flag
+// FMA support flag
 static llvm::cl::opt<bool> FMA("fma",
                                llvm::cl::desc("Explicitly tell if FMA support"),
                                llvm::cl::init(false),
                                llvm::cl::cat(MacvethCategory));
 
-/// Disable Intrinsics SVML
+// Disable Intrinsics SVML
 static llvm::cl::opt<bool> NoSVML("no-svml",
                                   llvm::cl::desc("Disable Intrinsics SVML"),
                                   llvm::cl::init(false),
                                   llvm::cl::cat(MacvethCategory));
 
-/// Disable FMA support flag
+// Disable FMA support flag
 static llvm::cl::opt<bool> DisableFMA(
     "nofma",
     llvm::cl::desc("Explicitly tell to not generate FMA instructions even if "
                    "architecture supports them"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
-/// Debug flag
+// Debug flag
 static llvm::cl::opt<bool> Debug("debug-mv",
                                  llvm::cl::desc("Print debug information"),
                                  llvm::cl::init(false),
                                  llvm::cl::cat(MacvethCategory));
 
-/// Reformat code
+// Whether to reformat code
 static llvm::cl::opt<bool> NoFormatCode(
     "no-format",
     llvm::cl::desc("MACVETH by defaults reformats code as "
@@ -163,14 +169,14 @@ static llvm::cl::opt<bool> NoFormatCode(
                    "enabled, then no reformatting is applied"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
-/// Do not include headers in top of the file
+// Do not include headers in top of the file
 static llvm::cl::opt<bool> NoHeaders(
     "no-headers",
     llvm::cl::desc(
         "If set, do *not* include header files, such as <immintrin.h>"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
-/// Output debug
+// Output debug
 static llvm::cl::opt<std::string>
     DebugFile("debug-file", cl::cat(MacvethCategory),
               llvm::cl::desc("Output file to print the debug information"));
@@ -187,7 +193,7 @@ int main(int argc, const char **argv) {
   // * getSourcePathList(): source files to run over
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
-  /// MVOptions
+  // MVOptions
   MVOptions::OutFile =
       OutputFile.getValue() == "" ? "macveth_output.c" : OutputFile.getValue();
   MVOptions::InCDAGFile = CDAGInFile.getValue();
@@ -198,7 +204,6 @@ int main(int argc, const char **argv) {
   MVOptions::DisableFMA = DisableFMA.getValue();
   MVOptions::Debug = Debug.getValue();
   MVOptions::NoReformat = NoFormatCode.getValue();
-  // MVOptions::MacroCode = MacroCode.getValue();
   MVOptions::Headers = !NoHeaders.getValue();
   MVOptions::SIMDCostModel = SIMDCostModel.getValue();
   MVOptions::IntrinsicsSVML = !NoSVML.getValue();
@@ -207,7 +212,7 @@ int main(int argc, const char **argv) {
   // Check if there are incompatible options
   MVOptions::validateOptions();
 
-  /// Create needed files
+  // Create needed files
   Utils::initFile(MVOptions::OutFile);
   Utils::initFile(MVOptions::OutDebugFile);
 

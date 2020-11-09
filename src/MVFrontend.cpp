@@ -156,19 +156,17 @@ bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
     if (S->isLoop()) {
       if (auto L = renderSIMDInstBeforePlace(SI, S->getListStmt())) {
         Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                           SI.render() + ";\t\n");
+                           SI.render() + ";\n");
       }
     } else {
       for (auto T : S->getTacList()) {
-        if (SI.getSourceLocationOrder() == T.getTacID()) {
-          if (!S->isInLoop()) {
-            Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
-                                     SI.render() + ";\t\n");
-            return false;
-          } else {
+        if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
+          if (S->isInLoop()) {
             return true;
           }
-          return true;
+          Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
+                                   SI.render() + ";\n");
+          return false;
         }
       }
     }
@@ -183,19 +181,18 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
     if (S->isLoop()) {
       if (auto L = renderSIMDInstAfterPlace(SI, S->getListStmt())) {
         Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
-                                     SI.render() + ";\t\n");
+                                     SI.render() + ";\n");
       }
     } else {
       for (auto T : S->getTacList()) {
-        if (SI.getSourceLocationOrder() == T.getTacID()) {
-          if (!S->isInLoop()) {
-            Rewrite.InsertTextAfterToken(
-                S->getClangStmt()->getEndLoc().getLocWithOffset(1),
-                "\n" + SI.render() + ";\t");
-            return false;
-          } else {
+        if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
+          if (S->isInLoop()) {
             return true;
           }
+          Rewrite.InsertTextAfterToken(
+              S->getClangStmt()->getEndLoc().getLocWithOffset(1),
+              "\n" + SI.render() + ";\n");
+          return false;
         }
       }
     }
@@ -204,50 +201,60 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
 }
 
 // ---------------------------------------------
+void MVFuncVisitor::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
+                                      std::list<StmtWrapper *> SL) {
+  for (auto S : SL) {
+    if (S->isLoop()) {
+      renderSIMDInstInPlace(SI, S->getListStmt());
+    } else {
+      for (auto T : S->getTacList()) {
+        if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
+          Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                             SI.render() + ";\n", true, true);
+          return;
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------
 void MVFuncVisitor::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
   // Sequential case: is this needed?
-  if (SI.isSequential() && SI.isInOrder()) {
+  if (SI.isSequential() && SI.getMVSourceLocation().isInOrder()) {
     Utils::printDebug("MVFuncVisitor",
                       "Sequential rendering for " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
-        if (SI.getSourceLocationOrder() == T.getTacID()) {
-          renderTACInPlace({S}, SI.getSourceLocationOrder(),
-                           SI.getSourceLocationOffset());
+        if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
+          renderTACInPlace({S}, SI.getMVSourceLocation().getOrder(),
+                           SI.getMVSourceLocation().getOffset());
           return;
         }
       }
     }
   }
 
-  if (SI.isReduction()) {
+  // If instruction does not have content, then do nothing
+  if (SI.isReduction() || SI.render() == "") {
     return;
   }
 
-  if (SI.render() == "") {
-    return;
-  }
-
-  if (SI.isPreOrder()) {
+  switch (SI.getMVSourceLocation().getPosition()) {
+  case MVSourceLocation::Position::PREOUTERMOST:
+  case MVSourceLocation::Position::PREORDER:
     renderSIMDInstBeforePlace(SI, SL);
-  } else if (SI.isPosOrder()) {
+    break;
+  case MVSourceLocation::Position::INORDER:
+    renderSIMDInOrder(SI, SL);
+    break;
+  case MVSourceLocation::Position::POSORDER:
     renderSIMDInstAfterPlace(SI, SL);
-  } else {
-    // Rest of SIMD operations
-    for (auto S : SL) {
-      if (S->isLoop()) {
-        renderSIMDInstInPlace(SI, S->getListStmt());
-      } else {
-        for (auto T : S->getTacList()) {
-          if (SI.getSourceLocationOrder() == T.getTacID()) {
-            Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                               SI.render() + ";\t\n", true, true);
-            return;
-          }
-        }
-      }
-    }
+    break;
+  case MVSourceLocation::Position::POSOUTERMOST:
+  default:
+    break;
   }
 }
 
@@ -503,8 +510,9 @@ static bool formatMACVETH(StringRef FileName) {
 
   std::unique_ptr<llvm::MemoryBuffer> Code = std::move(CodeOrErr.get());
   if (Code->getBufferSize() == 0) {
-    MVInfo("File already formatted...");
-    return false; // Empty files are formatted correctly.
+    // Empty files are formatted correctly.
+    MVInfo("File empty");
+    return false;
   }
 
   auto BufStr = Code->getBuffer();
@@ -516,8 +524,8 @@ static bool formatMACVETH(StringRef FileName) {
   auto FormatStyle = clang::format::getStyle("LLVM", AssumedFileName, "LLVM",
                                              Code->getBuffer());
   if (!FormatStyle) {
-    llvm::errs() << llvm::toString(FormatStyle.takeError()) << "\n";
-    MVInfo("Formatting file failed: bad format style");
+    MVInfo("Formatting file failed: bad format style " +
+           llvm::toString(FormatStyle.takeError()));
     return true;
   }
 
@@ -540,7 +548,6 @@ static bool formatMACVETH(StringRef FileName) {
 
   IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> InMemoryFileSystem(
       new llvm::vfs::InMemoryFileSystem);
-
   FileManager Files(FileSystemOptions(), InMemoryFileSystem);
 
   DiagnosticsEngine Diagnostics(
@@ -553,11 +560,11 @@ static bool formatMACVETH(StringRef FileName) {
   Rewriter Rewrite(Sources, LangOptions());
   tooling::applyAllReplacements(Replaces, Rewrite);
   if (Rewrite.overwriteChangedFiles()) {
+    // Something went wrong
     MVInfo("Formatting file failed: something went wrong saving file!");
     return true;
   }
-
-  // Something went wrong
+  // File formatted properly
   return false;
 }
 

@@ -149,7 +149,7 @@ struct MVOptions {
   static inline bool FMASupport = false;
   /// Disable FMA support
   static inline bool DisableFMA = false;
-  /// Debug
+  /// Print debug information
   static inline bool Debug = false;
   /// Debug level
   static inline DebugLevel DLevel = DebugLevel::ALL;

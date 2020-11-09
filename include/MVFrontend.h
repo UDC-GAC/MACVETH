@@ -75,6 +75,10 @@ private:
   /// Render SIMD after a statement (for reductions, for instance)
   bool renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
                                 std::list<StmtWrapper *> SL);
+
+  /// Render SIMD where the original scalar code is
+  bool renderSIMDInOrder(SIMDBackEnd::SIMDInst SI, std::list<StmtWrapper *> SL);
+
   /// Render SIMD before a statement (for initializing reductions, for instance)
   bool renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
                                  std::list<StmtWrapper *> SL);

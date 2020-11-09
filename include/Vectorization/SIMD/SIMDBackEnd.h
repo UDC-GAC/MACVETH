@@ -122,31 +122,13 @@ public:
     /// Render instruction as a string
     std::string render();
 
-    /// Check if type is sequential
+    MVSourceLocation getMVSourceLocation() { return MVSL; }
+
+    /// Check if the vectorial type of the operation is sequential
     bool isSequential() { return this->SType == SIMDBackEnd::SIMDType::VSEQ; }
 
-    /// Check whether position is posorder or not
-    bool isPreOrder() {
-      return this->MVSL.getPosition() == MVSourceLocation::Position::PREORDER;
-    }
-
-    /// Check whether position is in order or not
-    bool isInOrder() {
-      return this->MVSL.getPosition() == MVSourceLocation::Position::INORDER;
-    }
-
-    /// Check whether position is posorder or not
-    bool isPosOrder() {
-      return this->MVSL.getPosition() == MVSourceLocation::Position::POSORDER;
-    }
-
-    /// Check if reduction
+    /// Check if the vectorial type of the operation is a reduction
     bool isReduction() { return this->SType == SIMDType::VREDUC; }
-
-    /// Get MVSourceLocation order
-    unsigned int getSourceLocationOrder() { return this->MVSL.getOrder(); }
-    /// Get MVSourceLocation offset
-    int getSourceLocationOffset() { return this->MVSL.getOffset(); }
 
     /// Comparison operator
     bool operator==(const SIMDInst &S) const {

@@ -226,7 +226,7 @@ $$ -->
 
 <div align="center"><img src="https://render.githubusercontent.com/render/math?math=%5Csum%7BV%7D%20%5Clt%20%5Csum%7BS%7D%20%5CRightarrow%20vectorize"></div>
 
-Where <!-- $V$ --> <img src="https://render.githubusercontent.com/render/math?math=V"> is the set of vector instructions and $S$ the equivalent set of
+Where <!-- $V$ --> <img src="https://render.githubusercontent.com/render/math?math=V"> is the set of vector instructions and <!-- $S$ --> <img src="https://render.githubusercontent.com/render/math?math=S"> the equivalent set of
 sequential or scalar instructions. In our approach, our model is agnostic
 regarding instructions ''already in the pipeline'', so we do not consider
 throughput or port usage in first place. Comparison is done at VectorIR level:

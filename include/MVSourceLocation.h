@@ -33,50 +33,76 @@
 #define MACVETH_SOURCELOCATION_H
 
 namespace macveth {
+/// MVSourceLocation serves to identify the order of certain instructions,
+/// such as reductions, initializations, etc.
 class MVSourceLocation {
 public:
-  // Position specifies where the statement should be placed
+  /// Position specifies where the statement should be placed
   enum Position {
-    // Before the TAC. This is useful for initializations
+    /// Place before a certain loop nest
+    PREOUTERMOST,
+    /// Before the TAC. This is useful for initializations
     PREORDER,
-    // Where the TAC is originally
+    /// Where the TAC is originally
     INORDER,
-    // After the TAC. This is useful for statements that changed their location
-    // due to transformations, e.g. loops
-    POSORDER
+    /// After the TAC. This is useful for statements that changed their location
+    /// due to transformations, e.g. loops
+    POSORDER,
+    /// Place after nested loops
+    POSOUTERMOST
   };
 
-  // Get the order
+  bool isPreOutermost() {
+    return this->getPosition() == MVSourceLocation::Position::PREOUTERMOST;
+  }
+
+  bool isPreOrder() {
+    return this->getPosition() == MVSourceLocation::Position::PREORDER;
+  }
+
+  bool isInOrder() {
+    return this->getPosition() == MVSourceLocation::Position::INORDER;
+  }
+
+  bool isPosOrder() {
+    return this->getPosition() == MVSourceLocation::Position::POSORDER;
+  }
+
+  bool isPosOutermost() {
+    return this->getPosition() == MVSourceLocation::Position::POSOUTERMOST;
+  }
+
+  /// Get the order
   int getOffset() { return this->Offset; }
 
   // Set order
   void setOffset(unsigned int Offset) { this->Offset = Offset; }
 
-  // Get the order
+  /// Get the order
   unsigned int getOrder() { return this->Order; }
 
-  // Set order
+  /// Set order
   void setOrder(unsigned int Order) { this->Order = Order; }
 
-  // Get the position
+  /// Get the position
   Position getPosition() { return this->P; }
 
   // Set position P
   void setPosition(Position P) { this->P = P; }
 
-  // Empty constructor
+  /// Empty constructor
   MVSourceLocation() { this->P = Position::INORDER; };
 
-  // Constructor given position
+  /// Constructor given position
   MVSourceLocation(Position P) { this->P = P; };
 
-  // Constructor given position and order
+  /// Constructor given position and order
   MVSourceLocation(Position P, unsigned int Order) {
     this->P = P;
     this->Order = Order;
   };
 
-  // Constructor given position, order and offset
+  /// Constructor given position, order and offset
   MVSourceLocation(Position P, unsigned int Order, int Offset) {
     this->P = P;
     this->Order = Order;
@@ -90,13 +116,13 @@ public:
   }
 
 private:
-  // This is the order where the statement or instruction should be placed
-  // according to the original order, i.e. the TAC ID
+  /// This is the order where the statement or instruction should be placed
+  /// according to the original order, i.e. the TAC ID
   unsigned int Order = 0;
   /// This is the offset when having different locations with the same ID
   int Offset = -1;
-  // This is the order where the statement or instruction should be placed
-  // regarding the order
+  /// This is the order where the statement or instruction should be placed
+  /// regarding the order
   Position P = Position::INORDER;
 };
 
