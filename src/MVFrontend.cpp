@@ -449,7 +449,7 @@ MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
 
   // std::make_unique is C++14, while LLVM 9 is written in C++11, this
   // is the reason of this custom implementation
-#if LLVM_VERSION > 9
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 9)
   return std::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), Scops);
 #else
   return llvm::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), Scops);

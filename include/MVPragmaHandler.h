@@ -85,7 +85,7 @@ struct ScopLoc {
   PragmaArgs PA;
 };
 
-/// List of pairs of #pragma macveth and #pragma macvethend Locations.
+/// List of pairs of #pragma macveth and #pragma endmacveth source locations
 struct ScopHandler {
   static inline std::vector<ScopLoc *> List;
 

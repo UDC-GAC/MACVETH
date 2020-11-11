@@ -40,10 +40,6 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/Tooling.h"
 
-#ifndef LLVM_VERSION
-#define LLVM_VERSION 10
-#endif
-
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
@@ -77,7 +73,7 @@ private:
                                 std::list<StmtWrapper *> SL);
 
   /// Render SIMD where the original scalar code is
-  bool renderSIMDInOrder(SIMDBackEnd::SIMDInst SI, std::list<StmtWrapper *> SL);
+  void renderSIMDInOrder(SIMDBackEnd::SIMDInst SI, std::list<StmtWrapper *> SL);
 
   /// Render SIMD before a statement (for initializing reductions, for instance)
   bool renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
@@ -97,7 +93,7 @@ class MVConsumer : public ASTConsumer {
 public:
   MVConsumer(Rewriter &R, ASTContext *C, ScopHandler *L) : Visitor(C, R, L) {}
 
-  /// Parse from the very beggining
+  /// Parse from the very beggining of the file and traverse all declarations
   virtual void HandleTranslationUnit(clang::ASTContext &Context) override {
     Visitor.TraverseDecl(Context.getTranslationUnitDecl());
   }
@@ -120,7 +116,7 @@ public:
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef file) override;
 
-  /// This is called after parsing the whole file
+  /// This function is called after parsing the whole file
   void EndSourceFileAction() override;
 
 private:

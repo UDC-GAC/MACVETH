@@ -38,10 +38,6 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Signals.h"
 
-#ifndef LLVM_VERSION
-#define LLVM_VERSION 10
-#endif
-
 using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
@@ -59,7 +55,6 @@ static llvm::cl::opt<std::string>
                llvm::cl::desc("Output file to write the code, otherwise "
                               "it will just print int std output"));
 
-//
 static llvm::cl::opt<std::string>
     SIMDInfoFile("simd-info", cl::cat(MacvethCategory),
                  llvm::cl::desc("Report with all the SIMD information"));

@@ -168,8 +168,7 @@ struct MVOptions {
 
   static MVCPUInfo::MVArch getMVArch() {
     MVCPUInfo CInfo;
-    // TODO: parse vendor string
-    return MVCPUInfo::MVArch::Broadwell;
+    return CInfo.getArchitecture();
   }
 
   static MVCPUInfo::MVISA getMVISA() {

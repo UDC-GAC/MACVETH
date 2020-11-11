@@ -138,9 +138,20 @@ public:
     VendorId += std::string((const char *)&CpuID0.EBX(), 4);
     VendorId += std::string((const char *)&CpuID0.EDX(), 4);
     VendorId += std::string((const char *)&CpuID0.ECX(), 4);
+
+    // Get processor brand std::string
+    // This seems to be working for both Intel & AMD vendors
+    for (int i = 0x80000002; i < 0x80000005; ++i) {
+      CPUID CpuID(i, 0);
+      ModelName += std::string((const char *)&CpuID.EAX(), 4);
+      ModelName += std::string((const char *)&CpuID.EBX(), 4);
+      ModelName += std::string((const char *)&CpuID.ECX(), 4);
+      ModelName += std::string((const char *)&CpuID.EDX(), 4);
+    }
+
     // Get SSE instructions availability
     CPUID CpuID1(1, 0);
-    ArchName = getArchitectureFromEAX(CpuID1);
+    ArchName = getArchitectureFromCPUID(CpuID1);
     IsHTT = CpuID1.EDX() & AVX_POS;
     IsSSE = CpuID1.EDX() & SSE_POS;
     IsSSE2 = CpuID1.EDX() & SSE2_POS;
@@ -222,22 +233,13 @@ public:
         NumCores = NumLogCpus = 1;
       }
     } else {
-      // FIXME: put some error here
-    }
-    // Get processor brand std::string
-    // This seems to be working for both Intel & AMD vendors
-    for (int i = 0x80000002; i < 0x80000005; ++i) {
-      CPUID CpuID(i, 0);
-      ModelName += std::string((const char *)&CpuID.EAX(), 4);
-      ModelName += std::string((const char *)&CpuID.EBX(), 4);
-      ModelName += std::string((const char *)&CpuID.ECX(), 4);
-      ModelName += std::string((const char *)&CpuID.EDX(), 4);
+      // FIXME: do something for ARM for instance...
     }
   }
   /// TODO: Get architecture name from values in EAX
-  std::string getArchitectureFromEAX(CPUID C) { return ""; }
+  MVArch getArchitectureFromCPUID(CPUID C) { return MVArch::IntelDef; }
   /// Get architecture name
-  std::string getArchitecture() { return ArchName; }
+  MVArch getArchitecture() { return ArchName; }
   /// Get vendor name
   std::string vendor() const { return VendorId; }
   /// Get model name
@@ -295,7 +297,7 @@ private:
   static constexpr uint32_t LVL_CORES = 0x0000FFFF;
 
   /// Name of the architecture, e.g. "broadwell", "skylake", "knights landing"
-  std::string ArchName = "";
+  MVArch ArchName = MVArch::Broadwell;
   /// 12-character string which represent, basically, the manufacturer, e.g.
   /// "AMDisbetter!", "AuthenticAMD", "GenuineIntel", etc.
   std::string VendorId = "";

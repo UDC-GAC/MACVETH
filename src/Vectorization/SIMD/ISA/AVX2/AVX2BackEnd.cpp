@@ -503,6 +503,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
   // intrinsics design
 
   std::string AuxArray = declareAuxArray(VIL[0].DT);
+  std::string Res = "";
   if (NElems > 4) {
     // Need to do the last extraction, shuffle and operation
     for (int R = 0; R < NumRedux; R += 4) {
@@ -512,7 +513,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
       auto A1 = shuffleArguments(Lo, Hi, MVDataType::VWidth::W128, VIL[R], 0);
       auto A2 = shuffleArguments(Lo, Hi, MVDataType::VWidth::W128, VIL[R], 1);
       auto RegType = getRegisterType(VIL[R].DT, MVDataType::VWidth::W128);
-      auto Res = getNextAuxRegister(VIL[R].VOPResult.Name);
+      Res = getNextAuxRegister(VIL[R].VOPResult.Name);
       SIMDBackEnd::addRegToDeclare(RegType, Res, {0});
       genSIMDInst(Res, OP, "", "", MVDataType::VWidth::W128, VIL[R].DT,
                   {A1, A2}, SIMDType::VOPT, MVSL, &IL);
@@ -523,15 +524,18 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
       }
     }
   }
+
+  auto ResRegister = (Res != "") ? Res : VAccm[0];
+
   for (int R = 0; R < NumRedux; ++R) {
     std::string Idx = "[" + std::to_string(R) + "]";
     if (OpRedux.isBinaryOperation()) {
-      addNonSIMDInst(VRedux[R], VRedux[R] + OP + VAccm[0] + Idx, SIMDType::VSEQ,
-                     MVSL, &IL);
+      addNonSIMDInst(VRedux[R], VRedux[R] + OP + ResRegister + Idx,
+                     SIMDType::VSEQ, MVSL, &IL);
     } else {
       OP = OpRedux.getOpPrefix() + OP;
       addNonSIMDInst(VRedux[R],
-                     OP + "(" + VRedux[R] + ", " + VAccm[0] + Idx + ")",
+                     OP + "(" + VRedux[R] + ", " + ResRegister + Idx + ")",
                      SIMDType::VSEQ, MVSL, &IL);
     }
   }
@@ -783,6 +787,12 @@ SIMDBackEnd::SIMDInst AVX2BackEnd::genSIMDInst(
 
   if (OpEq[Op] != "") {
     Op = OpEq[Op];
+  }
+
+  if (Op == "set") {
+    if (TStr == "epi64") {
+      TStr += "x"; // epi64x
+    }
   }
 
   // Replace fills in pattern
@@ -1177,14 +1187,17 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vadd(VectorIR::VectorOP V) {
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vmul(VectorIR::VectorOP V) {
   SIMDBackEnd::SIMDInstListType IL;
-  // TODO: generate preffix
-  std::string PrefS = "";
-  // TODO: generate suffix
-  std::string SuffS = "";
-  // TODO:
   std::string Op = "mul";
 
-  // TODO: check
+  MVAssertSkip(V.DT != MVDataType::VDataType::INT64,
+               "64bit integer multiplication has not been implemented yet",
+               GotoStartScop);
+
+  std::string SuffS = "";
+  if (V.DT == MVDataType::VDataType::INT32) {
+    SuffS += "lo";
+  }
+
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(V.OpA.getName());
@@ -1193,7 +1206,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vmul(VectorIR::VectorOP V) {
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
-  genSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VMUL, MVSL, &IL);
+  genSIMDInst(V.R, Op, "", SuffS, Args, SIMDType::VMUL, MVSL, &IL);
 
   return IL;
 }
