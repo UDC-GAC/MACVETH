@@ -141,6 +141,10 @@ struct MVOptions {
   static inline std::string SIMDReportFile = "";
   /// Name of the output debug file (-simd-info-missed=<file>)
   static inline std::string SIMDReportMissFile = "";
+  /// Format style output
+  static inline std::string Style = "";
+  /// Fallback format style output
+  static inline std::string FallbackStyle = "";
   /// Target ISA
   static inline MVCPUInfo::MVISA ISA = MVCPUInfo::MVISA::AUTODETECT;
   /// Target architecture

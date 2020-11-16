@@ -32,6 +32,7 @@
 #ifndef MACVETH_AVX2BACKEND_H
 #define MACVETH_AVX2BACKEND_H
 
+#include "include/Vectorization/SIMD/IntelIntrinsics.h"
 #include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include "include/Vectorization/VectorIR.h"
 
@@ -40,7 +41,7 @@ using namespace macveth;
 namespace macveth {
 
 /// SIMD generator for AVX2 architectures
-class AVX2BackEnd : public SIMDBackEnd {
+class AVX2BackEnd : public SIMDBackEnd, public IntelIntrinsics {
 public:
   /// Name of the architecture
   static inline std::string NArch = "x86";
@@ -109,24 +110,30 @@ public:
   /// One of the optimizations included in AVX2
   SIMDBackEnd::SIMDInstListType fuseAddSubMult(SIMDBackEnd::SIMDInstListType I);
 
-  /// Horizontal reduction approach
-  SIMDBackEnd::SIMDInstListType
-  horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL);
+  /// Horizontal single reduction approach
+  SIMDBackEnd::SIMDInstListType horizontalSingleReduction(
+      SIMDBackEnd::SIMDInstListType TIL,
+      MVSourceLocation::Position Pos = MVSourceLocation::Position::POSORDER);
 
   /// Horizontal reduction approach
-  SIMDBackEnd::SIMDInstListType
-  horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL);
+  SIMDBackEnd::SIMDInstListType horizontalReductionFusion(
+      SIMDBackEnd::SIMDInstListType TIL,
+      MVSourceLocation::Position Pos = MVSourceLocation::Position::POSORDER);
 
   /// General reduction approach, based on vertical operations
-  SIMDBackEnd::SIMDInstListType
-  generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL);
+  SIMDBackEnd::SIMDInstListType generalReductionFusion(
+      SIMDBackEnd::SIMDInstListType TIL,
+      MVSourceLocation::Position Pos = MVSourceLocation::Position::POSORDER);
 
   SIMDBackEnd::SIMDInstListType
   fuseReductionsList(SIMDBackEnd::SIMDInstListType TIL);
 
+  /// Check whether an instruction has RAW dependencies within a list of
+  /// instructions
   bool hasRawDependencies(SIMDBackEnd::SIMDInstListType L,
                           SIMDBackEnd::SIMDInst I);
 
+  /// A reduction is contiguous if there are not any other
   bool reductionIsContiguous(SIMDBackEnd::SIMDInstListType L,
                              SIMDBackEnd::SIMDInst I);
 
@@ -230,38 +237,8 @@ private:
   /// Auxiliary method for declaring auxiliary arrays
   std::string declareAuxArray(MVDataType::VDataType DT);
 
-  /// Specific instruction for loading data according to the operand
-  bool genLoadInst(VectorIR::VOperand V, SIMDBackEnd::SIMDInstListType *L);
-
   /// Max width
   static inline const int MaxWidth = 256;
-
-  /// Mapping the width types with its name in AVX2
-  static inline std::map<MVDataType::VWidth, std::string> MapWidth = {
-      {MVDataType::VWidth::W128, ""}, {MVDataType::VWidth::W256, "256"}};
-
-  /// Map of VectorIR types and its translation in the AVX2 architecture
-  static inline std::map<MVDataType::VDataType, std::string> MapType = {
-      {MVDataType::VDataType::FLOAT, "ps"},
-      {MVDataType::VDataType::SFLOAT, "ss"},
-      {MVDataType::VDataType::DOUBLE, "pd"},
-      {MVDataType::VDataType::SDOUBLE, "sd"},
-      {MVDataType::VDataType::INT8, "epi8"},
-      {MVDataType::VDataType::INT16, "epi16"},
-      {MVDataType::VDataType::INT32, "epi32"},
-      {MVDataType::VDataType::INT64, "epi64"},
-      {MVDataType::VDataType::UINT8, "epu8"},
-      {MVDataType::VDataType::UINT16, "epu16"},
-      {MVDataType::VDataType::UINT32, "epu32"},
-      {MVDataType::VDataType::UINT64, "epu64"},
-      {MVDataType::VDataType::UNDEF128, "si128"},
-      {MVDataType::VDataType::UNDEF256, "si256"},
-      {MVDataType::VDataType::IN_INT128, "m128i"},
-      {MVDataType::VDataType::IN_INT256, "m256i"},
-      {MVDataType::VDataType::IN_FLOAT128, "m128"},
-      {MVDataType::VDataType::IN_FLOAT256, "m256"},
-      {MVDataType::VDataType::IN_DOUBLE128, "m128d"},
-      {MVDataType::VDataType::IN_DOUBLE256, "m128d"}};
 };
 
 } // namespace macveth

@@ -34,7 +34,6 @@
 
 #include "include/CDAG.h"
 #include "include/CostModel/CostTable.h"
-//#include "include/CostModel/SIMDCostInfo.h"
 #include "include/MVExpr/MVDataType.h"
 #include "include/MVSourceLocation.h"
 #include "include/Vectorization/VectorIR.h"

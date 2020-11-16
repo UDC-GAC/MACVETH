@@ -7,7 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # Project name
 set(PROJECT_NAME MACVETH)
-project(${PROJECT_NAME} VERSION 0.1.0)
+set(MACVETH_VERSION_MAJOR 0)
+set(MACVETH_VERSION_MINOR 1)
+set(MACVETH_VERSION_PATCH 0)
+project(${PROJECT_NAME} VERSION ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
 
 
 ############################################################
@@ -127,7 +130,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # configuration file, for macros for instance
-set(LLVM_VERSION 10)
+# set(LLVM_VERSION 10)
 configure_file(macveth.h.in lib/macveth.h)
 
 # add a subdirectory to the buildd
@@ -153,7 +156,7 @@ target_link_libraries(macveth
 
 # Clang libraries needed
 target_link_libraries(macveth PRIVATE
-    #-L${LLVM_DIR}/build/lib
+    -L${LLVM_DIR}/build/lib
     clangTooling
     clangBasic
     clangASTMatchers

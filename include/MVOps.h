@@ -191,6 +191,13 @@ struct MVOp {
   /// it is placed between two operands, in other case if is a function
   bool isBinaryOperation() { return (getType() == MVOpType::CLANG_BINOP); }
 
+  /// Check whether the operation is an addition or a substraction. This is
+  /// useful for reductions
+  bool isAddOrSub() {
+    return (this->ClangOP == BinaryOperator::Opcode::BO_Add) ||
+           (this->ClangOP == BinaryOperator::Opcode::BO_Sub);
+  }
+
   /// Get equivalent MVOP string for searching in the Table Cost
   std::string getTableMVOPstr(std::string T) {
     std::string Suffix = "_" + Utils::toUppercase(T);

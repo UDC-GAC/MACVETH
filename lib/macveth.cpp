@@ -33,6 +33,7 @@
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
+#include "clang/Format/Format.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
@@ -131,6 +132,30 @@ static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
         clEnumValN(MVCPUInfo::MVArch::IntelDef, "intel",
                    "Intel architecture not specified")));
 
+// Main format style
+static cl::opt<std::string> Style(
+    "format-style",
+    cl::desc("Coding style, currently supports:\n"
+             "  LLVM, GNU, Google, Chromium, Microsoft, Mozilla, WebKit.\n"
+             "Use -format-style=file to load style configuration from\n"
+             ".clang-format file located in one of the parent\n"
+             "directories of the source file (or current\n"
+             "directory for stdin).\n"
+             "Use -format-style=\"{key: value, ...}\" to set specific\n"
+             "parameters, e.g.:\n"
+             "  -format-style=\"{BasedOnStyle: llvm, IndentWidth: 8}\""),
+    cl::init(clang::format::DefaultFormatStyle), cl::cat(MacvethCategory));
+
+// Format style fallback
+static cl::opt<std::string> FallbackStyle(
+    "format-fallback-style",
+    cl::desc("The name of the predefined style used as a\n"
+             "fallback in case clang-format is invoked with\n"
+             "-format-style=file, but can not find the .clang-format\n"
+             "file to use.\n"
+             "Use -format-fallback-style=none to skip formatting."),
+    cl::init(clang::format::DefaultFallbackStyle), cl::cat(MacvethCategory));
+
 // FMA support flag
 static llvm::cl::opt<bool> FMA("fma",
                                llvm::cl::desc("Explicitly tell if FMA support"),
@@ -203,6 +228,8 @@ int main(int argc, const char **argv) {
   MVOptions::SIMDCostModel = SIMDCostModel.getValue();
   MVOptions::IntrinsicsSVML = !NoSVML.getValue();
   MVOptions::TargetFunc = TargetFunc.getValue();
+  MVOptions::Style = Style.getValue();
+  MVOptions::FallbackStyle = FallbackStyle.getValue();
 
   // Check if there are incompatible options
   MVOptions::validateOptions();

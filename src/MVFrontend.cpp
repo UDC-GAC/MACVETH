@@ -479,10 +479,10 @@ static bool fillRanges(MemoryBuffer *Code,
   FileID ID = createInMemoryFile("<irrelevant>", Code, Sources, Files,
                                  InMemoryFileSystem.get());
 
-  SourceLocation Start = Sources.getLocForStartOfFile(ID).getLocWithOffset(0);
+  SourceLocation Start = Sources.getLocForStartOfFile(ID);
   SourceLocation End = Sources.getLocForEndOfFile(ID);
-  unsigned Offset = Sources.getFileOffset(Start);
-  unsigned Length = Sources.getFileOffset(End) - Offset;
+  unsigned long Offset = Sources.getFileOffset(Start);
+  unsigned long Length = Sources.getFileOffset(End);
   Ranges.push_back(tooling::Range(Offset, Length));
   return false;
 }
@@ -490,18 +490,11 @@ static bool fillRanges(MemoryBuffer *Code,
 // ---------------------------------------------
 static bool formatMACVETH(StringRef FileName) {
   /// This code is inspired (basically a copy) of clang/tool/ClangFormat.cpp [1]
-  /// https://github.com/llvm-mirror/clang/blob/master/tools/clang-format/ClangFormat.cpp
-  /// Some changes have been done in code.
-  /// Returns true on error.
-  auto Inplace = true;
-  if (FileName == "-") {
-    MVInfo("Formatting file failed: bad name");
-    return false;
-  }
+  /// https://github.com/llvm/llvm-project/blob/master/clang/tools/clang-format/ClangFormat.cpp
 
   // On Windows, overwriting a file with an open file mapping doesn't work,
   // so read the whole file into memory when formatting in-place.
-  ErrorOr<std::unique_ptr<MemoryBuffer>> CodeOrErr =
+  ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> CodeOrErr =
       MemoryBuffer::getFileAsStream(FileName);
   if (std::error_code EC = CodeOrErr.getError()) {
     MVInfo("Formatting file failed: " + EC.message());
@@ -514,15 +507,13 @@ static bool formatMACVETH(StringRef FileName) {
     MVInfo("File empty");
     return false;
   }
-
-  auto BufStr = Code->getBuffer();
   std::vector<tooling::Range> Ranges;
   if (fillRanges(Code.get(), Ranges)) {
     return true;
   }
-  auto AssumedFileName = FileName;
-  auto FormatStyle = clang::format::getStyle("LLVM", AssumedFileName, "LLVM",
-                                             Code->getBuffer());
+  llvm::Expected<clang::format::FormatStyle> FormatStyle =
+      clang::format::getStyle(MVOptions::Style, FileName,
+                              MVOptions::FallbackStyle, Code->getBuffer());
   if (!FormatStyle) {
     MVInfo("Formatting file failed: bad format style " +
            llvm::toString(FormatStyle.takeError()));
@@ -530,20 +521,20 @@ static bool formatMACVETH(StringRef FileName) {
   }
 
   unsigned CursorPosition = 0;
-  auto Replaces =
-      clang::format::sortIncludes(*FormatStyle, Code->getBuffer(), Ranges,
-                                  AssumedFileName, &CursorPosition);
+  FormatStyle->SortIncludes = true;
+  Replacements Replaces = clang::format::sortIncludes(
+      *FormatStyle, Code->getBuffer(), Ranges, FileName, &CursorPosition);
   auto ChangedCode = tooling::applyAllReplacements(Code->getBuffer(), Replaces);
   if (!ChangedCode) {
-    llvm::errs() << llvm::toString(ChangedCode.takeError()) << "\n";
     MVInfo("Formatting file failed: nothing changed");
     return true;
   }
-  // Get new affected ranges after sorting `#includes`.
+  // Get new affected ranges after sorting "#includes"
   Ranges = tooling::calculateRangesAfterReplacements(Replaces, Ranges);
   clang::format::FormattingAttemptStatus Status;
-  auto FormatChanges = clang::format::reformat(
-      *FormatStyle, *ChangedCode, Ranges, AssumedFileName, &Status);
+  Replacements FormatChanges = clang::format::reformat(
+      *FormatStyle, *ChangedCode, Ranges, FileName, &Status);
+
   Replaces = Replaces.merge(FormatChanges);
 
   IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> InMemoryFileSystem(
@@ -555,10 +546,14 @@ static bool formatMACVETH(StringRef FileName) {
       new DiagnosticOptions);
 
   SourceManager Sources(Diagnostics, Files);
-  auto ID = createInMemoryFile(AssumedFileName, Code.get(), Sources, Files,
+  auto ID = createInMemoryFile(FileName, Code.get(), Sources, Files,
                                InMemoryFileSystem.get());
   Rewriter Rewrite(Sources, LangOptions());
-  tooling::applyAllReplacements(Replaces, Rewrite);
+  if (!tooling::applyAllReplacements(Replaces, Rewrite)) {
+    MVInfo("Formatting file failed: something went wrong saving file (applying "
+           "replacements)!");
+    return true;
+  }
   if (Rewrite.overwriteChangedFiles()) {
     // Something went wrong
     MVInfo("Formatting file failed: something went wrong saving file!");
@@ -570,17 +565,16 @@ static bool formatMACVETH(StringRef FileName) {
 
 // ---------------------------------------------
 void MVFrontendAction::EndSourceFileAction() {
-  // 1.- Get RewriteBuffer from FileID
-  // 2.- Write to Stream (in this case llvm::outs(), which is
-  // std::out) the result of applying all changes to the original
-  // buffer. Original buffer is modified before calling this function,
-  // from the ASTConsumer
-
   auto &SM = TheRewriter.getSourceMgr();
   std::error_code ErrorCode;
   auto OutFileName = Utils::getExePath() + MVOptions::OutFile;
   llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
+  // According to [1] it is not safe to do .write(). Nonetheless, I have not
+  // found any other way to save a RewriterBuffer onto another file.
+  // [1] (as of 16th November 2020)
+  // https://clang.llvm.org/doxygen/classclang_1_1RewriteBuffer.html#a0b72d3db59db1731c63217c291929ced
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
+  outFile.close();
   if (!MVOptions::NoReformat) {
     formatMACVETH(OutFileName);
   }

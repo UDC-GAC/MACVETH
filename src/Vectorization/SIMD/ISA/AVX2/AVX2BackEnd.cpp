@@ -174,7 +174,8 @@ std::string AVX2BackEnd::declareAuxArray(MVDataType::VDataType DT) {
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
-AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL) {
+AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL,
+                                       MVSourceLocation::Position Pos) {
   // Horizontal operations
   SIMDBackEnd::SIMDInstListType IL;
   std::vector<SIMDBackEnd::SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
@@ -190,7 +191,6 @@ AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL) {
   SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
   SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
   auto AccmReg = getAccmReg(VIL[0].VOPResult.Name);
-  auto Pos = MVSourceLocation::Position::POSORDER;
   auto Loc = VIL[0].VOPResult.Order;
   auto Off = VIL[0].VOPResult.Offset;
   auto OP = VIL[0].MVOP.toString();
@@ -269,7 +269,8 @@ AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL) {
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
-AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
+AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
+                                       MVSourceLocation::Position Pos) {
   // Horizontal operations
   SIMDBackEnd::SIMDInstListType IL;
   std::vector<SIMDBackEnd::SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
@@ -278,7 +279,6 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
   auto OpRedux = VIL[0].MVOP;
   auto OpName = VIL[0].MVOP.toString();
   int NumRedux = TIL.size();
-  auto Pos = MVSourceLocation::Position::POSORDER;
   if (NumRedux > NElems) {
     MVAssert(false, "You can not have more reductions than elements in vector");
   }
@@ -419,7 +419,8 @@ std::list<std::string> AVX2BackEnd::renderSIMDRegister(SIMDInstListType S) {
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
-AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
+AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
+                                    MVSourceLocation::Position Pos) {
   // TODO:
   // This is quite complex: it is not the same doing reductions of additions
   // subtractions than multiplications or divisions. This way, we have to
@@ -435,7 +436,6 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL) {
   SIMDBackEnd::SIMDInstListType IL;
   std::vector<SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
 
-  auto Pos = MVSourceLocation::Position::POSORDER;
   auto NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
   auto OpRedux = VIL[0].MVOP;
   // auto OpReduxType = OpRedux.getType();
@@ -560,43 +560,44 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
   }
 
   auto LInsSize = LC.size();
-  auto OpReduxType = LC.front().MVOP.T;
-  auto OpRedux = LC.front().MVOP;
   SIMDBackEnd::SIMDInstListType FusedRedux;
   if (LInsSize == 0) {
     return FusedRedux;
   }
+  auto OpReduxType = LC.front().MVOP.T;
+  auto OpRedux = LC.front().MVOP;
+
+  MVSourceLocation::Position InitPos = MVSourceLocation::Position::PREORDER;
+  MVSourceLocation::Position ReduxPos = MVSourceLocation::Position::POSORDER;
 
   // This is the horizontal approach, only valid for AVX2 and additions
   // and subtraction
   if (LInsSize == 1) {
     Utils::printDebug("AVX2BackEnd", "Single reduction approach (" +
                                          std::to_string(LInsSize) + ")");
-    FusedRedux = horizontalSingleReduction(LC);
-  } else if (((OpReduxType == MVOpType::CLANG_BINOP) &&
-              ((OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ||
-               (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Sub)))) {
+    FusedRedux = horizontalSingleReduction(LC, ReduxPos);
+  } else if (((OpRedux.isBinaryOperation()) && (OpRedux.isAddOrSub()))) {
     // Horizontal approach only worth it when we have two or more
     // reductions
     Utils::printDebug("AVX2BackEnd",
                       "Horizontal approach (" + std::to_string(LInsSize) + ")");
-    FusedRedux = horizontalReductionFusion(LC);
+    FusedRedux = horizontalReductionFusion(LC, ReduxPos);
   } else {
     Utils::printDebug("AVX2BackEnd", "General approach approach (" +
                                          std::to_string(LInsSize) + ")");
-    FusedRedux = generalReductionFusion(LC);
+    FusedRedux = generalReductionFusion(LC, ReduxPos);
   }
 
   // Clean accumulators
   for (auto R : LC) {
     auto Accm = getAccmReg(R.VOPResult.getName());
     if (!isAccmClean(Accm)) {
-      MVSourceLocation MVSL(MVSourceLocation::Position::PREORDER,
-                            R.MVSL.getOrder(), R.MVSL.getOffset());
+      MVSourceLocation MVSL(InitPos, R.MVSL.getOrder(), R.MVSL.getOffset());
       genSIMDInst(Accm, "setzero", "", "", R.W, R.DT, {}, SIMDType::VSET, MVSL,
                   &FusedRedux);
     }
   }
+
   /// Mark accumulators
   for (auto R : LC) {
     auto Accm = getAccmReg(R.VOPResult.getName());
