@@ -3,7 +3,7 @@
 % Date              : Mar 24 Dec 2019 19:31:10 MST
 % Last Modified Date: Mér 25 Dec 2019 18:35:55 MST
 % Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
-\documentclass[a4paper,12pt]{memoir}
+\documentclass[a4paper,12pt]{IEEEtran}
 % For TeXstudio users:
 % !TeX spellcheck = en_US
 
@@ -11,6 +11,10 @@
 \usepackage{graphicx}
 \usepackage{amsthm}
 \usepackage{tikz}
+\usepackage{svg}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{float}
 \usetikzlibrary{arrows}
 
 %\theoremstyle{definition}
@@ -18,14 +22,12 @@
 \newtheorem{corollary}{Corollary}[]
 
 
-
-
 % Title Page
 \title{\textbf{MACVETH}: \textbf{M}ulti-dimensional \textbf{A}rray
     \textbf{C}-compiler for \textbf{VE}ctorizing
     \textbf{T}ensors for \textbf{H}PC applications}
 \author{Marcos Horro}
-\date{}
+%\date{}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
@@ -41,28 +43,25 @@
 	documented using Doxygen.
 \end{abstract}
 
-\chapter{MACVETH}
+\section*{MACVETH}
 \label{chapter:Intro}
 \input{01.Intro}
 
-\newpage
-\chapter{Intermediate Representations (IR)}
+\section*{Intermediate Representations (IR)}
 \label{chapter:IR}
 \input{02.IR}
 
-\newpage
-\chapter{Vector Random Packing}
+\section*{Vector Random Packing}
 \label{chapter:VectorRandom}
 \input{03.VectorRandomPacking}
 
-\newpage
-\chapter{Software Architecture}
+\section*{Software Architecture}
 \label{chapter:Software}
 \input{04.Software}
 
 \newpage
 \bibliographystyle{unsrt}
-\bibliography{sample}
+\bibliography{report}
 
 \end{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

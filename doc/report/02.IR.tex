@@ -1,25 +1,28 @@
-
-
-
 MACVETH compiler handles different abstraction levels or intermediate
 representations in order to facilitate the vectorization process. As MACVETH is 
-based in Clang/LLVM~\cite{bib:clang}, the first abstraction layer lays on the 
-Clang AST. This representation allows to identify the regions of interest for 
-the translation, to extract 
+based in Clang/LLVM~\cite{bib:LLVM}, the first abstraction layer lays on the 
+Clang AST. This representation allows to identify the regions of interest 
+marked in the code. Pipeline follows by creating a three-address code or TAC 
+representation, which facilitates the creation of a CDAG. It is here where 
+patterns are searched, such as reductions. CDAG's operations and operands are 
+packed, if possible, in order to generate vector operations. These are 
+synthesized according to the SIMD backend if and only if 
+cost model permits attending to its policy and the architectural features.
 
 \section{MACVETH Expressions: MVExpr}
 Clang implements complex expressions in order to handle any form or type of
 code. They
 provide many possibilities
-when it comes to parse exactly the code. Nonetheless, in our case we are
-interested in a small set of operations, so we created basically a wrap for this
-purpose. MVExpr is an abstract class that can be specialized for any type we
-want to represent from the Clang AST. Besides, the idea of this class is to
+when it comes to parse exactly the code. Nonetheless, MACVETH simplifies by 
+wrapping all categories onto a small set of expressions. MVExpr is an abstract 
+class that can be specialized for any type we
+want to represent from the Clang AST, or to generate other abstractions. 
+Besides, the idea of this class is to
 provide a set of non-standard transformations for the expressions, e.g.
 unrolling. Thus, MVExpr are instantiated using a factory.
 
 We have implemented the following specializations, which are enough in order to
-represent any value reference:
+represent any value referenced in the regions of interest:
 
 \begin{itemize}
 	\item \textbf{MVExprArray}: represents any N-dimensional expression in the
@@ -27,14 +30,19 @@ represent any value reference:
 	      holds information of the number of dimensions and name or value of the
 	      indices. This class is very useful when performing unrolling, as it 
 	      provides methods for computing deltas between two indices of the same 
-	      or different form, e.g. $(i+1)*2$ vs. $(i+1)*4$.
+	      or different form, e.g. for two positions in the array $A$ with 
+	      affine indices $(i+1)*4$ and $(i+1)*2$, difference $(i+1)*4 - (i+1)*2 
+	      > 1 \equiv$ are not
+	      contiguous in memory.
 	\item \textbf{MVExprVar}: regardless the type of the variable, this
 	      abstraction
 	      represents, basically, any \texttt{DeclRefExpr} from the Clang AST.
-	\item \textbf{MVExprLiteral}: any integer, float, double, char, etc. value.
 	\item \textbf{MVExprFunc}: this is a recursive abstraction which holds the
-	      name of the function and the parameters it receives. Parameters are 
-	      also MVExpr type.
+			name of the function and the parameters it receives. Parameters are 
+			also MVExpr type. 
+
+	\item \textbf{MVExprLiteral}: any number (integer, float, double), char, 
+	etc. value that do not fit on any of the other abstractions.
 \end{itemize}
 
 \section{Three-Address Code IR: TAC}
@@ -47,8 +55,8 @@ as described in Definition~\ref{def:TAC}.
 
 \theoremstyle{definition}
 \begin{definition}\label{def:TAC}
-	A three-address code or TAC is a 4-tuple TAC=(a,b,c,$\oplus$) which 
-	represents the 	assignment of the $b \oplus c$ operation as $a=b \oplus c$. 
+	A three-address code or TAC is a 4-tuple T=(a,b,c,$\oplus$) which 
+	represents the assignment of $b \oplus c$ operation as $a=b \oplus c$. 
 	If the $\oplus$ operator is unary, then $c$ is null, so $a=\oplus b$.
 \end{definition}
 
@@ -63,7 +71,10 @@ the original statement. In essence, those TAC connections generate a tree
 structure. In order to 
 perform this translation, we have 
 implemented a recursive process which is listed in 
-Algorithm~\ref{alg:stmtToTAC}. 
+Algorithm~\ref{alg:stmtToTAC}. For the minimum case of an induction, i.e. the 
+assignment $p = q$, the process remains, and result would be $T = (p,p,q,=)$. 
+This property makes also possible to easily identify assignments, as it is only 
+needed to test if $a=b$, i.e. the first two terms of the tuple.
 
 \begin{algorithm}[h]\label{alg:stmtToTAC}
 	\SetAlgoLined
@@ -90,25 +101,43 @@ Algorithm~\ref{alg:stmtToTAC}.
 
 \begin{corollary}\label{cor:TAC}
 	Any statement $S$ can be represented as a set of interconnected TACs:
-	$S = \{TAC\}$
+	$S = \{T\}/\forall T_{i} \in S \Rightarrow \exists T_{j} / a^{T_i} = 
+	(b^{T_j} 
+	| c^{T_j}) \lor a^{T_j} = (b^{T_i} 
+	| c^{T_i}) $
 \end{corollary}
 
-This representation is widely used in compilers. The main advantages of it
-resides in the simplicity of handling operations with the same number of
-operands. Besides, this format is very easy to handle in programmatically terms.
-
+This representation is widely used in compilers. Main advantages reside
+in the simplicity of handling operations with the same number of operands or 
+length. Besides, this format is very easy to handle in 
+programmatically terms. MACVETH uses a quadruple 
+format, but it could be used another in its place. As a matter of fact, 
+GCC/GNU uses 
+a different three-address code representation called 
+GIMPLE~\cite{GCC:GIMPLE}. This IR format is more complex, since it has to 
+handle all kind of codes, considering conditional jumps, gotos, different types 
+of loops, external libraries, etc. It has its own syntax, operands and 
+operations. Nonetheless, MACVETH's, as it has a reduced and concrete set of 
+scenarios to perform, keeps this IR as simple as possible. Besides, MACVETH's 
+is built using Clang/LLVM Tooling library, which already builds a 
+tree structure properly parsed and interpreted.
 
 Unrolling is also performed using this format, following the iterative process
-listed in
-Algorithm~\ref{alg:TACunrolling}.
+listed in Algorithm~\ref{alg:TACunrolling}. This mechanism permits to generate 
+a new list of unrolled TACs conserving their identity, i.e. the execution order 
+in the 
+program. MACVETH's approach is to create new tuples when unrolling. Even 
+though this is costly in terms of memory, it enables the ability to handle  
+them individually. By this, another type of packing can be sorted when grouping 
+operations and operands, apart from packing together unrolled expressions.
 
-\begin{algorithm}[H]\label{alg:TACunrolling}
+\begin{algorithm}[h]\label{alg:TACunrolling}
 	\SetAlgoLined
 	\KwIn{TAC list $T$, Unrolling Factor $UF$, Loop nests $LN$}
 	\KwResult{TAC list $T'$}
 	$T'$ = \{\}\;
 	\ForEach{LN} {
-		\For{step = 0; step++ $<$ UF;} {
+		\For{step++ $<$ UF} {
 			\ForEach{TAC in T} {
 				NewTac = \{\}\;
 				\ForEach{Expr in TAC} {
@@ -151,7 +180,8 @@ The importance of this structure is, in essence, to detect data races and to
 perform any kind of variation in the placement of operations, if possible. 
 Nonetheless, this topic is not to be discussed in this work, since MACVETH uses 
 the CDAG for sorting nodes in a topological order and detect patterns such as 
-reductions.
+reductions. These patterns are found by traversing in reverse order the forest 
+of operation nodes.
 
 \begin{figure}[h]
 	\centering
@@ -171,7 +201,11 @@ reductions.
 \node[in node] (2) [right of=1] {I};
 \node[tmp node] (3) [below of=2] {T};
 \node[in node] (4) [right of=3] {I};
-\node[out node] (5) [below of=4] {O};
+\node[tmp node] (5) [below of=4] {T};
+\node[in node] (6) [right of=5] {I};
+\node[tmp node] (7) [below of=6] {T};
+\node[in node] (8) [right of=7] {I};
+\node[out node] (9) [below of=8] {O};
 %\node[main node] (1) {In};
 %\node[main node] (2) [below left of=1] {2};
 %\node[main node] (3) [below right of=2] {3};
@@ -182,6 +216,10 @@ reductions.
 (2) edge node [left] {} (3)
 (3) edge node [left] {} (5)
 (4) edge node [left] {} (5)
+(5) edge node [left] {} (7)
+(6) edge node [left] {} (7)
+(7) edge node [left] {} (9)
+(8) edge node [left] {} (9)
 ;
 %(1) edge node [left] {0.6} (4)
 %%edge [bend right] node[left] {0.3} (2)
@@ -196,18 +234,22 @@ reductions.
 %edge [loop right] node {0.6} (4)
 %edge [bend right] node[right] {0.2} (1);
 \end{tikzpicture}
-\caption{Graphical example of CDAG}
+\caption{Graphical example of a reduction in a CDAG}
 \label{fig:GraphCDAG}
 \end{figure}
 
 Figure~\ref{fig:GraphCDAG} shows the graphical representation of a CDAG 
 generated from the code. Key idea of this IR is to provide information 
-regardin
+regarding the logical order of each statement, i.e. sort statements in order to 
+pack them respecting data races, minimizing data movements and maximizing 
+vector occupancy. Even though, not all optimizations regarding packaging are 
+performed at this stage.
 
 \section{VectorIR}
-In order to approach the different architectures when generating instructions,
+In order to tackle all different architectures when generating instructions,
 we need a generic vector representation of the vector instructions we want to
-have in our program. For this purpose, MACVETH uses the VectorIR, that basically
+pack and represent in our program. For this purpose, MACVETH uses the VectorIR, 
+that basically
 wraps a set of nodes from the CDAG onto a common structure which represent a 
 vector operation. This vector representation is linked to the target 
 architecture and ISA, as the maximum number of elements in a vector operation 

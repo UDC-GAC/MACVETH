@@ -17,26 +17,47 @@
 %deep 
 %learning inference programs, demonstrating the benefits of random vector 
 %packing for efficient and portable vectorization of highly rectangular loops.
-Despite of the extraordinary performance with regard to the optimizations that
-compilers (e.g. ICC, Clang/LLVM, gcc) may be able to do all over programs, they 
-also
-show limitations when it comes to vectorization. There are cases where either
-they may not vectorize the code at all or even deliver worse performance than a
-sequential version of it. This is a common scenario when the region of interest
-in the code to vectorize is not regular. We may define the regularity of a code
-as the presence of patterns whose accesses to the elements (e.g.
-multi-dimensional arrays) are performed in a sequential and contiguous manner,
-e.g. map operations. On the other hand, reductions are a type of operations
-that, by nature,
-do not fully exploit the capacity of vector operands. Current data placement or
-packing techniques are meant just for loading and storing data from or to
-memory, without performing any other logic than that. Potential improvements
-regarding the vector occupancy by complex and smart packing techniques may lead
-to major gains in performance. Picture the following example: within the same
-loop we have two different and contiguous reductions. This is a common pattern
-that can be found after the fusion of different loops, for instance, in codes
-that perform convolutions. Assuming a vector size of four elements, a smart way
-of computing this code is by
+
+
+
+%Despite of the extraordinary performance with regard to the optimizations that
+%compilers, e.g. ICC, Clang/LLVM, GNU/GCC, may be able to do all over programs, 
+%they 
+%also
+%show limitations when it comes to vectorization. There are cases where either
+%they may not vectorize the code at all or even deliver worse performance than a
+%sequential version of it. This is a common scenario when the region of interest
+%in the code to vectorize is not regular. We may define the regularity of a code
+%as the presence of patterns whose accesses to the elements (e.g.
+%multi-dimensional arrays) are performed in a sequential and contiguous manner,
+%e.g. map operations. On the other hand, reductions are a type of operations
+%that, by nature,
+%do not fully exploit the capacity of vector operands. Current data placement or
+%packing techniques are meant just for loading and storing data from or to
+%memory, without performing any other logic than that. Potential improvements
+%regarding the vector occupancy by complex and smart packing techniques may lead
+%to major gains in performance. Picture the following example: within the same
+%loop we have two different and contiguous reductions. This is a common pattern
+%that can be found after the fusion of different loops, for instance, in codes
+%that perform convolutions. Assuming a vector size of four elements, a smart way
+%of computing this code is by
+
+
+
+Modern optimizing compilers implement robust auto-vectorization techniques 
+targeting rich SIMD ISAs. A typical approach is to generate machine-specific 
+assembly, exploiting SIMD units of a target processor. By default, most of the 
+techniques employed by auto-vectorizers are conservative, and will only apply 
+if certain patterns are found in the program~\cite{citeneeded}. Vectorization 
+also relays in the computation of a cost model. Each compiler has its own 
+algorithm to compute this value in charge to decide whether the vectorization 
+is placed or not for a certain region of code. For instance, GCC/GNU and 
+Clang/LLVM use both Loop Level Vectorizer (LLV) and Superword Level Parallelism 
+(SLP), the first one just in one pass and the last one in two passes, but both 
+use a similar approach in order to asses whether the vectorization is 
+profitable or not: unroll loops using different vector factors, compute de cost 
+of each vector instruction and compare total cost to the scalar or not 
+vectorized cost.
 
 % Different ISA
 In an orthogonal dimension, the quality of SIMD code is affected by the 
@@ -46,28 +67,54 @@ non-disclosed by the manufacturer. This information can be used to determine
 whether a vector operation is detrimental or not, i.e. for building a cost 
 model. There may be architectures using the same ISA and, therefore, where the 
 vectorization can be done using exactly the same instructions, but because of 
-their architectural designs the performance may be different, leading to 
-different approaches on each case. Thus, the only manner of disclosing this 
-information is by reverse-engineering each architecture. This process is 
-tedious and complex since there are many different instructions whose 
-performance may be also vary depending on the packing of the data they use.
+their architectural features, performance might be completely different, 
+leading to the synthesis of particular solutions on each case. Thus, the only 
+manner of 
+disclosing these features is by reverse-engineering each architecture. This 
+process is 
+tedious and complex since there are many different instructions (CISC 
+architectures) whose 
+performance may also vary depending on the packing of data they use. 
+Nevertheless, uops.info~\cite{bib:uops} provides performance information of 
+many 
+assembly instructions in all different variants (order and type of operands, 
+i.e. register, memory, immediate values, masks, etc.) for various 
+architectures. This information can be used by compilers to improve their 
+accuracy when computing its vectorization cost model. Nonetheless, this 
+information is 
+restricted only 
+to 
+assembly instructions, not those ``high-level'' SIMD intrinsics such as Intel's 
+(SSE, AVX) or ARM's (NEON, SVE). Main reason is that not all SIMD macros or 
+idioms have a 1:1 translation onto assembly, but some of them might generate a 
+set of instructions and/or data movements.
 
 
-MACVETH is a source-to-source compiler which targets the vectorization of C/C++
-codes. Thus, the input of this compiler is a non vectorized C/C++ code and the
-output will be a SIMD-fashion C/C++ code (see Figure~\ref{fig:MACVETHarch}).
-The name of the compiler stands for Multi-dimensional Array C-compiler for
-VEctorizating Tensors for HPC applications. Besides, Macbeth, tragedy
-written by William Shakespeare, represents the detrimental effects of human's
-narcissism and vanity when looking for the power for its own benefits. As
-opposed, MACVETH is composed by a set different layers and intermediate
-representations that seek for the common purpose of improving performance. Last
-but not least, the first and last letter of the acronym stand for the name of
-the main author (Marcos Horro).
-
-\begin{figure}
+\begin{figure*}
 	\centering
-	\includegraphics[width=\textwidth]{img/MACVETH.pdf}
-	\caption{High-level picture of the MACVETH pipeline compiler.}
+	\includegraphics[width=.7\textwidth]{img/MACVETH.pdf}
+	\caption{High-level picture of the MACVETH pipeline compiler, based on the 
+		Clang/LLVM Tool Framework.}
 	\label{fig:MACVETHarch}
-\end{figure}
+\end{figure*}
+
+Hence, in this work we take a different approach than ``traditional'' 
+auto-vectorizers, by developing MACVETH, which 
+stands 
+for Multi-dimensional Array C-compiler for
+VEctorizating Tensors for HPC applications. This is a 
+source-to-source compilation framework targeting the automatic vectorization 
+of 
+specific loop and non-loop regions. We implement vectorization using an 
+SIMD-intrinsics ´style 
+approach, to facilitate portability to a variety of concrete SIMD ISAs. We 
+develop machine-independent cost-driven algorithms to pack efficiently 
+arbitrary operands and operations into SIMD vectors. Specifically, we support 
+vector packing across multiple distinct loop nests to maximize vector 
+occupancy 
+in particular when loops have a very small trip count. Experimental results 
+are 
+presented for a large set of vectorizable loop shapes, and for several key 
+deep 
+learning inference programs, demonstrating the benefits of random vector 
+packing for efficient and portable vectorization of highly rectangular loops.
