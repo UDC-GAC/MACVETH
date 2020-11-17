@@ -926,9 +926,6 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   // load1-and-broadcast-intrinsics
   auto Op = Mask + "load";
 
-  // FIXME: if line crosses cache boundary consider using lddqu instead of
-  // loadu. Approach only valid for integers... Fuck integers.
-
   // List of parameters
   std::list<std::string> Args;
 
@@ -944,9 +941,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   }
 
   if (V.IsPartial) {
-    // TODO: calculate mask
-    // std::string MaskLoad = getMask();
-    std::string MaskLoad = getMask(V.Mask, V.Size, V.getWidth());
+    auto MaskLoad = getMask(V.Mask, V.Size, V.getWidth());
     Args.push_back(MaskLoad);
   }
 

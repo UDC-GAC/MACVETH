@@ -173,7 +173,7 @@ std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
 unsigned int getMask(int VL, int VS, Node::NodeListType &V) {
   unsigned int Mask = 0x00;
   for (int n = 0; n < VS; ++n) {
-    if ((V[n] != nullptr) || (n < VL)) {
+    if ((V[n] != nullptr) && (n < VL)) {
       Mask |= (1 << n);
     }
   }
@@ -189,7 +189,8 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   this->UOP = (Node **)malloc(sizeof(Node *) * VL);
   this->Order = V[0]->getTacID();
   this->Offset = V[0]->getUnrollFactor();
-  // This is the number of elements in this Vector
+  // This is the number of elements not null in this Vector. This is different
+  // from the regular size (this->Size), which is the actual vector size
   this->VSize = VL;
 
   auto PrimaryNode = V[0];
