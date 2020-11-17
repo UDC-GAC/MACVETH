@@ -179,7 +179,14 @@ public:
       if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
           dyn_cast<IntegerLiteral>(E->IgnoreImpCasts()) ||
           dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
-        this->Val = Utils::getStringFromExpr(E);
+        // This is useful for macros
+        auto ComputedValue = dyn_cast<IntegerLiteral>(E->IgnoreImpCasts());
+        if (ComputedValue) {
+          this->Val = std::to_string(
+              Utils::getIntFromExpr(ComputedValue, Utils::getCtx()));
+        } else {
+          this->Val = Utils::getStringFromExpr(E);
+        }
         this->LHS = nullptr;
         this->RHS = nullptr;
       }
