@@ -98,7 +98,7 @@ public:
   /// Reduction operations
   virtual SIMDInstListType vreduce(VectorIR::VectorOP V) override;
 
-  /// Sequential operation
+  /// Scalar operation
   virtual SIMDInstListType vseq(VectorIR::VectorOP V) override;
 
   /// Perform some peephole optimizations after generating SIMD instructions

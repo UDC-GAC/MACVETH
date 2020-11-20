@@ -59,7 +59,7 @@ ScopLoc *getScopLoc(StmtWrapper *S) {
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::unrollOptions(std::list<StmtWrapper *> SL) {
+void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
   auto CouldFullyUnroll = false;
   std::list<StmtWrapper::LoopInfo> LI;
   for (auto S : SL) {
@@ -164,8 +164,8 @@ bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
           if (S->isInLoop()) {
             return true;
           }
-          Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
-                                   SI.render() + ";\n");
+          Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                             SI.render() + ";\n");
           return false;
         }
       }
@@ -191,7 +191,7 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
           }
           Rewrite.InsertTextAfterToken(
               S->getClangStmt()->getEndLoc().getLocWithOffset(1),
-              "\n" + SI.render() + ";\n");
+              "\n" + SI.render() + ";");
           return false;
         }
       }
@@ -221,10 +221,10 @@ void MVFuncVisitor::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
 // ---------------------------------------------
 void MVFuncVisitor::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
-  // Sequential case: is this needed?
+  // Scalar case: is this needed?
   if (SI.isSequential() && SI.getMVSourceLocation().isInOrder()) {
     Utils::printDebug("MVFuncVisitor",
-                      "Sequential rendering for " + SI.render());
+                      "Scalar for " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
@@ -343,7 +343,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
                                         std::to_string(SL.size()));
 
     // Perform unrolling according to the pragmas
-    unrollOptions(SL);
+    performUnrolling(SL);
 
     if (!Scop->PA.SIMDCode) {
       MVInfo("[MVConsumer] "
@@ -361,10 +361,11 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       auto SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
       if (SInfo.isThereAnyVectorization()) {
+
         // Render the registers we are going to use, declarations
         if (IsLastScop) {
           for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-            Rewrite.InsertText(RegDeclLoc, InsSIMD + "\n", true, true);
+            Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
           }
         }
 
@@ -373,10 +374,12 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         for (auto InitRedux : SIMDGen->getInitReg()) {
           renderSIMDInstBeforePlace(InitRedux, SL);
         }
+
         // Render
         for (auto InsSIMD : SInfo.SIMDList) {
           renderSIMDInstInPlace(InsSIMD, SL);
         }
+
         // Rewrite loops
         DimsDeclFunc.splice(DimsDeclFunc.end(),
                             rewriteLoops(SL, &Rewrite, DimsDeclFunc));
@@ -390,17 +393,17 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         // Comment statements
         commentReplacedStmts(SL);
 
-        // FIXME: generate report
+        // TODO: generate file
         // SInfo.generateReport();
         MVInfo("Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
                "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
-               "; Sequential cost = " +
+               "; Scalar cost = " +
                MVCostModel::computeCostForStmtWrapperList(SL).toString());
       } else {
         MVWarn(
             "Region not vectorized (SCOP = " + std::to_string(Scop->StartLine) +
             "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
-            "; Sequential cost = " +
+            "; Scalar cost = " +
             MVCostModel::computeCostForStmtWrapperList(SL).toString());
       }
     }

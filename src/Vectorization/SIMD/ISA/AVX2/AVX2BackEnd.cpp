@@ -54,7 +54,7 @@ SIMDBackEnd::SIMDInst createSIMDInst(std::string Op, std::string Res,
                                      std::list<std::string> Args,
                                      SIMDBackEnd::SIMDType SType,
                                      MVSourceLocation MVSL) {
-
+  // Awesome...
   if (OpEq[Op] != "") {
     Op = OpEq[Op];
   }
@@ -62,13 +62,8 @@ SIMDBackEnd::SIMDInst createSIMDInst(std::string Op, std::string Res,
   // Replace fills in pattern
   auto AVXFunc =
       SIMDBackEnd::replacePatterns(Op, Width, DataType, PrefS, SuffS);
-
   // Generate SIMD inst
   SIMDBackEnd::SIMDInst I(Res, AVXFunc, Args, "", {}, MVSL);
-
-  // Retrieving cost of function
-  // InstCostInfo C(CostTable::getOpInfo(Op));
-  // I.Cost = C;
   I.SType = SType;
 
   return I;
@@ -564,11 +559,11 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
   if (LInsSize == 0) {
     return FusedRedux;
   }
+
   auto OpReduxType = LC.front().MVOP.T;
   auto OpRedux = LC.front().MVOP;
-
-  MVSourceLocation::Position InitPos = MVSourceLocation::Position::PREORDER;
-  MVSourceLocation::Position ReduxPos = MVSourceLocation::Position::POSORDER;
+  auto InitPos = MVSourceLocation::Position::PREORDER;
+  auto ReduxPos = MVSourceLocation::Position::POSORDER;
 
   // This is the horizontal approach, only valid for AVX2 and additions
   // and subtraction
@@ -1322,25 +1317,25 @@ std::vector<std::string> AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
   for (int i = 0; i < VS; ++i) {
     InitVal.push_back(NeutralValue);
   }
+
   std::list<std::string> InitValList(InitVal.begin(), InitVal.end());
-  std::string Reg = V.R.Name;
+  auto Reg = V.R.Name;
   // Fuck, this is awful...
   if (getAccmReg(Reg) != "") {
     Reg = getAccmReg(Reg);
   }
   MVSourceLocation MVSL(MVSourceLocation::Position::PREORDER, V.R.Order,
                         V.R.Offset);
+  auto Op = "setzero";
+  std::list<std::string> Values = {};
   if (V.isBinOp() &&
       ((V.getBinOp() == clang::BO_Mul) || (V.getBinOp() == clang::BO_Div))) {
-    InitReg.push_back(createSIMDInst("set", Reg, getMapWidth(V.R.Width),
-                                     getMapType(V.R.DType), "", "", InitValList,
-                                     SIMDType::INIT, MVSL));
-  } else {
-    Utils::printDebug("AVX2BackEnd", "init reg");
-    InitReg.push_back(createSIMDInst("setzero", Reg, getMapWidth(V.R.Width),
-                                     getMapType(V.R.DType), "", "", {},
-                                     SIMDType::INIT, MVSL));
+    Op = "set";
+    Values = InitValList;
   }
+  InitReg.push_back(createSIMDInst(Op, Reg, getMapWidth(V.R.Width),
+                                   getMapType(V.R.DType), "", "", Values,
+                                   SIMDType::INIT, MVSL));
   InitVal[VS - 1] = V.R.UOP[0]->getRegisterValue();
   return InitVal;
 }

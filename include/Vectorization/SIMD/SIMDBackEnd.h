@@ -77,7 +77,7 @@ public:
     VPERM,
     /// Reduce operation
     VREDUC,
-    /// Sequential operation
+    /// Scalar or sequential operation
     VSEQ,
     /// If the SIMD instruction is the result of an optimization (e.g. fuse
     /// multiply-accumulation) we will call it VOPT
@@ -217,7 +217,7 @@ public:
   /// Operations are reduce given a certain condicitons.
   virtual SIMDInstListType vreduce(VectorIR::VectorOP V) = 0;
 
-  // Sequential operations
+  // Scalar operations
 
   /// If operation is not binary, pararel or reduce, then we just emit a
   /// sequential operation. Backend will be in charge of performing any

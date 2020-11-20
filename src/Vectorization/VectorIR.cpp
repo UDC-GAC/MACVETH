@@ -102,7 +102,7 @@ std::string VectorIR::VOperand::toString() {
 // ---------------------------------------------
 std::string VectorIR::VectorOP::toString() {
   if (this->VT == VectorIR::VType::SEQ) {
-    return "Sequential: (" + std::to_string(this->Order) +
+    return "Scalar: (" + std::to_string(this->Order) +
            (this->Offset == -1 ? ")"
                                : ", " + std::to_string(this->Offset) + ")");
   }

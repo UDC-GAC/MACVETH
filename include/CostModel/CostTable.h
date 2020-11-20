@@ -46,7 +46,7 @@ class CostTable {
 public:
   /// Null value in generated tables
   static const inline std::string NullValue = "NA";
-  /// Sequential value in generated tables
+  /// Scalar value in generated tables
   static const inline std::string SeqValue = "seq";
   /// Unknown cost value
   static constexpr int UnknownCost = 10;

@@ -206,7 +206,7 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
       continue;
     }
     // Check if no SIMD code
-    if (II->isStr("nosimd")) {
+    if (II->isStr("scalar")) {
       PA.SIMDCode = false;
       continue;
     }

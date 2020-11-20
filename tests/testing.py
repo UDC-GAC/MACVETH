@@ -38,7 +38,11 @@ cc = "gcc"
 
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
-mv_poly_flags = " --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/utilities' --misa=avx2 "
+# mv_poly_flags = "
+# --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/utilities'
+# --misa=avx2 "
+mv_poly_flags = " --misa=avx2 "
+mv_poly_flags_end = "-- -I/home/markoshorro/workspace/MACVETH/tests/utilities"
 
 # Discussion:
 # is POLYBENCH_USE_C99_PROTO needed?
@@ -91,8 +95,8 @@ def compile_test_with_macveth(org_file, out_file, args=" "):
     # Compiling the tests
     # print("DEBUG: macveth %s %s -o=%s 2>> macveth_compiler.log" %
     #      (args, org_file, out_file))
-    os.system("macveth %s %s -o=%s 2>> macveth_compiler.log" %
-              (args, org_file, out_file))
+    os.system("macveth %s %s -o=%s %s 2>> macveth_compiler.log" %
+              (args, org_file, out_file, mv_poly_flags_end))
     # For some reason, sometimes there is a bad descriptor error when compiling...
     line = subprocess.check_output(['tail', '-1', "macveth_compiler.log"])
     if "LLVM ERROR" in str(line):
