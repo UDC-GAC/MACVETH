@@ -10,36 +10,56 @@ n_exec = 7
 tmp_file = "___tmp_file_"
 
 
-# README:
-# Files must produce an output with the following format:
-# name,features,flops,[time,gflops|counter0,counter1...]
-# depending on compilation with TIME or PAPI counters
+# NOTE:
+#   Files must produce an output with the following format:
+#       name,features,flops,[time,gflops|counter0,counter1...]
+#   depending on compilation with TIME or PAPI counters.
 
 
 def calculate_mean(bench, comp_opts, output, macveth, t, executions, tolerance=0.05):
+    """
+    Compute the mean execution time for a given benchmark. This function
+    generates a CSV file with measurements
+
+    Parameters
+    ----------
+    bench : string
+        Name of the benchmark to measure
+
+    comp_opts : string
+        Compilation options
+
+    Returns
+    -------
+    warning : boolean
+        If the tolerant threshold has not been passed, then returns True; False
+        otherwise
+    """
     bench_dir = bench.split("/")[0]
     os.chdir("%s" % bench_dir)
     bench = bench.split("/")[1]
-    print("Executing %s times %s:" % (str(executions), bench))
+    print(f"Executing {str(executions)} times {bench}:")
     pbar = tqdm(total=executions)
     for exe in range(executions):
         pbar.update(0.25)
-        os.system("./%s > %s%s" % (bench, tmp_file, str(exe)))
+        os.system(f"./{bench} > {tmp_file}{str(exe)}")
         pbar.update(0.75)
     pbar.close()
     df_arr = []
     for exe in range(executions):
-        df = pd.read_csv("%s%s" % (tmp_file, exe))
+        df = pd.read_csv(f"{tmp_file}{exe}")
         df_arr += [df]
     name = df_arr[0]['name']
     features = df_arr[1]['features']
 
+    warning = False
     if (t == "TIME"):
         s = pd.concat(df_arr).groupby(level=0).std() / \
             pd.concat(df_arr).groupby(level=0).mean()
         for r in s['time']:
             if (r > tolerance):
-                print("[WARNING] Deviation too high = " + str(r))
+                warning = True
+                print(f"[WARNING] Deviation too high = {str(r)}")
 
     m = pd.concat(df_arr).groupby(level=0).mean()
     if (t == "TIME"):
@@ -52,6 +72,7 @@ def calculate_mean(bench, comp_opts, output, macveth, t, executions, tolerance=0
     os.chdir("..")
     # write output
     m.to_csv(output)
+    return not warning
 
 
 if __name__ == "__main__":

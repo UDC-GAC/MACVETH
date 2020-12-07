@@ -66,7 +66,7 @@ want to write the code in 'fulltest'. You will just have to write a file:
 
 As its name suggests, this set of tests describe cases that the compiler must
 not fail. It follows the same procedure as the "Fulltest"s: compare the output
-of the sequential and SIMD code. Therefore, the only difference is the directory
+of the scalar and SIMD code. Therefore, the only difference is the directory
 where these tests are.
 
 ** Unittest (deprecated):

@@ -35,7 +35,7 @@ supported_archs_inv = {v: k for k, v in supported_archs.items()}
 
 # ordered list of ISAs
 supported_isas = ["BASE", "MMX", "SSE", "SSE2",
-                  "SSE3", "SSSE3", "SSE4", "SSE42", "AVX", "AVX2", "AVX512"]
+                  "SSE3", "SSSE3", "SSE4", "SSE42", "AVX", "AVX2GATHER", "AVX2", "AVX512"]
 
 csv_sep = "|"
 MAX_VAL = 1000000
@@ -71,7 +71,12 @@ def get_info(instr_node, arch_node):
     ports = ""
     for measure_node in arch_node.iter('measurement'):
         uops = measure_node.attrib['uops']
-        th = measure_node.attrib['TP']
+        if "TP" in measure_node.keys():
+            th = measure_node.attrib['TP']
+        elif "TP_loop" in measure_node.keys():
+            th = measure_node.attrib['TP_loop']
+        else:
+            print(f"No throughput for {string}")
         if "ports" in measure_node.keys():
             ports = measure_node.attrib['ports']
         elif "ports_same_reg" in measure_node.keys():

@@ -50,4 +50,5 @@ for c in it.product(comp, vect):
 
     # Macveth version
     executable = bench_dir + comp_opts + "_" + bench + "_" + t + "_macveth.o"
+    output = results_dir + executable[:-2] + ".csv"
     tbench.calculate_mean(executable, comp_opts, output, "1", t, n_exec)
