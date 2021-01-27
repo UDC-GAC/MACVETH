@@ -1,6 +1,13 @@
-# Minimum version required
+#===============================================================================
+# MACVETH
+#===============================================================================
+
+# Minimum CMake version required
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
+#===============================================================================
+# PROJECT VARIABLES
+#===============================================================================
 # Minimum C++ std
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -10,32 +17,50 @@ set(PROJECT_NAME MACVETH)
 set(MACVETH_VERSION_MAJOR 0)
 set(MACVETH_VERSION_MINOR 1)
 set(MACVETH_VERSION_PATCH 0)
-project(${PROJECT_NAME} VERSION ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
+#set(CURSES_USE_NCURSES TRUE)
+set(MACVETH_VERSION ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
 
+project(${PROJECT_NAME} VERSION 
+    ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
+message("Generating building files for ${PROJECT_NAME} v${MACVETH_VERSION}")
 
-############################################################
-# TODO: LLVM version
-# execute_process(
-#     COMMAND llvm-config --version
-#     OUTPUT_VARIABLE LLVM_VER)
-# message("-- Using LLVM ${LLVM_VER}")
+#===============================================================================
+# BUILD TYPE AND PROJECT FLAGS
+# -DCMAKE_BUILD_TYPE="Debug|Release|RelWithDebInfo|MinSizeRel"
+#===============================================================================
 
+# Set a default build type if none was specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'Release' as none was specified.")
+  set(CMAKE_BUILD_TYPE "Release" CACHE
+      STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
 
-set(LLVM_VER llvm-10)
+if (CMAKE_BUILD_TYPE EQUAL "Debug")
+    # [cmake] CMAKE_CXX_FLAGS_DEBUG is -g
+    # [cmake] CMAKE_CXX_FLAGS_RELEASE is -O3 -DNDEBUG
+    # [cmake] CMAKE_CXX_FLAGS_RELWITHDEBINFO is -O2 -g -DNDEBUG
+    # [cmake] CMAKE_CXX_FLAGS_MINSIZEREL is -Os -DNDEBUG
+    # Compiler flags
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall\
+        -fdiagnostics-color=always")
+endif()
 
-# Setting some paths, for comodity
-set(LLVM_BUILD_PATH /usr/lib/${LLVM_VER})
-set(LLVM_BIN_PATH ${LLVM_BUILD_PATH}/bin)
-set(CURSES_USE_NCURSES TRUE)
-
-# Custom flags
-set(CUSTOM_CXXFLAGS " -g -fno-rtti -Ofast ")
-add_definitions(${CUSTOM_CXXFLAGS})
-
-############################################################
+#===============================================================================
+# DOCUMENTATION GENERATION
+# -DGENERATE_DOC:BOOL=TRUE to activate
+#===============================================================================
 # Check if Doxygen is installed
-find_package(Doxygen)
-if (DOXYGEN_FOUND)
+option(GENERATE_DOC "Generate documentation with Doxygen" OFF)
+
+# dot requirements: 
+# https://github.com/labapart/gattlib/issues/129#issuecomment-609394695
+find_package(Doxygen REQUIRED dot)
+
+if (DOXYGEN_FOUND AND GENERATE_DOC)
     # set input and output files
     set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.cfg)
     set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
@@ -44,7 +69,7 @@ if (DOXYGEN_FOUND)
 
     # request to configure the file
     configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
-    message("Doxygen build started")
+    message("Documentation: Doxygen build started")
 
     # note the option ALL which allows to build the docs together with the application
     add_custom_target(macveth_doxygen ALL
@@ -52,16 +77,17 @@ if (DOXYGEN_FOUND)
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM)
-else (DOXYGEN_FOUND)
-    message("Doxygen need to be installed to generate the doxygen documentation")
-endif (DOXYGEN_FOUND)
+elseif(NOT DOXYGEN_FOUND)
+    message("Documentation: Doxygen need to be installed to generate the doxygen documentation")
+endif()
 
-############################################################
-# Coverage report
-add_library(coverage_config INTERFACE)
-
+#===============================================================================
+# CODE COVERAGE CONFIGURATION
+#===============================================================================
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
+add_library(coverage_config INTERFACE)
 if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    message("Code coverage: enabled")
     # Add required flags (GCC & LLVM/Clang)
     target_compile_options(coverage_config INTERFACE
         -O0        # no optimization
@@ -75,9 +101,10 @@ if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     endif()
 endif()
 
-############################################################
-# Testing
-option (BUILD_TESTING "Build the testing tree." ON)
+#===============================================================================
+# TESTING CONFIGURATION
+#===============================================================================
+option(BUILD_TESTING "Build the testing tree" OFF)
 # Only build tests if we are the top-level project
 # Allows this to be used by super projects with `add_subdirectory`
 if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
@@ -86,77 +113,75 @@ if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
 endif()
 
 
-############################################################
-# Setting CXXFLAGS using llvm-config + custom flags
-# CXXFLAGS + LLVM_CXXFLAGS (former makefile)
-execute_process(
-    COMMAND ${LLVM_BIN_PATH}/llvm-config --cxxflags
-    OUTPUT_VARIABLE LLVM_CXXFLAGS)
-set(LLVM_CXXFLAGS ${LLVM_CXXFLAGS})
-add_definitions(${LLVM_CXXFLAGS})
+#===============================================================================
+# LOAD CLANG CONFIGURATION
+# For more: http://llvm.org/docs/CMake.html#embedding-llvm-in-your-project
+#===============================================================================
+# Add path to LLVM modules
+find_package(Clang REQUIRED CONFIG)
 
-############################################################
-# Libraries Dynamic
-# execute_process(
-#     COMMAND ${LLVM_BIN_PATH}/llvm-config --ldflags --libs --system-libs
-#     OUTPUT_VARIABLE CLANG_LIBS)
-# add_definitions(${CLANG_LIBS})
+set(CMAKE_MODULE_PATH
+  ${CMAKE_MODULE_PATH}
+  "${LLVM_CMAKE_DIR}"
+  "${CLANG_CMAKE_DIR}"
+  )
 
-############################################################
-# include dirs
-execute_process(
-    COMMAND ${LLVM_BIN_PATH}/llvm-config --includedir
-    OUTPUT_VARIABLE CLANG_INCLUDE_DIR)
-find_library(LibClang_LIBRARY NAMES clang HINTS /usr/lib/${LLVM_VER}/lib)
-set(LibClang_LIBRARIES ${LibClang_LIBRARY})
-#set(LibClang_INCLUDE_DIRS ${CLANG_INCLUDE_DIR})
+# Import LLVM CMake functions
+include(AddLLVM)
 
-message("LibClang_LIBRARIES ${LibClang_LIBRARY}")
+list(APPEND CMAKE_PREFIX_PATH "${LLVM_CMAKE_DIR}")
+list(APPEND CMAKE_PREFIX_PATH "${CLANG_CMAKE_DIR}")
 
-if (NOT DEFINED LLVM_DIR)
-    set(LLVM_DIR /usr/lib/llvm)
+message(STATUS "Found Clang ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using ClangConfig.cmake in: ${CLANG_CMAKE_DIR}")
+
+message("CLANG STATUS:
+  Includes (Clang)    ${CLANG_INCLUDE_DIRS}
+  Includes (LLVM)     ${LLVM_INCLUDE_DIRS}"
+)
+
+# Set the LLVM and Clang header and library paths
+include_directories(SYSTEM "${LLVM_INCLUDE_DIRS};${CLANG_INCLUDE_DIRS}")
+
+# LLVM/Clang is normally built without RTTI. Be consistent with that.
+if(NOT LLVM_ENABLE_RTTI)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 endif()
 
-include_directories(
-    ${LLVM_DIR}/build/llvm/
-    ${LLVM_DIR}/build/include/
-    ${LLVM_DIR}/clang/include
-    ${LLVM_DIR}/llvm/include/
-    ${LLVM_DIR}/build/tools/clang/include
-    )
-
-# for generating compile_options.json for IDEs
+# For generating compile_options.json for IDEs
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-# configuration file, for macros for instance
-# set(LLVM_VERSION 10)
+# Configuration file, for macros for instance
 configure_file(macveth.h.in lib/macveth.h)
 
-# add a subdirectory to the buildd
+# Add a subdirectory to the build
 add_subdirectory(src)
 
-# define the binary to compile
+# Define the binary to compile
 add_executable(macveth
     lib/macveth.cpp
     )
 
-# CLANG_INCLUDES (former Makefile)
+#===============================================================================
+# BUILDING TARGET
+#===============================================================================
 target_include_directories(macveth PUBLIC
     include
-    /usr/lib/${LLVM_VER}/build/include/clang
+    ${CLANG_INCLUDE_DIRS}
     )
 
 # Custom libraries needed
 target_link_libraries(macveth
     PRIVATE
     macveth_lib
-    ${LibClang_LIBRARIES}
-    -L/usr/lib/${LLVM_VER}/lib)
+    #-L/usr/lib/${LLVM_VER}/lib
+    )
 
+# MACVETH Clang libraries dependencies
 # Clang libraries needed
 target_link_libraries(macveth PRIVATE
-    -L${LLVM_DIR}/build/lib
+    #-L${LLVM_DIR}/build/lib
     clangTooling
     clangBasic
     clangASTMatchers
@@ -201,6 +226,8 @@ target_link_libraries(macveth
     stdc++fs # needed in some gcc versions
     )
 
-# tell to compiler MACVETH where to place the binary
+#===============================================================================
+# INSTALLING TARGET
+#===============================================================================
 install(TARGETS macveth DESTINATION build)
 
