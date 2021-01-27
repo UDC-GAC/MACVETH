@@ -25,6 +25,7 @@ jobs:
             - libclang-10-dev
             - clang-format-10
             - clang-tidy-10
+            - doxygen
             - graphviz # for dot Doxygen
           sources:
             - ubuntu-toolchain-r-test
