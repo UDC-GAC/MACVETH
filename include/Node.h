@@ -339,7 +339,7 @@ public:
         "; TacID = " + std::to_string(getSchedInfo().TacID) +
         "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
         "; Scops = ";
-    for (int i = 0; i < getSchedInfo().Scop.size() - 1; ++i) {
+    for (size_t i = 0; i < getSchedInfo().Scop.size() - 1; ++i) {
       S += std::to_string(getSchedInfo().Scop[i]) + ", ";
     }
     S += std::to_string(getSchedInfo().Scop[getSchedInfo().Scop.size() - 1]);

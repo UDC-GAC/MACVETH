@@ -177,7 +177,6 @@ AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL,
 
   int NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
   auto OpRedux = VIL[0].MVOP;
-  auto OpReduxType = OpRedux.getType();
   auto OpName = VIL[0].MVOP.toString();
   auto Type = VIL[0].DT;
   auto RegType = getRegisterType(Type, MVDataType::VWidth::W128);
@@ -291,7 +290,7 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   }
 
   auto S = (NumRedux + (NumRedux % 2)) / 2;
-  auto OP =
+  std::string OP =
       (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "hadd" : "hsub";
 
   auto Stride = 2;
@@ -323,8 +322,9 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
       auto Mask2 = "0x21";
       auto Perm = replacePatterns("permute", W, MapType[VIL[0].DT], "", PermS);
       auto V0 = VAccm[0];
-      auto V1 =
-          (NumRedux > 4) ? VAccm[4] : (NumRedux > 2) ? VAccm[2] : VAccm[1];
+      auto V1 = (NumRedux > 4)   ? VAccm[4]
+                : (NumRedux > 2) ? VAccm[2]
+                                 : VAccm[1];
       auto Op1 = genGenericFunc(Blend, {V0, V1, Mask1});
       auto Op2 = genGenericFunc(Perm, {V0, V1, Mask2});
 
@@ -402,7 +402,7 @@ std::list<std::string> AVX2BackEnd::renderSIMDRegister(SIMDInstListType S) {
     if (std::get<0>(VAuxRegs[0]) != "") {
       TypeRegDecl += std::get<0>(VAuxRegs[0]);
     }
-    for (int i = 1; i < VAuxRegs.size(); ++i) {
+    for (unsigned i = 1; i < VAuxRegs.size(); ++i) {
       if (std::get<0>(VAuxRegs[i]) != "") {
         TypeRegDecl += ", " + std::get<0>(VAuxRegs[i]);
       }
@@ -431,7 +431,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   SIMDBackEnd::SIMDInstListType IL;
   std::vector<SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
 
-  auto NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
+  auto NElems = (size_t)(VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT]);
   auto OpRedux = VIL[0].MVOP;
   // auto OpReduxType = OpRedux.getType();
   auto OpName = VIL[0].MVOP.toString();
@@ -441,7 +441,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   }
   std::vector<std::string> VAccm;
   std::vector<std::string> VRedux;
-  for (int t = 0; t < NumRedux; ++t) {
+  for (size_t t = 0; t < NumRedux; ++t) {
     VAccm.push_back(VIL[t].Args.front());
     VRedux.push_back(VIL[t].Result);
   }
@@ -463,7 +463,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   // IMPORTANT: This approach assumes NumRedux > 1
 
   // Shuffles
-  for (int i = 0; i < NumRedux; i += 2) {
+  for (size_t i = 0; i < NumRedux; i += 2) {
     auto A0 =
         shuffleArguments(VAccm[i], (NumRedux > i + 1) ? VAccm[i + 1] : VAccm[i],
                          VIL[i].W, VIL[i], 0);
@@ -478,7 +478,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   }
 
   // Permutations
-  for (int i = 0; i < NumRedux; i += 4) {
+  for (size_t i = 0; i < NumRedux; i += 4) {
     auto W = MapWidth[VIL[0].W];
     // Operand 1
     auto Blend = replacePatterns("blend", W, MapType[VIL[0].DT], "", "");
@@ -501,7 +501,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   std::string Res = "";
   if (NElems > 4) {
     // Need to do the last extraction, shuffle and operation
-    for (int R = 0; R < NumRedux; R += 4) {
+    for (size_t R = 0; R < NumRedux; R += 4) {
       // op(shuffle(hi,lo,mask), shuffle(hi,lo,mask))
       auto Lo = extractArgument(VAccm[R], VIL[R], 0);
       auto Hi = extractArgument(VAccm[R], VIL[R], 1);
@@ -522,7 +522,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
 
   auto ResRegister = (Res != "") ? Res : VAccm[0];
 
-  for (int R = 0; R < NumRedux; ++R) {
+  for (size_t R = 0; R < NumRedux; ++R) {
     std::string Idx = "[" + std::to_string(R) + "]";
     if (OpRedux.isBinaryOperation()) {
       addNonSIMDInst(VRedux[R], VRedux[R] + OP + ResRegister + Idx,
@@ -560,7 +560,7 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
     return FusedRedux;
   }
 
-  auto OpReduxType = LC.front().MVOP.T;
+  // auto OpReduxType = LC.front().MVOP.T;
   auto OpRedux = LC.front().MVOP;
   auto InitPos = MVSourceLocation::Position::PREORDER;
   auto ReduxPos = MVSourceLocation::Position::POSORDER;
@@ -685,7 +685,7 @@ AVX2BackEnd::fuseReductions(SIMDBackEnd::SIMDInstListType TIL) {
       auto DW =
           MVDataType::VDataTypeWidthBits[L.second.front().VOPResult.DType];
       // Only compute reductions if max found
-      if (W / DW > LInsSize) {
+      if ((unsigned)W / DW > LInsSize) {
         continue;
       }
       ReplaceFusedRedux[L.second.back()] = fuseReductionsList(L.second);
@@ -831,9 +831,6 @@ SIMDBackEnd::SIMDInst AVX2BackEnd::genSIMDInst(
   std::string AVXFunc = replacePatterns(
       Op, getMapWidth(V.getWidth()), getMapType(V.getDataType()), PrefS, SuffS);
 
-  // Custom order
-  auto O = V.Order;
-
   // Generate SIMD inst
   SIMDBackEnd::SIMDInst I((NameOp == "") ? V.getName() : NameOp, AVXFunc, Args,
                           MVFunc, MVArgs, SL);
@@ -956,7 +953,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vbcast(VectorIR::VOperand V) {
   // TODO: generate suffix
   auto SuffS = "";
   // Mask
-  auto PrefS = (V.IsPartial) ? "mask" : "";
+  // auto PrefS = (V.IsPartial) ? "mask" : "";
 
   // TODO: check
   // List of parameters
@@ -1022,15 +1019,15 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
   auto BaseIdx = V.UOP[MinIdx - CopyIdx.begin()]->getValue();
   // This way we avoid negative indices
   if (MinVal < 0) {
-    for (auto T = 0; T < CopyIdx.size(); ++T) {
+    for (size_t T = 0; T != CopyIdx.size(); ++T) {
       CopyIdx[T] += abs(MinVal);
     }
   }
   std::reverse(CopyIdx.begin(), CopyIdx.end());
-  for (auto T = 0; T < V.VSize % 2; ++T) {
+  for (size_t T = 0; T != V.VSize % 2; ++T) {
     VIndex += std::to_string(0) + ",";
   }
-  for (auto T = 0; T < CopyIdx.size(); ++T) {
+  for (size_t T = 0; T != CopyIdx.size(); ++T) {
     VIndex +=
         std::to_string(CopyIdx[T]) + ((T == (CopyIdx.size() - 1)) ? "" : ", ");
   }
@@ -1068,12 +1065,12 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vset(VectorIR::VOperand V) {
     SuffS += "1";
     Args.push_back((V.UOP[0] != nullptr) ? V.UOP[0]->getRegisterValue() : "0");
   } else {
-    for (int n = 0; n < V.VSize; n++) {
+    for (size_t n = 0; n < V.VSize; n++) {
       Args.push_back((V.UOP[n] != nullptr) ? V.UOP[n]->getValue() : "0.0");
     }
   }
-  for (int t = V.VSize; t < (V.Width / MVDataType::VDataTypeWidthBits[V.DType]);
-       ++t) {
+  for (int t = V.VSize;
+       t < (int)(V.Width / MVDataType::VDataTypeWidthBits[V.DType]); ++t) {
     Args.push_back("0");
   }
   Args.reverse();
@@ -1142,7 +1139,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
                         V.R.Offset);
 
   // TODO: FIXME: check if any contiguous in order to optimize minimally this
-  for (int N = 0; N < V.R.VSize; ++N) {
+  for (size_t N = 0; N < V.R.VSize; ++N) {
     std::string Idx = "[" + std::to_string(N) + "]";
     addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
                    SIMDType::VOPT, MVSL, &IL);
@@ -1310,11 +1307,13 @@ std::vector<std::string> AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
     case clang::BO_Div:
       NeutralValue = "1";
       break;
+    default:
+      MVErr("This should never happen");
     }
   }
-  auto VS = V.R.VSize;
 
-  for (int i = 0; i < VS; ++i) {
+  auto VS = V.R.VSize;
+  for (size_t i = 0; i < VS; ++i) {
     InitVal.push_back(NeutralValue);
   }
 

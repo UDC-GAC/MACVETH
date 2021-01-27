@@ -49,7 +49,7 @@ jmp_buf GotoStartScop, GotoEndScop;
 // ---------------------------------------------
 ScopLoc *getScopLoc(StmtWrapper *S) {
   auto SLoc = S->getClangStmt()->getBeginLoc();
-  for (int n = 0; n < ScopHandler::List.size(); ++n) {
+  for (size_t n = 0; n < ScopHandler::List.size(); ++n) {
     if ((SLoc >= ScopHandler::List[n]->Scop) &&
         (SLoc <= ScopHandler::List[n]->EndScop)) {
       return ScopHandler::List[n];
@@ -66,7 +66,6 @@ void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
     if (S->isLeftOver()) {
       continue;
     }
-    auto SLoc = S->getClangStmt()->getBeginLoc();
     auto Scop = getScopLoc(S);
     assert(Scop != nullptr && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
@@ -154,13 +153,13 @@ bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
                                               std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      if (auto L = renderSIMDInstBeforePlace(SI, S->getListStmt())) {
+      if (renderSIMDInstBeforePlace(SI, S->getListStmt())) {
         Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                            SI.render() + ";\n");
       }
     } else {
       for (auto T : S->getTacList()) {
-        if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
+        if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
           if (S->isInLoop()) {
             return true;
           }
@@ -179,13 +178,13 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
                                              std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      if (auto L = renderSIMDInstAfterPlace(SI, S->getListStmt())) {
+      if (renderSIMDInstAfterPlace(SI, S->getListStmt())) {
         Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
                                      SI.render() + ";\n");
       }
     } else {
       for (auto T : S->getTacList()) {
-        if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
+        if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
           if (S->isInLoop()) {
             return true;
           }
@@ -208,7 +207,7 @@ void MVFuncVisitor::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
       renderSIMDInstInPlace(SI, S->getListStmt());
     } else {
       for (auto T : S->getTacList()) {
-        if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
+        if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
           Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                              SI.render() + ";\n", true, true);
           return;
@@ -223,11 +222,10 @@ void MVFuncVisitor::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
                                           std::list<StmtWrapper *> SL) {
   // Scalar case: is this needed?
   if (SI.isSequential() && SI.getMVSourceLocation().isInOrder()) {
-    Utils::printDebug("MVFuncVisitor",
-                      "Scalar for " + SI.render());
+    Utils::printDebug("MVFuncVisitor", "Scalar for " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
-        if (SI.getMVSourceLocation().getOrder() == T.getTacID()) {
+        if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
           renderTACInPlace({S}, SI.getMVSourceLocation().getOrder(),
                            SI.getMVSourceLocation().getOffset());
           return;
@@ -549,8 +547,8 @@ static bool formatMACVETH(StringRef FileName) {
       new DiagnosticOptions);
 
   SourceManager Sources(Diagnostics, Files);
-  auto ID = createInMemoryFile(FileName, Code.get(), Sources, Files,
-                               InMemoryFileSystem.get());
+  createInMemoryFile(FileName, Code.get(), Sources, Files,
+                     InMemoryFileSystem.get());
   Rewriter Rewrite(Sources, LangOptions());
   if (!tooling::applyAllReplacements(Replaces, Rewrite)) {
     MVInfo("Formatting file failed: something went wrong saving file (applying "

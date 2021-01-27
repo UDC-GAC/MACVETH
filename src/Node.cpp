@@ -38,7 +38,7 @@ std::string Node::toStringShort() {
   if (this->getNodeType() != Node::NODE_MEM) {
     Str += " O = " + this->getOutputInfoName() + "; ";
   }
-  for (int i = 0; i < this->getInputs().size(); ++i) {
+  for (size_t i = 0; i < this->getInputs().size(); ++i) {
     if (this->getInputs()[i] != nullptr) {
       Str +=
           " I(" + std::to_string(i) + ") = " + this->getInputs()[i]->getValue();
@@ -61,7 +61,7 @@ std::string Node::toString() {
   if (this->getNodeType() != Node::NODE_MEM) {
     Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
   }
-  for (int i = 0; i < this->getInputs().size(); ++i) {
+  for (size_t i = 0; i < this->getInputs().size(); ++i) {
     if (this->getInputs()[i] != nullptr) {
       Str += "\tInput " + std::to_string(i) +
              "\t\t= " + this->getInputs()[i]->getValue() + " (ID = " +

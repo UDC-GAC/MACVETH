@@ -154,7 +154,7 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     clang::BinaryOperator *RhsBin = nullptr;
     Op = MVOp(S->getOpcode());
     if (S->getOpcode() == BinaryOperator::Opcode::BO_AddAssign) {
-#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR < 12)
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR < 11)
       auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Add,
                                          S1->getType(), S1->getValueKind(),
                                          S1->getObjectKind(), S1->getBeginLoc(),
@@ -164,13 +164,13 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
       auto NewOp = clang::BinaryOperator::Create(
           *(Utils::getCtx()), S1, S2, BinaryOperator::Opcode::BO_Add,
           S1->getType(), S1->getValueKind(), S1->getObjectKind(),
-          S1->getBeginLoc(), clang::FPOptions());
+          S1->getBeginLoc(), clang::FPOptionsOverride());
       S2 = NewOp;
 #endif
       Op = MVOp(BinaryOperator::Opcode::BO_Assign);
     }
     if (S->getOpcode() == BinaryOperator::Opcode::BO_SubAssign) {
-#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR < 12)
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR < 11)
       auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Sub,
                                          S1->getType(), S1->getValueKind(),
                                          S1->getObjectKind(), S1->getBeginLoc(),
@@ -180,7 +180,7 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
       auto NewOp = clang::BinaryOperator::Create(
           *(Utils::getCtx()), S1, S2, BinaryOperator::Opcode::BO_Sub,
           S1->getType(), S1->getValueKind(), S1->getObjectKind(),
-          S1->getBeginLoc(), clang::FPOptions());
+          S1->getBeginLoc(), clang::FPOptionsOverride());
       S2 = NewOp;
 #endif
       Op = MVOp(BinaryOperator::Opcode::BO_Assign);

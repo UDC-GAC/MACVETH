@@ -141,7 +141,7 @@ public:
 
     // Get processor brand std::string
     // This seems to be working for both Intel & AMD vendors
-    for (int i = 0x80000002; i < 0x80000005; ++i) {
+    for (auto i = 0x80000002; i < 0x80000005; ++i) {
       CPUID CpuID(i, 0);
       ModelName += std::string((const char *)&CpuID.EAX(), 4);
       ModelName += std::string((const char *)&CpuID.EBX(), 4);
@@ -186,7 +186,7 @@ public:
     // Get num of cores
     if (UpVId.find("INTEL") != std::string::npos) {
       if (HFS >= 11) {
-        for (int lvl = 0; lvl < MAX_INTEL_TOP_LVL; ++lvl) {
+        for (auto lvl = 0; lvl < MAX_INTEL_TOP_LVL; ++lvl) {
           CPUID CpuID4(0x0B, lvl);
           uint32_t currLevel = (LVL_TYPE & CpuID4.ECX()) >> 8;
           switch (currLevel) {
@@ -205,7 +205,7 @@ public:
         if (HFS >= 1) {
           NumLogCpus = (CpuID1.EBX() >> 16) & 0xFF;
           if (HFS >= 4) {
-            NumCores = 1 + (CPUID(4, 0).EAX() >> 26) & 0x3F;
+            NumCores = 1 + ((CPUID(4, 0).EAX() >> 26) & 0x3F);
           }
         }
         if (IsHTT) {

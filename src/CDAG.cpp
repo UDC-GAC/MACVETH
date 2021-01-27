@@ -95,7 +95,7 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
     auto WarNode = findWARDataRace(N, this->NLOps);
-    auto RawNode = findRAWDataRace(N, this->NLOps);
+    // auto RawNode = findRAWDataRace(N, this->NLOps);
     if (WarNode != nullptr) {
       Utils::printDebug("CDAG/NODE",
                         "WAR found = " + WarNode->getRegisterValue() + "; " +
@@ -106,7 +106,7 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
   }
 no_output:
   auto NewNode = new Node(T, L);
-  auto WarNode = findWARDataRace(NewNode, this->NLOps);
+  // auto WarNode = findWARDataRace(NewNode, this->NLOps);
   auto RawNode = findRAWDataRace(NewNode, this->NLOps);
 
   PlcmntAlgo::computeFreeSchedule(NewNode);
@@ -132,7 +132,8 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
     // connections between the inputs and outputs. Actually we are looking
     // for outputs of of already connected Nodes that match the input of this
     // new NODE_OP. Looking for inputs
-    Node *PrevNode = G->insertTac(T, G->getNodeListOps());
+    // Node *PrevNode = G->insertTac(T, G->getNodeListOps());
+    G->insertTac(T, G->getNodeListOps());
   }
 
   for (auto R : G->MapRAW) {

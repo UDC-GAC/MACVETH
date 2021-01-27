@@ -51,18 +51,18 @@ public:
     case MVCPUInfo::MVISA::SSE:
     case MVCPUInfo::MVISA::AVX:
     case MVCPUInfo::MVISA::AVX512:
+    case MVCPUInfo::MVISA::AUTODETECT:
       MVErr("This ISA has not been implemented yet!");
-    // case MVCPUInfo::MVISA::NATIVE:
-    // FIXME: remove this at some point: native case should be determined at
-    // some point, not to be contemplated exactly here
+      break;
     case MVCPUInfo::MVISA::AVX2:
       G = AVX2BackEnd::getSingleton();
-      if (G != nullptr) {
-        return G;
-      }
+      break;
+      // case MVCPUInfo::MVISA::AVX512:
+      //  G = AVX512BackEnd::getSingleton();
+      //  break;
     }
     MVErr("No backend chosen!");
-    return nullptr;
+    return G;
   }
 };
 

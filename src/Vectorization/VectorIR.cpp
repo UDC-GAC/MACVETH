@@ -90,7 +90,7 @@ std::string VectorIR::VOperand::toString() {
     return Str + "]";
   }
   Str += (UOP[0]->getRegisterValue());
-  for (int i = 1; i < this->VSize; ++i) {
+  for (size_t i = 1; i < this->VSize; ++i) {
     Str += ", " + (UOP[i]->getRegisterValue());
   }
   Str += "]";

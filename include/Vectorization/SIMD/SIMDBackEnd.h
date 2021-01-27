@@ -89,28 +89,46 @@ public:
   /// Wrap for representing the SIMDInst not just as single strings to print,
   /// but as a set of fields
   struct SIMDInst {
+
+    /// Empty constructor
+    SIMDInst(){};
+
+    /// Constructor for not SIMD code
+    SIMDInst(std::string LHS, std::string RHS, MVSourceLocation SL)
+        : Result(LHS), FuncName(RHS), MVSL(SL) {
+      this->SIMD_UID = SIMDInst::UID++;
+    }
+    /// Constructor
+    SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
+             std::string MVFunc, std::list<std::string> MVArgs,
+             MVSourceLocation SL)
+        : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFunc),
+          MVArgs(MVArgs), MVSL(SL) {
+      this->SIMD_UID = SIMDInst::UID++;
+    }
+
     /// VOperand result
     VectorIR::VOperand VOPResult;
     /// Unique identifier generator
     static inline unsigned int UID = 0;
     /// Unique identifier
     unsigned int SIMD_UID = 0;
-    /// Source location according to our TACs
-    MVSourceLocation MVSL;
     /// Result register name
     std::string Result;
     /// Type of operation
     MVOp MVOP;
     /// Signature of the function
     std::string FuncName;
+    /// List of *sorted* arguments of the function
+    std::list<std::string> Args;
     /// Signature of the function (macro approach)
     std::string MVFuncName;
     /// Type of the function
     SIMDType SType;
-    /// List of *sorted* arguments of the function
-    std::list<std::string> Args;
     /// List of *sorted* arguments of the function (macro approach)
     std::list<std::string> MVArgs;
+    /// Source location according to our TACs
+    MVSourceLocation MVSL;
     /// Cost of the instruction
     // InstCostInfo Cost;
     /// Data type
@@ -137,23 +155,6 @@ public:
     /// This is util if we want to use SIMDInst in std::map
     bool operator<(const SIMDInst &S) const {
       return S.SIMD_UID < this->SIMD_UID;
-    }
-
-    /// Empty constructor
-    SIMDInst(){};
-
-    /// Constructor for not SIMD code
-    SIMDInst(std::string LHS, std::string RHS, MVSourceLocation SL)
-        : Result(LHS), FuncName(RHS), MVSL(SL) {
-      this->SIMD_UID = SIMDInst::UID++;
-    }
-    /// Constructor
-    SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
-             std::string MVFunc, std::list<std::string> MVArgs,
-             MVSourceLocation SL)
-        : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFunc),
-          MVArgs(MVArgs), MVSL(SL) {
-      this->SIMD_UID = SIMDInst::UID++;
     }
   };
 

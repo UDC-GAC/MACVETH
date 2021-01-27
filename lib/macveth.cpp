@@ -39,6 +39,10 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Signals.h"
 
+#if !defined(DEBUG)
+#define DEBUG 0
+#endif
+
 using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
@@ -203,10 +207,20 @@ static llvm::cl::opt<std::string>
 
 // Main program
 int main(int argc, const char **argv) {
-  llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
+  if (DEBUG) {
+    llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
+  }
+
+  if (argc <= 1) {
+    std::cout << "MACVETH: not enough arguments. Use --help option for more "
+                 "information."
+              << std::endl;
+    return 0;
+  }
 
   // Parser for options common to all cmd-line Clang tools
   CommonOptionsParser Op(argc, argv, MacvethCategory);
+
   // Utility to run a FrontendAction over a set of files
   // * getCompilations(): contains compile cmd lines for the given source
   // paths

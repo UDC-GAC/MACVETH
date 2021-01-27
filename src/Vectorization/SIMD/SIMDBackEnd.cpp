@@ -143,7 +143,7 @@ std::string SIMDBackEnd::SIMDInst::render() {
       ((Args.size() == 0) && (SType == SIMDType::VOPT))) {
     return FullFunc;
   }
-  int i = 0;
+  size_t i = 0;
   FullFunc += "(";
   for (auto Op = Args.begin(); Op != Args.end(); ++Op) {
     FullFunc += (i++ == (Args.size() - 1)) ? (*Op) : (*Op + ", ");
@@ -199,7 +199,7 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
   auto NullIndex = false;
   if (V.Idx.size() > 0) {
     auto I0 = V.Idx[0];
-    for (int i = 1; i < V.VSize; ++i) {
+    for (size_t i = 1; i < V.VSize; ++i) {
       if (V.Idx[i] == I0) {
         NullIndex = true;
         break;
@@ -313,6 +313,8 @@ SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP V) {
     break;
   case VectorIR::VType::SEQ:
     return vseq(V);
+  case VectorIR::VType::INDUCTION:
+    MVErr("Induction not supported yet!!!");
   };
 
   auto RegType = getRegisterType(V.DT, V.VW);
@@ -373,7 +375,7 @@ std::string SIMDBackEnd::genGenericFunc(std::string F,
     return R + ")";
   }
   R += L[0];
-  for (int i = 1; i < L.size(); ++i) {
+  for (size_t i = 1; i < L.size(); ++i) {
     R += "," + L[i];
   }
   return R + ")";

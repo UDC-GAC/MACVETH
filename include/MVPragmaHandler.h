@@ -184,9 +184,7 @@ static IdentifierInfo *getValue(Token &token) {
 static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
   ScopLoc::PragmaArgs PA;
   IdentifierInfo *II;
-  IdentifierInfo *IIPrev;
   bool UnrollOptParsed = false;
-  bool DimensionFound = false;
   Token Tok;
   PP.Lex(Tok);
   while ((II = getValue(Tok)) != nullptr) {

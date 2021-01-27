@@ -60,16 +60,6 @@ enum InstType {
 
 /// Wrapper for calculating the cost of instructions
 struct InstCostInfo {
-  /// Number of cycles wasted by the instruction
-  int Latency = 0;
-  /// Number of micro-instructions issued by the SIMD instruction
-  int UOps = 1;
-  /// TODO: Issue latency: the lower the better. On Intel architectures it
-  /// represents the velocity of issuing another uop
-  double Throughput = 1;
-  /// TODO: Number of ports used
-  std::map<int, int> NoPorts;
-
   /// Default empty constructor
   InstCostInfo() {}
 
@@ -87,6 +77,16 @@ struct InstCostInfo {
     }
     Throughput = R.Throughput;
   }
+
+  /// Number of cycles wasted by the instruction
+  int Latency = 0;
+  /// TODO: Issue latency: the lower the better. On Intel architectures it
+  /// represents the velocity of issuing another uop
+  double Throughput = 1.0;
+  /// Number of micro-instructions issued by the SIMD instruction
+  int UOps = 1;
+  /// TODO: Number of ports used
+  std::map<int, int> NoPorts;
 
   std::string toString() { return std::to_string(Latency); }
 

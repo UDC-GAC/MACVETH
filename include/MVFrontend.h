@@ -78,12 +78,12 @@ private:
   /// Render SIMD before a statement (for initializing reductions, for instance)
   bool renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
                                  std::list<StmtWrapper *> SL);
-  /// Holds information regarding the ROI
-  ScopHandler *SL;
   /// Context
   ASTContext *Context;
   /// For rewriting code in the output program
   Rewriter &Rewrite;
+  /// Holds information regarding the ROI
+  ScopHandler *SL;
 };
 
 /// Implementation of the ASTConsumer interface for reading an AST produced
