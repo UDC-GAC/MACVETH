@@ -17,7 +17,7 @@ set(PROJECT_NAME MACVETH)
 set(MACVETH_VERSION_MAJOR 0)
 set(MACVETH_VERSION_MINOR 1)
 set(MACVETH_VERSION_PATCH 0)
-#set(CURSES_USE_NCURSES TRUE)
+
 set(MACVETH_VERSION ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
 
 project(${PROJECT_NAME} VERSION 
@@ -114,11 +114,29 @@ endif()
 
 
 #===============================================================================
-# LOAD CLANG CONFIGURATION
+# LOAD CLANG/LLVM CONFIGURATION
 # For more: http://llvm.org/docs/CMake.html#embedding-llvm-in-your-project
 #===============================================================================
 # Add path to LLVM modules
-find_package(Clang REQUIRED CONFIG)
+
+# This list must be in descendant order
+set(TESTED_LLVM_VERSIONS 11 10)
+foreach(V ${TESTED_LLVM_VERSIONS})
+    find_package(LLVM ${V} REQUIRED CONFIG)
+    if (DEFINED LLVM_FOUND)
+        break()
+    endif()
+endforeach()
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+# This is a hack, actually...
+set(Clang_DIR ${LLVM_LIBRARY_DIR}/cmake/clang)
+find_package(Clang REQUIRED HINTS ${Clang_DIR} NO_DEFAULT_PATH)
+if (NOT DEFINED Clang_FOUND)
+    message(STATUS "Clang library not found. Check your paths.")
+endif()
+message(STATUS "Using ClangConfig.cmake in: ${CLANG_CMAKE_DIR}")
 
 set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
@@ -131,14 +149,6 @@ include(AddLLVM)
 
 list(APPEND CMAKE_PREFIX_PATH "${LLVM_CMAKE_DIR}")
 list(APPEND CMAKE_PREFIX_PATH "${CLANG_CMAKE_DIR}")
-
-message(STATUS "Found Clang ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using ClangConfig.cmake in: ${CLANG_CMAKE_DIR}")
-
-message("CLANG STATUS:
-  Includes (Clang)    ${CLANG_INCLUDE_DIRS}
-  Includes (LLVM)     ${LLVM_INCLUDE_DIRS}"
-)
 
 # Set the LLVM and Clang header and library paths
 include_directories(SYSTEM "${LLVM_INCLUDE_DIRS};${CLANG_INCLUDE_DIRS}")
@@ -166,6 +176,10 @@ add_executable(macveth
 #===============================================================================
 # BUILDING TARGET
 #===============================================================================
+
+find_package(Threads REQUIRED)  # Threads library
+#find_package(z REQUIRED)  
+
 target_include_directories(macveth PUBLIC
     include
     ${CLANG_INCLUDE_DIRS}
@@ -175,13 +189,11 @@ target_include_directories(macveth PUBLIC
 target_link_libraries(macveth
     PRIVATE
     macveth_lib
-    #-L/usr/lib/${LLVM_VER}/lib
     )
 
 # MACVETH Clang libraries dependencies
 # Clang libraries needed
 target_link_libraries(macveth PRIVATE
-    #-L${LLVM_DIR}/build/lib
     clangTooling
     clangBasic
     clangASTMatchers
@@ -220,7 +232,7 @@ target_link_libraries(macveth
 target_link_libraries(macveth
     PUBLIC
     pthread
-    z
+    #z
     tinfo
     dl
     stdc++fs # needed in some gcc versions
