@@ -122,11 +122,16 @@ endif()
 # This list must be in descendant order
 set(TESTED_LLVM_VERSIONS 11 10)
 foreach(V ${TESTED_LLVM_VERSIONS})
-    find_package(LLVM ${V} REQUIRED CONFIG)
-    if (DEFINED LLVM_FOUND)
+    find_package(LLVM ${V} CONFIG QUIET)
+    if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 1)
         break()
     endif()
 endforeach()
+# If not found...
+if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 0)
+    message(FATAL_ERROR "Please, install LLVM/Clang >= 10.x")
+endif()
+
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
@@ -178,7 +183,6 @@ add_executable(macveth
 #===============================================================================
 
 find_package(Threads REQUIRED)  # Threads library
-#find_package(z REQUIRED)  
 
 target_include_directories(macveth PUBLIC
     include
@@ -232,7 +236,6 @@ target_link_libraries(macveth
 target_link_libraries(macveth
     PUBLIC
     pthread
-    #z
     tinfo
     dl
     stdc++fs # needed in some gcc versions
