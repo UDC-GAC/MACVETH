@@ -26,7 +26,7 @@ jobs:
             - clang-format-10
             - clang-tidy-10
             - doxygen
-            - graphviz # for dot Doxygen
+            - graphviz # for dot package Doxygen
           sources:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-bionic-10
@@ -35,7 +35,7 @@ jobs:
       env: COMPILER='g++-8' LLVM_CONFIG='/usr/bin/llvm-config-10' COVERAGE='No' STATIC='No' DEBUG='No' TIDY='No'
 
 install:
-  # install into cache folder (build binaries+headers only, no sources and do NOT build there)
+  # Install into cache folder (build binaries + headers only, no sources and do NOT build there)
   - mkdir -p $HOME/.cache
 
 script:

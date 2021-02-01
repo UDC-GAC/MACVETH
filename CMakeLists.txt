@@ -1,5 +1,7 @@
 #===============================================================================
-# MACVETH
+#                                                                              #
+#                       MACVETH CMake Configuration                            #
+#                                                                              #
 #===============================================================================
 
 # Minimum CMake version required
@@ -18,20 +20,21 @@ set(MACVETH_VERSION_MAJOR 0)
 set(MACVETH_VERSION_MINOR 1)
 set(MACVETH_VERSION_PATCH 0)
 
-set(MACVETH_VERSION ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
-
-project(${PROJECT_NAME} VERSION 
+set(MACVETH_VERSION 
     ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
-message("Generating building files for ${PROJECT_NAME} v${MACVETH_VERSION}")
+
+project(${PROJECT_NAME} VERSION ${MACVETH_VERSION})
+message(STATUS 
+    "Generating building files for ${PROJECT_NAME} v${MACVETH_VERSION}")
 
 #===============================================================================
-# BUILD TYPE AND PROJECT FLAGS
+# TODO: BUILD TYPE, Compiler used and project flags
 # -DCMAKE_BUILD_TYPE="Debug|Release|RelWithDebInfo|MinSizeRel"
 #===============================================================================
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to 'Release' as none was specified.")
+  message(WARNING "Setting build type to 'Release' as none was specified.")
   set(CMAKE_BUILD_TYPE "Release" CACHE
       STRING "Choose the type of build." FORCE)
   # Set the possible values of build type for cmake-gui
@@ -69,25 +72,27 @@ if (DOXYGEN_FOUND AND GENERATE_DOC)
 
     # request to configure the file
     configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
-    message("Documentation: Doxygen build started")
+    message(STATUS "Documentation: Doxygen build started")
 
-    # note the option ALL which allows to build the docs together with the application
+    # note the option ALL which allows to build the docs together with 
+    # the application
     add_custom_target(macveth_doxygen ALL
         COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM)
 elseif(NOT DOXYGEN_FOUND)
-    message("Documentation: Doxygen need to be installed to generate the doxygen documentation")
+    message(WARNING 
+    "Documentation: Doxygen need to be installed to generate the doxygen documentation")
 endif()
 
 #===============================================================================
-# CODE COVERAGE CONFIGURATION
+# TODO: CODE COVERAGE CONFIGURATION
 #===============================================================================
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    message("Code coverage: enabled")
+    message(STATUS "Code coverage: enabled")
     # Add required flags (GCC & LLVM/Clang)
     target_compile_options(coverage_config INTERFACE
         -O0        # no optimization
@@ -108,6 +113,7 @@ option(BUILD_TESTING "Build the testing tree" OFF)
 # Only build tests if we are the top-level project
 # Allows this to be used by super projects with `add_subdirectory`
 if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
+    message(STATUS "Testing enabled")
     enable_testing()
     add_subdirectory(tests)
 endif()
@@ -120,14 +126,17 @@ endif()
 # Add path to LLVM modules
 
 # This list must be in descendant order
-set(TESTED_LLVM_VERSIONS 11 10)
-foreach(V ${TESTED_LLVM_VERSIONS})
-    find_package(LLVM ${V} CONFIG QUIET)
+set(TESTED_LLVM_VERSIONS 12 11 10)
+foreach(LLVM_COMPATIBLE_VERSION ${TESTED_LLVM_VERSIONS})
+    # CONFIG file (LLVMConfig.cmake), do not fail [QUIET] if not found: maybe
+    # we do not have 11.x but we have 10.x
+    find_package(LLVM ${LLVM_COMPATIBLE_VERSION} CONFIG QUIET)
     if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 1)
         break()
     endif()
 endforeach()
-# If not found...
+
+# LLVM not found in any verion
 if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 0)
     message(FATAL_ERROR "Please, install LLVM/Clang >= 10.x")
 endif()
@@ -139,7 +148,7 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 set(Clang_DIR ${LLVM_LIBRARY_DIR}/cmake/clang)
 find_package(Clang REQUIRED HINTS ${Clang_DIR} NO_DEFAULT_PATH)
 if (NOT DEFINED Clang_FOUND)
-    message(STATUS "Clang library not found. Check your paths.")
+    message(FATAL_ERROR "Clang library not found. Check your paths.")
 endif()
 message(STATUS "Using ClangConfig.cmake in: ${CLANG_CMAKE_DIR}")
 
@@ -184,9 +193,13 @@ add_executable(macveth
 
 find_package(Threads REQUIRED)  # Threads library
 
+# Configuration file
+configure_file(macveth.h.in lib/macveth.h)
+
 target_include_directories(macveth PUBLIC
     include
     ${CLANG_INCLUDE_DIRS}
+    ${PROJECT_BINARY_DIR}
     )
 
 # Custom libraries needed

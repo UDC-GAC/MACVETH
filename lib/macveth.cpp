@@ -29,6 +29,7 @@
  * SOFTWARE.
  */
 
+#include "lib/macveth.h"
 #include "include/MVFrontend.h"
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
@@ -205,7 +206,7 @@ static llvm::cl::opt<std::string>
     DebugFile("debug-file", cl::cat(MacvethCategory),
               llvm::cl::desc("Output file to print the debug information"));
 
-// Main program
+// Main program: entry point for compiler
 int main(int argc, const char **argv) {
   if (DEBUG) {
     llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
@@ -216,6 +217,22 @@ int main(int argc, const char **argv) {
                  "information."
               << std::endl;
     return 0;
+  }
+
+  // I do not like this code but I have not found any other way to do it
+  // properly... for some reason, LLVM does not like "-v" option.
+  for (int t = 0; t < argc; ++t) {
+    if ((strcmp(argv[1], "-v") == 0)) {
+      argv[t] = "--version";
+    }
+
+    // Note for dumbs as me: const char* != std::string
+    if ((strcmp(argv[t], "--version") == 0)) {
+      std::cout << "MACVETH v" << std::to_string(MACVETH_VERSION_MAJOR) << "."
+                << std::to_string(MACVETH_VERSION_MINOR) << "."
+                << std::to_string(MACVETH_VERSION_PATCH) << std::endl;
+      break;
+    }
   }
 
   // Parser for options common to all cmd-line Clang tools
