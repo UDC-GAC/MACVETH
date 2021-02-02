@@ -60,8 +60,9 @@ public:
       // case MVCPUInfo::MVISA::AVX512:
       //  G = AVX512BackEnd::getSingleton();
       //  break;
+    default:
+      MVErr("No backend chosen!");
     }
-    MVErr("No backend chosen!");
     return G;
   }
 };

@@ -16,13 +16,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # Project name
 set(PROJECT_NAME MACVETH)
+
+# Project version
 set(MACVETH_VERSION_MAJOR 0)
 set(MACVETH_VERSION_MINOR 1)
 set(MACVETH_VERSION_PATCH 0)
-
 set(MACVETH_VERSION 
     ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
 
+# Setup project
 project(${PROJECT_NAME} VERSION ${MACVETH_VERSION})
 message(STATUS 
     "Generating building files for ${PROJECT_NAME} v${MACVETH_VERSION}")
@@ -40,13 +42,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+else()
+    message("Setting build type to " ${CMAKE_BUILD_TYPE})
 endif()
 
-if (CMAKE_BUILD_TYPE EQUAL "Debug")
-    # [cmake] CMAKE_CXX_FLAGS_DEBUG is -g
-    # [cmake] CMAKE_CXX_FLAGS_RELEASE is -O3 -DNDEBUG
-    # [cmake] CMAKE_CXX_FLAGS_RELWITHDEBINFO is -O2 -g -DNDEBUG
-    # [cmake] CMAKE_CXX_FLAGS_MINSIZEREL is -Os -DNDEBUG
+if (CMAKE_BUILD_TYPE MATCHES Debug)
     # Compiler flags
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall\
         -fdiagnostics-color=always")
@@ -63,7 +63,7 @@ option(GENERATE_DOC "Generate documentation with Doxygen" OFF)
 # https://github.com/labapart/gattlib/issues/129#issuecomment-609394695
 find_package(Doxygen REQUIRED dot)
 
-if (DOXYGEN_FOUND AND GENERATE_DOC)
+if ((CMAKE_BUILD_TYPE MATCHES Debug) OR GENERATE_DOC)
     # set input and output files
     set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.cfg)
     set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
@@ -87,11 +87,13 @@ elseif(NOT DOXYGEN_FOUND)
 endif()
 
 #===============================================================================
-# TODO: CODE COVERAGE CONFIGURATION
+# CODE COVERAGE CONFIGURATION
+# -DCODE_COVERAGE:BOOL=TRUE to activate
 #===============================================================================
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
-if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+if((CMAKE_BUILD_TYPE MATCHES Debug) OR 
+    (CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
     message(STATUS "Code coverage: enabled")
     # Add required flags (GCC & LLVM/Clang)
     target_compile_options(coverage_config INTERFACE
@@ -108,11 +110,13 @@ endif()
 
 #===============================================================================
 # TESTING CONFIGURATION
+# -DBUILD_TESTING:BOOL=TRUE to activate
 #===============================================================================
 option(BUILD_TESTING "Build the testing tree" OFF)
 # Only build tests if we are the top-level project
 # Allows this to be used by super projects with `add_subdirectory`
-if (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
+if ((CMAKE_BUILD_TYPE MATCHES Debug) OR 
+    (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)))
     message(STATUS "Testing enabled")
     enable_testing()
     add_subdirectory(tests)
@@ -121,11 +125,10 @@ endif()
 
 #===============================================================================
 # LOAD CLANG/LLVM CONFIGURATION
-# For more: http://llvm.org/docs/CMake.html#embedding-llvm-in-your-project
+# For more info: http://llvm.org/docs/CMake.html#embedding-llvm-in-your-project
 #===============================================================================
-# Add path to LLVM modules
 
-# This list must be in descendant order
+# This list must be in descendant order. This is just a hack...
 set(TESTED_LLVM_VERSIONS 12 11 10)
 foreach(LLVM_COMPATIBLE_VERSION ${TESTED_LLVM_VERSIONS})
     # CONFIG file (LLVMConfig.cmake), do not fail [QUIET] if not found: maybe
@@ -152,6 +155,7 @@ if (NOT DEFINED Clang_FOUND)
 endif()
 message(STATUS "Using ClangConfig.cmake in: ${CLANG_CMAKE_DIR}")
 
+# Setting LLVM/Clang paths to CMake's
 set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
   "${LLVM_CMAKE_DIR}"
@@ -196,6 +200,7 @@ find_package(Threads REQUIRED)  # Threads library
 # Configuration file
 configure_file(macveth.h.in lib/macveth.h)
 
+# Include directories
 target_include_directories(macveth PUBLIC
     include
     ${CLANG_INCLUDE_DIRS}
@@ -206,6 +211,7 @@ target_include_directories(macveth PUBLIC
 target_link_libraries(macveth
     PRIVATE
     macveth_lib
+    coverage_config # need for code coverage. Only built if -DCODE_COVERAGE
     )
 
 # MACVETH Clang libraries dependencies

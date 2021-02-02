@@ -19,7 +19,7 @@ from utils.utilities import pr_col
 from utils.utilities import colors as c
 
 # Some path declarations
-build_path = "../build"
+build_path = "../../build"
 unittest_path = "unittest/"
 fulltest_path = "fulltest/"
 mustpass_path = "mustpass/"
@@ -87,7 +87,7 @@ def compile_macveth():
     out = os.system("make -j8 -C %s " % build_path)
     if (out != 0):
         print("Something went wrong compiling MACVETH! Exiting...")
-        exit(0)
+        exit(1)
     return True
 
 
@@ -186,7 +186,8 @@ def unittest_suite():
 
 def exectest_suite(path_suite, kword="test", compiler_flags=" -mavx2 -mfma "):
     ########################
-    # Fulltests
+    #       Fulltests      #
+    ########################
     failed_tests = []
     passed_tests = []
 

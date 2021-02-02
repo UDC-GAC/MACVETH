@@ -1,13 +1,3 @@
-"""
- This is the default license template.
- 
- File: utilities.py
- Author: markoshorro
- Copyright (c) 2020 markoshorro
- 
- To edit this license information: Press Ctrl+Shift+P and press 'Create new License Template...'.
-"""
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # File              : utilities.py

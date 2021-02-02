@@ -4,7 +4,7 @@ Filename: utils/intrinsics_translation/spinner.py
 Created Date: Wednesday, October 21st 2020, 1:03:52 pm
 Author: Marcos Horro
 
-Copyright (c) 2020 Colorado State University
+Copyright (c) 2021
 '''
 
 import time

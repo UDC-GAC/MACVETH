@@ -26,13 +26,14 @@ jobs:
             - clang-format-10
             - clang-tidy-10
             - doxygen
+            - lcov
             - graphviz # for dot package Doxygen
           sources:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-bionic-10
             - sourceline: "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
               key_url: "https://apt.llvm.org/llvm-snapshot.gpg.key"
-      env: COMPILER='g++-8' LLVM_CONFIG='/usr/bin/llvm-config-10' COVERAGE='No' STATIC='No' DEBUG='No' TIDY='No'
+      env: COMPILER='g++-8' COVERAGE='No' STATIC='No' DEBUG='No' TIDY='No'
 
 install:
   # Install into cache folder (build binaries + headers only, no sources and do NOT build there)
@@ -41,8 +42,7 @@ install:
 script:
   # Give permissions to script
   - sudo chmod +x build_tests.sh
-  # Building project
-  - sudo -E env "PATH=$PATH" ./build_tests.sh building
+  # Building project and perform testing
   - sudo -E env "PATH=$PATH" ./build_tests.sh testing
 after_success:
   # Create lcov report: capture coverage info
