@@ -498,8 +498,7 @@ static bool formatMACVETH(StringRef FileName) {
   ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> CodeOrErr =
       MemoryBuffer::getFileAsStream(FileName);
   if (std::error_code EC = CodeOrErr.getError()) {
-    MVInfo("Formatting file failed: " + EC.message());
-    return true;
+    MVErr("Formatting file failed: " + EC.message() + " for file: " + FileName);
   }
 
   std::unique_ptr<llvm::MemoryBuffer> Code = std::move(CodeOrErr.get());
