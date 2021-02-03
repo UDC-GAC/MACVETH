@@ -91,6 +91,12 @@ def execute_test(path_suite, test, compiler_flags=" -mavx2 -mfma "):
     Args:
         test (str): Name of the test without the extension
     """
+
+    if (not os.path.isdir(macveth_path)):
+        os.mkdir(macveth_path)
+    if (not os.path.isdir(tmp_path)):
+        os.mkdir(tmp_path)
+
     macveth_t = macveth_path + test + comp_sufix
     org_t = path_suite + test + file_t
 
