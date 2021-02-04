@@ -55,6 +55,7 @@ after_success:
   # Uploading to CodeCov
   # '-f' specifies file(s) to use and disables manual coverage gathering and
   # file search which has already been done above
+  # URL: https://codecov.io/gh/markoshorro/MACVETH/branch/develop
   - bash <(curl -s https://codecov.io/bash) -t 43267e87-5aeb-41fd-b0c9-d7c3d2e2237a -f coverage.info || echo "Codecov didnot collect coverage reports"
 
 notifications:

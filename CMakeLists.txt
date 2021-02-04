@@ -128,6 +128,11 @@ endif()
 # For more info: http://llvm.org/docs/CMake.html#embedding-llvm-in-your-project
 #===============================================================================
 
+# IMPORTANT NOTE:
+# If you have installed LLVM locally using CMake, then you need to pass
+# variable -DLLVM_DIR=<path> to the cmake building command, where <path> is the
+# path returned by your llvm-config --cmakedir
+
 # This list must be in descendant order. This is just a hack...
 set(TESTED_LLVM_VERSIONS 12 11 10)
 foreach(LLVM_COMPATIBLE_VERSION ${TESTED_LLVM_VERSIONS})
@@ -139,7 +144,7 @@ foreach(LLVM_COMPATIBLE_VERSION ${TESTED_LLVM_VERSIONS})
     endif()
 endforeach()
 
-# LLVM not found in any verion
+# LLVM not found in any version.
 if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 0)
     message(FATAL_ERROR "Please, install LLVM/Clang >= 10.x")
 endif()
