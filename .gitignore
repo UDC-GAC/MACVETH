@@ -116,3 +116,9 @@ __pycache__/
 # Latex
 *.fls
 *.fdb*
+
+# Code coverage
+*.info
+
+# vscode
+*.code-workspace
