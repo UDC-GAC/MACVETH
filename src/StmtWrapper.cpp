@@ -188,14 +188,14 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   auto IncVarPos = ForLoop->getInc();
   // Getting char sourcerange of the increment
   // We always expect increments like [++]var[++]; so this always works
-  // Loop.SRVarInc = clang::CharSourceRange::getCharRange(
-  //    IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
   Loop.SRVarInc =
       clang::CharSourceRange::getCharRange(IncVarPos->getSourceRange());
-  // For some reason, getCharRange
   Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
-  if (dyn_cast<UnaryOperator>(ForLoop->getInc())) {
+  if (auto IncExpr = dyn_cast<UnaryOperator>(ForLoop->getInc())) {
     Loop.Step = 1;
+    if (IncExpr->isPostfix()) {
+      Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
+    }
   } else if (auto CAO = dyn_cast<CompoundAssignOperator>(ForLoop->getInc())) {
     Loop.Step = Utils::getIntFromExpr(CAO->getRHS(), Utils::getCtx());
     if (CAO->getRHS()->getBeginLoc().isMacroID()) {
