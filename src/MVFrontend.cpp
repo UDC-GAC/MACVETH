@@ -93,24 +93,27 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
     Utils::printDebug("MVConsumers", "Rewriting loop = " + Loop.Dim);
 
     // Rewrite headers
-    Rewrite->ReplaceText(Loop.SRVarInit, Loop.Dim + " = " +
-                                             ((Loop.InitVal != -1)
-                                                  ? std::to_string(Loop.InitVal)
-                                                  : Loop.StrInitVal));
-
+    Rewrite->ReplaceText(Loop.SRVarInc,
+                         Loop.Dim + " += " + std::to_string(Loop.StepUnrolled));
     // IMPORTANT: need to put ";" at the end since the range is calculated
     // as the -1 offset of the location of the increment. This is done like
     // this because the SourceLocation of the UpperBound could be a macro
     // variable located in another place. This happens, for instance, with
     // the loop bounds in PolyBench suite
     if (!Loop.FullyUnrolled) {
+      auto UpperBound = (Loop.UpperBound != -1)
+                            ? std::to_string(Loop.UpperBound)
+                            : Loop.StrUpperBound;
       Rewrite->ReplaceText(Loop.SRVarCond,
                            "(" + Loop.Dim + " + " +
                                std::to_string(Loop.StepUnrolled) +
-                               ") <= " + Loop.StrUpperBound + ";");
+                               ") <= " + UpperBound + ";");
     }
-    Rewrite->ReplaceText(Loop.SRVarInc,
-                         Loop.Dim + " += " + std::to_string(Loop.StepUnrolled));
+    Rewrite->ReplaceText(Loop.SRVarInit, Loop.Dim + " = " +
+                                             ((Loop.InitVal != -1)
+                                                  ? std::to_string(Loop.InitVal)
+                                                  : Loop.StrInitVal));
+
     if (Loop.Declared) {
       auto L = StmtWrapper::LoopInfo::DimDeclared;
       if ((!(std::find(L.begin(), L.end(), Loop.Dim) != L.end())) &&
@@ -122,6 +125,7 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
         DimsDeclared.push_back(Loop.Dim);
       }
     }
+
     // If it has been fully unrolled no need to write the epilog of it
     if (!Loop.FullyUnrolled) {
       auto Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
@@ -144,7 +148,10 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
       commentReplacedStmts(S->getListStmt());
       continue;
     }
-    Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), "// ", true, true);
+    // In case of being multiline line block does not work properly
+    Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), "/* ", true, true);
+    Rewrite.InsertTextAfterToken(
+        S->getClangStmt()->getEndLoc().getLocWithOffset(1), "*/");
   }
 }
 

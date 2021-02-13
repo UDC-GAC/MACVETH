@@ -1307,7 +1307,7 @@ std::vector<std::string> AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
     case clang::BO_Div:
       NeutralValue = "1";
       break;
-      default:
+    default:
       break;
       //  MVErr("This should never happen: operation is " +
       //  V.getMVOp().toString());

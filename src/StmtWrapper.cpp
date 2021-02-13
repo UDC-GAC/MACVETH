@@ -133,7 +133,6 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   const DeclStmt *NameValInit = dyn_cast<DeclStmt>(ForLoop->getInit());
   const BinaryOperator *ValInit;
   const VarDecl *V = nullptr;
-  // FIXME:
   if (NameValInit != nullptr) {
     // In cases like: int i = <expr>; i.e. the declaration of the variable
     // itself
@@ -183,19 +182,37 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
       }
     }
   }
+  assert(UpperBoundExpr != nullptr && "UpperBoundExpr can not be null");
 
-  // Get step value
+  // FIXME: Get step value
   auto IncVarPos = ForLoop->getInc();
+  // Getting char sourcerange of the increment
+  // We always expect increments like [++]var[++]; so this always works
+  // Loop.SRVarInc = clang::CharSourceRange::getCharRange(
+  //    IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
+  Loop.SRVarInc =
+      clang::CharSourceRange::getCharRange(IncVarPos->getSourceRange());
+  // For some reason, getCharRange
+  Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
   if (dyn_cast<UnaryOperator>(ForLoop->getInc())) {
     Loop.Step = 1;
   } else if (auto CAO = dyn_cast<CompoundAssignOperator>(ForLoop->getInc())) {
     Loop.Step = Utils::getIntFromExpr(CAO->getRHS(), Utils::getCtx());
+    if (CAO->getRHS()->getBeginLoc().isMacroID()) {
+      Loop.SRVarInc = clang::CharSourceRange::getTokenRange(
+          IncVarPos->getBeginLoc(),
+          Utils::getSourceMgr()
+              ->getImmediateExpansionRange(CAO->getRHS()->getEndLoc())
+              .getEnd());
+
+    } else {
+      Loop.SRVarInc = clang::CharSourceRange::getTokenRange(
+          IncVarPos->getBeginLoc(), CAO->getRHS()->getEndLoc());
+    }
+  } else {
+    MVErr("Step for dimension " + Loop.Dim + " is not admitted. Quitting...");
   }
 
-  // Getting char sourcerange of the increment
-  // We always expect increments like [++]var[++]; so this always works
-  Loop.SRVarInc = clang::CharSourceRange::getTokenRange(
-      IncVarPos->getBeginLoc(), IncVarPos->getEndLoc());
   // IMPORTANT: why this is calculated as this?
   // Because the SourceLocation of the upperbound may be in another place; for
   // instance if the preprocessor makes a substitution of a macro defined. For

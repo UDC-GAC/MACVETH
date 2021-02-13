@@ -115,7 +115,8 @@ struct ScopHandler {
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
     std::vector<ScopLoc *> SList;
     for (auto SL : List) {
-      if (SL->FID != SM.getFileID(fd->getBeginLoc())) {
+      auto FunctionFileID = SM.getFileID(fd->getLocation());
+      if (SL->FID != FunctionFileID) {
         continue;
       }
       unsigned int StartL = SM.getFileOffset(
