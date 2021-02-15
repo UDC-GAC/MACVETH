@@ -11,9 +11,6 @@ import subprocess
 # Some path declarations
 build_path = "../../build/"
 macveth_bin = f"{build_path}macveth"
-unittest_path = "unittest/"
-fulltest_path = "fulltest/"
-mustpass_path = "mustpass/"
 macveth_path = "macveth_dir/"
 fail_path = "failed_tests/"
 tmp_path = "tmpfiles/"

@@ -184,10 +184,11 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   }
   assert(UpperBoundExpr != nullptr && "UpperBoundExpr can not be null");
 
-  // FIXME: Get step value
+  // Locations in Clang are quite messy and tedious in my opinion...
   auto IncVarPos = ForLoop->getInc();
   // Getting char sourcerange of the increment
-  // We always expect increments like [++]var[++]; so this always works
+  // We always expect increments like [++]var[++]; so this always works. Even
+  // though you need an offset, depending whether it is prefix or postfix
   Loop.SRVarInc =
       clang::CharSourceRange::getCharRange(IncVarPos->getSourceRange());
   Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));

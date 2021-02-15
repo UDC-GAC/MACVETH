@@ -1068,10 +1068,10 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vset(VectorIR::VOperand V) {
     for (size_t n = 0; n < V.VSize; n++) {
       Args.push_back((V.UOP[n] != nullptr) ? V.UOP[n]->getValue() : "0.0");
     }
-  }
-  for (int t = V.VSize;
-       t < (int)(V.Width / MVDataType::VDataTypeWidthBits[V.DType]); ++t) {
-    Args.push_back("0");
+    for (int t = V.VSize;
+         t < (int)(V.Width / MVDataType::VDataTypeWidthBits[V.DType]); ++t) {
+      Args.push_back("0");
+    }
   }
   Args.reverse();
 
