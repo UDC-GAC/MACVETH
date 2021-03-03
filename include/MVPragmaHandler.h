@@ -32,6 +32,7 @@
 #ifndef MACVETH_PRAGMAHANDLER_H
 #define MACVETH_PRAGMAHANDLER_H
 
+#include "include/MVAssert.h"
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Parse/Parser.h"
@@ -178,6 +179,9 @@ static IdentifierInfo *getValue(Token &token) {
   if (token.isNot(tok::identifier)) {
     return nullptr;
   }
+  if (token.getKind() == tok::eod) {
+    return nullptr;
+  }
   return token.getIdentifierInfo();
 }
 
@@ -215,6 +219,9 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
       // assert(false && "Bad format! Need an integer for the unrolling
       // factor");
       auto IINext = getValue(Tok);
+      if (IINext == nullptr) {
+        MVErr("Pragma bad formatting");
+      }
       if (IINext->isStr("full")) {
         PA.FullUnroll[II->getName().str()] = true;
         PA.UnrollDim.push_back(
