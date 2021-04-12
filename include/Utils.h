@@ -61,10 +61,6 @@ public:
   template <typename T>
   static bool contains(std::list<T> listOfElements, T element);
 
-  /// Check if list contains an element given
-  // template <typename T>
-  // static bool contains(std::list<T> &listOfElements, const T &element);
-
   /// Converting clang expressions to strings
   static std::string getStringFromStmt(const Stmt *S);
 
@@ -72,7 +68,7 @@ public:
   static std::string getStringFromExpr(const Expr *E);
 
   /// Given an Expr, get its integer value
-  static int64_t getIntFromExpr(const Expr *E, const ASTContext *C);
+  static int64_t getIntFromExpr(const Expr *E);
 
   /// Check whether expression is or not numeric
   static bool isNumericValue(Expr *E);

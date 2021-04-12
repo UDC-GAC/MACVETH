@@ -208,6 +208,7 @@ struct MVOp {
     return Utils::toUppercase(getStrFromMVCode(this->MVOpC)) + Suffix;
   }
 
+  /// Get the namespace of the expression
   std::string getPrefixFromStr(std::string S) {
     std::string P = "";
     std::string NameSpace = "::";

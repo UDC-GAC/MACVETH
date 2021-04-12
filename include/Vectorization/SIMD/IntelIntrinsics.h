@@ -48,6 +48,7 @@ public:
   static inline std::map<MVDataType::VDataType, std::string> MapType = {
       {MVDataType::VDataType::FLOAT, "ps"},
       {MVDataType::VDataType::SFLOAT, "ss"},
+      {MVDataType::VDataType::HALF_FLOAT, "pi"},
       {MVDataType::VDataType::DOUBLE, "pd"},
       {MVDataType::VDataType::SDOUBLE, "sd"},
       {MVDataType::VDataType::INT8, "epi8"},

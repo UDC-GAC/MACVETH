@@ -58,13 +58,16 @@ public:
   // Operand operations
 
   /// Pack memory operands
-  virtual SIMDInstListType vpack(VectorIR::VOperand V) override;
+  virtual SIMDInstListType vload(VectorIR::VOperand V) override;
 
   /// Broadcast values
   virtual SIMDInstListType vbcast(VectorIR::VOperand V) override;
 
   /// Gather data from memory
-  virtual SIMDInstListType vgather(VectorIR::VOperand V) override;
+  virtual SIMDInstListType vpack(VectorIR::VOperand V) override;
+
+  /// Emit gather function
+  SIMDInstListType vgather(VectorIR::VOperand V);
 
   /// Set values to registers
   virtual SIMDInstListType vset(VectorIR::VOperand V) override;
@@ -109,6 +112,10 @@ public:
 
   /// One of the optimizations included in AVX2
   SIMDBackEnd::SIMDInstListType fuseAddSubMult(SIMDBackEnd::SIMDInstListType I);
+
+  SIMDBackEnd::SIMDInstListType
+  sameArraySingleReductions(SIMDBackEnd::SIMDInstListType TIL,
+                            MVSourceLocation::Position Pos);
 
   /// Horizontal single reduction approach
   SIMDBackEnd::SIMDInstListType horizontalSingleReduction(

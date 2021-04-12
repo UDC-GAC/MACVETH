@@ -182,13 +182,13 @@ public:
   // Operands instructions
 
   /// Generate pack instructions, e.g. load/loadu
-  virtual SIMDInstListType vpack(VectorIR::VOperand V) = 0;
+  virtual SIMDInstListType vload(VectorIR::VOperand V) = 0;
   /// Generate broadcast instructions. Broadcasts are used to replicate known
   /// values (i.e. values in registers, not memory addresses)
   virtual SIMDInstListType vbcast(VectorIR::VOperand V) = 0;
   /// Generate gather instructions. Gathers are meant to retrieve data from the
   /// memory using indices
-  virtual SIMDInstListType vgather(VectorIR::VOperand V) = 0;
+  virtual SIMDInstListType vpack(VectorIR::VOperand V) = 0;
   /// Generate set instrucctions. Set is meant for literal values
   virtual SIMDInstListType vset(VectorIR::VOperand V) = 0;
 

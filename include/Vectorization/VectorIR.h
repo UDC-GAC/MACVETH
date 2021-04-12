@@ -123,6 +123,10 @@ public:
     std::vector<long> Idx;
     /// Mask to avoid elements if necessary
     unsigned int Mask = 0x0;
+    /// High bits are loaded
+    bool HighBits = false;
+    /// Low bits are loaded
+    bool LowBits = false;
     /// UOPS are all the same
     bool EqualVal = true;
     /// Memory addres is unaligned
@@ -176,6 +180,37 @@ public:
         }
       }
       return "";
+    }
+
+    /// Copy constructor
+    VOperand(const VOperand &V) {
+      this->Name = V.Name;
+      this->VSize = V.VSize;
+      this->Size = V.Size;
+      if (V.UOP != nullptr) {
+        this->UOP = (Node **)malloc(sizeof(Node *) * V.VSize);
+        for (int T = 0; T < V.VSize; ++T) {
+          this->UOP[T] = V.UOP[T];
+        }
+      }
+      this->DType = V.DType;
+      this->Width = V.Width;
+      this->Idx = V.Idx;
+      this->Mask = V.Mask;
+      this->EqualVal = V.EqualVal;
+      this->Unaligned = V.Unaligned;
+      this->Contiguous = V.Contiguous;
+      this->IsPartial = V.IsPartial;
+      this->HighBits = V.HighBits;
+      this->LowBits = V.LowBits;
+      this->SameVector = V.SameVector;
+      this->OutOfCacheLine = V.OutOfCacheLine;
+      this->IsTmpResult = V.IsTmpResult;
+      this->IsLoad = V.IsLoad;
+      this->MemOp = V.MemOp;
+      this->IsStore = V.IsStore;
+      this->Order = V.Order;
+      this->Offset = V.Offset;
     }
 
     /// Printing the vector operand

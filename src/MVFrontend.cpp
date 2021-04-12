@@ -161,8 +161,8 @@ bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
   for (auto S : SL) {
     if (S->isLoop()) {
       if (renderSIMDInstBeforePlace(SI, S->getListStmt())) {
-        Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                           SI.render() + ";\n");
+        Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
+                                 SI.render() + ";\n");
       }
     } else {
       for (auto T : S->getTacList()) {
@@ -170,8 +170,8 @@ bool MVFuncVisitor::renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
           if (S->isInLoop()) {
             return true;
           }
-          Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                             SI.render() + ";\n");
+          Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
+                                   SI.render() + ";\n");
           return false;
         }
       }
@@ -215,8 +215,8 @@ void MVFuncVisitor::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
     } else {
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
-          Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                             SI.render() + ";\n", true, true);
+          Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
+                                   SI.render() + ";\n");
           return;
         }
       }
@@ -366,12 +366,14 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       auto SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
       if (SInfo.isThereAnyVectorization()) {
+        // FIXME
+        // Comment statements
+        commentReplacedStmts(SL);
 
-        // Render the registers we are going to use, declarations
-        if (IsLastScop) {
-          for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-            Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
-          }
+        // Render
+        SInfo.SIMDList.reverse();
+        for (auto InsSIMD : SInfo.SIMDList) {
+          renderSIMDInstInPlace(InsSIMD, SL);
         }
 
         // Render initializations if needed for special cases such as
@@ -380,9 +382,11 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
           renderSIMDInstBeforePlace(InitRedux, SL);
         }
 
-        // Render
-        for (auto InsSIMD : SInfo.SIMDList) {
-          renderSIMDInstInPlace(InsSIMD, SL);
+        // Render the registers we are going to use, declarations
+        if (IsLastScop) {
+          for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+            Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
+          }
         }
 
         // Rewrite loops
@@ -394,9 +398,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
           addHeaders(SIMDGen->getHeadersNeeded(), Scop->FID);
           MVOptions::Headers = false;
         }
-
-        // Comment statements
-        commentReplacedStmts(SL);
 
         // TODO: generate file
         // SInfo.generateReport();

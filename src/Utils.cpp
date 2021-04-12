@@ -68,10 +68,43 @@ void Utils::setOpts(SourceManager *SO, LangOptions *LO, ASTContext *C) {
 }
 
 //-------------------------------------------------------------
-int64_t Utils::getIntFromExpr(const Expr *E, const ASTContext *C) {
+int64_t evaluateBinaryOperator(const BinaryOperator *OP) {
+  auto LHS = Utils::getIntFromExpr(OP->getLHS());
+  auto RHS = Utils::getIntFromExpr(OP->getRHS());
+  if ((LHS == -1) || (RHS == -1)) {
+    return -1;
+  }
+  switch (OP->getOpcode()) {
+  case BinaryOperator::Opcode::BO_Add:
+    return LHS + RHS;
+  case BinaryOperator::Opcode::BO_Sub:
+    return LHS - RHS;
+  case BinaryOperator::Opcode::BO_Mul:
+    return LHS * RHS;
+  default:
+    return LHS + RHS;
+  }
+}
+//-------------------------------------------------------------
+int64_t Utils::getIntFromExpr(const Expr *E) {
+  auto C = Utils::getCtx();
   clang::Expr::EvalResult R;
+  if (E == nullptr) {
+    return -1;
+  }
+  // First try general case
   if (E->EvaluateAsInt(R, *C)) {
     return R.Val.getInt().getExtValue();
+  }
+  // Reference to a variable already declared
+  if (auto D = dyn_cast<DeclRefExpr>(E->IgnoreImpCasts())) {
+    if (auto VD = dyn_cast<VarDecl>(D->getDecl())) {
+      return getIntFromExpr(VD->getInit());
+    }
+  }
+  // Reference to a variable already declared
+  if (auto BO = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
+    return evaluateBinaryOperator(BO);
   }
   return -1;
 }

@@ -218,10 +218,10 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
 
   // Load contiguous from memory
   if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
-    TIL = vpack(V);
+    TIL = vload(V);
     // Load from memory but not contiguous
   } else if ((!EqualVal) && (ScatterMem) && (V.SameVector) && (!NullIndex)) {
-    TIL = vgather(V);
+    TIL = vpack(V);
     // Replicate value
   } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {
     TIL = vbcast(V);

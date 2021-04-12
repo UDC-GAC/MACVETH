@@ -139,7 +139,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     clang::Expr::EvalResult R;
     V = dyn_cast<VarDecl>(NameValInit->getSingleDecl());
     if (V != nullptr) {
-      Loop.InitVal = Utils::getIntFromExpr(V->getInit(), Utils::getCtx());
+      Loop.InitVal = Utils::getIntFromExpr(V->getInit());
       Loop.StrInitVal = Utils::getStringFromStmt(V->getInit());
     } else {
       Loop.StrInitVal = Utils::getStringFromStmt(NameValInit);
@@ -149,7 +149,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     // In case the declaration is sth like: i = <expr>; i.e. i = t, i = 0, etc.
     ValInit = dyn_cast<BinaryOperator>(ForLoop->getInit());
     if (ValInit != nullptr) {
-      Loop.InitVal = Utils::getIntFromExpr(ValInit->getRHS(), Utils::getCtx());
+      Loop.InitVal = Utils::getIntFromExpr(ValInit->getRHS());
       if (Loop.InitVal == -1) {
         Loop.StrInitVal = Utils::getStringFromStmt(ValInit->getRHS());
       }
@@ -172,7 +172,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   const Expr *UpperBoundExpr = Cond->getRHS();
   if (UpperBoundExpr != nullptr) {
     Loop.StrUpperBound = Utils::getStringFromExpr(UpperBoundExpr);
-    Loop.UpperBound = Utils::getIntFromExpr(UpperBoundExpr, Utils::getCtx());
+    Loop.UpperBound = Utils::getIntFromExpr(UpperBoundExpr);
     if (Loop.UpperBound != -1) {
       if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_LE) {
         Loop.UpperBound++;
@@ -198,7 +198,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
       Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
     }
   } else if (auto CAO = dyn_cast<CompoundAssignOperator>(ForLoop->getInc())) {
-    Loop.Step = Utils::getIntFromExpr(CAO->getRHS(), Utils::getCtx());
+    Loop.Step = Utils::getIntFromExpr(CAO->getRHS());
     if (CAO->getRHS()->getBeginLoc().isMacroID()) {
       Loop.SRVarInc = clang::CharSourceRange::getTokenRange(
           IncVarPos->getBeginLoc(),

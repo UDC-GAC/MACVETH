@@ -48,6 +48,8 @@ public:
     SDOUBLE,
     /// This is the direct translation to "ps"
     FLOAT,
+    ///
+    HALF_FLOAT,
     /// This is the direct translation to "ss"
     SFLOAT,
     /// Unsigned 8-bit integer

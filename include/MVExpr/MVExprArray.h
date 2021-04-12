@@ -3,12 +3,13 @@
  * Author				 : Marcos Horro
  * Date					 : Fri 09 Oct 2020 04:53 +02:00
  *
- * Last Modified : Tue 20 Oct 2020 12:35 +02:00
+ * Last Modified : Thu 04 Mar 2021 12:35 +02:00
  * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
  *
  * MIT License
  *
- * Copyright (c) 2020 Colorado State University
+ * Copyright (c) 2020-2021 Colorado State University
+ * Copyright (c) 2020-2021 University of A Coruña
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +50,8 @@ public:
     MVAffineIndex *LHS = nullptr;
     /// Right part of the expression, if it has
     MVAffineIndex *RHS = nullptr;
-    /// Value of the expression (we do not care of its type, we handle strings)
+    /// FIXME: Value of the expression (we do not care of its type, we handle
+    /// strings)
     std::string Val = "";
     /// Unrolled
     std::map<std::string, bool> Unrolled;
@@ -176,19 +178,17 @@ public:
 
     /// Main constructor
     MVAffineIndex(const Expr *E) {
+
       if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
           dyn_cast<IntegerLiteral>(E->IgnoreImpCasts()) ||
           dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
         // This is useful for macros
         auto ComputedValue = dyn_cast<IntegerLiteral>(E->IgnoreImpCasts());
         if (ComputedValue) {
-          this->Val = std::to_string(
-              Utils::getIntFromExpr(ComputedValue, Utils::getCtx()));
+          this->Val = std::to_string(Utils::getIntFromExpr(ComputedValue));
         } else {
           this->Val = Utils::getStringFromExpr(E);
         }
-        this->LHS = nullptr;
-        this->RHS = nullptr;
       }
       if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
         this->LHS = new MVAffineIndex(Op->getLHS());
@@ -198,6 +198,30 @@ public:
         this->OP = Op->getOpcode();
         this->Val = "";
         this->simplifyIndex();
+      }
+      if (auto P = dyn_cast<ParenExpr>(E->IgnoreImpCasts())) {
+        auto PE = P->getSubExpr();
+        // FIXME: THIS SMELLS A LOT
+        if (dyn_cast<DeclRefExpr>(PE->IgnoreImpCasts()) ||
+            dyn_cast<IntegerLiteral>(PE->IgnoreImpCasts()) ||
+            dyn_cast<UnaryOperator>(PE->IgnoreImpCasts())) {
+          // This is useful for macros
+          auto ComputedValue = dyn_cast<IntegerLiteral>(PE->IgnoreImpCasts());
+          if (ComputedValue) {
+            this->Val = std::to_string(Utils::getIntFromExpr(ComputedValue));
+          } else {
+            this->Val = Utils::getStringFromExpr(PE);
+          }
+        }
+        if (auto Op = dyn_cast<BinaryOperator>(PE->IgnoreImpCasts())) {
+          this->LHS = new MVAffineIndex(Op->getLHS());
+          this->LHS->simplifyIndex();
+          this->RHS = new MVAffineIndex(Op->getRHS());
+          this->RHS->simplifyIndex();
+          this->OP = Op->getOpcode();
+          this->Val = "";
+          this->simplifyIndex();
+        }
       }
     }
 
@@ -242,8 +266,13 @@ public:
     }
 
     // This is awful, but should do the job. Recursive functions as a way of
-    // life lol xd
+    // life lol xd.
+    // PS 1: Author of this code should be in jail... oh, wait.
+    // PS 2: How taught me how to program? He/she did it wrong
     int operator-(const MVAffineIndex &M) {
+      if (&M == nullptr) {
+        return INT_MIN;
+      }
       if (!this->isTerminal()) {
         if (M.OP != this->OP) {
           return INT_MIN;

@@ -1,10 +1,3 @@
-/**
- * File              : MVExprArray.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Xov 12 Dec 2019 10:26:12 MST
- * Last Modified Date: Xov 12 Dec 2019 13:47:16 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
 #include "include/MVExpr/MVExprArray.h"
 
 //------------------------------------------------
@@ -29,12 +22,11 @@ bool checkIfIndexIsAffine(const Expr *E) {
   if (dyn_cast<CallExpr>(E->IgnoreImpCasts())) {
     return false;
   }
-  if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts())) {
+  if ((dyn_cast<DeclRefExpr>(E->IgnoreImpCasts())) ||
+      (dyn_cast<IntegerLiteral>(E->IgnoreImpCasts()))) {
     return true;
   }
-  if (dyn_cast<IntegerLiteral>(E->IgnoreImpCasts())) {
-    return true;
-  }
+
   if (auto Op = dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
     return (((Op->getOpcode() == UnaryOperator::Opcode::UO_Minus) ||
              (Op->getOpcode() == UnaryOperator::Opcode::UO_Plus)));
@@ -42,6 +34,9 @@ bool checkIfIndexIsAffine(const Expr *E) {
   if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
     return checkIfIndexIsAffine(Op->getLHS()) &&
            checkIfIndexIsAffine(Op->getRHS());
+  }
+  if (auto P = dyn_cast<ParenExpr>(E)) {
+    return checkIfIndexIsAffine(P->getSubExpr());
   }
   return false;
 }

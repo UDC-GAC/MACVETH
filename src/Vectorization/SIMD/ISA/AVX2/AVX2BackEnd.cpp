@@ -169,13 +169,36 @@ std::string AVX2BackEnd::declareAuxArray(MVDataType::VDataType DT) {
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
+AVX2BackEnd::sameArraySingleReductions(SIMDBackEnd::SIMDInstListType TIL,
+                                       MVSourceLocation::Position Pos) {
+  SIMDBackEnd::SIMDInstListType IL;
+  // std::vector<SIMDBackEnd::SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
+  // auto Type = VIL[0].DT;
+  // int NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
+  // auto RegType = getRegisterType(Type, MVDataType::VWidth::W128);
+  // std::map<std::string, int> NReductions;
+  // for (int t = 0; t < NElems; ++t) {
+  //   NReductions[VIL[t].Result] = VIL[t].
+  // }
+  // if (Type == MVDataType::VDataType::DOUBLE) {
+  // } else if (Type == MVDataType::VDataType::FLOAT) {
+  // } else {
+  //   MVErr("Case");
+  // }
+  return IL;
+}
+
+// ---------------------------------------------
+SIMDBackEnd::SIMDInstListType
 AVX2BackEnd::horizontalSingleReduction(SIMDBackEnd::SIMDInstListType TIL,
                                        MVSourceLocation::Position Pos) {
+  std::vector<SIMDBackEnd::SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
+  int NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
+  // It could be many reductions within same array:
+  for (int t = 0; t < NElems; ++t) {
+  }
   // Horizontal operations
   SIMDBackEnd::SIMDInstListType IL;
-  std::vector<SIMDBackEnd::SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
-
-  int NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
   auto OpRedux = VIL[0].MVOP;
   auto OpName = VIL[0].MVOP.toString();
   auto Type = VIL[0].DT;
@@ -560,8 +583,7 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
     return FusedRedux;
   }
 
-  // auto OpReduxType = LC.front().MVOP.T;
-  auto OpRedux = LC.front().MVOP;
+  auto OpRedux = LC.back().MVOP;
   auto InitPos = MVSourceLocation::Position::PREORDER;
   auto ReduxPos = MVSourceLocation::Position::POSORDER;
 
@@ -904,12 +926,12 @@ std::string AVX2BackEnd::getMask(unsigned int MaskVect, int NElems,
 }
 
 // ---------------------------------------------
-SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
+SIMDBackEnd::SIMDInstListType AVX2BackEnd::vload(VectorIR::VOperand V) {
   SIMDBackEnd::SIMDInstListType IL;
   // Suffix: we are going to assume that all the load are unaligned.
-  std::string SuffS = (V.IsPartial) ? "" : "u";
+  std::string SuffS = (V.IsPartial) || (V.Size < V.VSize) ? "" : "u";
   // Mask
-  std::string Mask = (V.IsPartial) ? "mask" : "";
+  std::string Mask = (V.IsPartial) && (V.Size != 2) ? "mask" : "";
 
   // Type of load: load/u
   // [1]
@@ -933,8 +955,14 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   }
 
   if (V.IsPartial) {
-    auto MaskLoad = getMask(V.Mask, V.Size, V.getWidth());
-    Args.push_back(MaskLoad);
+    if (V.Size == 2) {
+      Args.push_front(V.Name);
+      SuffS += (V.LowBits) ? "l" : "";
+      SuffS += (V.HighBits) ? "h" : "";
+    } else {
+      auto MaskLoad = getMask(V.Mask, V.Size, V.getWidth());
+      Args.push_back(MaskLoad);
+    }
   }
 
   // Adding SIMD inst to the list
@@ -1049,6 +1077,216 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
 
   // Adding SIMD inst to the list
   genSIMDInst(V, Op, PrefS, "", Args, SIMDType::VGATHER, MVSL, &IL);
+
+  return IL;
+}
+
+// ---------------------------------------------
+VectorIR::VOperand createNewOperand(VectorIR::VOperand V) {}
+
+// ---------------------------------------------
+SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
+  // This is where magic happens.
+  // This is a heavy and probably buggy function.
+  bool AllElementsScattered = true;
+  int ActualStride = 1;
+  std::vector<std::tuple<int, int>> Ranges;
+  for (int Idx = 1; Idx < V.Size; ++Idx) {
+    AllElementsScattered &= (V.Idx[Idx - 1] + 1 != V.Idx[Idx]);
+    // Check longest stride of contiguous elements
+    if (V.Idx[Idx - 1] + 1 != V.Idx[Idx]) {
+      Ranges.push_back(std::make_tuple(Idx - ActualStride, Idx - 1));
+      ActualStride = 0;
+    }
+    ActualStride++;
+  }
+  if (ActualStride != 1) {
+    Ranges.push_back(std::make_tuple(V.Size - ActualStride, V.Size - 1));
+  }
+
+  SIMDBackEnd::SIMDInstListType IL;
+  std::vector<bool> ElementsPacked(V.Size, false);
+  MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
+  bool Packed = false;
+
+  int Half = (int)V.VSize / 2;
+  int Quarter = Half / 2;
+  bool FirstHalf = false;
+  bool SecondHalf = false;
+  bool FirstQuarter = false;
+  bool SecondQuarter = false;
+  bool ThirdQuarter = false;
+  bool FourthQuarter = false;
+  for (auto Range : Ranges) {
+    FirstHalf |=
+        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (Half - 1)));
+    SecondHalf |= ((std::get<0>(Range) == (Half)) &&
+                   (std::get<1>(Range) == (2 * Half - 1)));
+    FirstQuarter |=
+        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (Quarter - 1)));
+    SecondQuarter |= ((std::get<0>(Range) == Quarter) &&
+                      (std::get<1>(Range) == (2 * Quarter - 1)));
+    ThirdQuarter |= ((std::get<0>(Range) == 2 * Quarter) &&
+                     (std::get<1>(Range) == (3 * Quarter - 1)));
+    FourthQuarter |= ((std::get<0>(Range) == 3 * Quarter) &&
+                      (std::get<1>(Range) == (4 * Quarter - 1)));
+  }
+
+  // This is better implemented as a gather, since there is no contiguity in
+  // retrieving operands
+  if ((AllElementsScattered)) {
+    return vgather(V);
+  }
+
+  std::string TypeReg = "__m128";
+  if (V.Size > 4) {
+    if (FirstHalf) {
+      VectorIR::VOperand NewVOp = V;
+      std::string Name = "__lo128";
+      NewVOp.Name = Name;
+      NewVOp.Size = Half;
+      NewVOp.Width = MVDataType::VWidth::W128;
+      NewVOp.VSize = (Half > 4) ? 8 : 4;
+      for (int Idx = 0; Idx < Half; ++Idx) {
+        NewVOp.UOP[Idx] = V.UOP[Idx];
+        NewVOp.Idx[Idx] = V.Idx[Idx];
+      }
+      SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+      IL.splice(IL.end(), vload(NewVOp));
+    } else {
+      if (FirstQuarter) {
+        VectorIR::VOperand NewVOp = V;
+        std::string Name = "__lo128";
+        NewVOp.Name = Name;
+        NewVOp.Size = Quarter;
+        NewVOp.VSize = Half;
+        NewVOp.IsPartial = true;
+        NewVOp.LowBits = true;
+        NewVOp.Width = MVDataType::VWidth::W128;
+        NewVOp.DType = MVDataType::VDataType::HALF_FLOAT;
+        for (int Idx = 0; Idx < Quarter; ++Idx) {
+          NewVOp.UOP[Idx] = V.UOP[Idx];
+          NewVOp.Idx[Idx] = V.Idx[Idx];
+        }
+        SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+        IL.splice(IL.end(), vload(NewVOp));
+      }
+      if (SecondQuarter) {
+        VectorIR::VOperand NewVOp = V;
+        std::string Name = "__lo128";
+        NewVOp.Name = Name;
+        NewVOp.Size = Quarter;
+        NewVOp.VSize = Half;
+        NewVOp.IsPartial = true;
+        NewVOp.HighBits = true;
+        NewVOp.Width = MVDataType::VWidth::W128;
+        NewVOp.DType = MVDataType::VDataType::HALF_FLOAT;
+        for (int Idx = 0; Idx < Quarter; ++Idx) {
+          NewVOp.UOP[Idx] = V.UOP[Idx + Quarter];
+          NewVOp.Idx[Idx] = V.Idx[Idx + Quarter];
+        }
+        SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+        IL.splice(IL.end(), vload(NewVOp));
+      }
+    }
+    if (SecondHalf) {
+      VectorIR::VOperand NewVOp = V;
+      std::string Name = "__hi128";
+      NewVOp.Name = Name;
+      NewVOp.Size = Half;
+      NewVOp.Width = MVDataType::VWidth::W128;
+      NewVOp.VSize = (Half > 4) ? 8 : 4;
+      for (int Idx = 0; Idx < Half; ++Idx) {
+        NewVOp.UOP[Idx] = V.UOP[Idx + Half];
+        NewVOp.Idx[Idx] = V.Idx[Idx + Half];
+      }
+      SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+      IL.splice(IL.end(), vload(NewVOp));
+    } else {
+      if (ThirdQuarter) {
+        VectorIR::VOperand NewVOp = V;
+        std::string Name = "__hi128";
+        NewVOp.Name = Name;
+        NewVOp.Size = Quarter;
+        NewVOp.VSize = Half;
+        NewVOp.IsPartial = true;
+        NewVOp.LowBits = true;
+        NewVOp.Width = MVDataType::VWidth::W128;
+        NewVOp.DType = MVDataType::VDataType::HALF_FLOAT;
+        for (int Idx = 0; Idx < Quarter; ++Idx) {
+          NewVOp.UOP[Idx] = V.UOP[Idx + 2 * Quarter];
+          NewVOp.Idx[Idx] = V.Idx[Idx + 2 * Quarter];
+        }
+        SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+        IL.splice(IL.end(), vload(NewVOp));
+      }
+      if (FourthQuarter) {
+        VectorIR::VOperand NewVOp = V;
+        std::string Name = "__hi128";
+        NewVOp.Name = Name;
+        NewVOp.Size = Quarter;
+        NewVOp.VSize = Half;
+        NewVOp.IsPartial = true;
+        NewVOp.HighBits = true;
+        NewVOp.Width = MVDataType::VWidth::W128;
+        NewVOp.DType = MVDataType::VDataType::HALF_FLOAT;
+        for (int Idx = 0; Idx < Quarter; ++Idx) {
+          NewVOp.UOP[Idx] = V.UOP[Idx + 3 * Quarter];
+          NewVOp.Idx[Idx] = V.Idx[Idx + 3 * Quarter];
+        }
+        SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+        IL.splice(IL.end(), vload(NewVOp));
+      }
+    }
+    if (((FirstHalf) && ((ThirdQuarter) && (FourthQuarter))) ||
+        ((SecondHalf) && ((FirstQuarter) && (SecondQuarter))) ||
+        ((FirstHalf) && (SecondHalf)) ||
+        ((FirstQuarter) && (SecondQuarter) && (ThirdQuarter) &&
+         (FourthQuarter))) {
+      // _mm256_set_m128[d](__hi128, __lo128);
+      VectorIR::VOperand NewVOp = V;
+      NewVOp.Width = MVDataType::VWidth::W256;
+      if (V.DType == MVDataType::VDataType::DOUBLE) {
+        NewVOp.DType = MVDataType::VDataType::IN_DOUBLE128;
+      } else if (V.DType == MVDataType::VDataType::FLOAT) {
+        NewVOp.DType = MVDataType::VDataType::IN_FLOAT128;
+      }
+      genSIMDInst(NewVOp, "set", "", "", {"__hi128", "__lo128"},
+                  SIMDType::VPACK, MVSL, &IL);
+    } else {
+      // blend + inserts
+      return vgather(V);
+    }
+  } else {
+    if (FirstHalf) {
+      VectorIR::VOperand NewVOp = V;
+      std::string Name = "__lo128";
+      NewVOp.Name = Name;
+      NewVOp.Size = Half;
+      NewVOp.Width = MVDataType::VWidth::W128;
+      NewVOp.VSize = 4;
+      for (int Idx = 0; Idx < Half; ++Idx) {
+        NewVOp.UOP[Idx] = V.UOP[Idx];
+        NewVOp.Idx[Idx] = V.Idx[Idx];
+      }
+      SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+      IL.splice(IL.end(), vload(NewVOp));
+    }
+    if (SecondHalf) {
+      VectorIR::VOperand NewVOp = V;
+      std::string Name = "__hi128";
+      NewVOp.Name = Name;
+      NewVOp.Size = Half;
+      NewVOp.Width = MVDataType::VWidth::W128;
+      NewVOp.VSize = (Half > 4) ? 8 : 4;
+      for (int Idx = 0; Idx < Half; ++Idx) {
+        NewVOp.UOP[Idx] = V.UOP[Idx + Half];
+        NewVOp.Idx[Idx] = V.Idx[Idx + Half];
+      }
+      SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+      IL.splice(IL.end(), vload(NewVOp));
+    }
+  }
 
   return IL;
 }
