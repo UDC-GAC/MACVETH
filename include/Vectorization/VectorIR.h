@@ -119,6 +119,10 @@ public:
     MVDataType::VDataType DType = MVDataType::VDataType::DOUBLE;
     /// Width of this operand
     MVDataType::VWidth Width = MVDataType::VWidth::W256;
+    /// Base array
+    std::string BaseArray = "";
+    /// All store values
+    std::vector<std::string> StoreValues;
     /// Mask for shuffling if necessary
     std::vector<long> Idx;
     /// Mask to avoid elements if necessary
@@ -185,6 +189,7 @@ public:
     /// Copy constructor
     VOperand(const VOperand &V) {
       this->Name = V.Name;
+      this->BaseArray = V.BaseArray;
       this->VSize = V.VSize;
       this->Size = V.Size;
       if (V.UOP != nullptr) {
@@ -193,6 +198,7 @@ public:
           this->UOP[T] = V.UOP[T];
         }
       }
+      this->StoreValues = V.StoreValues;
       this->DType = V.DType;
       this->Width = V.Width;
       this->Idx = V.Idx;

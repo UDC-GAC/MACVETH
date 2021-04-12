@@ -113,12 +113,8 @@ public:
   /// One of the optimizations included in AVX2
   SIMDBackEnd::SIMDInstListType fuseAddSubMult(SIMDBackEnd::SIMDInstListType I);
 
-  SIMDBackEnd::SIMDInstListType
-  sameArraySingleReductions(SIMDBackEnd::SIMDInstListType TIL,
-                            MVSourceLocation::Position Pos);
-
   /// Horizontal single reduction approach
-  SIMDBackEnd::SIMDInstListType horizontalSingleReduction(
+  SIMDBackEnd::SIMDInstListType horizontalSingleVectorReduction(
       SIMDBackEnd::SIMDInstListType TIL,
       MVSourceLocation::Position Pos = MVSourceLocation::Position::POSORDER);
 

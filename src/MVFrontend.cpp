@@ -215,6 +215,7 @@ void MVFuncVisitor::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
     } else {
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
+          // FIXME:
           Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
                                    SI.render() + ";\n");
           return;
@@ -371,7 +372,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         commentReplacedStmts(SL);
 
         // Render
-        SInfo.SIMDList.reverse();
         for (auto InsSIMD : SInfo.SIMDList) {
           renderSIMDInstInPlace(InsSIMD, SL);
         }

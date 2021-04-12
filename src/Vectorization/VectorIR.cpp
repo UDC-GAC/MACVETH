@@ -189,6 +189,11 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   this->UOP = (Node **)malloc(sizeof(Node *) * VL);
   this->Order = V[0]->getTacID();
   this->Offset = V[0]->getUnrollFactor();
+  // Check if array
+  if ((V[0]->getMVExpr() != nullptr) &&
+      (dyn_cast<MVExprArray>(V[0]->getMVExpr()))) {
+    this->BaseArray = dyn_cast<MVExprArray>(V[0]->getMVExpr())->getBaseName();
+  }
   // This is the number of elements not null in this Vector. This is different
   // from the regular size (this->Size), which is the actual vector size
   this->VSize = VL;
@@ -212,6 +217,9 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   if ((PrimaryNode->getNodeType() == Node::NODE_STORE) && (Res)) {
     this->Name = PrimaryNode->getRegisterValue();
     this->IsStore = true;
+    for (int T = 0; T < VL; ++T) {
+      this->StoreValues.push_back(V[T]->getRegisterValue());
+    }
   }
 
   // Check if there is a vector assigned for these operands
