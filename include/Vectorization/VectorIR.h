@@ -33,6 +33,7 @@
 #define MACVETH_VECTORIR_H
 
 #include "include/MVExpr/MVDataType.h"
+#include "include/MVExpr/MVExprArray.h"
 #include "include/Node.h"
 
 using namespace macveth;
@@ -175,6 +176,11 @@ public:
 
     /// Return register name
     std::string getRegName(int Offset) {
+      if (Offset < 0) {
+        auto Operand = this->UOP[0];
+        auto MVE = dyn_cast<MVExprArray>(Operand->getMVExpr());
+        
+      }
       return this->UOP[Offset]->getRegisterValue();
     }
 

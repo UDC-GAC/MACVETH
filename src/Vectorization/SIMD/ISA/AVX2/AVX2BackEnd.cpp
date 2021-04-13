@@ -1136,7 +1136,7 @@ VectorIR::VOperand getSubVOperand(VectorIR::VOperand V, std::string Name,
   NewVOp.Width = Width;
   NewVOp.DType = DType;
   NewVOp.IsPartial = (Size != VSize);
-  NewVOp.LowBits = (Offset % 4);
+  NewVOp.LowBits = (Offset % 4 == 0);
   NewVOp.HighBits = !NewVOp.LowBits;
   NewVOp.VSize = (NewVOp.Size > 4) ? 8 : 4;
   for (int Idx = 0; Idx < Size; ++Idx) {
@@ -1249,7 +1249,21 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
       genSIMDInst(NewVOp, "set", "", "", {"__hi128", "__lo128"},
                   SIMDType::VPACK, MVSL, &IL);
     } else {
-      // blend + inserts
+      // TODO: blend + inserts
+      // [XXXX|X,Y,W,Z]
+      if ((FirstHalf) || ((FirstQuarter) && (SecondQuarter))) {
+        VectorIR::VOperand NewVOp = V;
+        genSIMDInst(NewVOp, "set", "", "", {"__hi128", "__lo128"},
+                    SIMDType::VPACK, MVSL, &IL);
+        return IL;
+      }
+      // [X,Y,W,Z|XXXX]
+      if ((SecondHalf) || ((ThirdQuarter) && (FourthQuarter))) {
+        VectorIR::VOperand NewVOp = V;
+        genSIMDInst(NewVOp, "set", "", "", {"__hi128", "__lo128"},
+                    SIMDType::VPACK, MVSL, &IL);
+        return IL;
+      }
       return vgather(V);
     }
   } else {
@@ -1282,28 +1296,76 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
       genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 2)},
                   SIMDType::VPACK, MVSL, &IL);
       NewVOp.Name = V.Name;
+      NewVOp.DType = MVDataType::VDataType::FLOAT;
       genSIMDInst(NewVOp, "insert", "", "", {"__lo128", "__tmp0", "0b00100000"},
                   SIMDType::VPACK, MVSL, &IL);
       NewVOp.Name = "__tmp1";
+      NewVOp.DType = MVDataType::VDataType::SFLOAT;
       genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 3)},
                   SIMDType::VPACK, MVSL, &IL);
       NewVOp.Name = V.Name;
+      NewVOp.DType = MVDataType::VDataType::FLOAT;
       genSIMDInst(NewVOp, "insert", "", "",
                   {NewVOp.Name, "__tmp1", "0b00110000"}, SIMDType::VPACK, MVSL,
                   &IL);
     }
     if (!FirstHalf && SecondHalf) {
       // [X,Y,C,C+1]
+      VectorIR::VOperand NewVOp = V;
+      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp0", {0});
+      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp1", {0});
+      NewVOp.DType = MVDataType::VDataType::SFLOAT;
+      NewVOp.Width = MVDataType::VWidth::W128;
+      NewVOp.Name = "__tmp0";
+      genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 0)},
+                  SIMDType::VPACK, MVSL, &IL);
+      NewVOp.Name = V.Name;
+      NewVOp.DType = MVDataType::VDataType::SFLOAT;
+      genSIMDInst(NewVOp, "move", "", "", {"__lo128", "__tmp0"},
+                  SIMDType::VPACK, MVSL, &IL);
+      NewVOp.Name = "__tmp1";
+      genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 1)},
+                  SIMDType::VPACK, MVSL, &IL);
+      NewVOp.Name = V.Name;
+      NewVOp.DType = MVDataType::VDataType::FLOAT;
+      genSIMDInst(NewVOp, "insert", "", "",
+                  {NewVOp.Name, "__tmp1", "0b00010000"}, SIMDType::VPACK, MVSL,
+                  &IL);
     }
     // Strides of 3, or 2 in the middle
     if (!FirstHalf && !SecondHalf) {
       bool StrideFound = false;
-      // [C,C+1,C+2,X]
-      // [X,C,C+1,C+2]
-      // else just do a fucking gather
-      if (!StrideFound) {
-        return vgather(V);
+      VectorIR::VOperand NewVOp = V;
+      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp0", {0});
+      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp1", {0});
+      NewVOp.DType = MVDataType::VDataType::FLOAT;
+      NewVOp.Width = MVDataType::VWidth::W128;
+      NewVOp.Name = V.Name;
+      for (auto Range : Ranges) {
+        // [C,C+1,C+2,X]
+        if ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (2))) {
+          genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true, 0)},
+                      SIMDType::VPACK, MVSL, &IL);
+          NewVOp.DType = MVDataType::VDataType::SFLOAT;
+          NewVOp.Name = "__tmp0";
+          NewVOp.DType = MVDataType::VDataType::SFLOAT;
+          genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 3)},
+                      SIMDType::VPACK, MVSL, &IL);
+          NewVOp.Name = V.Name;
+          NewVOp.DType = MVDataType::VDataType::FLOAT;
+          genSIMDInst(NewVOp, "insert", "", "",
+                      {V.Name, "__tmp0", "0b00110000"}, SIMDType::VPACK, MVSL,
+                      &IL);
+          return IL;
+        }
+        // [X,C,C+1,C+2]
+        if ((std::get<0>(Range) == 1) && (std::get<1>(Range) == (2))) {
+          // TODO:
+          return IL;
+        }
       }
+      // else just do a fucking gather
+      return vgather(V);
     }
   }
 
