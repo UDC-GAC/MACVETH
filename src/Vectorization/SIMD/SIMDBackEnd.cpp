@@ -87,14 +87,14 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
 
 // ---------------------------------------------
 std::string SIMDBackEnd::getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal,
-                                   int Offset) {
+                                   int Position, int Offset) {
   if ((Ptr) && (V.IsStore || V.IsLoad)) {
     // Pointer to Rvalue
-    return "&" + V.getRegName(Offset);
+    return "&" + V.getRegName(Position, Offset);
   }
   if (RegVal) {
     // Rvalue
-    return V.getRegName(Offset);
+    return V.getRegName(Position, Offset);
   }
   // Other
   return V.Name;
@@ -164,7 +164,8 @@ std::list<std::string> SIMDBackEnd::renderSIMDasString(SIMDInstListType S) {
 }
 
 // ---------------------------------------------
-bool equalValues(int VL, Node **N) {
+// bool equalValues(int VL, Node **N) {
+bool equalValues(int VL, std::vector<Node *> N) {
   for (int n = 1; n < VL; ++n) {
     if (N[0]->getValue() != N[n]->getValue()) {
       return false;

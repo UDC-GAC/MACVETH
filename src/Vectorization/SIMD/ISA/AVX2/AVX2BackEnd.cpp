@@ -265,9 +265,9 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
     SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
     if (Type == MVDataType::VDataType::FLOAT) {
       auto RegType = getRegisterType(Type, MVDataType::VWidth::W256);
-      auto TmpReg0 = "__tmp0";
-      auto TmpReg1 = "__tmp1";
-      auto TmpReg2 = "__tmp2";
+      auto TmpReg0 = "__tmp0_256";
+      auto TmpReg1 = "__tmp1_256";
+      auto TmpReg2 = "__tmp2_256";
       SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
       SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
       SIMDBackEnd::addRegToDeclare(RegType, TmpReg2, {0});
@@ -1147,6 +1147,176 @@ VectorIR::VOperand getSubVOperand(VectorIR::VOperand V, std::string Name,
 }
 
 // ---------------------------------------------
+void AVX2BackEnd::insertLowAndHighBits(VectorIR::VOperand V, std::string Hi,
+                                       std::string Lo, MVSourceLocation MVSL,
+                                       SIMDBackEnd::SIMDInstListType *IL) {
+  VectorIR::VOperand NewVOp = V;
+  NewVOp.Width = MVDataType::VWidth::W256;
+  NewVOp.DType = (V.DType == MVDataType::VDataType::DOUBLE)
+                     ? MVDataType::VDataType::IN_DOUBLE128
+                     : MVDataType::VDataType::IN_FLOAT128;
+  genSIMDInst(NewVOp, "set", "", "", {Hi, Lo}, SIMDType::VPACK, MVSL, IL);
+}
+
+// ---------------------------------------------
+bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
+                                 SIMDBackEnd::SIMDInstListType *IL) {
+  MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
+  std::string TypeReg = (V.DType == MVDataType::FLOAT) ? "__m128" : "__m128d";
+  int Half = (int)V.VSize / 2;
+  bool FullVector = false;
+  bool FirstHalve = false;
+  bool SecondHalve = false;
+  auto Ranges = getContiguityRanges(V);
+  for (auto Range : Ranges) {
+    FullVector |=
+        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (V.VSize - 1)));
+    FirstHalve |=
+        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (Half - 1)));
+    SecondHalve |= ((std::get<0>(Range) == (Half)) &&
+                    (std::get<1>(Range) == (2 * Half - 1)));
+  }
+
+  if (FullVector) {
+    auto NewVOp =
+        getSubVOperand(V, V.Name, V.VSize, V.VSize, V.Width, V.DType, 0);
+    SIMDBackEnd::addRegToDeclare(TypeReg, V.Name, {0});
+    IL->splice(IL->end(), vload(NewVOp));
+    return true;
+  }
+
+  // Fullfill all vector with size 4
+  if (FirstHalve) {
+    std::string Name = (FirstHalve && SecondHalve) ? V.Name : "__lo128";
+    VectorIR::VOperand NewVOp =
+        getSubVOperand(V, Name, V.VSize, Half, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::HALF_FLOAT, 0);
+    SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+    IL->splice(IL->end(), vload(NewVOp));
+  }
+  if (SecondHalve) {
+    std::string Name = (FirstHalve && SecondHalve) ? V.Name : "__lo128";
+    VectorIR::VOperand NewVOp =
+        getSubVOperand(V, Name, V.VSize, Half, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::HALF_FLOAT, Half);
+    SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
+    IL->splice(IL->end(), vload(NewVOp));
+  }
+
+  if (FirstHalve && SecondHalve) {
+    return true;
+  }
+
+  VectorIR::VOperand NewVOp = V;
+  NewVOp.Width = Width;
+  SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp0", {0});
+  SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp1", {0});
+  auto SingleType = (NewVOp.DType == MVDataType::FLOAT)
+                        ? MVDataType::VDataType::SFLOAT
+                        : MVDataType::VDataType::SDOUBLE;
+  // One stride of 2 at the beggining of at the end
+  if (FirstHalve && !SecondHalve) {
+    // [C,C+1,X,Y]
+    NewVOp.DType = SingleType;
+    NewVOp.Name = "__tmp0";
+    genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 2)},
+                SIMDType::VPACK, MVSL, IL);
+    NewVOp.Name = V.Name;
+    NewVOp.DType = V.DType;
+    genSIMDInst(NewVOp, "insert", "", "", {"__lo128", "__tmp0", "0b00100000"},
+                SIMDType::VPACK, MVSL, IL);
+    NewVOp.Name = "__tmp1";
+    NewVOp.DType = SingleType;
+    genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 3)},
+                SIMDType::VPACK, MVSL, IL);
+    NewVOp.Name = V.Name;
+    NewVOp.DType = V.DType;
+    genSIMDInst(NewVOp, "insert", "", "", {NewVOp.Name, "__tmp1", "0b00110000"},
+                SIMDType::VPACK, MVSL, IL);
+    return true;
+  }
+  if (!FirstHalve && SecondHalve) {
+    // [X,Y,C,C+1]
+    NewVOp.DType = SingleType;
+    NewVOp.Name = "__tmp0";
+    genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 0)},
+                SIMDType::VPACK, MVSL, IL);
+    NewVOp.Name = V.Name;
+    NewVOp.DType = SingleType;
+    genSIMDInst(NewVOp, "move", "", "", {"__lo128", "__tmp0"}, SIMDType::VPACK,
+                MVSL, IL);
+    NewVOp.Name = "__tmp1";
+    genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 1)},
+                SIMDType::VPACK, MVSL, IL);
+    NewVOp.Name = V.Name;
+    NewVOp.DType = V.DType;
+    genSIMDInst(NewVOp, "insert", "", "", {NewVOp.Name, "__tmp1", "0b00010000"},
+                SIMDType::VPACK, MVSL, IL);
+    return true;
+  }
+  // Strides of 3, or 2 in the middle
+  if (!FirstHalve && !SecondHalve) {
+    NewVOp.DType = V.DType;
+    NewVOp.Name = V.Name;
+    for (auto Range : Ranges) {
+      // [C,C+1,C+2,X]
+      if ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (2))) {
+        genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true, 0)},
+                    SIMDType::VPACK, MVSL, IL);
+        NewVOp.Name = "__tmp0";
+        NewVOp.DType = SingleType;
+        genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 3)},
+                    SIMDType::VPACK, MVSL, IL);
+        NewVOp.Name = V.Name;
+        NewVOp.DType = V.DType;
+        genSIMDInst(NewVOp, "insert", "", "", {V.Name, "__tmp0", "0b00110000"},
+                    SIMDType::VPACK, MVSL, IL);
+        return true;
+      }
+      // [X,C,C+1,C+2]
+      if ((std::get<0>(Range) == 1) && (std::get<1>(Range) == (3))) {
+        NewVOp.Name = V.Name;
+        NewVOp.DType = V.DType;
+        genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true, 1, -1)},
+                    SIMDType::VPACK, MVSL, IL);
+        NewVOp.Name = "__tmp0";
+        NewVOp.DType = SingleType;
+        genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 0)},
+                    SIMDType::VPACK, MVSL, IL);
+        NewVOp.Name = V.Name;
+        genSIMDInst(NewVOp, "move", "", "", {V.Name, "__tmp0"}, SIMDType::VPACK,
+                    MVSL, IL);
+        return true;
+      }
+      // [X,C,C+1,Y]
+      if ((std::get<0>(Range) == 1) && (std::get<1>(Range) == (2))) {
+        NewVOp.Name = V.Name;
+        NewVOp.DType = V.DType;
+        genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true, 1, -1)},
+                    SIMDType::VPACK, MVSL, IL);
+        NewVOp.Name = "__tmp0";
+        NewVOp.DType = SingleType;
+        genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 0)},
+                    SIMDType::VPACK, MVSL, IL);
+        NewVOp.Name = V.Name;
+        genSIMDInst(NewVOp, "move", "", "", {V.Name, "__tmp0"}, SIMDType::VPACK,
+                    MVSL, IL);
+        NewVOp.Name = "__tmp0";
+        NewVOp.DType = SingleType;
+        genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 3)},
+                    SIMDType::VPACK, MVSL, IL);
+        NewVOp.Name = V.Name;
+        NewVOp.DType = V.DType;
+        genSIMDInst(NewVOp, "insert", "", "", {V.Name, "__tmp0", "0b00110000"},
+                    SIMDType::VPACK, MVSL, IL);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// ---------------------------------------------
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   // This is where magic happens.
   // This is a heavy and probably buggy function.
@@ -1160,213 +1330,52 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   int Half = (int)V.VSize / 2;
-  int Quarter = Half / 2;
-  bool FirstHalf = false;
-  bool SecondHalf = false;
-  bool FirstQuarter = false;
-  bool SecondQuarter = false;
-  bool ThirdQuarter = false;
-  bool FourthQuarter = false;
+  bool FiveElements = false;
+  bool SixElements = false;
+  bool SevenElements = false;
   for (auto Range : Ranges) {
-    FirstHalf |=
-        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (Half - 1)));
-    SecondHalf |= ((std::get<0>(Range) == (Half)) &&
-                   (std::get<1>(Range) == (2 * Half - 1)));
-    FirstQuarter |=
-        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (Quarter - 1)));
-    SecondQuarter |= ((std::get<0>(Range) == Quarter) &&
-                      (std::get<1>(Range) == (2 * Quarter - 1)));
-    ThirdQuarter |= ((std::get<0>(Range) == 2 * Quarter) &&
-                     (std::get<1>(Range) == (3 * Quarter - 1)));
-    FourthQuarter |= ((std::get<0>(Range) == 3 * Quarter) &&
-                      (std::get<1>(Range) == (4 * Quarter - 1)));
+    FiveElements |= ((std::get<0>(Range) + 4 == std::get<1>(Range)));
+    SixElements |= ((std::get<0>(Range) + 5 == std::get<1>(Range)));
+    SevenElements |= ((std::get<0>(Range) + 6 == std::get<1>(Range)));
   }
 
-  std::string TypeReg = "__m128";
+  std::string TypeReg = (V.DType == MVDataType::FLOAT) ? "__m128" : "__m128d";
   if (V.Size > 4) {
-    if (FirstHalf) {
-      std::string Name = "__lo128";
-      VectorIR::VOperand NewVOp =
-          getSubVOperand(V, Name, 4, Half, MVDataType::VWidth::W128,
-                         MVDataType::VDataType::FLOAT, 0);
-      SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
-      IL.splice(IL.end(), vload(NewVOp));
-    } else {
-      if (FirstQuarter) {
-        std::string Name = "__lo128";
-        VectorIR::VOperand NewVOp =
-            getSubVOperand(V, Name, Half, Quarter, MVDataType::VWidth::W128,
-                           MVDataType::VDataType::HALF_FLOAT, 0);
-        SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
-        IL.splice(IL.end(), vload(NewVOp));
-      }
-      if (SecondQuarter) {
-        std::string Name = "__lo128";
-        VectorIR::VOperand NewVOp =
-            getSubVOperand(V, Name, Half, Quarter, MVDataType::VWidth::W128,
-                           MVDataType::VDataType::HALF_FLOAT, Quarter);
-        SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
-        IL.splice(IL.end(), vload(NewVOp));
-      }
+    // 7 contiguous elements
+    if (SevenElements) {
+      // TODO:
     }
-    if (SecondHalf) {
-      std::string Name = "__hi128";
-      VectorIR::VOperand NewVOp =
-          getSubVOperand(V, Name, Half, Half, MVDataType::VWidth::W128,
-                         MVDataType::VDataType::FLOAT, Half);
-      SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
-      IL.splice(IL.end(), vload(NewVOp));
-    } else {
-      if (ThirdQuarter) {
-        std::string Name = "__hi128";
-        VectorIR::VOperand NewVOp =
-            getSubVOperand(V, Name, Half, Quarter, MVDataType::VWidth::W128,
-                           MVDataType::VDataType::HALF_FLOAT, 2 * Quarter);
-        SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
-        IL.splice(IL.end(), vload(NewVOp));
-      }
-      if (FourthQuarter) {
-        std::string Name = "__hi128";
-        VectorIR::VOperand NewVOp =
-            getSubVOperand(V, Name, Half, Quarter, MVDataType::VWidth::W128,
-                           MVDataType::VDataType::HALF_FLOAT, 3 * Quarter);
-        SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
-        IL.splice(IL.end(), vload(NewVOp));
-      }
+    // 6 contiguous elements
+    if (SixElements) {
+      // TODO:
     }
-    if (((FirstHalf) && ((ThirdQuarter) || (FourthQuarter))) ||
-        ((SecondHalf) && ((FirstQuarter) && (SecondQuarter))) ||
-        ((FirstHalf) && (SecondHalf)) ||
-        ((FirstQuarter) && (SecondQuarter) && (ThirdQuarter) &&
-         (FourthQuarter))) {
-      VectorIR::VOperand NewVOp = V;
-      NewVOp.Width = MVDataType::VWidth::W256;
-      if (V.DType == MVDataType::VDataType::DOUBLE) {
-        NewVOp.DType = MVDataType::VDataType::IN_DOUBLE128;
-      } else if (V.DType == MVDataType::VDataType::FLOAT) {
-        NewVOp.DType = MVDataType::VDataType::IN_FLOAT128;
-      }
-      genSIMDInst(NewVOp, "set", "", "", {"__hi128", "__lo128"},
-                  SIMDType::VPACK, MVSL, &IL);
-    } else {
-      // TODO: blend + inserts
-      // [XXXX|X,Y,W,Z]
-      if ((FirstHalf) || ((FirstQuarter) && (SecondQuarter))) {
-        VectorIR::VOperand NewVOp = V;
-        genSIMDInst(NewVOp, "set", "", "", {"__hi128", "__lo128"},
-                    SIMDType::VPACK, MVSL, &IL);
-        return IL;
-      }
-      // [X,Y,W,Z|XXXX]
-      if ((SecondHalf) || ((ThirdQuarter) && (FourthQuarter))) {
-        VectorIR::VOperand NewVOp = V;
-        genSIMDInst(NewVOp, "set", "", "", {"__hi128", "__lo128"},
-                    SIMDType::VPACK, MVSL, &IL);
-        return IL;
-      }
+    // 5 contiguous elements
+    if (FiveElements) {
+      // TODO:
+    }
+    // 4 elements strategy
+    auto VFirstHalve =
+        getSubVOperand(V, "__lo128", 4, Half, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::FLOAT, 0);
+    bool FirstHalve =
+        vpack4elements(VFirstHalve, MVDataType::VWidth::W128, &IL);
+    auto VSecondHalve =
+        getSubVOperand(V, "__hi128", 4, Half, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::FLOAT, Half);
+    bool SecondHalve =
+        vpack4elements(VSecondHalve, MVDataType::VWidth::W128, &IL);
+    if (!FirstHalve && !SecondHalve) {
       return vgather(V);
     }
+    if (FirstHalve && !SecondHalve) {
+      IL.splice(IL.end(), vgather(VSecondHalve));
+    }
+    if (!FirstHalve && SecondHalve) {
+      IL.splice(IL.end(), vgather(VFirstHalve));
+    }
+    insertLowAndHighBits(V, "__hi128", "__lo128", MVSL, &IL);
   } else {
-    // Fullfill all vector with size 4
-    if (FirstHalf) {
-      std::string Name = (FirstHalf && SecondHalf) ? V.Name : "__lo128";
-      VectorIR::VOperand NewVOp =
-          getSubVOperand(V, Name, V.VSize, Half, MVDataType::VWidth::W128,
-                         MVDataType::VDataType::HALF_FLOAT, 0);
-      SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
-      IL.splice(IL.end(), vload(NewVOp));
-    }
-    if (SecondHalf) {
-      std::string Name = (FirstHalf && SecondHalf) ? V.Name : "__lo128";
-      VectorIR::VOperand NewVOp =
-          getSubVOperand(V, Name, V.VSize, Half, MVDataType::VWidth::W128,
-                         MVDataType::VDataType::HALF_FLOAT, Half);
-      SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
-      IL.splice(IL.end(), vload(NewVOp));
-    }
-    // One stride of 2 at the beggining of at the end
-    if (FirstHalf && !SecondHalf) {
-      // [C,C+1,X,Y]
-      VectorIR::VOperand NewVOp = V;
-      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp0", {0});
-      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp1", {0});
-      NewVOp.DType = MVDataType::VDataType::SFLOAT;
-      NewVOp.Width = MVDataType::VWidth::W128;
-      NewVOp.Name = "__tmp0";
-      genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 2)},
-                  SIMDType::VPACK, MVSL, &IL);
-      NewVOp.Name = V.Name;
-      NewVOp.DType = MVDataType::VDataType::FLOAT;
-      genSIMDInst(NewVOp, "insert", "", "", {"__lo128", "__tmp0", "0b00100000"},
-                  SIMDType::VPACK, MVSL, &IL);
-      NewVOp.Name = "__tmp1";
-      NewVOp.DType = MVDataType::VDataType::SFLOAT;
-      genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 3)},
-                  SIMDType::VPACK, MVSL, &IL);
-      NewVOp.Name = V.Name;
-      NewVOp.DType = MVDataType::VDataType::FLOAT;
-      genSIMDInst(NewVOp, "insert", "", "",
-                  {NewVOp.Name, "__tmp1", "0b00110000"}, SIMDType::VPACK, MVSL,
-                  &IL);
-    }
-    if (!FirstHalf && SecondHalf) {
-      // [X,Y,C,C+1]
-      VectorIR::VOperand NewVOp = V;
-      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp0", {0});
-      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp1", {0});
-      NewVOp.DType = MVDataType::VDataType::SFLOAT;
-      NewVOp.Width = MVDataType::VWidth::W128;
-      NewVOp.Name = "__tmp0";
-      genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 0)},
-                  SIMDType::VPACK, MVSL, &IL);
-      NewVOp.Name = V.Name;
-      NewVOp.DType = MVDataType::VDataType::SFLOAT;
-      genSIMDInst(NewVOp, "move", "", "", {"__lo128", "__tmp0"},
-                  SIMDType::VPACK, MVSL, &IL);
-      NewVOp.Name = "__tmp1";
-      genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 1)},
-                  SIMDType::VPACK, MVSL, &IL);
-      NewVOp.Name = V.Name;
-      NewVOp.DType = MVDataType::VDataType::FLOAT;
-      genSIMDInst(NewVOp, "insert", "", "",
-                  {NewVOp.Name, "__tmp1", "0b00010000"}, SIMDType::VPACK, MVSL,
-                  &IL);
-    }
-    // Strides of 3, or 2 in the middle
-    if (!FirstHalf && !SecondHalf) {
-      bool StrideFound = false;
-      VectorIR::VOperand NewVOp = V;
-      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp0", {0});
-      SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp1", {0});
-      NewVOp.DType = MVDataType::VDataType::FLOAT;
-      NewVOp.Width = MVDataType::VWidth::W128;
-      NewVOp.Name = V.Name;
-      for (auto Range : Ranges) {
-        // [C,C+1,C+2,X]
-        if ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (2))) {
-          genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true, 0)},
-                      SIMDType::VPACK, MVSL, &IL);
-          NewVOp.DType = MVDataType::VDataType::SFLOAT;
-          NewVOp.Name = "__tmp0";
-          NewVOp.DType = MVDataType::VDataType::SFLOAT;
-          genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true, 3)},
-                      SIMDType::VPACK, MVSL, &IL);
-          NewVOp.Name = V.Name;
-          NewVOp.DType = MVDataType::VDataType::FLOAT;
-          genSIMDInst(NewVOp, "insert", "", "",
-                      {V.Name, "__tmp0", "0b00110000"}, SIMDType::VPACK, MVSL,
-                      &IL);
-          return IL;
-        }
-        // [X,C,C+1,C+2]
-        if ((std::get<0>(Range) == 1) && (std::get<1>(Range) == (2))) {
-          // TODO:
-          return IL;
-        }
-      }
-      // else just do a fucking gather
-      return vgather(V);
-    }
+    vpack4elements(V, V.Width, &IL);
   }
 
   return IL;
@@ -1626,8 +1635,6 @@ std::vector<std::string> AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
       break;
     default:
       break;
-      //  MVErr("This should never happen: operation is " +
-      //  V.getMVOp().toString());
     }
   }
 
@@ -1701,8 +1708,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
     TIL = vfunc(VCopy);
   }
   IL.splice(IL.end(), TIL);
-  std::string ReduxVar =
-      (V.R.Name == V.OpA.Name) ? V.OpA.getRegName(0) : V.OpB.getRegName(0);
+  std::string ReduxVar = (V.R.Name == V.OpA.Name) ? V.OpA.getRegName(0, 0)
+                                                  : V.OpB.getRegName(0, 0);
 
   /// This is a 'hack': when a reduction is found, instead of generate all the
   /// instructions needed for it, wait until the peephole optimization says

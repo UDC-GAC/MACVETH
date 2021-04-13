@@ -110,6 +110,13 @@ public:
   /// Set values for registers which need to be initalized
   virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S);
 
+  void insertLowAndHighBits(VectorIR::VOperand V, std::string Hi,
+                            std::string Lo, MVSourceLocation MVSL,
+                            SIMDBackEnd::SIMDInstListType *IL);
+
+  bool vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
+                      SIMDBackEnd::SIMDInstListType *IL);
+
   /// One of the optimizations included in AVX2
   SIMDBackEnd::SIMDInstListType fuseAddSubMult(SIMDBackEnd::SIMDInstListType I);
 

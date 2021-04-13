@@ -238,6 +238,8 @@ public:
   OutputInfo getOutputInfo() { return this->O; }
   /// Get the output information
   std::string getOutputInfoName() { return this->O.E->toString(); }
+  /// Get the output information
+  MVExpr *getOutputMVExpr() { return this->O.E; }
   /// Get the number of inputs in this Node
   int getInputNum() { return this->I.size(); }
   /// Get the list of node inputs in this Node

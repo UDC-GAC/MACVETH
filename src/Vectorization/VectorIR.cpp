@@ -186,7 +186,7 @@ VectorIR::VOperand::VOperand(){/* empty constructor */};
 // ---------------------------------------------
 VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Init list of unit operands
-  this->UOP = (Node **)malloc(sizeof(Node *) * VL);
+  // this->UOP = (Node **)malloc(sizeof(Node *) * VL);
   this->Order = V[0]->getTacID();
   this->Offset = V[0]->getUnrollFactor();
   // Check if array
@@ -260,7 +260,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Tracking the operands
   for (int n = 0; n < VL; ++n) {
     IsMemOp = (IsMemOp) && (V[n]->needsMemLoad());
-    this->UOP[n] = V[n];
+    this->UOP.push_back(V[n]);
     if (!VecAssigned) {
       MapRegToVReg[std::make_tuple(V[n]->getRegisterValue(),
                                    this->getWidth())] = this->Name;

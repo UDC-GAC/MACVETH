@@ -115,7 +115,8 @@ public:
     unsigned int Size = 4;
     /// Array of variable size (Size elements actually) initialized when
     /// creating the object
-    Node **UOP = nullptr;
+    // Node **UOP = nullptr;
+    std::vector<Node *> UOP;
     /// Data type
     MVDataType::VDataType DType = MVDataType::VDataType::DOUBLE;
     /// Width of this operand
@@ -175,22 +176,27 @@ public:
     std::string genNewVOpName() { return VOP_PREFIX + std::to_string(VID++); }
 
     /// Return register name
-    std::string getRegName(int Offset) {
-      if (Offset < 0) {
-        auto Operand = this->UOP[0];
-        auto MVE = dyn_cast<MVExprArray>(Operand->getMVExpr());
-        
+    std::string getRegName(int Position, int Offset) {
+      if (Offset != 0) {
+        /// FIXME: Horrible hack...
+        auto Operand = this->UOP[Position]->getMVExpr();
+        if (Operand != nullptr) {
+          auto MVE = dyn_cast<MVExprArray>(Operand);
+          return MVE->toStringWithOffset(Offset);
+        } else {
+          MVErr("Something went wrong...");
+        }
       }
-      return this->UOP[Offset]->getRegisterValue();
+      return this->UOP[Position]->getRegisterValue();
     }
 
     /// Get loop where the result is computed
     std::string getOperandLoop() {
-      if (UOP != nullptr) {
-        if (UOP[0] != nullptr) {
-          return UOP[0]->getLoopName();
-        }
+      // if (UOP != nullptr) {
+      if (UOP[0] != nullptr) {
+        return UOP[0]->getLoopName();
       }
+      //}
       return "";
     }
 
@@ -200,12 +206,10 @@ public:
       this->BaseArray = V.BaseArray;
       this->VSize = V.VSize;
       this->Size = V.Size;
-      if (V.UOP != nullptr) {
-        this->UOP = (Node **)malloc(sizeof(Node *) * V.VSize);
-        for (int T = 0; T < V.VSize; ++T) {
-          this->UOP[T] = V.UOP[T];
-        }
-      }
+      this->UOP = V.UOP;
+      // for (int T = 0; T < V.UOP.size(); ++T) {
+      //   this->UOP.push_back(V.UOP[T]);
+      // }
       this->StoreValues = V.StoreValues;
       this->DType = V.DType;
       this->Width = V.Width;

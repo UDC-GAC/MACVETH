@@ -178,7 +178,6 @@ public:
 
     /// Main constructor
     MVAffineIndex(const Expr *E) {
-
       if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
           dyn_cast<IntegerLiteral>(E->IgnoreImpCasts()) ||
           dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
@@ -270,9 +269,9 @@ public:
     // PS 1: Author of this code should be in jail... oh, wait.
     // PS 2: How taught me how to program? He/she did it wrong
     int operator-(const MVAffineIndex &M) {
-      if (&M == nullptr) {
-        return INT_MIN;
-      }
+      // if (&M == nullptr) {
+      //   return INT_MIN;
+      // }
       if (!this->isTerminal()) {
         if (M.OP != this->OP) {
           return INT_MIN;
@@ -383,6 +382,15 @@ public:
     std::string T = this->BaseName;
     for (auto I : this->Idx) {
       T += "[" + I.toString() + "]";
+    }
+    return T;
+  }
+
+  /// FIXME: this is garbage
+  std::string toStringWithOffset(int Offset) {
+    std::string T = this->BaseName;
+    for (auto I : this->Idx) {
+      T += "[" + I.toString() + " + (" + std::to_string(Offset) + ")]";
     }
     return T;
   }
