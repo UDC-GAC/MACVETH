@@ -174,7 +174,9 @@ public:
     std::string genNewVOpName() { return VOP_PREFIX + std::to_string(VID++); }
 
     /// Return register name
-    std::string getRegName() { return this->UOP[0]->getRegisterValue(); }
+    std::string getRegName(int Offset) {
+      return this->UOP[Offset]->getRegisterValue();
+    }
 
     /// Get loop where the result is computed
     std::string getOperandLoop() {

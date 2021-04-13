@@ -86,15 +86,15 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
 }
 
 // ---------------------------------------------
-std::string SIMDBackEnd::getOpName(VectorIR::VOperand V, bool Ptr,
-                                   bool RegVal) {
+std::string SIMDBackEnd::getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal,
+                                   int Offset) {
   if ((Ptr) && (V.IsStore || V.IsLoad)) {
     // Pointer to Rvalue
-    return "&" + V.getRegName();
+    return "&" + V.getRegName(Offset);
   }
   if (RegVal) {
     // Rvalue
-    return V.getRegName();
+    return V.getRegName(Offset);
   }
   // Other
   return V.Name;

@@ -297,7 +297,8 @@ public:
   std::list<std::string> renderSIMDasString(SIMDInstListType S);
 
   /// Auxiliary function to retrieve properly the operands
-  std::string getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal);
+  std::string getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal,
+                        int Offset = 0);
 
   /// Insert the SIMDInst in the list given an VOperand
   bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);

@@ -148,10 +148,6 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
       commentReplacedStmts(S->getListStmt());
       continue;
     }
-    // In case of being multiline line block does not work properly
-    // Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), "/* ");
-    // Rewrite.InsertTextAfterToken(
-    //     S->getClangStmt()->getEndLoc().getLocWithOffset(1), "*/");
     Rewrite.RemoveText(
         clang::SourceRange(S->getClangStmt()->getBeginLoc(),
                            S->getClangStmt()->getEndLoc().getLocWithOffset(1)));
