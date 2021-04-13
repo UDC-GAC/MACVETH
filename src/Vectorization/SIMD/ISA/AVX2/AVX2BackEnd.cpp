@@ -192,17 +192,15 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
   auto OpRedux = VIL[0].MVOP;
   auto OpName = VIL[0].MVOP.toString();
   auto Type = VIL[0].DT;
-  auto RegType = getRegisterType(Type, MVDataType::VWidth::W128);
-  auto LoRes = "__mv_lo" + getMapWidth(VIL[0].W);
-  auto HiRes = "__mv_hi" + getMapWidth(VIL[0].W);
-  SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
-  SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
+  auto OP = VIL[0].MVOP.toString();
   auto AccmReg = getAccmReg(V.Name);
-  auto Loc = V.Order;
-  auto Off = V.Offset;
-  auto OP = V.toString();
-  MVSourceLocation MVSL(Pos, Loc, Off);
+  std::string LoRes = "__mv_lo";
+  std::string HiRes = "__mv_hi";
+  MVSourceLocation MVSL(Pos, V.Order, V.Offset);
   if (NReductions == 1) {
+    auto RegType = getRegisterType(Type, MVDataType::VWidth::W128);
+    SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
+    SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
     if (Type == MVDataType::VDataType::DOUBLE) {
       // If 4 elements
       if (NElems > 2) {
@@ -228,7 +226,7 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
     } else if (Type == MVDataType::VDataType::FLOAT) {
       // 8 elements
       if (NElems > 4) {
-        // __m128 lo =
+        // __m128 lo = cast()
         genSIMDInst(LoRes, "castps", "256", "ps128", MVDataType::VWidth::W256,
                     Type, {AccmReg}, SIMDType::VOPT, MVSL, &IL);
         // __m128 lo = cast(v)
@@ -262,12 +260,35 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
     }
 
   } else {
+    auto RegType = getRegisterType(Type, MVDataType::VWidth::W256);
+    SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
+    SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
     if (Type == MVDataType::VDataType::FLOAT) {
+      auto RegType = getRegisterType(Type, MVDataType::VWidth::W256);
+      auto TmpReg0 = "__tmp0";
+      auto TmpReg1 = "__tmp1";
+      auto TmpReg2 = "__tmp2";
+      SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
+      SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
+      SIMDBackEnd::addRegToDeclare(RegType, TmpReg2, {0});
+      // 8 elements
+      if (NElems > 4) {
+        genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W256, Type,
+                    {AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
+        genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
+                    {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
+        genSIMDInst(TmpReg2, "shuffle", "", "", MVDataType::VWidth::W256, Type,
+                    {TmpReg0, TmpReg0, "0x01"}, SIMDType::VPERM, MVSL, &IL);
+        genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W256, Type,
+                    {AccmReg, TmpReg2}, SIMDType::VADD, MVSL, &IL);
+      } else {
+        // TODO:
+      }
     }
   }
 
-  int Stride = (int)(V.Size / NReductions);
-  for (int R = 0; R < NReductions; R += Stride) {
+  int Stride = (int)(NElems / NReductions);
+  for (int R = 0; R < NElems; R += Stride) {
     // The last dance
     if (OpRedux.isBinaryOperation()) {
       addNonSIMDInst(V.StoreValues[R],

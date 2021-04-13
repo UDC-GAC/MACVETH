@@ -149,9 +149,12 @@ void MVFuncVisitor::commentReplacedStmts(std::list<StmtWrapper *> SList) {
       continue;
     }
     // In case of being multiline line block does not work properly
-    Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), "/* ", true, true);
-    Rewrite.InsertTextAfterToken(
-        S->getClangStmt()->getEndLoc().getLocWithOffset(1), "*/");
+    // Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), "/* ");
+    // Rewrite.InsertTextAfterToken(
+    //     S->getClangStmt()->getEndLoc().getLocWithOffset(1), "*/");
+    Rewrite.RemoveText(
+        clang::SourceRange(S->getClangStmt()->getBeginLoc(),
+                           S->getClangStmt()->getEndLoc().getLocWithOffset(1)));
   }
 }
 
@@ -195,9 +198,8 @@ bool MVFuncVisitor::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
           if (S->isInLoop()) {
             return true;
           }
-          Rewrite.InsertTextAfterToken(
-              S->getClangStmt()->getEndLoc().getLocWithOffset(1),
-              "\n" + SI.render() + ";");
+          Rewrite.InsertText(S->getClangStmt()->getEndLoc().getLocWithOffset(2),
+                             "\n" + SI.render() + ";", true, false);
           return false;
         }
       }
@@ -216,8 +218,8 @@ void MVFuncVisitor::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
           // FIXME:
-          Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
-                                   SI.render() + ";\n");
+          Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
+                             SI.render() + ";\n");
           return;
         }
       }
@@ -367,10 +369,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       auto SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
       if (SInfo.isThereAnyVectorization()) {
-        // FIXME
         // Comment statements
         commentReplacedStmts(SL);
-
         // Render
         for (auto InsSIMD : SInfo.SIMDList) {
           renderSIMDInstInPlace(InsSIMD, SL);
