@@ -335,9 +335,9 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
     Utils::printDebug("VectorIR", V.toString());
   }
 
-  // SIMD cost model used backend to generate intrinsics so registers are
+  // FIXME: SIMD cost model used backend to generate intrinsics so registers are
   // polluted, need to clean them
-  SG->clearMappings();
+  // SG->clearMappings();
 
   // Generate the SIMD list
   auto SIMD = SG->getSIMDfromVectorOP(VList);

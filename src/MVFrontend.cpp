@@ -127,7 +127,7 @@ std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
     }
 
     // If it has been fully unrolled no need to write the epilog of it
-    if (!Loop.FullyUnrolled) {
+    if ((!Loop.FullyUnrolled) && (Loop.UpperBound != Loop.StepUnrolled)) {
       auto Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
       Rewrite->InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
     }
@@ -427,7 +427,7 @@ bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
   }
 
   /// Be clean
-  clearAllMappings();
+  // clearAllMappings();
 
   if ((MVOptions::TargetFunc != "") &&
       (F->getNameAsString() != MVOptions::TargetFunc)) {

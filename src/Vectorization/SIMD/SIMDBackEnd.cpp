@@ -391,6 +391,7 @@ std::string SIMDBackEnd::replacePatterns(std::string Pattern, std::string W,
 
 // ---------------------------------------------
 void SIMDBackEnd::clearMappings() {
+  // FIXME:
   for (auto &X : RegDeclared) {
     X.second.clear();
   }

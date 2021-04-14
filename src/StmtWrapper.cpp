@@ -194,8 +194,12 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
   if (auto IncExpr = dyn_cast<UnaryOperator>(ForLoop->getInc())) {
     Loop.Step = 1;
+    auto V = Utils::getStringFromStmt(IncExpr->getSubExpr());
     if (IncExpr->isPostfix()) {
       Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
+    }
+    if (IncExpr->isPrefix()) {
+      Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(V.length()));
     }
   } else if (auto CAO = dyn_cast<CompoundAssignOperator>(ForLoop->getInc())) {
     Loop.Step = Utils::getIntFromExpr(CAO->getRHS());
@@ -265,7 +269,6 @@ StmtWrapper::LoopInfo::getDimDeclarations(std::list<std::string> DimsDeclared) {
 // ---------------------------------------------
 std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   std::string Epilog = "";
-  int Tmp = 0;
   if (SWrap->isLeftOver()) {
     return Epilog;
   }
@@ -273,6 +276,7 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   LoopInfo Loop = SWrap->getLoopInfo();
   // FIXME:
   // Write new epilogs
+  // int Tmp = 0;
   // auto EpiInit = Loop.Dim + " = " +
   //                ((Tmp++ == 0) ? "(" + Loop.StrUpperBound + " / " +
   //                                    std::to_string(Loop.StepUnrolled) +
@@ -378,7 +382,8 @@ TacListType StmtWrapper::unroll(LoopInfo L) {
                 ? (L.UpperBound - L.InitVal)
                 : L.StepUnrolled;
   bool FullUnroll = UB == L.UpperBound;
-  auto TL = TAC::unrollTacList(this->getTacList(), L.Step, UB, L.Dim, FullUnroll);
+  auto TL =
+      TAC::unrollTacList(this->getTacList(), L.Step, UB, L.Dim, FullUnroll);
   this->setTacList(TL);
   return TL;
 }
