@@ -1,11 +1,11 @@
 #include "include/MVExpr/MVExprArray.h"
 
 //------------------------------------------------
-MVExpr *MVExprArray::unrollExpr(int UF, std::string LL) {
+MVExpr *MVExprArray::unrollExpr(int UF, std::string LL, bool SubstituteValue) {
   MVExprArray *NewExpr = new MVExprArray(this);
   IdxVector NV;
   for (auto I : NewExpr->Idx) {
-    (&I)->updateIndex(UF, LL);
+    (&I)->updateIndex(UF, LL, SubstituteValue);
     NV.push_back(I);
   }
   auto NewStrExpr = this->BaseName;

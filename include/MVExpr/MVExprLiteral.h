@@ -51,7 +51,8 @@ public:
   MVExprLiteral(Expr *E) : MVExpr(MVK_Literal, E) {}
 
   /// Unroll expression
-  virtual MVExpr *unrollExpr(int UF, std::string LL);
+  virtual MVExpr *unrollExpr(int UF, std::string LL,
+                             bool SubstituteVal = false);
 
   /// To string
   virtual std::string toString() const {

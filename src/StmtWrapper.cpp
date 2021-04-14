@@ -377,7 +377,8 @@ TacListType StmtWrapper::unroll(LoopInfo L) {
   long UB = ((L.UpperBound != -1) && (L.FullyUnrolled))
                 ? (L.UpperBound - L.InitVal)
                 : L.StepUnrolled;
-  auto TL = TAC::unrollTacList(this->getTacList(), L.Step, UB, L.Dim);
+  bool FullUnroll = UB == L.UpperBound;
+  auto TL = TAC::unrollTacList(this->getTacList(), L.Step, UB, L.Dim, FullUnroll);
   this->setTacList(TL);
   return TL;
 }

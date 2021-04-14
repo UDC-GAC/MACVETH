@@ -48,7 +48,7 @@ bool MVExprVar::hasBeenUnrolled(std::string Reg, std::string Dim) {
 }
 
 //------------------------------------------------
-MVExpr *MVExprVar::unrollExpr(int UF, std::string LL) {
+MVExpr *MVExprVar::unrollExpr(int UF, std::string LL, bool SubstituteVal) {
   if (this->getTempInfo() == MVExpr::MVExprInfo::TMP_RES) {
     MVExprVar *NewExpr = new MVExprVar(this);
     NewExpr->setExprStr(NewExpr->getExprStr() + LL + std::to_string(UF));

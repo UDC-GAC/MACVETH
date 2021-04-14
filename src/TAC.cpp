@@ -285,7 +285,7 @@ TacListType TAC::stmtToTAC(clang::Stmt *ST) {
 
 // ---------------------------------------------
 TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
-                 std::string LoopLevel) {
+                 std::string LoopLevel, bool FullUnroll) {
   int UnrollA = S * UnrollFactor +
                 UnrollFactor * ((mask & TAC::MASK_OP_A) >> TAC::BITS_OP_A);
   int UnrollB = S * UnrollFactor +
@@ -293,10 +293,10 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
   int UnrollC = S * UnrollFactor +
                 UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
 
-  auto NewA = Tac->getA()->unrollExpr(UnrollA, LoopLevel);
-  auto NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
+  auto NewA = Tac->getA()->unrollExpr(UnrollA, LoopLevel, FullUnroll);
+  auto NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel, FullUnroll);
   auto NewC = Tac->getC() != nullptr
-                  ? Tac->getC()->unrollExpr(UnrollC, LoopLevel)
+                  ? Tac->getC()->unrollExpr(UnrollC, LoopLevel, FullUnroll)
                   : nullptr;
   auto UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
   UnrolledTac->TUnroll = S * UnrollFactor;
@@ -307,12 +307,14 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
 
 // ---------------------------------------------
 TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
-                               int UpperBound, std::string LoopLevel) {
+                               int UpperBound, std::string LoopLevel,
+                               bool FullUnroll) {
   TacListType TacListOrg;
   auto Steps = UpperBound / UnrollFactor;
   for (int S = 0; S < Steps; S++) {
     for (auto T : TacList) {
-      auto NT = (TAC::unroll(&T, UnrollFactor, S, 0x000000, LoopLevel));
+      auto NT =
+          (TAC::unroll(&T, UnrollFactor, S, 0x000000, LoopLevel, FullUnroll));
       if (NT != nullptr) {
         TacListOrg.push_back(*NT);
       }

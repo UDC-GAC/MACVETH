@@ -174,6 +174,38 @@ public:
           return;
         }
       }
+
+      if (this->RHS->isTerminal() && this->LHS->isTerminal()) {
+        char *P0 = nullptr, *P1 = nullptr;
+        auto LVal = this->LHS->Val;
+        auto RVal = this->RHS->Val;
+        auto I0 = strtol(LVal.c_str(), &P0, 10);
+        auto I1 = strtol(RVal.c_str(), &P1, 10);
+        auto IsANumber = !((*P0) || (*P1));
+        if (!IsANumber) {
+          return;
+        }
+        if (this->OP == BinaryOperator::Opcode::BO_Add) {
+          auto Val = I0 + I1;
+          this->setVal(std::to_string(Val));
+          return;
+        }
+        if (this->OP == BinaryOperator::Opcode::BO_Sub) {
+          auto Val = I0 - I1;
+          this->setVal(std::to_string(Val));
+          return;
+        }
+        if (this->OP == BinaryOperator::Opcode::BO_Mul) {
+          auto Val = I0 * I1;
+          this->setVal(std::to_string(Val));
+          return;
+        }
+        if (this->OP == BinaryOperator::Opcode::BO_Div) {
+          auto Val = I0 / I1;
+          this->setVal(std::to_string(Val));
+          return;
+        }
+      }
     }
 
     /// Main constructor
@@ -233,8 +265,14 @@ public:
     }
 
     /// Update index recursively
-    bool updateIndex(int UF, std::string LL) {
+    bool updateIndex(int UF, std::string LL, bool SubstituteVal) {
       if ((isTerminal()) && (LL != this->Val)) {
+        return false;
+      }
+
+      if ((isTerminal()) && (LL == this->Val) && !Unrolled[LL] &&
+          SubstituteVal) {
+        this->Val = std::to_string(UF);
         return false;
       }
 
@@ -252,13 +290,17 @@ public:
         return true;
       }
       if (this->LHS != nullptr) {
-        if (this->LHS->updateIndex(UF, LL)) {
+        if (this->LHS->updateIndex(UF, LL, SubstituteVal)) {
           this->LHS->RHS = new MVAffineIndex(std::to_string(UF));
+        } else {
+          this->simplifyIndex();
         }
       }
       if (this->RHS != nullptr) {
-        if (this->RHS->updateIndex(UF, LL)) {
+        if (this->RHS->updateIndex(UF, LL, SubstituteVal)) {
           this->RHS->RHS = new MVAffineIndex(std::to_string(UF));
+        } else {
+          this->simplifyIndex();
         }
       }
       return false;
@@ -267,7 +309,8 @@ public:
     // This is awful, but should do the job. Recursive functions as a way of
     // life lol xd.
     // PS 1: Author of this code should be in jail... oh, wait.
-    // PS 2: How taught me how to program? He/she did it wrong
+    // PS 2: How taught me how to program? He/she/it did it wrong
+    // PS 3 (some months later): kill me please
     int operator-(const MVAffineIndex &M) {
       // if (&M == nullptr) {
       //   return INT_MIN;
@@ -313,11 +356,20 @@ public:
         auto I0 = strtol(M.Val.c_str(), &P0, 10);
         auto I1 = strtol(this->Val.c_str(), &P1, 10);
         auto IsANumber = !((*P0) || (*P1));
+        auto LIsANumber = !(*P0);
+        auto RIsANumber = !(*P1);
         auto SameVal = M.Val == this->Val;
         if (SameVal) {
           return 0;
         }
         if (!IsANumber) {
+          /* FIX */
+          if (LIsANumber) {
+            return I0;
+          }
+          if (RIsANumber) {
+            return I1;
+          }
           return INT_MIN + 2;
         }
         return I1 - I0;
@@ -397,7 +449,8 @@ public:
 
   /// Implementation of unrolling for arrays. In this case we will need to
   /// create a new MVExpr
-  virtual MVExpr *unrollExpr(int UF, std::string LL) override;
+  virtual MVExpr *unrollExpr(int UF, std::string LL,
+                             bool SubstituteVal = false) override;
 
   /// As we may not know the total size of the array at compilation time, we
   /// can only know the difference between two indices
@@ -416,7 +469,7 @@ public:
 private:
   /// Given a dimension LL and a unrolling factor UF, regenerates the expression
   /// with the indexes updated
-  void updateIndex(int UF, std::string LL);
+  void updateIndex(int UF, std::string LL, bool SubstituteVal = false);
   /// Given a ArraySubscriptExpr, recursively gets the base name and the indexes
   /// from the outermost to the innermost
   const Expr *getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,

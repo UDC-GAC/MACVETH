@@ -102,7 +102,7 @@ public:
   }
 
   /// Prefix for operands
-  static inline const std::string VOP_PREFIX = "__mv_vop";
+  static inline const std::string VOP_PREFIX = "__vop";
 
   /// Vector operand basically is a wrap of VL (vector length) operands in the
   /// original Node
@@ -178,7 +178,6 @@ public:
     /// Return register name
     std::string getRegName(int Position, int Offset) {
       if (Offset != 0) {
-        /// FIXME: Horrible hack...
         auto Operand = this->UOP[Position]->getMVExpr();
         if (Operand != nullptr) {
           auto MVE = dyn_cast<MVExprArray>(Operand);
@@ -192,12 +191,7 @@ public:
 
     /// Get loop where the result is computed
     std::string getOperandLoop() {
-      // if (UOP != nullptr) {
-      if (UOP[0] != nullptr) {
-        return UOP[0]->getLoopName();
-      }
-      //}
-      return "";
+      return (UOP[0] != nullptr) ? UOP[0]->getLoopName() : "";
     }
 
     /// Copy constructor
@@ -207,9 +201,6 @@ public:
       this->VSize = V.VSize;
       this->Size = V.Size;
       this->UOP = V.UOP;
-      // for (int T = 0; T < V.UOP.size(); ++T) {
-      //   this->UOP.push_back(V.UOP[T]);
-      // }
       this->StoreValues = V.StoreValues;
       this->DType = V.DType;
       this->Width = V.Width;

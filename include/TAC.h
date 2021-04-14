@@ -2,24 +2,24 @@
  * File					 : include/TAC.h
  * Author				 : Marcos Horro
  * Date					 : Fri 09 Oct 2020 04:53 +02:00
- * 
+ *
  * Last Modified : Tue 20 Oct 2020 12:37 +02:00
  * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
- * 
+ *
  * MIT License
- * 
+ *
  * Copyright (c) 2020 Colorado State University
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is furnished to do
- * so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -145,12 +145,13 @@ public:
 
   /// Unrolls TacList given onto a new list
   static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
-                                      int UpperBound, std::string LoopLevel);
+                                      int UpperBound, std::string LoopLevel,
+                                      bool FullUnroll = false);
 
   /// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and
   /// the S value which holds the iteration of the unrolling basically
   static TAC *unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
-                     std::string LoopLevel);
+                     std::string LoopLevel, bool FullUnroll = false);
 
 private:
   /// TAC result

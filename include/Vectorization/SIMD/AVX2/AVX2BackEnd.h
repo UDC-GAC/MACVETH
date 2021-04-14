@@ -110,10 +110,12 @@ public:
   /// Set values for registers which need to be initalized
   virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S);
 
+  /// Trick for inserting two 128-bit registers onto a 256-bit register
   void insertLowAndHighBits(VectorIR::VOperand V, std::string Hi,
                             std::string Lo, MVSourceLocation MVSL,
                             SIMDBackEnd::SIMDInstListType *IL);
 
+  /// Packing of four elements
   bool vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
                       SIMDBackEnd::SIMDInstListType *IL);
 

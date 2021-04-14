@@ -283,7 +283,10 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
                     {AccmReg, TmpReg2}, SIMDType::VADD, MVSL, &IL);
       } else {
         // TODO:
+        MVErr("TO IMPLEMENT REDUCTIONS WITH DOUBLES");
       }
+    } else {
+      MVErr("TO IMPLEMENT REDUCTIONS WITH DOUBLES");
     }
   }
 
@@ -1039,7 +1042,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
   // Generate preffix: must be i32 or i64, depending on the VIndex width
   std::string Scale =
       (V.getDataType() == MVDataType::VDataType::DOUBLE) ? "8" : "4";
-  auto VIndexSuffix = "epi64x";
+  std::string VIndexSuffix = "epi32";
   std::string PrefS = "";
 
   // Generation of the preffix
@@ -1054,13 +1057,12 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
                              getMapType(V.getDataType()) + "()";
     Args.push_back(NeutralReg);
   }
-  auto PrefGather = "i64";
-  VIndexSuffix = "epi64x";
-  if (V.VSize > 4) {
-    PrefGather = "i32";
-    VIndexSuffix = "epi32";
-    Scale = std::to_string(4);
-  }
+  auto PrefGather = "i32";
+  // if (V.VSize > 4) {
+  //   PrefGather = "i32";
+  //   // VIndexSuffix = "epi32";
+  //   Scale = std::to_string(4);
+  // }
   PrefS += PrefGather;
 
   auto VIndex = "_mm" + MapWidth[V.Width] + "_set_" + VIndexSuffix + "(";
@@ -1103,9 +1105,6 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
 
   return IL;
 }
-
-// ---------------------------------------------
-VectorIR::VOperand createNewOperand(VectorIR::VOperand V) {}
 
 // ---------------------------------------------
 std::vector<std::tuple<int, int>> getContiguityRanges(VectorIR::VOperand V) {
@@ -1185,6 +1184,7 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
     return true;
   }
 
+  SIMDBackEnd::addRegToDeclare(TypeReg, "__lo128", {0});
   // Fullfill all vector with size 4
   if (FirstHalve) {
     std::string Name = (FirstHalve && SecondHalve) ? V.Name : "__lo128";
@@ -1339,11 +1339,57 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
     SevenElements |= ((std::get<0>(Range) + 6 == std::get<1>(Range)));
   }
 
-  std::string TypeReg = (V.DType == MVDataType::FLOAT) ? "__m128" : "__m128d";
   if (V.Size > 4) {
+    std::string TypeReg128 =
+        (V.DType == MVDataType::FLOAT) ? "__m128" : "__m128d";
+    std::string TypeReg256 =
+        (V.DType == MVDataType::FLOAT) ? "__m256" : "__m256d";
+    VectorIR::VOperand NewVOp = V;
+    NewVOp.Width = V.Width;
+    SIMDBackEnd::addRegToDeclare(TypeReg128, "__tmp0_128", {0});
+    SIMDBackEnd::addRegToDeclare(TypeReg128, "__tmp1_128", {0});
+    SIMDBackEnd::addRegToDeclare(TypeReg256, "__tmp0_256", {0});
+    SIMDBackEnd::addRegToDeclare(TypeReg256, "__tmp1_256", {0});
+    auto SingleType = (NewVOp.DType == MVDataType::FLOAT)
+                          ? MVDataType::VDataType::SFLOAT
+                          : MVDataType::VDataType::SDOUBLE;
     // 7 contiguous elements
     if (SevenElements) {
-      // TODO:
+      for (auto Range : Ranges) {
+        // [X|YYYYYYY]
+        if ((std::get<0>(Range) == 1) && (std::get<1>(Range) == (7))) {
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 1, -1)}, SIMDType::VPACK, MVSL,
+                      &IL);
+          NewVOp.Name = "__tmp0_128";
+          NewVOp.DType = SingleType;
+          NewVOp.Width = MVDataType::VWidth::W128;
+          genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true)},
+                      SIMDType::VPACK, MVSL, &IL);
+          NewVOp.Name = V.Name;
+          NewVOp.DType = V.DType;
+          NewVOp.Width = V.Width;
+          genSIMDInst(
+              NewVOp, "blend", "", "",
+              {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+              SIMDType::VPACK, MVSL, &IL);
+          return IL;
+        }
+        // [YYYYYYY|X]
+        if ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (6))) {
+          genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true)},
+                      SIMDType::VPACK, MVSL, &IL);
+          NewVOp.Name = "__tmp0_256";
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 7, -7)}, SIMDType::VPACK, MVSL,
+                      &IL);
+          NewVOp.Name = V.Name;
+          genSIMDInst(NewVOp, "blend", "", "",
+                      {V.Name, "__tmp0_256", "0b10000000"}, SIMDType::VPACK,
+                      MVSL, &IL);
+          return IL;
+        }
+      }
     }
     // 6 contiguous elements
     if (SixElements) {
@@ -1461,13 +1507,19 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   SIMDBackEnd::SIMDInstListType IL;
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.R.Order,
                         V.R.Offset);
+  auto VOP = V.R;
+  auto Ranges = getContiguityRanges(VOP);
 
-  // If there is no contiguity at all: manual scatter
-  for (size_t N = 0; N < V.R.VSize; ++N) {
-    std::string Idx = "[" + std::to_string(N) + "]";
-    addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
-                   SIMDType::VOPT, MVSL, &IL);
+  if (Ranges.size() == VOP.VSize) {
+    // If there is no contiguity at all: manual scatter
+    for (size_t N = 0; N < VOP.VSize; ++N) {
+      std::string Idx = "[" + std::to_string(N) + "]";
+      addNonSIMDInst(VOP.UOP[N]->getRegisterValue(), VOP.getName() + Idx,
+                     SIMDType::VOPT, MVSL, &IL);
+    }
+    return IL;
   }
+
   // TODO: add AVX-512 scatter using 256 bits if architecture permits and ISA
   // chosen is >=(AVX512F + AVX512VL)
   return IL;

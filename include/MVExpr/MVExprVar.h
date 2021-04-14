@@ -59,7 +59,8 @@ public:
   virtual std::string toString() const { return this->getExprStrRaw(); }
 
   /// Unroll expression
-  virtual MVExpr *unrollExpr(int UF, std::string LL);
+  virtual MVExpr *unrollExpr(int UF, std::string LL,
+                             bool SubstituteVal = false);
   /// Check if this has been unrolled
   static bool hasBeenUnrolled(std::string Reg, std::string Dim);
   /// Unroll register

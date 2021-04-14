@@ -172,7 +172,8 @@ public:
   bool isNotClang() { return (this->getTempInfo() != EXPR_CLANG); }
 
   /// Given a MVExpr it will return its unrolled version
-  virtual MVExpr *unrollExpr(int UF, std::string LL) = 0;
+  virtual MVExpr *unrollExpr(int UF, std::string LL,
+                             bool SubstituteVal = false) = 0;
 
   /// Given a MVExpr and the map of unrolled,loop_level, it will return the
   /// unrolled version

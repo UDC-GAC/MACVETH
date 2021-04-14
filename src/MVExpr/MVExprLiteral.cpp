@@ -9,7 +9,7 @@
 #include "include/MVExpr/MVExprLiteral.h"
 
 //------------------------------------------------
-MVExpr *MVExprLiteral::unrollExpr(int UF, std::string LL) {
+MVExpr *MVExprLiteral::unrollExpr(int UF, std::string LL, bool SubstituteVal) {
   MVExprLiteral *NewExpr = new MVExprLiteral(this);
   return NewExpr;
 }
