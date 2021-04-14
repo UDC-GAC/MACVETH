@@ -191,7 +191,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   // though you need an offset, depending whether it is prefix or postfix
   Loop.SRVarInc =
       clang::CharSourceRange::getCharRange(IncVarPos->getSourceRange());
-  Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
+  // Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
   if (auto IncExpr = dyn_cast<UnaryOperator>(ForLoop->getInc())) {
     Loop.Step = 1;
     auto V = Utils::getStringFromStmt(IncExpr->getSubExpr());
