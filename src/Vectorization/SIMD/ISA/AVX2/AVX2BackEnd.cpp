@@ -1066,7 +1066,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
   PrefS += PrefGather;
 
   auto VIndex = "_mm" + MapWidth[V.Width] + "_set_" + VIndexSuffix + "(";
-  auto CopyIdx = V.Idx;
+  auto CopyIdx = std::vector<long>(V.Idx.begin(), V.Idx.begin() + V.Size);
   auto MinIdx = std::min_element(CopyIdx.begin(), CopyIdx.end());
   auto MinVal = *MinIdx;
   auto BaseIdx = V.UOP[MinIdx - CopyIdx.begin()]->getValue();

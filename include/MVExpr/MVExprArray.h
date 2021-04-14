@@ -363,7 +363,6 @@ public:
           return 0;
         }
         if (!IsANumber) {
-          /* FIX */
           if (LIsANumber) {
             return I0;
           }
