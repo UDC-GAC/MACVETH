@@ -278,9 +278,9 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
         genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
                     {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
         genSIMDInst(TmpReg2, "shuffle", "", "", MVDataType::VWidth::W256, Type,
-                    {TmpReg0, TmpReg0, "0x01"}, SIMDType::VPERM, MVSL, &IL);
+                    {TmpReg1, TmpReg1, "0x01"}, SIMDType::VPERM, MVSL, &IL);
         genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W256, Type,
-                    {AccmReg, TmpReg2}, SIMDType::VADD, MVSL, &IL);
+                    {TmpReg1, TmpReg2}, SIMDType::VADD, MVSL, &IL);
       } else {
         // TODO:
         MVErr("TO IMPLEMENT REDUCTIONS WITH DOUBLES");
@@ -636,8 +636,9 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
     auto Accm = getAccmReg(R.VOPResult.getName());
     if (!isAccmClean(Accm)) {
       MVSourceLocation MVSL(InitPos, R.MVSL.getOrder(), R.MVSL.getOffset());
-      genSIMDInst(Accm, "setzero", "", "", R.W, R.DT, {}, SIMDType::VSET, MVSL,
-                  &FusedRedux);
+      // genSIMDInst(Accm, "setzero", "", "", R.W, R.DT, {}, SIMDType::VSET,
+      // MVSL,
+      //            &FusedRedux);
     }
   }
 
