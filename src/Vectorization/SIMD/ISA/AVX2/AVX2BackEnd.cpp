@@ -1510,6 +1510,12 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
 }
 
 // ---------------------------------------------
+SIMDBackEnd::SIMDInstListType
+AVX2BackEnd::vscatter4elements(VectorIR::VectorOP V) {
+  
+}
+
+// ---------------------------------------------
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   SIMDBackEnd::SIMDInstListType IL;
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.R.Order,
@@ -1517,7 +1523,11 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   auto VOP = V.R;
   auto Ranges = getContiguityRanges(VOP);
 
-  if (Ranges.size() == VOP.VSize) {
+  // Same approach as gather taking into account the contiguity of operands
+
+  // If scatter is available in machine
+  // Just do a manual scatter
+  if (Ranges.size() + 1 == VOP.VSize) {
     // If there is no contiguity at all: manual scatter
     for (size_t N = 0; N < VOP.VSize; ++N) {
       std::string Idx = "[" + std::to_string(N) + "]";

@@ -66,7 +66,11 @@ public:
   /// Gather data from memory
   virtual SIMDInstListType vpack(VectorIR::VOperand V) override;
 
-  /// Emit gather function
+  /// Packing of four elements taking into account the contiguity of data
+  bool vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
+                      SIMDBackEnd::SIMDInstListType *IL);
+
+  /// Intel intrisnics gather approach
   SIMDInstListType vgather(VectorIR::VOperand V);
 
   /// Set values to registers
@@ -77,6 +81,9 @@ public:
 
   /// Store values in memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
+
+  /// Scattering of four elements taking into account the contiguity of data
+  SIMDBackEnd::SIMDInstListType vscatter4elements(VectorIR::VectorOP V);
 
   // Binary operations
 
@@ -114,10 +121,6 @@ public:
   void insertLowAndHighBits(VectorIR::VOperand V, std::string Hi,
                             std::string Lo, MVSourceLocation MVSL,
                             SIMDBackEnd::SIMDInstListType *IL);
-
-  /// Packing of four elements
-  bool vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
-                      SIMDBackEnd::SIMDInstListType *IL);
 
   /// One of the optimizations included in AVX2
   SIMDBackEnd::SIMDInstListType fuseAddSubMult(SIMDBackEnd::SIMDInstListType I);

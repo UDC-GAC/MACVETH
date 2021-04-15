@@ -72,16 +72,19 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
           ((R->getSchedInfo().TacID == (In->getSchedInfo().TacID)) ||
            R->getSchedInfo().Scop[0] == (In->getSchedInfo().Scop[0]))) {
 
-        // Corner case, e.g.:
-        // [0,1,2,3] and [2,3,4,5]
-        // There is no gain in doing 2,3 as reductions, better a gather or
-        // something
         if ((R->getSchedInfo().TacID != In->getSchedInfo().TacID) &&
             (R->getSchedInfo().Scop[0] == In->getSchedInfo().Scop[0])) {
+
+          // Corner case, e.g.:
+          // [0,1,2,3] and [2,3,4,5]
+          // There is no gain in doing 2,3 as reductions, better a gather or
+          // something
           if ((R->getSchedInfo().UnrollFactor) !=
               (In->getSchedInfo().UnrollFactor)) {
             continue;
           }
+          // Corner case, e.g.:
+          // [0,1,2,3] and [-1,1,4,5]
         }
 
         Utils::printDebug("PlcmntAlgo",
@@ -115,6 +118,20 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     Reduction.clear();
   }
   std::reverse(std::begin(*NL), std::end(*NL));
+  if (LRedux.size() <= 2) {
+    for (auto R : LRedux) {
+      R->setNodeAsNonReduction();
+      for (auto RIn : R->getInputs()) {
+        if (RIn != nullptr) {
+          RIn->setNodeAsNonReduction();
+        }
+      }
+    }
+    NL->insert(NL->end(), LRedux.begin(), LRedux.end());
+    (*NL) = sortGraph(*NL);
+    // Undo reductions
+    LRedux.clear();
+  }
   return LRedux;
 }
 

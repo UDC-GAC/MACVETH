@@ -36,14 +36,13 @@
 
 // ---------------------------------------------
 bool opsAreSequential(int VL, Node::NodeListType &VOps) {
+  bool Sequential = false;
   for (int i = 1; i < VL; ++i) {
-    if ((VOps[i - 1]->getSchedInfo().FreeSched <
-         VOps[i]->getSchedInfo().FreeSched)) {
-      return true;
-    }
+    Sequential &= (VOps[i - 1]->getSchedInfo().FreeSched <
+                   VOps[i]->getSchedInfo().FreeSched);
   }
   // If there is only one operation, then it is also a sequential operation
-  return (VL == 1);
+  return (VL == 1) || Sequential;
 }
 
 // ---------------------------------------------

@@ -256,9 +256,9 @@ repeat:
     if (!IsUnary) {
       CostNodes += computeCostForNodeOperandsList(Cursor, VLoadB);
     }
-    Utils::printDebug("MVCostModel",
-                      "Cost Vect = " + CostVect.toString() + "; ");
-    Utils::printDebug("MVCostModel", "Cost Nodes = " + CostNodes.toString());
+    // Utils::printDebug("MVCostModel",
+    //                   "Cost Vect = " + CostVect.toString() + "; ");
+    // Utils::printDebug("MVCostModel", "Cost Nodes = " + CostNodes.toString());
     auto DoVectorize = (CostVect <= CostNodes);
     if ((DoVectorize) ||
         (MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
