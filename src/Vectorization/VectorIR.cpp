@@ -40,8 +40,11 @@ bool opsAreSequential(int VL, Node::NodeListType &VOps) {
   for (int i = 1; i < VL; ++i) {
     auto PrevOpInfo = VOps[i - 1]->getSchedInfo();
     auto ActualOpInfo = VOps[i]->getSchedInfo();
-    Sequential &= ((PrevOpInfo.FreeSched < ActualOpInfo.FreeSched) ^
-                   (PrevOpInfo.TacID < ActualOpInfo.TacID));
+    auto CondSched = (PrevOpInfo.FreeSched < ActualOpInfo.FreeSched);
+    if ((!CondSched) && (PrevOpInfo.FreeSched > ActualOpInfo.FreeSched)) {
+      CondSched = (PrevOpInfo.TacID < ActualOpInfo.TacID);
+    }
+    Sequential &= (CondSched);
   }
   // If there is only one operation, then it is also a sequential operation
   return (VL == 1) || Sequential;
