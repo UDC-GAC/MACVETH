@@ -140,12 +140,14 @@ bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
     return false;
   }
   for (auto i = 1; i < VL; ++i) {
-    auto E = (V[i]->getOutputInfo().E) && (Store) ? V[i]->getOutputInfo().E
-                                                  : V[i]->getMVExpr();
-    if (!E) {
+    auto VPos = V[i];
+    auto NewExpr = (VPos->getOutputInfo().E) && (Store)
+                       ? VPos->getOutputInfo().E
+                       : VPos->getMVExpr();
+    if (!NewExpr) {
       return false;
     }
-    if (auto Arr = dyn_cast_or_null<MVExprArray>(E)) {
+    if (auto Arr = dyn_cast_or_null<MVExprArray>(NewExpr)) {
       if (A0->getBaseName() != Arr->getBaseName()) {
         return false;
       }

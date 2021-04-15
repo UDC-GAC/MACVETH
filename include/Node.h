@@ -91,7 +91,7 @@ public:
   /// If the node is NODE_OP type, then it will hold a result value
   struct OutputInfo {
     /// MVExpr of output
-    MVExpr *E;
+    MVExpr *E = nullptr;
     /// If the target variable is in memory it will be a MEM_STORE; TEMP_STORE
     /// the other way
     OutputType Type = MEM_STORE;
