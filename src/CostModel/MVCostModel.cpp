@@ -84,9 +84,9 @@ MVCostModel::computeCostForNodeOperandsList(int VL, Node::NodeListType &NL) {
     }
     auto T = M->getTypeStr();
     TotalCost += getOperandCost(M, T);
-    Utils::printDebug("MVCostModel",
-                      "Node = " + NL[i]->toStringShort() +
-                          "; cost = " + getOperandCost(M, T).toString());
+    // Utils::printDebug("MVCostModel",
+    //                   "Node = " + NL[i]->toStringShort() +
+    //                       "; cost = " + getOperandCost(M, T).toString());
   }
   return TotalCost;
 }

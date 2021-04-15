@@ -179,6 +179,7 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
   if (!V.IsLoad) {
     return false;
   }
+
   SIMDInstListType TIL;
   // Need to determine which type of memory/register load it is
   // We will say that it is a load if all the operands are contiguous and
@@ -217,21 +218,19 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
                         "; ExpVal = " + std::to_string(ExpVal) +
                         "; NullIndex = " + std::to_string(NullIndex));
 
-  // Load contiguous from memory
   if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
+    // Load contiguous from memory
     TIL = vload(V);
-    // Load from memory but not contiguous
   } else if ((!EqualVal) && (ScatterMem) && (V.SameVector) && (!NullIndex)) {
+    // Load from memory but not contiguous
     TIL = vpack(V);
-    // Replicate value
   } else if ((EqualVal) && (!ScatterMem) && (!ExpVal)) {
+    // Replicate value
     TIL = vbcast(V);
   } else {
     // Set values directly
     TIL = vset(V);
   }
-
-  // Update the list
   IL->splice(IL->end(), TIL);
 
   return true;

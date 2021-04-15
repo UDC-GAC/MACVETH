@@ -322,14 +322,28 @@ public:
 
   /// For sorting lists of nodes
   bool operator<(const Node &N) {
-    if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
-      if (this->getSchedInfo().TacID == N.SI.TacID) {
-        return (this->getSchedInfo().NodeID < N.SI.NodeID);
+    // FIXME:
+    // if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
+    //   if (this->getSchedInfo().TacID == N.SI.TacID) {
+    //     return (this->getSchedInfo().NodeID < N.SI.NodeID);
+    //   } else {
+    //     return (this->getSchedInfo().TacID < N.SI.TacID);
+    //   }
+    // } else {
+    //   return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
+    // }
+    if (this->getSchedInfo().TacID == N.SI.TacID) {
+      if (this->getSchedInfo().UnrollFactor == N.SI.UnrollFactor) {
+        if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
+          return (this->getSchedInfo().NodeID < N.SI.NodeID);
+        } else {
+          return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
+        }
       } else {
-        return (this->getSchedInfo().TacID < N.SI.TacID);
+        return (this->getSchedInfo().UnrollFactor < N.SI.UnrollFactor);
       }
     } else {
-      return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
+      return (this->getSchedInfo().TacID < N.SI.TacID);
     }
   }
 

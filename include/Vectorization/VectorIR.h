@@ -91,7 +91,7 @@ public:
   /// Keeping track of the loads in the program
   static inline std::list<std::tuple<std::vector<int>, std::string>> MapLoads;
   /// Keeping track of the stores in the program
-  static inline std::list<std::string> MapStores;
+  static inline std::map<std::string, int> MapStores;
 
   /// Clearing all the mappings
   static void clear() {
@@ -171,6 +171,12 @@ public:
     }
     /// Return name of VOperand
     std::string getName() { return this->Name; }
+
+    /// Returns if operands have been already loaded from memory
+    bool checkIfAlreadyLoaded(Node *PrimaryNode);
+
+    /// Return if operands already stored in memory
+    bool checkIfAlreadyStored(Node::NodeListType &V);
 
     /// Generate a name according to the VID
     std::string genNewVOpName() { return VOP_PREFIX + std::to_string(VID++); }

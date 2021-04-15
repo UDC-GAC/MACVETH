@@ -130,13 +130,18 @@ MVOp VectorIR::VectorOP::getMVOp() {
 
 // ---------------------------------------------
 bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
-  auto E = (Store) ? V[0]->getOutputInfo().E : V[0]->getMVExpr();
+  auto E = (V[0]->getOutputInfo().E != nullptr) && (Store)
+               ? V[0]->getOutputInfo().E
+               : V[0]->getMVExpr();
   auto A0 = dyn_cast<MVExprArray>(E);
   if (!A0) {
     return false;
   }
   for (auto i = 1; i < VL; ++i) {
-    auto E = (Store) ? V[i]->getOutputInfo().E : V[i]->getMVExpr();
+    auto E = (V[i]->getOutputInfo().E != nullptr) && (Store)
+                 ? V[i]->getOutputInfo().E
+                 : V[i]->getMVExpr();
+
     auto Arr = dyn_cast<MVExprArray>(E);
     if (!Arr) {
       return false;
@@ -153,11 +158,15 @@ std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
                             bool Store) {
   std::vector<long> Idx(VL);
   Idx[0] = 0;
-  auto E = (Store) ? V[0]->getOutputInfo().E : V[0]->getMVExpr();
+  auto E = (V[0]->getOutputInfo().E != nullptr) && (Store)
+               ? V[0]->getOutputInfo().E
+               : V[0]->getMVExpr();
   auto Arr0 = dyn_cast<MVExprArray>(E);
   auto Idx0 = Arr0->getIndex().back();
   for (int i = 1; i < VL; ++i) {
-    auto E = (Store) ? V[i]->getOutputInfo().E : V[i]->getMVExpr();
+    auto E = (V[i]->getOutputInfo().E != nullptr) && (Store)
+                 ? V[i]->getOutputInfo().E
+                 : V[i]->getMVExpr();
     auto MV = dyn_cast<MVExprArray>(E);
     if (!MV) {
       Idx[0] = -1;
@@ -181,12 +190,36 @@ unsigned int getMask(int VL, int VS, Node::NodeListType &V) {
 }
 
 // ---------------------------------------------
+bool VectorIR::VOperand::checkIfAlreadyLoaded(Node *PrimaryNode) {
+  for (auto T : MapLoads) {
+    if (std::get<1>(T) == this->getName()) {
+      if (std::get<0>(T)[0] == PrimaryNode->getScop()[0]) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// ---------------------------------------------
+bool VectorIR::VOperand::checkIfAlreadyStored(Node::NodeListType &V) {
+  for (int i = 0; i < V.size(); ++i) {
+    auto Reg = V[i]->getRegisterValue();
+    if (MapStores.find(Reg) != MapStores.end()) {
+      if (MapStores[Reg]) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// ---------------------------------------------
 VectorIR::VOperand::VOperand(){/* empty constructor */};
 
 // ---------------------------------------------
 VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Init list of unit operands
-  // this->UOP = (Node **)malloc(sizeof(Node *) * VL);
   this->Order = V[0]->getTacID();
   this->Offset = V[0]->getUnrollFactor();
   // Check if array
@@ -197,7 +230,9 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // This is the number of elements not null in this Vector. This is different
   // from the regular size (this->Size), which is the actual vector size
   this->VSize = VL;
-
+  for (int i = 0; i < VL; ++i) {
+    this->UOP.push_back(V[i]);
+  }
   auto PrimaryNode = V[0];
 
   // Get data type
@@ -219,6 +254,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     this->IsStore = true;
     for (int T = 0; T < VL; ++T) {
       this->StoreValues.push_back(V[T]->getRegisterValue());
+      MapStores[V[T]->getRegisterValue()] = 1;
     }
   }
 
@@ -231,16 +267,8 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
                          PrimaryNode->getRegisterValue(), this->getWidth())]
                    : genNewVOpName();
 
-  // Check if this has been already loaded
-  auto AlreadyLoaded = false;
-  for (auto T : MapLoads) {
-    if (std::get<1>(T) == this->getName()) {
-      if (std::get<0>(T)[0] == PrimaryNode->getScop()[0]) {
-        AlreadyLoaded = true;
-        break;
-      }
-    }
-  }
+  auto AlreadyLoaded = checkIfAlreadyLoaded(PrimaryNode);
+  auto AlreadyStored = checkIfAlreadyStored(this->UOP);
 
   // It is a temporal result if it has already been assigned. If within a loop,
   // it should have the same Scop
@@ -248,19 +276,20 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
 
   // So, if it has not been assigned yet, then we added to the list of loads
   // (or register that we are going to pack somehow). It can also be a store.
-  if (!AlreadyLoaded)
+  if (!AlreadyLoaded) {
     MapLoads.push_back(
         std::make_tuple(PrimaryNode->getScop(), this->getName()));
+  }
 
   // So if it has not been packed/loaded yet, then we consider it a load
   this->IsLoad = !AlreadyLoaded && !this->IsStore;
 
   // Checking if operands are all memory
   bool IsMemOp = true;
+
   // Tracking the operands
   for (int n = 0; n < VL; ++n) {
     IsMemOp = (IsMemOp) && (V[n]->needsMemLoad());
-    this->UOP.push_back(V[n]);
     if (!VecAssigned) {
       MapRegToVReg[std::make_tuple(V[n]->getRegisterValue(),
                                    this->getWidth())] = this->Name;
@@ -270,7 +299,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
                                           V[n - 1]->getRegisterValue());
     }
   }
-  this->MemOp = IsMemOp;
+  this->MemOp = (IsMemOp || AlreadyStored);
 
   // Get data mask
   this->Mask = getMask(this->VSize, this->Size, V);
@@ -280,12 +309,11 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
 
   // In case we have to access to memory we are also interested in how we do it:
   // if we have to use an index for it, or if we have to shuffle data
-  // if ((this->MemOp) || ((this->IsStore) && (this->IsTmpResult))) {
   if ((this->MemOp) || (this->IsStore)) {
-    this->SameVector = areInSameVector(VL, V, this->IsStore);
+    this->SameVector = areInSameVector(VL, V, this->IsStore || AlreadyStored);
     if (this->SameVector) {
       // Get Memory index
-      this->Idx = getMemIdx(VL, V, this->Mask, this->IsStore);
+      this->Idx = getMemIdx(VL, V, this->Mask, this->IsStore || AlreadyStored);
       if (this->Idx[0] != -1) {
         auto T = true;
         if (VL > 1) {
