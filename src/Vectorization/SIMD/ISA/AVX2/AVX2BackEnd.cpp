@@ -1203,7 +1203,7 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
     IL->splice(IL->end(), vload(NewVOp));
   }
 
-  if (FirstHalve && SecondHalve) {
+  if ((FirstHalve && SecondHalve) || (FirstHalve && V.VSize == 2)) {
     return true;
   }
 
@@ -1215,7 +1215,7 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
                         ? MVDataType::VDataType::SFLOAT
                         : MVDataType::VDataType::SDOUBLE;
   // One stride of 2 at the beggining of at the end
-  if (FirstHalve && !SecondHalve) {
+  if (FirstHalve && !SecondHalve && V.VSize > 2) {
     // [C,C+1,X,Y]
     NewVOp.DType = SingleType;
     NewVOp.Name = "__tmp0";
@@ -1235,7 +1235,7 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
                 SIMDType::VPACK, MVSL, IL);
     return true;
   }
-  if (!FirstHalve && SecondHalve) {
+  if (!FirstHalve && SecondHalve && V.VSize) {
     // [X,Y,C,C+1]
     NewVOp.DType = SingleType;
     NewVOp.Name = "__tmp0";
