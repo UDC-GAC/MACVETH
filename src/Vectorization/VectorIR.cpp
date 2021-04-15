@@ -137,7 +137,7 @@ bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
     return false;
   }
   MVExprArray *A0;
-  if (!(A0 = dyn_cast<MVExprArray>(E))) {
+  if (!(A0 = dyn_cast_or_null<MVExprArray>(E))) {
     return false;
   }
   for (auto i = 1; i < VL; ++i) {
@@ -147,7 +147,7 @@ bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
     if (E == nullptr) {
       return false;
     }
-    if (auto Arr = dyn_cast<MVExprArray>(E)) {
+    if (auto Arr = dyn_cast_or_null<MVExprArray>(E)) {
       if (A0->getBaseName() != Arr->getBaseName()) {
         return false;
       }
@@ -170,7 +170,7 @@ std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
     return Idx;
   }
   MVExprArray::MVAffineIndex Idx0;
-  if (auto Arr0 = dyn_cast<MVExprArray>(E)) {
+  if (auto Arr0 = dyn_cast_or_null<MVExprArray>(E)) {
     Idx0 = Arr0->getIndex().back();
   } else {
     return Idx;
@@ -182,7 +182,7 @@ std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
     if (E == nullptr) {
       return Idx;
     }
-    if (auto MV = dyn_cast<MVExprArray>(E)) {
+    if (auto MV = dyn_cast_or_null<MVExprArray>(E)) {
       auto IdxI = MV->getIndex().back();
       Idx[i] = IdxI - Idx0;
     } else {
