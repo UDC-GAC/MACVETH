@@ -195,9 +195,9 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
   auto OP = VIL[0].MVOP.toString();
   auto AccmReg = getAccmReg(V.Name);
   MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  std::string LoRes = "__mv_lo128";
+  std::string HiRes = "__mv_hi128";
   if (NReductions == 1) {
-    std::string LoRes = "__mv_lo128";
-    std::string HiRes = "__mv_hi128";
     auto RegType = getRegisterType(Type, MVDataType::VWidth::W128);
     SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
     SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
@@ -260,8 +260,8 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
     }
 
   } else {
-    std::string LoRes = "__mv_lo256";
-    std::string HiRes = "__mv_hi256";
+    LoRes = "__mv_lo256";
+    HiRes = "__mv_hi256";
     auto RegType = getRegisterType(Type, MVDataType::VWidth::W256);
     SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
     SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
