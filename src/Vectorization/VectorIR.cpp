@@ -130,9 +130,8 @@ MVOp VectorIR::VectorOP::getMVOp() {
 
 // ---------------------------------------------
 bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
-  auto E = (V[0]->getOutputInfo().E != nullptr) && (Store)
-               ? V[0]->getOutputInfo().E
-               : V[0]->getMVExpr();
+  auto E = (V[0]->getOutputInfo().E) && (Store) ? V[0]->getOutputInfo().E
+                                                : V[0]->getMVExpr();
   if (!E) {
     return false;
   }
@@ -141,9 +140,8 @@ bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
     return false;
   }
   for (auto i = 1; i < VL; ++i) {
-    auto E = (V[i]->getOutputInfo().E != nullptr) && (Store)
-                 ? V[i]->getOutputInfo().E
-                 : V[i]->getMVExpr();
+    auto E = (V[i]->getOutputInfo().E) && (Store) ? V[i]->getOutputInfo().E
+                                                  : V[i]->getMVExpr();
     if (!E) {
       return false;
     }
