@@ -1216,6 +1216,8 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
   NewVOp.Width = Width;
   SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp0", {0});
   SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp1", {0});
+  SIMDBackEnd::addRegToDeclare(TypeReg, "__lo128", {0});
+  SIMDBackEnd::addRegToDeclare(TypeReg, "__hi128", {0});
   auto SingleType = (NewVOp.DType == MVDataType::FLOAT)
                         ? MVDataType::VDataType::SFLOAT
                         : MVDataType::VDataType::SDOUBLE;
@@ -1446,6 +1448,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
             }
           }
         }
+        // TODO:
         if ((std::get<0>(Range) == 1) && (std::get<1>(Range) == (6))) {
           // [Y|XXXXXX|Y]
           genSIMDInst(NewVOp, "loadu", "", "",
