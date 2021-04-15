@@ -133,6 +133,9 @@ bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
   auto E = (V[0]->getOutputInfo().E != nullptr) && (Store)
                ? V[0]->getOutputInfo().E
                : V[0]->getMVExpr();
+  if (E == nullptr) {
+    return false;
+  }
   auto A0 = dyn_cast<MVExprArray>(E);
   if (!A0) {
     return false;
@@ -141,7 +144,9 @@ bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
     auto E = (V[i]->getOutputInfo().E != nullptr) && (Store)
                  ? V[i]->getOutputInfo().E
                  : V[i]->getMVExpr();
-
+    if (E == nullptr) {
+      return false;
+    }
     auto Arr = dyn_cast<MVExprArray>(E);
     if (!Arr) {
       return false;
@@ -161,12 +166,18 @@ std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
   auto E = (V[0]->getOutputInfo().E != nullptr) && (Store)
                ? V[0]->getOutputInfo().E
                : V[0]->getMVExpr();
+  if (E == nullptr) {
+    return Idx;
+  }
   auto Arr0 = dyn_cast<MVExprArray>(E);
   auto Idx0 = Arr0->getIndex().back();
   for (int i = 1; i < VL; ++i) {
     auto E = (V[i]->getOutputInfo().E != nullptr) && (Store)
                  ? V[i]->getOutputInfo().E
                  : V[i]->getMVExpr();
+    if (E == nullptr) {
+      return Idx;
+    }
     auto MV = dyn_cast<MVExprArray>(E);
     if (!MV) {
       Idx[0] = -1;
