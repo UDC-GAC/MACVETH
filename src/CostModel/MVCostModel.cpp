@@ -65,9 +65,10 @@ InstCostInfo MVCostModel::computeCostForNodeOpsList(int VL,
   InstCostInfo TotalCost;
   for (int i = 0; i < VL; ++i) {
     TotalCost += computeCostForNodeOp(NL[i]);
-    Utils::printDebug("MVCostModel",
-                      "Node = " + NL[i]->toStringShort() +
-                          "; cost = " + computeCostForNodeOp(NL[i]).toString());
+    // Utils::printDebug("MVCostModel",
+    //                   "Node = " + NL[i]->toStringShort() +
+    //                       "; cost = " +
+    //                       computeCostForNodeOp(NL[i]).toString());
   }
   return TotalCost;
 }
@@ -177,15 +178,21 @@ repeat:
   int VL = 4;
   // This is where magic should happen
   while (!CopyNL.empty()) {
+    auto NextNode = CopyNL.front();
     if ((Cursor > 0) &&
-        ((CopyNL.front()->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
-         (CopyNL.front()->belongsToAReduction() !=
+        ((NextNode->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
+         (NextNode->belongsToAReduction() !=
           VOps[Cursor - 1]->belongsToAReduction()))) {
       break;
     }
 
+    // Corner case...
+    // if ((NextNode->getSchedInfo().UnrollFactor % 4) != (Cursor % 4)) {
+    //   break;
+    // }
+
     // Consume the first one
-    VOps[Cursor] = CopyNL.front();
+    VOps[Cursor] = NextNode;
 
     // Get vector length
     VL = SG->getMaxVectorSize(VOps[Cursor]->getDataType());
@@ -207,6 +214,7 @@ repeat:
                             "); cursor = " + std::to_string(Cursor));
       break;
     }
+    // Remove node from list
     CopyNL.erase(CopyNL.begin());
     if (++Cursor == VL) {
       Utils::printDebug("MVCostModel", "Full vector");

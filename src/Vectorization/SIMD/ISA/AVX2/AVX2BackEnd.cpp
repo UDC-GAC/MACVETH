@@ -282,8 +282,10 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
         genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W256, Type,
                     {TmpReg1, TmpReg2}, SIMDType::VADD, MVSL, &IL);
       } else {
-        // TODO:
-        MVErr("TO IMPLEMENT REDUCTIONS WITH DOUBLES");
+        genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W128, Type,
+                    {AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
+        genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W128, Type,
+                    {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
       }
     } else {
       MVErr("TO IMPLEMENT REDUCTIONS WITH DOUBLES");
@@ -1236,7 +1238,7 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
                 SIMDType::VPACK, MVSL, IL);
     return true;
   }
-  if (!FirstHalve && SecondHalve && V.VSize) {
+  if (!FirstHalve && SecondHalve && V.VSize > 2) {
     // [X,Y,C,C+1]
     NewVOp.DType = SingleType;
     NewVOp.Name = "__tmp0";
@@ -1422,7 +1424,9 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
     }
     insertLowAndHighBits(V, "__hi128", "__lo128", MVSL, &IL);
   } else {
-    vpack4elements(V, V.Width, &IL);
+    if (!vpack4elements(V, V.Width, &IL)) {
+      return vgather(V);
+    }
   }
 
   return IL;
