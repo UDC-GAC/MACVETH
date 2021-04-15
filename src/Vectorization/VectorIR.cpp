@@ -36,10 +36,12 @@
 
 // ---------------------------------------------
 bool opsAreSequential(int VL, Node::NodeListType &VOps) {
-  bool Sequential = false;
+  bool Sequential = true;
   for (int i = 1; i < VL; ++i) {
-    Sequential &= (VOps[i - 1]->getSchedInfo().FreeSched <
-                   VOps[i]->getSchedInfo().FreeSched);
+    auto PrevOpInfo = VOps[i - 1]->getSchedInfo();
+    auto ActualOpInfo = VOps[i]->getSchedInfo();
+    Sequential &= ((PrevOpInfo.FreeSched < ActualOpInfo.FreeSched) ^
+                   (PrevOpInfo.TacID < ActualOpInfo.TacID));
   }
   // If there is only one operation, then it is also a sequential operation
   return (VL == 1) || Sequential;

@@ -83,7 +83,8 @@ public:
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
 
   /// Scattering of four elements taking into account the contiguity of data
-  SIMDBackEnd::SIMDInstListType vscatter4elements(VectorIR::VectorOP V);
+  bool vscatter4elements(VectorIR::VectorOP VOP, MVDataType::VWidth Width,
+                         SIMDBackEnd::SIMDInstListType *IL);
 
   // Binary operations
 

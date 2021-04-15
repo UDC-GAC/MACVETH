@@ -1123,9 +1123,9 @@ std::vector<std::tuple<int, int>> getContiguityRanges(VectorIR::VOperand V) {
     }
     ActualStride++;
   }
-  if (ActualStride != 1) {
-    Ranges.push_back(std::make_tuple(V.Size - ActualStride, V.Size - 1));
-  }
+  // if (ActualStride != 1) {
+  Ranges.push_back(std::make_tuple(V.Size - ActualStride, V.Size - 1));
+  //}
   return Ranges;
 }
 
@@ -1338,6 +1338,11 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   bool FiveElements = false;
   bool SixElements = false;
   bool SevenElements = false;
+  bool ThreeThreeElems =
+      (Ranges.size() >= 2) && (std::get<0>(Ranges[0]) == 0) &&
+      (std::get<1>(Ranges[0]) == 2) && (std::get<0>(Ranges[1]) == 3) &&
+      (std::get<1>(Ranges[1]) == 5);
+
   for (auto Range : Ranges) {
     FiveElements |= ((std::get<0>(Range) + 4 == std::get<1>(Range)));
     SixElements |= ((std::get<0>(Range) + 5 == std::get<1>(Range)));
@@ -1398,12 +1403,86 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
     }
     // 6 contiguous elements
     if (SixElements) {
-      // TODO:
+      for (auto Range : Ranges) {
+        if ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (5))) {
+          for (auto InnerRange : Ranges) {
+            if ((std::get<0>(InnerRange) == 6) &&
+                (std::get<1>(InnerRange) == (7))) {
+              // [XXXXXX|YY]
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 0, 0)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b11000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+              return IL;
+            } else {
+              // [XXXXXX|Y|Y]
+              // [XXXXXX|YY]
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 0, 0)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b01000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 7, -7)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b10000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+              return IL;
+            }
+          }
+        }
+        if ((std::get<0>(Range) == 1) && (std::get<1>(Range) == (6))) {
+          // [Y|XXXXXX|Y]
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 1, -1)}, SIMDType::VPACK, MVSL,
+                      &IL);
+        }
+        if ((std::get<0>(Range) == 2) && (std::get<1>(Range) == (7))) {
+          for (auto InnerRange : Ranges) {
+            if ((std::get<0>(InnerRange) == 0) &&
+                (std::get<1>(InnerRange) == (1))) {
+              // [YY|XXXXXX]
+            } else {
+              // [Y|Y|XXXXXX]
+            }
+          }
+        }
+      }
     }
+
     // 5 contiguous elements
     if (FiveElements) {
-      // TODO:
+      for (auto Range : Ranges) {
+        // [XXXXX|YYY]
+        // [XXXXX|Y|YY]
+        // [XXXXX|YY|Y]
+        // [XXXXX|Y|Y|Y]
+        // [Y|XXXXX|Y|Y]
+        // [Y|XXXXX|YY]
+        // [YY|XXXXX|Y]
+        // [Y|Y|XXXXX|Y]
+        // [YYY|XXXXX]
+        // [Y|YY|XXXXX]
+        // [YY|Y|XXXXX]
+        // [Y|Y|Y|XXXXX]
+      }
     }
+
     // 4 elements strategy
     auto VFirstHalve =
         getSubVOperand(V, "__lo128", 4, Half, MVDataType::VWidth::W128,
@@ -1426,7 +1505,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
     }
     insertLowAndHighBits(V, "__hi128", "__lo128", MVSL, &IL);
   } else {
-    if (!vpack4elements(V, V.Width, &IL)) {
+    if (!vpack4elements(V, V.getWidth(), &IL)) {
       return vgather(V);
     }
   }
@@ -1510,9 +1589,25 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
 }
 
 // ---------------------------------------------
-SIMDBackEnd::SIMDInstListType
-AVX2BackEnd::vscatter4elements(VectorIR::VectorOP V) {
-  
+bool AVX2BackEnd::vscatter4elements(VectorIR::VectorOP VOP,
+                                    MVDataType::VWidth Width,
+                                    SIMDBackEnd::SIMDInstListType *IL) {
+  auto V = VOP.R;
+  MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
+  std::string TypeReg = (V.DType == MVDataType::FLOAT) ? "__m128" : "__m128d";
+  int Half = (int)V.VSize / 2;
+  bool FullVector = false;
+  bool FirstHalve = false;
+  bool SecondHalve = false;
+  auto Ranges = getContiguityRanges(V);
+  for (auto Range : Ranges) {
+    FullVector |=
+        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (V.VSize - 1)));
+    FirstHalve |=
+        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (Half - 1)));
+    SecondHalve |= ((std::get<0>(Range) == (Half)) &&
+                    (std::get<1>(Range) == (2 * Half - 1)));
+  }
 }
 
 // ---------------------------------------------
@@ -1523,11 +1618,11 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   auto VOP = V.R;
   auto Ranges = getContiguityRanges(VOP);
 
-  // Same approach as gather taking into account the contiguity of operands
-
+  // TODO: add AVX-512 scatter using 256 bits if architecture permits and ISA
+  // chosen is >=(AVX512F + AVX512VL)
   // If scatter is available in machine
   // Just do a manual scatter
-  if (Ranges.size() + 1 == VOP.VSize) {
+  if (Ranges.size() == VOP.VSize) {
     // If there is no contiguity at all: manual scatter
     for (size_t N = 0; N < VOP.VSize; ++N) {
       std::string Idx = "[" + std::to_string(N) + "]";
@@ -1537,8 +1632,22 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     return IL;
   }
 
-  // TODO: add AVX-512 scatter using 256 bits if architecture permits and ISA
-  // chosen is >=(AVX512F + AVX512VL)
+  int Half = (int)VOP.VSize / 2;
+  bool FiveElements = false;
+  bool SixElements = false;
+  bool SevenElements = false;
+  for (auto Range : Ranges) {
+    FiveElements |= ((std::get<0>(Range) + 4 == std::get<1>(Range)));
+    SixElements |= ((std::get<0>(Range) + 5 == std::get<1>(Range)));
+    SevenElements |= ((std::get<0>(Range) + 6 == std::get<1>(Range)));
+  }
+
+  if (VOP.Size > 4) {
+
+  } else {
+    vscatter4elements(V, VOP.getWidth(), &IL);
+  }
+
   return IL;
 }
 

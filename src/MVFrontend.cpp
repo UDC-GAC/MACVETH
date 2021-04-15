@@ -364,6 +364,13 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       // Computing the cost model of the CDAG created
       auto SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
+      // Render the registers we are going to use, declarations
+      if (IsLastScop) {
+        for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+          Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
+        }
+      }
+
       if (SInfo.isThereAnyVectorization()) {
         // Comment statements
         commentReplacedStmts(SL);
@@ -376,13 +383,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         // reductions
         for (auto InitRedux : SIMDGen->getInitReg()) {
           renderSIMDInstBeforePlace(InitRedux, SL);
-        }
-
-        // Render the registers we are going to use, declarations
-        if (IsLastScop) {
-          for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
-            Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
-          }
         }
 
         // Rewrite loops
