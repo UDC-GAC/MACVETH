@@ -1324,6 +1324,34 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
 }
 
 // ---------------------------------------------
+void AVX2BackEnd::store(VectorIR::VOperand V, std::list<std::string> Args,
+                        MVSourceLocation MVSL,
+                        SIMDBackEnd::SIMDInstListType *IL) {
+  genSIMDInst(V, "storeu", "", "", Args, SIMDType::VSTORE, MVSL, IL);
+}
+
+// ---------------------------------------------
+void AVX2BackEnd::load(VectorIR::VOperand V, std::list<std::string> Args,
+                       MVSourceLocation MVSL,
+                       SIMDBackEnd::SIMDInstListType *IL) {
+  genSIMDInst(V, "loadu", "", "", Args, SIMDType::VPACK, MVSL, IL);
+}
+
+// ---------------------------------------------
+void AVX2BackEnd::loads(VectorIR::VOperand V, std::list<std::string> Args,
+                        MVSourceLocation MVSL,
+                        SIMDBackEnd::SIMDInstListType *IL) {
+  genSIMDInst(V, "load", "", "", Args, SIMDType::VPACK, MVSL, IL);
+}
+
+// ---------------------------------------------
+void AVX2BackEnd::blend(VectorIR::VOperand V, std::list<std::string> Args,
+                        MVSourceLocation MVSL,
+                        SIMDBackEnd::SIMDInstListType *IL) {
+  genSIMDInst(V, "blend", "", "", Args, SIMDType::VPACK, MVSL, IL);
+}
+
+// ---------------------------------------------
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   // This is where magic happens.
   // This is a heavy and probably buggy function.
@@ -1413,20 +1441,24 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
           genSIMDInst(NewVOp, "loadu", "", "",
                       {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK, MVSL,
                       &IL);
+          NewVOp.Name = V.Name;
           for (auto InnerRange : Ranges) {
+            if ((std::get<0>(InnerRange) == 0) &&
+                (std::get<1>(InnerRange) == (5))) {
+              continue;
+            }
             if ((std::get<0>(InnerRange) == 6) &&
                 (std::get<1>(InnerRange) == (7))) {
               // [XXXXXX|YY]
-              NewVOp.Name = V.Name;
               genSIMDInst(NewVOp, "blend", "", "",
                           {V.Name, "__tmp0_256", "0b11000000"}, SIMDType::VPACK,
                           MVSL, &IL);
             } else {
               // [XXXXXX|Y|Y]
-              NewVOp.Name = V.Name;
               genSIMDInst(NewVOp, "blend", "", "",
                           {V.Name, "__tmp0_256", "0b01000000"}, SIMDType::VPACK,
                           MVSL, &IL);
+              NewVOp.Name = "__tmp0_256";
               genSIMDInst(NewVOp, "loadu", "", "",
                           {getOpName(V, true, true, 7, -7)}, SIMDType::VPACK,
                           MVSL, &IL);
@@ -1470,6 +1502,10 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
                       {getOpName(V, true, true, 2, -2)}, SIMDType::VPACK, MVSL,
                       &IL);
           for (auto InnerRange : Ranges) {
+            if ((std::get<0>(InnerRange) == 2) &&
+                (std::get<1>(InnerRange) == (7))) {
+              continue;
+            }
             if ((std::get<0>(InnerRange) == 0) &&
                 (std::get<1>(InnerRange) == (1))) {
               // [YY|XXXXXX]
@@ -1499,11 +1535,10 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
                   NewVOp, "blend", "", "",
                   {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
                   SIMDType::VPACK, MVSL, &IL);
-              // [Y|Y|XXXXXX]
               NewVOp.Name = "__tmp0_128";
-              NewVOp.DType = SingleType;
+              NewVOp.DType = V.DType;
               NewVOp.Width = MVDataType::VWidth::W128;
-              genSIMDInst(NewVOp, "load", "", "",
+              genSIMDInst(NewVOp, "loadu", "", "",
                           {getOpName(V, true, true, 1, -1)}, SIMDType::VPACK,
                           MVSL, &IL);
               NewVOp.Name = V.Name;
@@ -1524,28 +1559,325 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
     if (FiveElements) {
       for (auto Range : Ranges) {
         if ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (4))) {
-          // [XXXXX|YYY]
-          // [XXXXX|Y|YY]
-          // [XXXXX|YY|Y]
-          // [XXXXX|Y|Y|Y]
-          return IL;
+          genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true)},
+                      SIMDType::VPACK, MVSL, &IL);
+          for (auto InnerRange : Ranges) {
+            if (((std::get<0>(InnerRange) == 0) &&
+                 (std::get<1>(InnerRange) == (4))) ||
+                ((std::get<0>(InnerRange) == 5) &&
+                 (std::get<1>(InnerRange) == (5)))) {
+              continue;
+            }
+            if ((std::get<0>(InnerRange) == 5) &&
+                (std::get<1>(InnerRange) == (7))) {
+              // [XXXXX|YYY]
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 5, -5)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b11100000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+            } else if ((std::get<0>(InnerRange) == 6) &&
+                       (std::get<1>(InnerRange) == (7))) {
+              // [XXXXX|Y|YY]
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 5, -5)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b00100000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b11000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+            } else if ((std::get<0>(InnerRange) == 5) &&
+                       (std::get<1>(InnerRange) == (6))) {
+              // [XXXXX|YY|Y]
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 5, -5)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b01100000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 7, -7)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b10000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+
+            } else {
+              // [XXXXX|Y|Y|Y]
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 5, -5)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b00100000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b01000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 7, -7)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b10000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+            }
+            return IL;
+          }
         }
         if ((std::get<0>(Range) == 1) && (std::get<1>(Range) == (5))) {
-          // [Y|XXXXX|Y|Y]
-          // [Y|XXXXX|YY]
-          return IL;
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 1, -1)}, SIMDType::VPACK, MVSL,
+                      &IL);
+          NewVOp.Name = "__tmp0_128";
+          NewVOp.DType = SingleType;
+          NewVOp.Width = MVDataType::VWidth::W128;
+          genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true)},
+                      SIMDType::VPACK, MVSL, &IL);
+          NewVOp.Name = V.Name;
+          NewVOp.DType = V.DType;
+          NewVOp.Width = V.Width;
+          genSIMDInst(
+              NewVOp, "blend", "", "",
+              {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+              SIMDType::VPACK, MVSL, &IL);
+          for (auto InnerRange : Ranges) {
+            if (((std::get<0>(InnerRange) == 1) &&
+                 (std::get<1>(InnerRange) == (5))) ||
+                ((std::get<0>(InnerRange) == 0) &&
+                 (std::get<1>(InnerRange) == (0)))) {
+              continue;
+            }
+            if ((std::get<0>(InnerRange) == 6) &&
+                (std::get<1>(InnerRange) == (7))) {
+              // [Y|XXXXX|YY]
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b11000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+            } else {
+              // [Y|XXXXX|Y|Y]
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b01000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = "__tmp0_256";
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 7, -7)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              genSIMDInst(NewVOp, "blend", "", "",
+                          {V.Name, "__tmp0_256", "0b10000000"}, SIMDType::VPACK,
+                          MVSL, &IL);
+            }
+            return IL;
+          }
         }
         if ((std::get<0>(Range) == 2) && (std::get<1>(Range) == (6))) {
-          // [YY|XXXXX|Y]
-          // [Y|Y|XXXXX|Y]
-          return IL;
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 2, -2)}, SIMDType::VPACK, MVSL,
+                      &IL);
+          for (auto InnerRange : Ranges) {
+            if ((std::get<0>(InnerRange) == 2) &&
+                (std::get<1>(InnerRange) == (6))) {
+              continue;
+            }
+            if ((std::get<0>(InnerRange) == 0) &&
+                (std::get<1>(InnerRange) == (1))) {
+              // [YY|XXXXX|Y]
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = V.DType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true)},
+                          SIMDType::VPACK, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.Width = V.Width;
+              genSIMDInst(
+                  NewVOp, "blend", "", "",
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000011"},
+                  SIMDType::VPACK, MVSL, &IL);
+            } else {
+              // [Y|Y|XXXXX|Y]
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = SingleType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              genSIMDInst(NewVOp, "load", "", "", {getOpName(V, true, true)},
+                          SIMDType::VPACK, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              genSIMDInst(
+                  NewVOp, "blend", "", "",
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+                  SIMDType::VPACK, MVSL, &IL);
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = V.DType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              genSIMDInst(NewVOp, "loadu", "", "",
+                          {getOpName(V, true, true, 1, -1)}, SIMDType::VPACK,
+                          MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              genSIMDInst(
+                  NewVOp, "blend", "", "",
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000010"},
+                  SIMDType::VPACK, MVSL, &IL);
+            }
+            NewVOp.Name = "__tmp0_256";
+            genSIMDInst(NewVOp, "loadu", "", "",
+                        {getOpName(V, true, true, 7, -7)}, SIMDType::VPACK,
+                        MVSL, &IL);
+            NewVOp.Name = V.Name;
+            blend(NewVOp, {V.Name, "__tmp0_256", "0b10000000"}, MVSL, &IL);
+            return IL;
+          }
         }
         if ((std::get<0>(Range) == 3) && (std::get<1>(Range) == (7))) {
-          // [YYY|XXXXX]
-          // [Y|YY|XXXXX]
-          // [YY|Y|XXXXX]
-          // [Y|Y|Y|XXXXX]
-          return IL;
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 3, -3)}, SIMDType::VPACK, MVSL,
+                      &IL);
+          for (auto InnerRange : Ranges) {
+            if (((std::get<0>(InnerRange) == 3) &&
+                 (std::get<1>(InnerRange) == (7))) ||
+                (((std::get<0>(InnerRange) == 0) &&
+                  (std::get<1>(InnerRange) == (0))))) {
+              continue;
+            }
+            if ((std::get<0>(InnerRange) == 0) &&
+                (std::get<1>(InnerRange) == (2))) {
+              // [YYY|XXXXX]
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = V.DType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              load(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000111"},
+                  MVSL, &IL);
+            } else if ((std::get<0>(InnerRange) == 1) &&
+                       (std::get<1>(InnerRange) == (2))) {
+              // [Y|YY|XXXXX]
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = SingleType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+                  MVSL, &IL);
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = V.DType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              load(NewVOp, {getOpName(V, true, true, 2, -2)}, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000110"},
+                  MVSL, &IL);
+            } else if ((std::get<0>(InnerRange) == 0) &&
+                       (std::get<1>(InnerRange) == (1))) {
+              // [YY|Y|XXXXX]
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = V.DType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              load(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000011"},
+                  MVSL, &IL);
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = V.DType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              load(NewVOp, {getOpName(V, true, true, 2, -2)}, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000100"},
+                  MVSL, &IL);
+
+            } else {
+              // [Y|Y|Y|XXXXX]
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = SingleType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+                  MVSL, &IL);
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = V.DType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              load(NewVOp, {getOpName(V, true, true, 1, -1)}, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000010"},
+                  MVSL, &IL);
+              NewVOp.Name = "__tmp0_128";
+              NewVOp.DType = V.DType;
+              NewVOp.Width = MVDataType::VWidth::W128;
+              load(NewVOp, {getOpName(V, true, true, 2, -2)}, MVSL, &IL);
+              NewVOp.Name = V.Name;
+              NewVOp.DType = V.DType;
+              NewVOp.Width = V.Width;
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000100"},
+                  MVSL, &IL);
+            }
+            return IL;
+          }
         }
       }
     }
@@ -1554,11 +1886,49 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
     if (ThreeThreeElems) {
       genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true)},
                   SIMDType::VPACK, MVSL, &IL);
+      NewVOp.Name = "__tmp0_256";
       genSIMDInst(NewVOp, "loadu", "", "", {getOpName(V, true, true, 3, -3)},
                   SIMDType::VPACK, MVSL, &IL);
-      // Contiguous
-      // Not contiguous
-      return IL;
+      NewVOp.Name = V.Name;
+      genSIMDInst(NewVOp, "blend", "", "", {V.Name, "__tmp0_256", "0b00111000"},
+                  SIMDType::VPACK, MVSL, &IL);
+      for (auto InnerRange : Ranges) {
+        if (((std::get<0>(InnerRange) == 0) &&
+             (std::get<1>(InnerRange) == (2))) ||
+            ((std::get<0>(InnerRange) == 3) &&
+             (std::get<1>(InnerRange) == (5)))) {
+          continue;
+        }
+        if ((std::get<0>(InnerRange) == 6) &&
+            (std::get<1>(InnerRange) == (7))) {
+          NewVOp.Name = "__tmp0_256";
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK, MVSL,
+                      &IL);
+          NewVOp.Name = V.Name;
+          genSIMDInst(NewVOp, "blend", "", "",
+                      {V.Name, "__tmp0_256", "0b11000000"}, SIMDType::VPACK,
+                      MVSL, &IL);
+        } else {
+          NewVOp.Name = "__tmp0_256";
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 6, -6)}, SIMDType::VPACK, MVSL,
+                      &IL);
+          NewVOp.Name = V.Name;
+          genSIMDInst(NewVOp, "blend", "", "",
+                      {V.Name, "__tmp0_256", "0b01000000"}, SIMDType::VPACK,
+                      MVSL, &IL);
+          NewVOp.Name = "__tmp0_256";
+          genSIMDInst(NewVOp, "loadu", "", "",
+                      {getOpName(V, true, true, 7, -7)}, SIMDType::VPACK, MVSL,
+                      &IL);
+          NewVOp.Name = V.Name;
+          genSIMDInst(NewVOp, "blend", "", "",
+                      {V.Name, "__tmp0_256", "0b10000000"}, SIMDType::VPACK,
+                      MVSL, &IL);
+        }
+        return IL;
+      }
     }
 
     // 4 elements strategy
@@ -1696,9 +2066,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   auto VOP = V.R;
   auto Ranges = getContiguityRanges(VOP);
 
-  // TODO: add AVX-512 scatter using 256 bits if architecture permits and ISA
-  // chosen is >=(AVX512F + AVX512VL)
-  // If scatter is available in machine
+  // TODO: add AVX-512 scatter using 256 bits if architecture permits and
+  // ISA chosen is >=(AVX512F + AVX512VL) If scatter is available in machine
   // Just do a manual scatter
   if (Ranges.size() == VOP.VSize) {
     // If there is no contiguity at all: manual scatter
@@ -1967,10 +2336,10 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
   std::string ReduxVar = (V.R.Name == V.OpA.Name) ? V.OpA.getRegName(0, 0)
                                                   : V.OpB.getRegName(0, 0);
 
-  /// This is a 'hack': when a reduction is found, instead of generate all the
-  /// instructions needed for it, wait until the peephole optimization says
-  /// if there are any other reductions that can be packed and fused together.
-  /// P.S. creating hacks make me a hacker? lol
+  /// This is a 'hack': when a reduction is found, instead of generate all
+  /// the instructions needed for it, wait until the peephole optimization
+  /// says if there are any other reductions that can be packed and fused
+  /// together. P.S. creating hacks make me a hacker? lol
   MVSourceLocation MVSL(MVSourceLocation::Position::POSORDER, V.Order,
                         V.Offset);
 

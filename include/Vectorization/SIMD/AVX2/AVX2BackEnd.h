@@ -86,6 +86,18 @@ public:
   bool vscatter4elements(VectorIR::VectorOP VOP, MVDataType::VWidth Width,
                          SIMDBackEnd::SIMDInstListType *IL);
 
+  void store(VectorIR::VOperand V, std::list<std::string> Args,
+             MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+
+  void load(VectorIR::VOperand V, std::list<std::string> Args,
+            MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+
+  void loads(VectorIR::VOperand V, std::list<std::string> Args,
+             MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+
+  void blend(VectorIR::VOperand V, std::list<std::string> Args,
+             MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+
   // Binary operations
 
   /// Multiplication operation
