@@ -126,6 +126,9 @@ struct SIMDInfo {
            std::map<std::string, long> NumOp, long TotCost)
       : SIMDList(S), CostOp(CostOp), NumOp(NumOp), TotCost(TotCost) {}
 
+  /// Empty constructor
+  SIMDInfo() {}
+
   /// Do we have to vectorize
   bool isThereAnyVectorization() {
     return Vectorize != VectorizationType::NONE;

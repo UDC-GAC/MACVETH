@@ -349,6 +349,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     // Perform unrolling according to the pragmas
     performUnrolling(SL);
 
+    SIMDInfo SInfo;
     if (!Scop->PA.SIMDCode) {
       MVInfo("[MVConsumer] "
              "No SIMD code to generate, just writing "
@@ -361,8 +362,16 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       // Get SIMD back end according to the option chosen
       auto SIMDGen = SIMDBackEndFactory::getBackend(MVOptions::ISA);
 
+      int Code = setjmp(GotoEndScop);
+      if (Code) {
+        if (IsLastScop) {
+          goto last_scop;
+        }
+        continue;
+      }
+
       // Computing the cost model of the CDAG created
-      auto SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
+      SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
       if (SInfo.isThereAnyVectorization()) {
         // Comment statements
@@ -401,6 +410,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
             "; Scalar cost = " +
             MVCostModel::computeCostForStmtWrapperList(SL).toString());
       }
+
+    last_scop:
       // Render the registers we are going to use, declarations
       if (IsLastScop) {
         for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {

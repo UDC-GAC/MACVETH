@@ -172,7 +172,8 @@ MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *SG) {
   VLoadB.reserve(8);
   VOps.reserve(8);
   int Cursor = 0;
-  
+  std::set<int> SetTAC;
+  std::set<int> SetFS;
 repeat:
   bool IsUnary = false;
   // Consume nodes
@@ -185,6 +186,14 @@ repeat:
          (NextNode->belongsToAReduction() !=
           VOps[Cursor - 1]->belongsToAReduction()))) {
       break;
+    }
+
+    SetTAC.insert(NextNode->getTacID());
+    SetFS.insert(NextNode->getSchedInfo().FreeSched);
+
+    if ((SetTAC.size() > 1) && (SetFS.size() > 1) &&
+        (!NextNode->belongsToAReduction())) {
+      MVSkip("Skipping region... Not handable!!!", GotoEndScop);
     }
 
     // Corner case...
@@ -275,6 +284,8 @@ repeat:
     for (int i = 0; i < VL; ++i) {
       VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
     }
+    SetFS.clear();
+    SetTAC.clear();
     goto repeat;
   }
   return VList;
