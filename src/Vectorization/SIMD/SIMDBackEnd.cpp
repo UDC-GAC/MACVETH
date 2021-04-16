@@ -200,15 +200,16 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
   auto ExpVal = !V.MemOp;
 
   auto NullIndex = false;
-  if (V.Idx.size() > 0) {
-    auto I0 = V.Idx[0];
-    for (size_t i = 1; i < V.VSize; ++i) {
-      if (V.Idx[i] == I0) {
-        NullIndex = true;
-        break;
-      }
-    }
-  }
+  // FIXME:
+  // if (V.Idx.size() > 0) {
+  //   auto I0 = V.Idx[0];
+  //   for (size_t i = 1; i < V.VSize; ++i) {
+  //     if (V.Idx[i] == I0) {
+  //       NullIndex = true;
+  //       break;
+  //     }
+  //   }
+  // }
 
   Utils::printDebug("SIMDBackEnd",
                     "V = " + V.Name +
