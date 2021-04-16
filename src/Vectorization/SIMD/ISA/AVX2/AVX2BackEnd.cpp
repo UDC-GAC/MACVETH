@@ -2028,6 +2028,14 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
     }
   }
 
+  if (V.R.IsPartial) {
+    if (V.R.Size == 2) {
+      Args.push_front(V.R.Name);
+      SuffS += (V.R.LowBits) ? "l" : "";
+      SuffS += (V.R.HighBits) ? "h" : "";
+    }
+  }
+
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
@@ -2066,11 +2074,6 @@ AVX2BackEnd::vscatterAVX512(VectorIR::VectorOP VOP) {
     Args.push_back(NeutralReg);
   }
   auto PrefScatter = "i32";
-  // if (V.VSize > 4) {
-  //   PrefGather = "i32";
-  //   // VIndexSuffix = "epi32";
-  //   Scale = std::to_string(4);
-  // }
   PrefS += PrefScatter;
 
   auto VIndex = "_mm" + MapWidth[V.Width] + "_set_" + VIndexSuffix + "(";
@@ -2135,6 +2138,37 @@ bool AVX2BackEnd::vscatter4elements(VectorIR::VectorOP VOP,
     SecondHalve |= ((std::get<0>(Range) == (Half)) &&
                     (std::get<1>(Range) == (2 * Half - 1)));
   }
+
+  if (FullVector) {
+    IL->splice(IL->end(), vstore(VOP));
+    return true;
+  }
+
+  if (FirstHalve) {
+    VectorIR::VOperand NewVOp =
+        getSubVOperand(V, V.Name, V.VSize, Half, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::HALF_FLOAT, 0);
+    VOP.R = NewVOp;
+    IL->splice(IL->end(), vstore(VOP));
+  }
+  if (SecondHalve) {
+    VectorIR::VOperand NewVOp =
+        getSubVOperand(V, V.Name, V.VSize, Half, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::HALF_FLOAT, Half);
+    VOP.R = NewVOp;
+    IL->splice(IL->end(), vstore(VOP));
+  }
+
+  if ((!FirstHalve) && (!SecondHalve)) {
+    // If there is no contiguity at all: manual scatter
+    // for (size_t N = 0; N < V.VSize; ++N) {
+    //   std::string Idx = "[" + std::to_string(N) + "]";
+    //   addNonSIMDInst(V.UOP[N]->getRegisterValue(), V.getName() + Idx,
+    //                  SIMDType::VOPT, MVSL, IL);
+    // }
+    return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------
@@ -2152,27 +2186,51 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     if (true) {
       return vscatterAVX512(V);
     }
-    // If there is no contiguity at all: manual scatter
-    for (size_t N = 0; N < VOP.VSize; ++N) {
-      std::string Idx = "[" + std::to_string(N) + "]";
-      addNonSIMDInst(VOP.UOP[N]->getRegisterValue(), VOP.getName() + Idx,
-                     SIMDType::VOPT, MVSL, &IL);
-    }
-    return IL;
+    // // If there is no contiguity at all: manual scatter
+    // for (size_t N = 0; N < VOP.VSize; ++N) {
+    //   std::string Idx = "[" + std::to_string(N) + "]";
+    //   addNonSIMDInst(VOP.UOP[N]->getRegisterValue(), VOP.getName() + Idx,
+    //                  SIMDType::VOPT, MVSL, &IL);
+    // }
+    // return IL;
   }
 
   int Half = (int)VOP.VSize / 2;
-  bool FiveElements = false;
-  bool SixElements = false;
-  bool SevenElements = false;
-  for (auto Range : Ranges) {
-    FiveElements |= ((std::get<0>(Range) + 4 == std::get<1>(Range)));
-    SixElements |= ((std::get<0>(Range) + 5 == std::get<1>(Range)));
-    SevenElements |= ((std::get<0>(Range) + 6 == std::get<1>(Range)));
-  }
+  // bool FiveElements = false;
+  // bool SixElements = false;
+  // bool SevenElements = false;
+  // for (auto Range : Ranges) {
+  //   FiveElements |= ((std::get<0>(Range) + 4 == std::get<1>(Range)));
+  //   SixElements |= ((std::get<0>(Range) + 5 == std::get<1>(Range)));
+  //   SevenElements |= ((std::get<0>(Range) + 6 == std::get<1>(Range)));
+  // }
 
   if (VOP.Size > 4) {
+    // 4 elements strategy
+    auto NameFirstHalve = "_mm256_castps256_ps128(" + VOP.Name + ")";
+    auto VFirstHalve =
+        getSubVOperand(VOP, NameFirstHalve, 4, Half, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::FLOAT, 0);
+    V.R = VFirstHalve;
+    bool FirstHalve = vscatter4elements(V, MVDataType::VWidth::W128, &IL);
 
+    auto NameSecondHalve = "_mm256_extractf128_ps(" + VOP.Name + ",0x1)";
+    auto VSecondHalve =
+        getSubVOperand(VOP, NameSecondHalve, 4, Half, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::FLOAT, Half);
+    V.R = VSecondHalve;
+    bool SecondHalve = vscatter4elements(V, MVDataType::VWidth::W128, &IL);
+    if (!FirstHalve && !SecondHalve) {
+      return vscatterAVX512(V);
+    }
+    if (FirstHalve && !SecondHalve) {
+      V.R = VSecondHalve;
+      IL.splice(IL.end(), vscatterAVX512(V));
+    }
+    if (!FirstHalve && SecondHalve) {
+      V.R = VFirstHalve;
+      IL.splice(IL.end(), vscatterAVX512(V));
+    }
   } else {
     vscatter4elements(V, VOP.getWidth(), &IL);
   }

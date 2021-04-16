@@ -86,7 +86,7 @@ public:
   SIMDInstListType vscatterAVX512(VectorIR::VectorOP VOP);
 
   /// Scattering of four elements taking into account the contiguity of data
-  bool vscatter4elements(VectorIR::VectorOP VOP, MVDataType::VWidth Width,
+  bool vscatter4elements(VectorIR::VectorOP V, MVDataType::VWidth Width,
                          SIMDBackEnd::SIMDInstListType *IL);
 
   void store(VectorIR::VOperand V, std::list<std::string> Args,

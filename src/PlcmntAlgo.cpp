@@ -75,6 +75,8 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
         if ((R->getSchedInfo().TacID != In->getSchedInfo().TacID) &&
             (R->getSchedInfo().Scop[0] == In->getSchedInfo().Scop[0])) {
 
+          // FIXME:
+
           // Corner case, e.g.:
           // [0,1,2,3] and [2,3,4,5]
           // There is no gain in doing 2,3 as reductions, better a gather or
