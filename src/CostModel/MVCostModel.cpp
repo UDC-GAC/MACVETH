@@ -181,19 +181,25 @@ repeat:
   // This is where magic should happen
   while (!CopyNL.empty()) {
     auto NextNode = CopyNL.front();
-    if ((Cursor > 0) &&
-        ((NextNode->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
-         (NextNode->belongsToAReduction() !=
-          VOps[Cursor - 1]->belongsToAReduction()))) {
-      break;
-    }
-
     SetTAC.insert(NextNode->getTacID());
     SetFS.insert(NextNode->getSchedInfo().FreeSched);
 
     if ((SetTAC.size() > 1) && (SetFS.size() > 1) &&
         (!NextNode->belongsToAReduction())) {
       MVSkip("Skipping region... Not handable!!!", GotoEndScop);
+    }
+
+    if ((SetTAC.size() == 1) && (SetFS.size() == 1) &&
+        ((Cursor > 0) && (NextNode->belongsToAReduction()) &&
+         (!VOps[Cursor - 1]->belongsToAReduction()))) {
+      MVSkip("Skipping region... PARTIAL REDUCTION? DUNNO", GotoEndScop);
+    }
+
+    if ((Cursor > 0) &&
+        ((NextNode->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
+         (NextNode->belongsToAReduction() !=
+          VOps[Cursor - 1]->belongsToAReduction()))) {
+      break;
     }
 
     // Corner case...
@@ -266,9 +272,6 @@ repeat:
     if (!IsUnary) {
       CostNodes += computeCostForNodeOperandsList(Cursor, VLoadB);
     }
-    // Utils::printDebug("MVCostModel",
-    //                   "Cost Vect = " + CostVect.toString() + "; ");
-    // Utils::printDebug("MVCostModel", "Cost Nodes = " + CostNodes.toString());
     auto DoVectorize = (CostVect <= CostNodes);
     if ((DoVectorize) ||
         (MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
