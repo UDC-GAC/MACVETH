@@ -1993,7 +1993,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vset(VectorIR::VOperand V) {
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
   SIMDBackEnd::SIMDInstListType IL;
   std::string SuffS = (V.R.IsPartial) ? "" : "u";
-  std::string PrefS = (V.R.IsPartial) ? "mask" : "";
+  auto NeedsMask = (V.R.IsPartial) && (!V.R.LowBits && !V.R.HighBits);
+  std::string PrefS = (NeedsMask) ? "mask" : "";
 
   std::string Op = "store";
 
@@ -2006,13 +2007,13 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
                                 : MVDataType::VDataType::UNDEF128;
     std::string Cast = getRegisterType(V.R.DType, V.R.Width);
     Args.push_back("(" + Cast + "*)" + getOpName(V.R, true, true));
-    if (V.R.IsPartial) {
+    if (NeedsMask) {
       Args.push_back(getMask(V.R.Mask, V.R.Size, V.R.getWidth()));
     }
     Args.push_back(getOpName(V.R, false, false));
   } else {
     Args.push_back(getOpName(V.R, true, true));
-    if (V.R.IsPartial) {
+    if (NeedsMask) {
       Args.push_back(getMask(V.R.Mask, V.R.Size, V.R.getWidth()));
     }
     Args.push_back(getOpName(V.R, false, false));
@@ -2028,9 +2029,9 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
     }
   }
 
-  if (V.R.IsPartial) {
+  if (!NeedsMask) {
     if (V.R.Size == 2) {
-      Args.push_front(V.R.Name);
+      // Args.push_front(V.R.Name);
       SuffS += (V.R.LowBits) ? "l" : "";
       SuffS += (V.R.HighBits) ? "h" : "";
     }
