@@ -136,7 +136,8 @@ SIMDBackEnd::addNonSIMDInst(std::string Lhs, std::string Rhs,
 // ---------------------------------------------
 std::string SIMDBackEnd::SIMDInst::render() {
   std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
-  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE))
+  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
+                          (SType == SIMDType::VSCATTER))
                              ? FN
                              : Result + " = " + FN;
   if ((SType == SIMDType::VSEQ) ||

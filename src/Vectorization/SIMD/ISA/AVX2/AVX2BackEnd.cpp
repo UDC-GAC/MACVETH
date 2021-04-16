@@ -2037,6 +2037,85 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
 }
 
 // ---------------------------------------------
+SIMDBackEnd::SIMDInstListType
+AVX2BackEnd::vscatterAVX512(VectorIR::VectorOP VOP) {
+  auto V = VOP.R;
+  SIMDBackEnd::SIMDInstListType IL;
+  auto Op = "scatter";
+
+  // List of parameters
+  std::list<std::string> Args;
+
+  // To gather elements
+  // Generate preffix: must be i32 or i64, depending on the VIndex width
+  std::string Scale =
+      (V.getDataType() == MVDataType::VDataType::DOUBLE) ? "8" : "4";
+  std::string VIndexSuffix = "epi32";
+  std::string PrefS = "";
+
+  // Generation of the preffix
+  if (V.IsPartial) {
+    // Who tf did intel intrinsics??????? I mean, it makes no sense at
+    // all that for loads we use "maskload", then for gathers
+    // "mask_[i32|i64]gather", why the underscore? It should not be difficult
+    // to normalize the API so the signature of all functions are constructed
+    // the same way
+    PrefS += "mask_";
+    std::string NeutralReg = "_mm" + getMapWidth(V.getWidth()) + "_setzero_" +
+                             getMapType(V.getDataType()) + "()";
+    Args.push_back(NeutralReg);
+  }
+  auto PrefScatter = "i32";
+  // if (V.VSize > 4) {
+  //   PrefGather = "i32";
+  //   // VIndexSuffix = "epi32";
+  //   Scale = std::to_string(4);
+  // }
+  PrefS += PrefScatter;
+
+  auto VIndex = "_mm" + MapWidth[V.Width] + "_set_" + VIndexSuffix + "(";
+  auto CopyIdx = std::vector<long>(V.Idx.begin(), V.Idx.begin() + V.Size);
+  auto MinIdx = std::min_element(CopyIdx.begin(), CopyIdx.end());
+  auto MinVal = *MinIdx;
+  auto BaseIdx = V.UOP[MinIdx - CopyIdx.begin()]->getRegisterValue();
+  // This way we avoid negative indices
+  if (MinVal < 0) {
+    for (size_t T = 0; T != CopyIdx.size(); ++T) {
+      CopyIdx[T] += abs(MinVal);
+    }
+  }
+  std::reverse(CopyIdx.begin(), CopyIdx.end());
+  for (size_t T = 0; T != V.VSize % 2; ++T) {
+    VIndex += std::to_string(0) + ",";
+  }
+  for (size_t T = 0; T != CopyIdx.size(); ++T) {
+    VIndex +=
+        std::to_string(CopyIdx[T]) + ((T == (CopyIdx.size() - 1)) ? "" : ", ");
+  }
+  VIndex += ")";
+
+  // Memory address
+  Args.push_back("&" + BaseIdx);
+  Args.push_back(VIndex);
+  Args.push_back(V.getName());
+
+  // Mask argument if needed
+  if (V.IsPartial) {
+    Args.push_back(getMask(V.Mask, V.Size, V.getWidth(), V.getDataType()));
+  }
+
+  // Scale can only be: 1, 2, 4, 8
+  Args.push_back(Scale);
+
+  MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
+
+  // Adding SIMD inst to the list
+  genSIMDInst(V, Op, PrefS, "", Args, SIMDType::VSCATTER, MVSL, &IL);
+
+  return IL;
+}
+
+// ---------------------------------------------
 bool AVX2BackEnd::vscatter4elements(VectorIR::VectorOP VOP,
                                     MVDataType::VWidth Width,
                                     SIMDBackEnd::SIMDInstListType *IL) {
@@ -2070,6 +2149,9 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   // ISA chosen is >=(AVX512F + AVX512VL) If scatter is available in machine
   // Just do a manual scatter
   if (Ranges.size() == VOP.VSize) {
+    if (true) {
+      return vscatterAVX512(V);
+    }
     // If there is no contiguity at all: manual scatter
     for (size_t N = 0; N < VOP.VSize; ++N) {
       std::string Idx = "[" + std::to_string(N) + "]";
