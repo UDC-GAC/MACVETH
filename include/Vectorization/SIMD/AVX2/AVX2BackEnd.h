@@ -98,8 +98,14 @@ public:
   void loads(VectorIR::VOperand V, std::list<std::string> Args,
              MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
 
+  void moves(VectorIR::VOperand V, std::list<std::string> Args,
+             MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+
   void blend(VectorIR::VOperand V, std::list<std::string> Args,
              MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+
+  void insert(VectorIR::VOperand V, std::list<std::string> Args,
+              MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
 
   // Binary operations
 

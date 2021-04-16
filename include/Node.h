@@ -371,7 +371,7 @@ public:
 
 private:
   /// MVExpr info
-  MVExpr *MV;
+  MVExpr *MV = nullptr;
   /// Holds information regarding the scheduling
   SchedInfo SI;
   /// Value that identifies this node
