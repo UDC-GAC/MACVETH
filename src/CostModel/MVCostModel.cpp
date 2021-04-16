@@ -172,6 +172,7 @@ MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *SG) {
   VLoadB.reserve(8);
   VOps.reserve(8);
   int Cursor = 0;
+  
 repeat:
   bool IsUnary = false;
   // Consume nodes

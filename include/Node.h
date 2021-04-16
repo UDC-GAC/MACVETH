@@ -343,6 +343,13 @@ public:
         return (this->getSchedInfo().UnrollFactor < N.SI.UnrollFactor);
       }
     } else {
+      if ((!this->belongsToAReduction()) && (!N.SI.IsReduction)) {
+        if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
+          return (this->getSchedInfo().NodeID < N.SI.NodeID);
+        } else {
+          return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
+        }
+      }
       return (this->getSchedInfo().TacID < N.SI.TacID);
     }
   }
