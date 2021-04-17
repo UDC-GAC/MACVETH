@@ -1385,9 +1385,9 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
           NewVOp.Name = "__tmp0_128";
           loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
           NewVOp.Name = V.Name;
-          moves(NewVOp,
-                {"_mm256_castps256_ps128(" + V.Name + ")", "__tmp0_128"}, MVSL,
-                &IL);
+          blend(NewVOp,
+                {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+                MVSL, &IL);
           return IL;
         }
         // [YYYYYYY|X]
@@ -1440,9 +1440,9 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
           NewVOp.Name = "__tmp0_128";
           loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
           NewVOp.Name = V.Name;
-          moves(NewVOp,
-                {"_mm256_castps256_ps128(" + V.Name + ")", "__tmp0_128"}, MVSL,
-                &IL);
+          blend(NewVOp,
+                {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+                MVSL, &IL);
           return IL;
         }
         if ((std::get<0>(Range) == 2) && (std::get<1>(Range) == (7))) {
@@ -1467,9 +1467,10 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
               NewVOp.Name = "__tmp0_128";
               loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
               NewVOp.Name = V.Name;
-              moves(NewVOp,
-                    {"_mm256_castps256_ps128(" + V.Name + ")", "__tmp0_128"},
-                    MVSL, &IL);
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+                  MVSL, &IL);
               NewVOp.Name = "__tmp0_128";
               NewVOp.Width = MVDataType::VWidth::W128;
               load(NewVOp, {getOpName(V, true, true, 1, -1)}, MVSL, &IL);
@@ -1553,9 +1554,9 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
           NewVOp.Name = "__tmp0_128";
           loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
           NewVOp.Name = V.Name;
-          moves(NewVOp,
-                {"_mm256_castps256_ps128(" + V.Name + ")", "__tmp0_128"}, MVSL,
-                &IL);
+          blend(NewVOp,
+                {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+                MVSL, &IL);
           for (auto InnerRange : Ranges) {
             if (((std::get<0>(InnerRange) == 1) &&
                  (std::get<1>(InnerRange) == (5))) ||
@@ -1657,9 +1658,10 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
               NewVOp.Name = "__tmp0_128";
               loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
               NewVOp.Name = V.Name;
-              moves(NewVOp,
-                    {"_mm256_castps256_ps128(" + V.Name + ")", "__tmp0_128"},
-                    MVSL, &IL);
+              blend(
+                  NewVOp,
+                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
+                  MVSL, &IL);
               NewVOp.Name = "__tmp0_128";
               NewVOp.Width = MVDataType::VWidth::W128;
               load(NewVOp, {getOpName(V, true, true, 2, -2)}, MVSL, &IL);
