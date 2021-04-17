@@ -1016,10 +1016,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vbcast(VectorIR::VOperand V) {
   // There are no preffixes for broadcasts operations
   // TODO: generate suffix
   auto SuffS = "";
-  // Mask
-  // auto PrefS = (V.IsPartial) ? "mask" : "";
 
-  // TODO: check
   // List of parameters
   std::list<std::string> Args;
   Args.push_back(getOpName(V, true, true));
@@ -1128,9 +1125,7 @@ std::vector<std::tuple<int, int>> getContiguityRanges(VectorIR::VOperand V) {
     }
     ActualStride++;
   }
-  // if (ActualStride != 1) {
   Ranges.push_back(std::make_tuple(V.Size - ActualStride, V.Size - 1));
-  //}
   return Ranges;
 }
 
@@ -1223,9 +1218,6 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
   SIMDBackEnd::addRegToDeclare(TypeReg, "__tmp1", {0});
   SIMDBackEnd::addRegToDeclare(TypeReg, "__lo128", {0});
   SIMDBackEnd::addRegToDeclare(TypeReg, "__hi128", {0});
-  auto SingleType = (NewVOp.DType == MVDataType::FLOAT)
-                        ? MVDataType::VDataType::SFLOAT
-                        : MVDataType::VDataType::SDOUBLE;
   // One stride of 2 at the beggining of at the end
   if (FirstHalve && !SecondHalve && V.VSize > 2) {
     // [C,C+1,X,Y]
@@ -1992,12 +1984,6 @@ bool AVX2BackEnd::vscatter4elements(VectorIR::VectorOP VOP,
   }
 
   if ((!FirstHalve) && (!SecondHalve)) {
-    // If there is no contiguity at all: manual scatter
-    // for (size_t N = 0; N < V.VSize; ++N) {
-    //   std::string Idx = "[" + std::to_string(N) + "]";
-    //   addNonSIMDInst(V.UOP[N]->getRegisterValue(), V.getName() + Idx,
-    //                  SIMDType::VOPT, MVSL, IL);
-    // }
     return false;
   }
   return true;
@@ -2011,31 +1997,17 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   auto VOP = V.R;
   auto Ranges = getContiguityRanges(VOP);
 
-  // TODO: add AVX-512 scatter using 256 bits if architecture permits and
+  // Add AVX-512 scatter using 256 bits if architecture permits and
   // ISA chosen is >=(AVX512F + AVX512VL) If scatter is available in machine
   // Just do a manual scatter
   if (Ranges.size() == VOP.VSize) {
+    // FIXME: check if ISA available
     if (true) {
       return vscatterAVX512(V);
     }
-    // // If there is no contiguity at all: manual scatter
-    // for (size_t N = 0; N < VOP.VSize; ++N) {
-    //   std::string Idx = "[" + std::to_string(N) + "]";
-    //   addNonSIMDInst(VOP.UOP[N]->getRegisterValue(), VOP.getName() + Idx,
-    //                  SIMDType::VOPT, MVSL, &IL);
-    // }
-    // return IL;
   }
 
   int Half = (int)VOP.VSize / 2;
-  // bool FiveElements = false;
-  // bool SixElements = false;
-  // bool SevenElements = false;
-  // for (auto Range : Ranges) {
-  //   FiveElements |= ((std::get<0>(Range) + 4 == std::get<1>(Range)));
-  //   SixElements |= ((std::get<0>(Range) + 5 == std::get<1>(Range)));
-  //   SevenElements |= ((std::get<0>(Range) + 6 == std::get<1>(Range)));
-  // }
 
   if (VOP.Size > 4) {
     // 4 elements strategy

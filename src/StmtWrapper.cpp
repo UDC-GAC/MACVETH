@@ -124,7 +124,7 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
 
 // ---------------------------------------------
 StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
-  LoopInfo(Loop);
+  LoopInfo Loop;
   // Get location of the loop
   Loop.BegLoc = ForLoop->getBeginLoc();
   Loop.EndLoc = ForLoop->getEndLoc();
@@ -349,11 +349,16 @@ bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
           this->LoopL.UnrollFactor = std::get<1>(D);
         }
         this->LoopL.StepUnrolled = this->LoopL.Step * this->LoopL.UnrollFactor;
+        if ((this->LoopL.knownBounds()) &&
+            (this->LoopL.StepUnrolled >= this->LoopL.UpperBound)) {
+          this->LoopL.StepUnrolled = this->LoopL.UnrollFactor;
+          this->LoopL.FullyUnrolled = true;
+        }
         LI.push_front(this->LoopL);
         break;
       } else {
         this->LoopL.UnrollFactor = 1;
-        this->LoopL.StepUnrolled = this->LoopL.Step * this->LoopL.UnrollFactor;
+        this->LoopL.StepUnrolled = this->LoopL.Step;
       }
     }
     for (auto S : this->ListStmt) {
@@ -381,6 +386,11 @@ TacListType StmtWrapper::unroll(LoopInfo L) {
   long UB = ((L.UpperBound != -1) && (L.FullyUnrolled))
                 ? (L.UpperBound - L.InitVal)
                 : L.StepUnrolled;
+  // FIXME:
+  if (UB > L.UpperBound) {
+    this->LoopL.FullyUnrolled = true;
+    UB = L.UpperBound;
+  }
   bool FullUnroll = UB == L.UpperBound;
   auto TL =
       TAC::unrollTacList(this->getTacList(), L.Step, UB, L.Dim, FullUnroll);
