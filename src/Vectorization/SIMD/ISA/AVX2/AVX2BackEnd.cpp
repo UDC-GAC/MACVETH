@@ -2059,7 +2059,12 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     V.R = VFirstHalve;
     bool FirstHalve = vscatter4elements(V, MVDataType::VWidth::W128, &IL);
 
-    auto NameSecondHalve = "_mm256_extractf128_ps(" + VOP.Name + ",0x1)";
+    // FIXME:
+    auto NameSecondHalve = "__tmp_extract_128";
+    SIMDBackEnd::addRegToDeclare("__m128", NameSecondHalve, {0});
+    genSIMDInst(NameSecondHalve, "extract", "", "f128",
+                MVDataType::VWidth::W256, MVDataType::VDataType::FLOAT,
+                {VOP.Name, "0x1"}, SIMDType::VOPT, MVSL, &IL);
     auto VSecondHalve =
         getSubVOperand(VOP, NameSecondHalve, 4, Half, MVDataType::VWidth::W128,
                        MVDataType::VDataType::FLOAT, Half);
