@@ -297,7 +297,8 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
   // Perfect cases:
   // * [A,A,B,B,C,C,D,D]
   // * [A,A,A,A,C,C,C,C]
-  if ((NReductions == 4) || (NReductions == 2)) {
+  // * [A,A,A,A,A,A,A,A]
+  if ((NReductions == 4) || (NReductions == 2) || (NReductions == 1)) {
     int Stride = (int)(NElems / NReductions);
     for (int R = 0; R < NElems; R += Stride) {
       // The last dance
@@ -1942,6 +1943,21 @@ AVX2BackEnd::vscatterAVX512(VectorIR::VectorOP VOP) {
   return IL;
 }
 
+SIMDBackEnd::SIMDInstListType
+AVX2BackEnd::singleElementScatter(VectorIR::VectorOP VOP) {
+  // if (MVOptions::ISA != MVCPUInfo::MVISA::AVX512) {
+  auto V = VOP.R;
+  SIMDBackEnd::SIMDInstListType IL;
+  MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
+  for (size_t N = 0; N < V.VSize; ++N) {
+    std::string Idx = "[" + std::to_string(N) + "]";
+    addNonSIMDInst(V.UOP[N]->getRegisterValue(), V.getName() + Idx,
+                   SIMDType::VOPT, MVSL, &IL);
+  }
+  return IL;
+  //}
+}
+
 // ---------------------------------------------
 bool AVX2BackEnd::vscatter4elements(VectorIR::VectorOP VOP,
                                     MVDataType::VWidth Width,
@@ -1983,6 +1999,22 @@ bool AVX2BackEnd::vscatter4elements(VectorIR::VectorOP VOP,
     IL->splice(IL->end(), vstore(VOP));
   }
 
+  if (!FirstHalve && SecondHalve) {
+    for (size_t N = 0; N < 2; ++N) {
+      std::string Idx = "[" + std::to_string(N) + "]";
+      addNonSIMDInst(V.UOP[N]->getRegisterValue(), V.getName() + Idx,
+                     SIMDType::VOPT, MVSL, IL);
+    }
+  }
+
+  if (!SecondHalve && FirstHalve) {
+    for (size_t N = 2; N < 4; ++N) {
+      std::string Idx = "[" + std::to_string(N) + "]";
+      addNonSIMDInst(V.UOP[N]->getRegisterValue(), V.getName() + Idx,
+                     SIMDType::VOPT, MVSL, IL);
+    }
+  }
+
   if ((!FirstHalve) && (!SecondHalve)) {
     return false;
   }
@@ -2001,14 +2033,16 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   // ISA chosen is >=(AVX512F + AVX512VL) If scatter is available in machine
   // Just do a manual scatter
   if (Ranges.size() == VOP.VSize) {
-    // FIXME: check if ISA available
-    if (true) {
+    // Check if ISA available
+    if (MVOptions::ISA == MVCPUInfo::MVISA::AVX512) {
       return vscatterAVX512(V);
     }
+    return singleElementScatter(V);
   }
 
   int Half = (int)VOP.VSize / 2;
 
+  auto FullReg = V.R;
   if (VOP.Size > 4) {
     // 4 elements strategy
     auto NameFirstHalve = "_mm256_castps256_ps128(" + VOP.Name + ")";
@@ -2025,18 +2059,37 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     V.R = VSecondHalve;
     bool SecondHalve = vscatter4elements(V, MVDataType::VWidth::W128, &IL);
     if (!FirstHalve && !SecondHalve) {
-      return vscatterAVX512(V);
+      V.R = FullReg;
+      if (MVOptions::ISA == MVCPUInfo::MVISA::AVX512) {
+        return vscatterAVX512(V);
+      }
+      return singleElementScatter(V);
     }
+    V.R = FullReg;
     if (FirstHalve && !SecondHalve) {
-      V.R = VSecondHalve;
-      IL.splice(IL.end(), vscatterAVX512(V));
+      // auto VSecondHalve =
+      //     getSubVOperand(VOP, VOP.Name, 4, Half, MVDataType::VWidth::W128,
+      //                    MVDataType::VDataType::FLOAT, Half);
+      // V.R = VSecondHalve;
+      // IL.splice(IL.end(), singleElementScatter(V));
+
+      for (size_t N = 4; N < 8; ++N) {
+        std::string Idx = "[" + std::to_string(N) + "]";
+        addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
+                       SIMDType::VOPT, MVSL, &IL);
+      }
     }
     if (!FirstHalve && SecondHalve) {
-      V.R = VFirstHalve;
-      IL.splice(IL.end(), vscatterAVX512(V));
+      for (size_t N = 0; N < 4; ++N) {
+        std::string Idx = "[" + std::to_string(N) + "]";
+        addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
+                       SIMDType::VOPT, MVSL, &IL);
+      }
     }
   } else {
-    vscatter4elements(V, VOP.getWidth(), &IL);
+    if (!vscatter4elements(V, VOP.getWidth(), &IL)) {
+      IL.splice(IL.end(), singleElementScatter(V));
+    }
   }
 
   return IL;

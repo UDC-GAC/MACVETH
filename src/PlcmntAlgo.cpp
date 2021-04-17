@@ -72,22 +72,21 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
           ((R->getSchedInfo().TacID == (In->getSchedInfo().TacID)) ||
            R->getSchedInfo().Scop[0] == (In->getSchedInfo().Scop[0]))) {
 
-        if ((R->getSchedInfo().TacID != In->getSchedInfo().TacID) &&
-            (R->getSchedInfo().Scop[0] == In->getSchedInfo().Scop[0])) {
+        // FIXME: should we consider this or not...
+        // if ((R->getSchedInfo().TacID != In->getSchedInfo().TacID) &&
+        //     (R->getSchedInfo().Scop[0] == In->getSchedInfo().Scop[0])) {
 
-          // FIXME:
-
-          // Corner case, e.g.:
-          // [0,1,2,3] and [2,3,4,5]
-          // There is no gain in doing 2,3 as reductions, better a gather or
-          // something
-          if ((R->getSchedInfo().UnrollFactor) !=
-              (In->getSchedInfo().UnrollFactor)) {
-            continue;
-          }
-          // Corner case, e.g.:
-          // [0,1,2,3] and [-1,1,4,5]
-        }
+        //   // Corner case, e.g.:
+        //   // [0,1,2,3] and [2,3,4,5]
+        //   // There is no gain in doing 2,3 as reductions, better a gather or
+        //   // something
+        //   // if ((R->getSchedInfo().UnrollFactor) !=
+        //   //     (In->getSchedInfo().UnrollFactor)) {
+        //   //   continue;
+        //   // }
+        //   // Corner case, e.g.:
+        //   // [0,1,2,3] and [-1,1,4,5]
+        // }
 
         Utils::printDebug("PlcmntAlgo",
                           "Reduction found for " + In->getRegisterValue());

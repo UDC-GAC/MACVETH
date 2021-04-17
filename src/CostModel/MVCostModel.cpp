@@ -184,16 +184,17 @@ repeat:
     SetTAC.insert(NextNode->getTacID());
     SetFS.insert(NextNode->getSchedInfo().FreeSched);
 
-    if ((SetTAC.size() > 1) && (SetFS.size() > 1) &&
-        (!NextNode->belongsToAReduction())) {
-      MVSkip("Skipping region... Not handable!!!", GotoEndScop);
-    }
+    // FIXME:
+    // if ((SetTAC.size() > 1) && (SetFS.size() > 1) &&
+    //     (!NextNode->belongsToAReduction())) {
+    //   MVSkip("Skipping region... Not handable!!!", GotoEndScop);
+    // }
 
-    if ((SetTAC.size() == 1) && (SetFS.size() == 1) &&
-        ((Cursor > 0) && (NextNode->belongsToAReduction()) &&
-         (!VOps[Cursor - 1]->belongsToAReduction()))) {
-      MVSkip("Skipping region... PARTIAL REDUCTION? DUNNO", GotoEndScop);
-    }
+    // if ((SetTAC.size() == 1) && (SetFS.size() == 1) &&
+    //     ((Cursor > 0) && (NextNode->belongsToAReduction()) &&
+    //      (!VOps[Cursor - 1]->belongsToAReduction()))) {
+    //   MVSkip("Skipping region... PARTIAL REDUCTION? DUNNO", GotoEndScop);
+    // }
 
     if ((Cursor > 0) &&
         ((NextNode->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||

@@ -82,6 +82,8 @@ public:
   /// Store values in memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
 
+  SIMDInstListType singleElementScatter(VectorIR::VectorOP VOP);
+
   /// Store values in memory using an index
   SIMDInstListType vscatterAVX512(VectorIR::VectorOP VOP);
 
