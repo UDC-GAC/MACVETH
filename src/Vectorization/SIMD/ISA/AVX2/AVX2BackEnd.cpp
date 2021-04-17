@@ -2034,7 +2034,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
   // Just do a manual scatter
   if (Ranges.size() == VOP.VSize) {
     // Check if ISA available
-    if (MVOptions::ISA == MVCPUInfo::MVISA::AVX512) {
+    if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
+        (MVOptions::ScatterInstruction)) {
       return vscatterAVX512(V);
     }
     return singleElementScatter(V);
@@ -2060,7 +2061,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     bool SecondHalve = vscatter4elements(V, MVDataType::VWidth::W128, &IL);
     if (!FirstHalve && !SecondHalve) {
       V.R = FullReg;
-      if (MVOptions::ISA == MVCPUInfo::MVISA::AVX512) {
+      if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
+          (MVOptions::ScatterInstruction)) {
         return vscatterAVX512(V);
       }
       return singleElementScatter(V);
@@ -2072,23 +2074,39 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
       //                    MVDataType::VDataType::FLOAT, Half);
       // V.R = VSecondHalve;
       // IL.splice(IL.end(), singleElementScatter(V));
-
-      for (size_t N = 4; N < 8; ++N) {
-        std::string Idx = "[" + std::to_string(N) + "]";
-        addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
-                       SIMDType::VOPT, MVSL, &IL);
+      if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
+          (MVOptions::ScatterInstruction)) {
+        V.R = VSecondHalve;
+        IL.splice(IL.end(), vscatterAVX512(V));
+      } else {
+        for (size_t N = 4; N < 8; ++N) {
+          std::string Idx = "[" + std::to_string(N) + "]";
+          addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
+                         SIMDType::VOPT, MVSL, &IL);
+        }
       }
     }
     if (!FirstHalve && SecondHalve) {
-      for (size_t N = 0; N < 4; ++N) {
-        std::string Idx = "[" + std::to_string(N) + "]";
-        addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
-                       SIMDType::VOPT, MVSL, &IL);
+      if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
+          (MVOptions::ScatterInstruction)) {
+        V.R = VFirstHalve;
+        IL.splice(IL.end(), vscatterAVX512(V));
+      } else {
+        for (size_t N = 0; N < 4; ++N) {
+          std::string Idx = "[" + std::to_string(N) + "]";
+          addNonSIMDInst(V.R.UOP[N]->getRegisterValue(), V.R.getName() + Idx,
+                         SIMDType::VOPT, MVSL, &IL);
+        }
       }
     }
   } else {
     if (!vscatter4elements(V, VOP.getWidth(), &IL)) {
-      IL.splice(IL.end(), singleElementScatter(V));
+      if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
+          (MVOptions::ScatterInstruction)) {
+        IL.splice(IL.end(), vscatterAVX512(V));
+      } else {
+        IL.splice(IL.end(), singleElementScatter(V));
+      }
     }
   }
 

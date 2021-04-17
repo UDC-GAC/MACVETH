@@ -153,6 +153,8 @@ struct MVOptions {
   static inline bool FMASupport = false;
   /// Disable FMA support
   static inline bool DisableFMA = false;
+  /// Enable use of scatter instruction
+  static inline bool ScatterInstruction = false;
   /// Print debug information
   static inline bool Debug = false;
   /// Debug level

@@ -163,9 +163,15 @@ static cl::opt<std::string> FallbackStyle(
 
 // FMA support flag
 static llvm::cl::opt<bool> FMA("fma",
-                               llvm::cl::desc("Explicitly tell if FMA support"),
+                               llvm::cl::desc("Support for FMA instructions"),
                                llvm::cl::init(false),
                                llvm::cl::cat(MacvethCategory));
+
+// FMA support flag
+static llvm::cl::opt<bool>
+    ScatterInstruction("scatter",
+                       llvm::cl::desc("Support AVX512 scatter instructions"),
+                       llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
 // Disable Intrinsics SVML
 static llvm::cl::opt<bool> NoSVML("no-svml",
@@ -253,6 +259,7 @@ int main(int argc, const char **argv) {
   MVOptions::Arch = Architecture.getValue();
   MVOptions::FMASupport = FMA.getValue();
   MVOptions::DisableFMA = DisableFMA.getValue();
+  MVOptions::ScatterInstruction = ScatterInstruction.getValue();
   MVOptions::Debug = Debug.getValue();
   MVOptions::NoReformat = NoFormatCode.getValue();
   MVOptions::Headers = !NoHeaders.getValue();
