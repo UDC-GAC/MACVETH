@@ -33,6 +33,7 @@
 #define MACVETH_DATATYPE_H
 
 #include <map>
+#include <string>
 
 namespace macveth {
 

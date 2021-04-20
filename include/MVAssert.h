@@ -82,53 +82,19 @@ namespace macveth {
 static inline int MVSkipCode = 11;
 
 /// If condition is false, then print message and goto the jump buffer
-static void MVAssertSkip(bool cond, std::string Msg, jmp_buf Goto,
-                         int Val = MVSkipCode) {
-  if (!cond) {
-    std::cerr << BOLDMAGENTA << "[MACVETH SKIPPING] " << RESET << Msg
-              << std::endl;
-    longjmp(Goto, Val);
-  }
-}
-
-/// Print message and goto the jump buffer
-static void MVSkip(std::string Msg, jmp_buf Goto, int Val = 1) {
-  std::cerr << BOLDMAGENTA << "[MACVETH SKIPPING] " << RESET << Msg
-            << std::endl;
-  longjmp(Goto, Val);
-}
+void MVAssertSkip(bool cond, std::string Msg, jmp_buf Goto,
+                  int Val = MVSkipCode);
 
 /// Print warning message
-static void MVWarn(std::string Msg) {
-  std::cerr << BOLDYELLOW << "[MACVETH WARNING] " << RESET << Msg << std::endl;
-}
-
+void MVWarn(std::string Msg);
 /// Print info message
-static void MVInfo(std::string Msg) {
-  std::cerr << BOLDBLUE << "[MACVETH INFO] " << RESET << Msg << std::endl;
-}
-
-/// Print warning if condition not satisfied
-static void MVAssertWarn(bool cond, const char *Msg) {
-  if (!cond) {
-    std::cerr << BOLDRED << "[MACVETH WARNING] " << RESET << Msg << std::endl;
-  }
-}
+void MVInfo(std::string Msg);
 
 /// Hard assertion: if condition not satisfied print error and zeroed-exit
-static void MVAssert(bool cond, const char *Msg) {
-  if (!cond) {
-    std::cerr << BOLDRED << "[MACVETH FATAL ERROR] " << RESET << Msg
-              << std::endl;
-    exit(0);
-  }
-}
+void MVAssert(bool cond, const char *Msg);
 
 /// Print error and zeroed-exit
-static void MVErr(std::string Msg) {
-  std::cerr << BOLDRED << "[MACVETH FATAL ERROR] " << RESET << Msg << std::endl;
-  exit(0);
-}
+void MVErr(std::string Msg);
 
 } // namespace macveth
 

@@ -222,7 +222,7 @@ bool VectorIR::VOperand::checkIfAlreadyLoaded(Node *PrimaryNode) {
 
 // ---------------------------------------------
 bool VectorIR::VOperand::checkIfAlreadyStored(Node::NodeListType &V) {
-  for (int i = 0; i < V.size(); ++i) {
+  for (int i = 0; i < (int)V.size(); ++i) {
     auto Reg = V[i]->getRegisterValue();
     if (MapStores.find(Reg) != MapStores.end()) {
       if (MapStores[Reg]) {

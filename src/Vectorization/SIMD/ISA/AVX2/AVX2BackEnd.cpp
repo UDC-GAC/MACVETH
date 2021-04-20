@@ -168,7 +168,7 @@ int getNumberOfReductions(VectorIR::VOperand V) {
   int NReductions = 0;
   // std::map<int, std::tuple<int, int>> Reductions;
   int PrevVal = V.Idx[0];
-  for (int T = 1; T < V.Size; ++T) {
+  for (int T = 1; T < (int)V.Size; ++T) {
     if (PrevVal != V.Idx[T]) {
       PrevVal = V.Idx[T];
       NReductions++;
@@ -1118,7 +1118,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
 std::vector<std::tuple<int, int>> getContiguityRanges(VectorIR::VOperand V) {
   int ActualStride = 1;
   std::vector<std::tuple<int, int>> Ranges;
-  for (int Idx = 1; Idx < V.Size; ++Idx) {
+  for (int Idx = 1; Idx < (int)V.Size; ++Idx) {
     // Check longest stride of contiguous elements
     if (V.Idx[Idx - 1] + 1 != V.Idx[Idx]) {
       Ranges.push_back(std::make_tuple(Idx - ActualStride, Idx - 1));
@@ -1655,43 +1655,45 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
             } else if ((std::get<0>(InnerRange) == 1) &&
                        (std::get<1>(InnerRange) == (2))) {
               // [Y|YY|XXXXX]
-              NewVOp.Name = "__tmp0_128";
-              loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
-              NewVOp.Name = V.Name;
-              blend(
-                  NewVOp,
-                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000001"},
-                  MVSL, &IL);
-              NewVOp.Name = "__tmp0_128";
-              NewVOp.Width = MVDataType::VWidth::W128;
-              load(NewVOp, {getOpName(V, true, true, 2, -2)}, MVSL, &IL);
-              NewVOp.Name = V.Name;
-              NewVOp.Width = V.Width;
-              blend(
-                  NewVOp,
-                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000110"},
-                  MVSL, &IL);
+              return vgather(V);
+              // NewVOp.Name = "__tmp0_128";
+              // loads(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
+              // NewVOp.Name = V.Name;
+              // blend(
+              //     NewVOp,
+              //     {V.Name, "_mm256_castps128_ps256(__tmp0_128)",
+              //     "0b00000001"}, MVSL, &IL);
+              // NewVOp.Name = "__tmp0_128";
+              // NewVOp.Width = MVDataType::VWidth::W128;
+              // load(NewVOp, {getOpName(V, true, true, 2, -2)}, MVSL, &IL);
+              // NewVOp.Name = V.Name;
+              // NewVOp.Width = V.Width;
+              // blend(
+              //     NewVOp,
+              //     {V.Name, "_mm256_castps128_ps256(__tmp0_128)",
+              //     "0b00000110"}, MVSL, &IL);
             } else if ((std::get<0>(InnerRange) == 0) &&
                        (std::get<1>(InnerRange) == (1))) {
               // [YY|Y|XXXXX]
-              NewVOp.Name = "__tmp0_128";
-              NewVOp.Width = MVDataType::VWidth::W128;
-              load(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
-              NewVOp.Name = V.Name;
-              NewVOp.Width = V.Width;
-              blend(
-                  NewVOp,
-                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000011"},
-                  MVSL, &IL);
-              NewVOp.Name = "__tmp0_128";
-              NewVOp.Width = MVDataType::VWidth::W128;
-              load(NewVOp, {getOpName(V, true, true, 2, -2)}, MVSL, &IL);
-              NewVOp.Name = V.Name;
-              NewVOp.Width = V.Width;
-              blend(
-                  NewVOp,
-                  {V.Name, "_mm256_castps128_ps256(__tmp0_128)", "0b00000100"},
-                  MVSL, &IL);
+              return vgather(V);
+              // NewVOp.Name = "__tmp0_128";
+              // NewVOp.Width = MVDataType::VWidth::W128;
+              // load(NewVOp, {getOpName(V, true, true)}, MVSL, &IL);
+              // NewVOp.Name = V.Name;
+              // NewVOp.Width = V.Width;
+              // blend(
+              //     NewVOp,
+              //     {V.Name, "_mm256_castps128_ps256(__tmp0_128)",
+              //     "0b00000011"}, MVSL, &IL);
+              // NewVOp.Name = "__tmp0_128";
+              // NewVOp.Width = MVDataType::VWidth::W128;
+              // load(NewVOp, {getOpName(V, true, true, 2, -2)}, MVSL, &IL);
+              // NewVOp.Name = V.Name;
+              // NewVOp.Width = V.Width;
+              // blend(
+              //     NewVOp,
+              //     {V.Name, "_mm256_castps128_ps256(__tmp0_128)",
+              //     "0b00000100"}, MVSL, &IL);
             } else {
               return vgather(V);
               // [Y|Y|Y|XXXXX]
@@ -1977,8 +1979,8 @@ bool AVX2BackEnd::vscatter4elements(VectorIR::VectorOP VOP,
   bool SecondHalve = false;
   auto Ranges = getContiguityRanges(V);
   for (auto Range : Ranges) {
-    FullVector |=
-        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (V.VSize - 1)));
+    FullVector |= ((std::get<0>(Range) == 0) &&
+                   (std::get<1>(Range) == (int)(V.VSize - 1)));
     FirstHalve |=
         ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (Half - 1)));
     SecondHalve |= ((std::get<0>(Range) == (Half)) &&
