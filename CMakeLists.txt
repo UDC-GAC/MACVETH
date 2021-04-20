@@ -30,7 +30,7 @@ message(STATUS
     "Generating building files for ${PROJECT_NAME} v${MACVETH_VERSION}")
 
 #===============================================================================
-# TODO: BUILD TYPE, Compiler used and project flags
+# BUILD TYPE, Compiler used and project flags
 # -DCMAKE_BUILD_TYPE="Debug|Release|RelWithDebInfo|MinSizeRel"
 #===============================================================================
 
@@ -221,34 +221,39 @@ target_link_libraries(macveth
 
 # MACVETH Clang libraries dependencies
 # Clang libraries needed
-target_link_libraries(macveth PRIVATE
-    clangTooling
-    clangBasic
-    clangASTMatchers
-    clangAnalysis
-    clangAST
-    clangASTMatchers
-    clangBasic
-    clangDriver
-    clangEdit
-    clangFrontend
-    clangFrontendTool
-    clangLex
-    clangParse
-    clangSema
-    clangRewrite
-    clangRewriteFrontend
-    clangStaticAnalyzerFrontend
-    clangStaticAnalyzerCheckers
-    clangStaticAnalyzerCore
-    clangCrossTU
-    clangIndex
-    clangSerialization
-    clangToolingCore
-    clangToolingInclusions
-    clangTooling
-    clangFormat
-    )
+if(CLANG_LINK_CLANG_DYLIB)
+    message(STATUS "Linking with clang-cpp library")
+    target_link_libraries(macveth PRIVATE clang-cpp)
+else()
+    target_link_libraries(macveth PRIVATE
+        clangTooling
+        clangBasic
+        clangASTMatchers
+        clangAnalysis
+        clangAST
+        clangASTMatchers
+        clangBasic
+        clangDriver
+        clangEdit
+        clangFrontend
+        clangFrontendTool
+        clangLex
+        clangParse
+        clangSema
+        clangRewrite
+        clangRewriteFrontend
+        clangStaticAnalyzerFrontend
+        clangStaticAnalyzerCheckers
+        clangStaticAnalyzerCore
+        clangCrossTU
+        clangIndex
+        clangSerialization
+        clangToolingCore
+        clangToolingInclusions
+        clangTooling
+        clangFormat
+        )
+endif()
 
 # LLVM flags needed
 target_link_libraries(macveth
