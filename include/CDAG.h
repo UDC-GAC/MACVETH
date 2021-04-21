@@ -39,7 +39,7 @@ using namespace macveth;
 
 namespace macveth {
 
-/// Computation Directered Acyclic Graph (CDAG).
+/// Computation Directed Acyclic Graph (CDAG).
 /// The CDAG is in charge of connecting nodes, detecting data races and,
 /// therefore depencies
 class CDAG {
@@ -52,11 +52,10 @@ public:
   /// Compute cost model for a set of Nodes
   static int computeCostModel(Node::NodeListType NL);
 
-  /// Computer the free schedule, basically the topology order
+  /// Compute the free schedule or topology order
   static void computeFreeSchedule(CDAG *C);
 
-  /// Computer the free schedule, basically the topology order for a list or set
-  /// of Nodes
+  /// Compute the free schedule for a list of nodes (topology order)
   static void computeFreeSchedule(Node::NodeListType NL);
 
   /// Compute WAR anti-dependencies for a given node
@@ -72,7 +71,7 @@ public:
   DepMap getWARs() { return this->MapWAR; }
 
 private:
-  /// Insert TAC instruction to the CDAG
+  /// Insert TAC abstraction to the CDAG
   Node *insertTac(TAC T, Node::NodeListType L);
   /// List of OP nodes
   Node::NodeListType NLOps;

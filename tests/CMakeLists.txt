@@ -5,10 +5,10 @@
 #==============================================================================#
 
 # Include unit test
-add_subdirectory(unittest)
+add_subdirectory(unittests)
 
 # Include integration test
-add_subdirectory(integrationtest)
+add_subdirectory(integrationtests)
 
 # TODO: Include benchmarks
 # add_subdirectory(perftest)

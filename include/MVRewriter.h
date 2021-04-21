@@ -43,6 +43,10 @@ using namespace clang;
 namespace macveth {
 class MVRewriter {
 public:
+  explicit MVRewriter(Rewriter &R) : Rewrite(R) {}
+
+  std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
+                                      std::list<std::string> DimAlreadyDecl);
   /// Comment those stmts which are replaced
   void commentReplacedStmts(std::list<StmtWrapper *> SList);
   //// Add includes to files if needed
@@ -64,7 +68,7 @@ public:
                                  std::list<StmtWrapper *> SL);
 
 private:
-  Rewriter R;
+  Rewriter &Rewrite;
 };
 } // namespace macveth
 

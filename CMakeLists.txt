@@ -1,6 +1,6 @@
 #===============================================================================
 #                                                                              #
-#                       MACVETH CMake Configuration                            #
+#                         MACVETH CMake Configuration                          #
 #                                                                              #
 #===============================================================================
 
@@ -21,12 +21,12 @@ set(PROJECT_NAME MACVETH)
 set(MACVETH_VERSION_MAJOR 0)
 set(MACVETH_VERSION_MINOR 1)
 set(MACVETH_VERSION_PATCH 0)
-set(MACVETH_VERSION 
+set(MACVETH_VERSION
     ${MACVETH_VERSION_MAJOR}.${MACVETH_VERSION_MINOR}.${MACVETH_VERSION_PATCH})
 
 # Setup project
 project(${PROJECT_NAME} VERSION ${MACVETH_VERSION})
-message(STATUS 
+message(STATUS
     "Generating building files for ${PROJECT_NAME} v${MACVETH_VERSION}")
 
 #===============================================================================
@@ -59,7 +59,7 @@ endif()
 # Check if Doxygen is installed
 option(GENERATE_DOC "Generate documentation with Doxygen" OFF)
 
-# dot requirements: 
+# dot requirements:
 # https://github.com/labapart/gattlib/issues/129#issuecomment-609394695
 find_package(Doxygen REQUIRED dot)
 
@@ -82,7 +82,7 @@ if ((CMAKE_BUILD_TYPE MATCHES Debug) AND GENERATE_DOC)
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM)
 elseif(NOT DOXYGEN_FOUND)
-    message(WARNING 
+    message(WARNING
     "Documentation: Doxygen need to be installed to generate the doxygen documentation")
 endif()
 
@@ -92,7 +92,7 @@ endif()
 #===============================================================================
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
-if((CMAKE_BUILD_TYPE MATCHES Debug) OR 
+if((CMAKE_BUILD_TYPE MATCHES Debug) OR
     (CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
     message(STATUS "Code coverage: enabled")
     # Add required flags (GCC & LLVM/Clang)
@@ -115,7 +115,7 @@ endif()
 option(BUILD_TESTING "Build the testing tree" OFF)
 # Only build tests if we are the top-level project
 # Allows this to be used by super projects with `add_subdirectory`
-if ((CMAKE_BUILD_TYPE MATCHES Debug) OR 
+if ((CMAKE_BUILD_TYPE MATCHES Debug) OR
     (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)))
     message(STATUS "Testing enabled")
     enable_testing()

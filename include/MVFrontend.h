@@ -34,6 +34,7 @@
 
 #include "include/CDAG.h"
 #include "include/MVPragmaHandler.h"
+#include "include/MVRewriter.h"
 #include "include/StmtWrapper.h"
 #include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -50,7 +51,7 @@ namespace macveth {
 class MVFuncVisitor : public RecursiveASTVisitor<MVFuncVisitor> {
 public:
   explicit MVFuncVisitor(ASTContext *Context, Rewriter &R, ScopHandler *L)
-      : Context(Context), Rewrite(R), SL(L) {}
+      : Context(Context), Rewrite(R), SL(L), MVR(MVRewriter(R)) {}
   virtual bool VisitFunctionDecl(FunctionDecl *F);
 
 private:
@@ -59,31 +60,13 @@ private:
   void performUnrolling(std::list<StmtWrapper *> SL);
   /// Main function in charge of scanning scops on each function with scops
   void scanScops(FunctionDecl *fd);
-  /// Comment those stmts which are replaced
-  void commentReplacedStmts(std::list<StmtWrapper *> SList);
-  //// Add includes to files if needed
-  void addHeaders(std::list<std::string> S, FileID FID);
-  /// Rewrite TAC as regular statements
-  void renderTACInPlace(std::list<StmtWrapper *> SL, long TacID, int Offset);
-  /// Render SIMD instructions where they should be (regular map operations)
-  void renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
-                             std::list<StmtWrapper *> SL);
-  /// Render SIMD after a statement (for reductions, for instance)
-  bool renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
-                                std::list<StmtWrapper *> SL);
-
-  /// Render SIMD where the original scalar code is
-  void renderSIMDInOrder(SIMDBackEnd::SIMDInst SI, std::list<StmtWrapper *> SL);
-
-  /// Render SIMD before a statement (for initializing reductions, for instance)
-  bool renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
-                                 std::list<StmtWrapper *> SL);
   /// Context
   ASTContext *Context;
   /// For rewriting code in the output program
   Rewriter &Rewrite;
   /// Holds information regarding the ROI
   ScopHandler *SL;
+  MVRewriter MVR;
 };
 
 /// Implementation of the ASTConsumer interface for reading an AST produced
