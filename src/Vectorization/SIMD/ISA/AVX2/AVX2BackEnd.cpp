@@ -183,8 +183,9 @@ SIMDBackEnd::SIMDInstListType
 AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
                                              MVSourceLocation::Position Pos) {
   std::vector<SIMDBackEnd::SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
-  int NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
+  // int NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
   auto V = VIL[0].VOPResult;
+  auto NElems = V.VSize;
   int NReductions = getNumberOfReductions(V);
 
   // Horizontal operations

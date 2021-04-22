@@ -1,4 +1,4 @@
-// MACVETH - MVExprFactory.h
+// MACVETH - Debug.h
 //
 // Copyright (c) Colorado State University. 2019-2021
 // Copyright (c) Universidade da Coruña. 2020-2021
@@ -23,30 +23,9 @@
 // Contact:
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
-#ifndef MACVETH_MVEXPRFACTORY_H
-#define MACVETH_MVEXPRFACTORY_H
+#ifndef MACVETH_DEBUG_H
+#define MACVETH_DEBUG_H
 
-#include "include/MVExpr/MVExpr.h"
+#define MACVETH_DEBUG(X)
 
-using namespace macveth;
-
-namespace macveth {
-
-/// Create MVExpr depending on the dynamic cast clang does
-class MVExprFactory {
-public:
-  /// Types available:
-  /// * ARRAY, e.g. a[i], b[i][j]
-  /// * LITERAL, e.g. 5.0, 42
-  /// * VARIABLE, otherwise
-  enum MVExprType { ARRAY, LITERAL, VARIABLE };
-
-  /// Detect the type of MVExpr
-  static MVExprType getTempTypeFromExpr(Expr *E);
-  /// Create MVExpr from Clang expression
-  static MVExpr *createMVExpr(Expr *E);
-  /// Create temporal MVExpr (as MVExprVar)
-  static MVExpr *createMVExpr(std::string E, bool Temp, std::string Type);
-};
-} // namespace macveth
-#endif /* !MACVETH_MVEXPRFACTORY_H */
+#endif /* !MACVETH_DEBUG_H */

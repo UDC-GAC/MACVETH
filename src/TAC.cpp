@@ -244,13 +244,13 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   auto TmpB = (!IsTerminalS1) ? MVExprFactory::createMVExpr(
                                     getNameTempReg(), true, TmpA->getExprStr())
                               : MVExprFactory::createMVExpr(S1);
-  MVExpr *TmpC = nullptr;
 
   int Inc = 1;
   if (!IsTerminalS1) {
     stmtToTACRecursive(S1, TacList, Val + Inc);
   }
 
+  MVExpr *TmpC = nullptr;
   if (!IsUnary) {
     TmpC = (!IsTerminalS2) ? MVExprFactory::createMVExpr(getNameTempReg(), true,
                                                          TmpA->getExprStr())
@@ -261,8 +261,7 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     stmtToTACRecursive(S2, TacList, Val + Inc + 1);
   }
 
-  TAC NewTac(TmpA, TmpB, TmpC, Op);
-  TacList->push_back(NewTac);
+  TacList->push_back(TAC(TmpA, TmpB, TmpC, Op));
 }
 
 // ---------------------------------------------
@@ -284,24 +283,17 @@ TacListType TAC::stmtToTAC(clang::Stmt *ST) {
 }
 
 // ---------------------------------------------
-TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
-                 std::string LoopLevel, bool FullUnroll) {
-  int UnrollA = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_A) >> TAC::BITS_OP_A);
-  int UnrollB = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_B) >> TAC::BITS_OP_B);
-  int UnrollC = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
-
-  auto NewA = Tac->getA()->unrollExpr(UnrollA, LoopLevel, FullUnroll);
-  auto NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel, FullUnroll);
-  auto NewC = Tac->getC() != nullptr
-                  ? Tac->getC()->unrollExpr(UnrollC, LoopLevel, FullUnroll)
+TAC TAC::unroll(TAC Tac, int UnrollFactor, int S, std::string LoopLevel,
+                bool FullUnroll) {
+  auto NewA = Tac.getA()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll);
+  auto NewB = Tac.getB()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll);
+  auto NewC = Tac.getC() != nullptr
+                  ? Tac.getC()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll)
                   : nullptr;
-  auto UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
-  UnrolledTac->TUnroll = S * UnrollFactor;
-  UnrolledTac->setScop(Tac->getScop());
-  UnrolledTac->setLoopName(Tac->getLoopName());
+  TAC UnrolledTac(NewA, NewB, NewC, Tac.getMVOP(), Tac.getTacID());
+  UnrolledTac.TUnroll = S * UnrollFactor;
+  UnrolledTac.setScop(Tac.getScop());
+  UnrolledTac.setLoopName(Tac.getLoopName());
   return UnrolledTac;
 }
 
@@ -309,19 +301,13 @@ TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
 TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
                                int UpperBound, std::string LoopLevel,
                                bool FullUnroll) {
-  TacListType TacListOrg;
+  TacListType NewTacList;
   auto Steps = UpperBound / UnrollFactor;
   for (int S = 0; S < Steps; S++) {
     for (auto T : TacList) {
-      auto NT =
-          (TAC::unroll(&T, UnrollFactor, S, 0x000000, LoopLevel, FullUnroll));
-      if (NT != nullptr) {
-        TacListOrg.push_back(*NT);
-      }
-      if ((NT == nullptr) && (S == 0)) {
-        TacListOrg.push_back(T);
-      }
+      NewTacList.push_back(
+          TAC::unroll(T, UnrollFactor, S, LoopLevel, FullUnroll));
     }
   }
-  return TacListOrg;
+  return NewTacList;
 }

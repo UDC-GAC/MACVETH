@@ -1,33 +1,27 @@
-/*
- * File					 : include/StmtWrapper.h
- * Author				 : Marcos Horro
- * Date					 : Fri 09 Oct 2020 04:53 +02:00
- *
- * Last Modified : Tue 20 Oct 2020 12:37 +02:00
- * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
- *
- * MIT License
- *
- * Copyright (c) 2020 Colorado State University
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+// MACVETH - StmtWrapper.h
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #ifndef MACVETH_STMTWRAPPER_H
 #define MACVETH_STMTWRAPPER_H
@@ -97,12 +91,13 @@ public:
     /// Empty constructor
     LoopInfo() {}
 
-    /// Known bounds
+    /// Check if bounds are known, i.e. if values are known at compiler time
     bool knownBounds() { return (UpperBound != -1) && (InitVal != -1); }
 
-    /// Get epilogs of given dimensions and
+    /// Get epilogs given a StmtWrapper, which may contain loops within
     static std::string getEpilogs(StmtWrapper *SWrap);
 
+    /// Get a list of the dimensions declared in the loop
     static std::string getDimDeclarations(std::list<std::string> DimsDeclared);
 
     /// For debugging purposes
@@ -133,7 +128,7 @@ public:
   /// Empty constructor
   StmtWrapper(){};
 
-  /// Constructor
+  /// Main constructor, based on clang's Stmt
   StmtWrapper(clang::Stmt *S);
 
   /// Perform unrolling for a given statement given its unroll factor and the
@@ -146,10 +141,10 @@ public:
   /// Unrolls the TAC list in the specified dimensions
   bool unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop);
 
-  /// Get list of stmts
+  /// Get list of statements
   std::list<StmtWrapper *> getListStmt() { return this->ListStmt; }
 
-  /// Get LoopInfo
+  /// Get LoopInfo structure
   LoopInfo getLoopInfo() { return this->LoopL; }
 
   /// Get Clang Stmt
@@ -158,10 +153,11 @@ public:
   /// Get TAC list
   TacListType getTacList() { return TacList; };
 
-  /// Set TAC list
+  /// Set TAC list in the StmtWrapper
   void setTacList(TacListType TacList) { this->TacList = TacList; };
 
-  /// Check if it is a loop
+  /// StmtWrapper may me a "regular" statement or a for loop. This is useful
+  /// for identifying properly regions
   bool isLoop() { return dyn_cast<ForStmt>(this->ClangStmt); }
 
   /// Check if StmtWrapper holds a leftover (i.e. does not hold a loop)
@@ -178,19 +174,20 @@ public:
     }
     this->setTacList(NewTac);
   }
-  /// Get the name of the loop surrounding this Stmt
+
+  /// Get the name of the loop surrounding this clang::Stmt
   std::string getInnerLoopName() { return this->InnerLoopName; }
 
   bool isInLoop() { return this->InnerLoopName != ""; }
 
   void setNotVectorized() { this->Vectorized = false; }
+
   bool isVectorized() { return this->Vectorized; }
 
-  /// Get scop
   long getScop() { return this->TacList.front().getScop(); }
 
 private:
-  /// Statements holded if loop
+  /// Statements hold if loop
   std::list<StmtWrapper *> ListStmt;
   /// Statement if not loop
   Stmt *ClangStmt;
