@@ -24,6 +24,7 @@
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/MVRewriter.h"
+#include "include/Debug.h"
 
 // ---------------------------------------------
 std::list<std::string>
@@ -36,7 +37,7 @@ MVRewriter::rewriteLoops(std::list<StmtWrapper *> SList,
       continue;
     }
     auto Loop = SWrap->getLoopInfo();
-    Utils::printDebug("MVConsumers", "Rewriting loop = " + Loop.Dim);
+    MACVETH_DEBUG("MVConsumers", "Rewriting loop = " + Loop.Dim);
 
     // Rewrite headers
     Rewrite.ReplaceText(Loop.SRVarInc,
@@ -174,7 +175,7 @@ void MVRewriter::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
                                        std::list<StmtWrapper *> SL) {
   // Scalar case: is this needed?
   if (SI.isSequential() && SI.getMVSourceLocation().isInOrder()) {
-    Utils::printDebug("MVFuncVisitor", "Scalar for " + SI.render());
+    MACVETH_DEBUG("MVFuncVisitor", "Scalar for " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {

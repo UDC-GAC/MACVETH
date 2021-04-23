@@ -24,6 +24,7 @@
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/PlcmntAlgo.h"
+#include "include/Debug.h"
 #include "include/MVOptions.h"
 
 // ---------------------------------------------
@@ -75,7 +76,7 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   loop:
     for (auto In : S) {
       if (In == nullptr) {
-        Utils::printDebug("PlcmntAlgo", "Skipping");
+        MACVETH_DEBUG("PlcmntAlgo", "Skipping");
         continue;
       }
       // Since we are checking the inputs of a node, we are do not have to check
@@ -106,8 +107,8 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
         //   // [0,1,2,3] and [-1,1,4,5]
         // }
 
-        Utils::printDebug("PlcmntAlgo",
-                          "Reduction found for " + In->getRegisterValue());
+        MACVETH_DEBUG("PlcmntAlgo",
+                      "Reduction found for " + In->getRegisterValue());
         ReductionFound = true;
         Reduction.push_back(In);
         Visited.push_back(In);
@@ -184,7 +185,7 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
           continue;
         } else {
           if (!(L.find_first_not_of("0123456789") == std::string::npos)) {
-            Utils::printDebug("PlcmntAlgo", "CDAG input file is not correct!");
+            MACVETH_DEBUG("PlcmntAlgo", "CDAG input file is not correct!");
             llvm::llvm_unreachable_internal();
           }
           // Clang does not allow to perform any type of exception handling in
@@ -199,7 +200,7 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
       }
     }
   } else {
-    Utils::printDebug("PlcmntAlgo", "CDAG input file can not be opened");
+    MACVETH_DEBUG("PlcmntAlgo", "CDAG input file can not be opened");
     llvm::llvm_unreachable_internal();
   }
   CF.close();

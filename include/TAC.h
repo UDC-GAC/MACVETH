@@ -26,6 +26,7 @@
 #ifndef MACVETH_TAC_H
 #define MACVETH_TAC_H
 
+#include "include/Debug.h"
 #include "include/MVExpr/MVExpr.h"
 #include "include/MVOps.h"
 #include "include/Utils.h"
@@ -121,7 +122,7 @@ public:
   }
 
   /// Just for debugging purposes
-  void printTAC() { Utils::printDebug("TAC", this->toString()); }
+  void printTAC() { MACVETH_DEBUG("TAC", this->toString()); }
 
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs

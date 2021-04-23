@@ -23,6 +23,7 @@
 // Contact:
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
+#include "include/Debug.h"
 #include "include/CostModel/MVCostModel.h"
 #include "include/CostModel/SIMDCostInfo.h"
 #include "include/PlcmntAlgo.h"
@@ -59,7 +60,7 @@ InstCostInfo MVCostModel::computeCostForNodeOpsList(int VL,
   InstCostInfo TotalCost;
   for (int i = 0; i < VL; ++i) {
     TotalCost += computeCostForNodeOp(NL[i]);
-    // Utils::printDebug("MVCostModel",
+    // MACVETH_DEBUG("MVCostModel",
     //                   "Node = " + NL[i]->toStringShort() +
     //                       "; cost = " +
     //                       computeCostForNodeOp(NL[i]).toString());
@@ -78,7 +79,7 @@ MVCostModel::computeCostForNodeOperandsList(int VL, Node::NodeListType &NL) {
     }
     auto T = M->getTypeStr();
     TotalCost += getOperandCost(M, T);
-    // Utils::printDebug("MVCostModel",
+    // MACVETH_DEBUG("MVCostModel",
     //                   "Node = " + NL[i]->toStringShort() +
     //                       "; cost = " + getOperandCost(M, T).toString());
   }
@@ -126,7 +127,7 @@ InstCostInfo MVCostModel::computeVectorOPCost(VectorIR::VectorOP V,
       continue;
     }
     C += InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp);
-    Utils::printDebug(
+    MACVETH_DEBUG(
         "MVCostModel",
         "SIMD inst = " + I.FuncName + " ( " + I.render() + "); cost = " +
             InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp)
@@ -218,17 +219,16 @@ repeat:
     // 06/25/2020: not sure if reductions should be handled that way...
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue() != VOps[Cursor - 1]->getValue())) {
-      Utils::printDebug("MVCostModel",
-                        "Full OPS of same type and placement = " +
-                            VOps[Cursor - 1]->getValue() + "; (" +
-                            VOps[Cursor]->getValue() +
-                            "); cursor = " + std::to_string(Cursor));
+      MACVETH_DEBUG("MVCostModel", "Full OPS of same type and placement = " +
+                                       VOps[Cursor - 1]->getValue() + "; (" +
+                                       VOps[Cursor]->getValue() +
+                                       "); cursor = " + std::to_string(Cursor));
       break;
     }
     // Remove node from list
     CopyNL.erase(CopyNL.begin());
     if (++Cursor == VL) {
-      Utils::printDebug("MVCostModel", "Full vector");
+      MACVETH_DEBUG("MVCostModel", "Full vector");
       break;
     }
   }
@@ -252,10 +252,10 @@ repeat:
   // Debugging
   for (int n = 0; n < Cursor; ++n) {
     auto B = IsUnary ? "" : VLoadB[n]->getRegisterValue() + "; ";
-    Utils::printDebug("MVCostModel", VOps[n]->getRegisterValue() + " = " +
-                                         VLoadA[n]->getRegisterValue() + " " +
-                                         VOps[n]->getValue() + " " + B +
-                                         VOps[n]->getSchedInfoStr());
+    MACVETH_DEBUG("MVCostModel", VOps[n]->getRegisterValue() + " = " +
+                                     VLoadA[n]->getRegisterValue() + " " +
+                                     VOps[n]->getValue() + " " + B +
+                                     VOps[n]->getSchedInfoStr());
   }
 
   if (Cursor != 0) {
@@ -299,15 +299,15 @@ MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *SG) {
   Node::NodeListType NL(NList);
 
   // Detecting reductions
-  Utils::printDebug("MVCostModel", "Detecting reductions");
+  MACVETH_DEBUG("MVCostModel", "Detecting reductions");
   Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
   if (NRedux.size() == 0) {
-    Utils::printDebug("MVCostModel", "No reductions detected");
+    MACVETH_DEBUG("MVCostModel", "No reductions detected");
   }
 
-  Utils::printDebug("MVCostModel", "General case");
+  MACVETH_DEBUG("MVCostModel", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
-  Utils::printDebug("MVCostModel", "Reductions case");
+  MACVETH_DEBUG("MVCostModel", "Reductions case");
   VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
 
   // Order Vector Operations by TAC ID
@@ -339,7 +339,7 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
 
   // Debugging
   for (auto N : NL) {
-    Utils::printDebug("MVCostModel", N->toString());
+    MACVETH_DEBUG("MVCostModel", N->toString());
   }
 
   // Setting CDAG
@@ -350,7 +350,7 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
 
   // If debug enabled, it will print the VectorOP obtained
   for (auto V : VList) {
-    Utils::printDebug("VectorIR", V.toString());
+    MACVETH_DEBUG("VectorIR", V.toString());
   }
 
   // FIXME: SIMD cost model used backend to generate intrinsics so registers are

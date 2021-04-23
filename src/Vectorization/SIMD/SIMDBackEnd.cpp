@@ -1,36 +1,31 @@
-/*
- * File	: src/Vectorization/SIMD/SIMDBackEnd.cpp
- * Author				 : Marcos Horro
- * Date					 : Fri 09 Oct 2020 04:53 +02:00
- *
- * Last Modified : Tue 20 Oct 2020 03:56 +02:00
- * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
- *
- * MIT License
- *
- * Copyright (c) 2020 Colorado State University
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+// MACVETH - SIMDBackEnd.cpp
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/Vectorization/SIMD/SIMDBackEnd.h"
 #include "include/CostModel/CostTable.h"
+#include "include/Debug.h"
 #include "include/MVOptions.h"
 #include "include/PlcmntAlgo.h"
 #include "include/Utils.h"
@@ -56,7 +51,7 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
   auto Arch = MVArchStr[MVOptions::Arch];
   std::ifstream F(PathISA);
   std::string L, W;
-  Utils::printDebug("SIMDBackEnd", PathISA + " path");
+  MACVETH_DEBUG("SIMDBackEnd", PathISA + " path");
   if (F.is_open()) {
     while (getline(F, L)) {
       if ((L.rfind("#", 0) == 0) || (L == "")) {
@@ -78,9 +73,8 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
     }
     F.close();
   } else {
-    Utils::printDebug(
-        "SIMDBackEnd",
-        "This should never happen: PATH for costs file not found");
+    MACVETH_DEBUG("SIMDBackEnd",
+                  "This should never happen: PATH for costs file not found");
     llvm::llvm_unreachable_internal();
   }
 }
@@ -89,14 +83,11 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
 std::string SIMDBackEnd::getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal,
                                    int Position, int Offset) {
   if ((Ptr) && (V.IsStore || V.IsLoad)) {
-    // Pointer to Rvalue
     return "&" + V.getRegName(Position, Offset);
   }
   if (RegVal) {
-    // Rvalue
     return V.getRegName(Position, Offset);
   }
-  // Other
   return V.Name;
 }
 
@@ -211,14 +202,13 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
   //   }
   // }
 
-  Utils::printDebug("SIMDBackEnd",
-                    "V = " + V.Name +
-                        "; EqualVal = " + std::to_string(EqualVal) +
-                        "; ContMem = " + std::to_string(ContMem) +
-                        "; ScatterMem = " + std::to_string(ScatterMem) +
-                        "; SameVec = " + std::to_string(V.SameVector) +
-                        "; ExpVal = " + std::to_string(ExpVal) +
-                        "; NullIndex = " + std::to_string(NullIndex));
+  MACVETH_DEBUG("SIMDBackEnd",
+                "V = " + V.Name + "; EqualVal = " + std::to_string(EqualVal) +
+                    "; ContMem = " + std::to_string(ContMem) +
+                    "; ScatterMem = " + std::to_string(ScatterMem) +
+                    "; SameVec = " + std::to_string(V.SameVector) +
+                    "; ExpVal = " + std::to_string(ExpVal) +
+                    "; NullIndex = " + std::to_string(NullIndex));
 
   if ((!EqualVal) && (ContMem) && (!ScatterMem)) {
     // Load contiguous from memory
@@ -268,7 +258,7 @@ void SIMDBackEnd::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
     }
   } else {
     // TODO decide what todo when we have the custom operations
-    Utils::printDebug("SIMDBackEnd", "it is not a binary operation");
+    MACVETH_DEBUG("SIMDBackEnd", "it is not a binary operation");
     TIL = vfunc(V);
   }
 
@@ -320,7 +310,6 @@ SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP V) {
   };
 
   auto RegType = getRegisterType(V.DT, V.VW);
-  // Registers used
   addRegToDeclare(RegType, V.R.getName());
   addRegToDeclare(RegType, V.OpA.getName());
   addRegToDeclare(RegType, V.OpB.getName());
@@ -392,7 +381,6 @@ std::string SIMDBackEnd::replacePatterns(std::string Pattern, std::string W,
 
 // ---------------------------------------------
 void SIMDBackEnd::clearMappings() {
-  // FIXME:
   for (auto &X : RegDeclared) {
     X.second.clear();
   }

@@ -24,6 +24,7 @@
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/StmtWrapper.h"
+#include "include/Debug.h"
 #include "include/MVAssert.h"
 #include "include/TAC.h"
 #include "clang/AST/Expr.h"
@@ -51,8 +52,8 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
     unsigned End =
         Utils::getSourceMgr()->getExpansionLineNumber(ST->getEndLoc());
     if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
-      Utils::printDebug("StmtWrapper genStmtWraps",
-                        "new StmtWrapper =\n" + Utils::getStringFromStmt(ST));
+      MACVETH_DEBUG("StmtWrapper genStmtWraps",
+                    "new StmtWrapper =\n" + Utils::getStringFromStmt(ST));
       auto NewStmt = new StmtWrapper(ST);
       SList.push_back(NewStmt);
     } else {
@@ -70,9 +71,9 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
             unsigned int End =
                 Utils::getSourceMgr()->getExpansionLineNumber(B->getEndLoc());
             if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
-              Utils::printDebug("StmtWrapper genStmtWraps",
-                                "new StmtWrapper =\n" +
-                                    Utils::getStringFromStmt(B));
+              MACVETH_DEBUG("StmtWrapper genStmtWraps",
+                            "new StmtWrapper =\n" +
+                                Utils::getStringFromStmt(B));
               StmtWrapper *NewStmt = new StmtWrapper(B);
               SList.push_back(NewStmt);
             }
@@ -97,8 +98,8 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
         auto SW = new StmtWrapper(S);
         SW->setInnerLoopName(this->getLoopInfo().Dim);
         this->ListStmt.push_back(SW);
-        Utils::printDebug("StmtWrapper", "adding new stmt, TACs in loop = " +
-                                             this->getLoopInfo().Dim);
+        MACVETH_DEBUG("StmtWrapper", "adding new stmt, TACs in loop = " +
+                                         this->getLoopInfo().Dim);
         for (auto T : SW->getTacList()) {
           T.printTAC();
         }
@@ -108,8 +109,8 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
       auto SW = new StmtWrapper(Loop->getBody());
       SW->setInnerLoopName(this->getLoopInfo().Dim);
       this->ListStmt.push_back(SW);
-      Utils::printDebug("StmtWrapper", "adding new stmt, TACs in loop = " +
-                                           this->getLoopInfo().Dim);
+      MACVETH_DEBUG("StmtWrapper", "adding new stmt, TACs in loop = " +
+                                       this->getLoopInfo().Dim);
       for (auto T : SW->getTacList()) {
         T.printTAC();
       }
@@ -245,7 +246,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
                 ((Loop.UpperBound - ((Loop.InitVal == -1) ? 0 : Loop.InitVal)) %
                  Loop.UnrollFactor);
 
-  Utils::printDebug("LoopInfo", Loop.toString());
+  MACVETH_DEBUG("LoopInfo", Loop.toString());
   return Loop;
 }
 
@@ -297,7 +298,7 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
 bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
   bool FullUnroll = true;
   if (this->isLoop()) {
-    Utils::printDebug("StmtWrapper", "unrollAndJam loop = " + this->LoopL.Dim);
+    MACVETH_DEBUG("StmtWrapper", "unrollAndJam loop = " + this->LoopL.Dim);
     for (auto D : Scop->PA.UnrollDim) {
       if (this->LoopL.Dim == std::get<0>(D)) {
         if (Scop->PA.FullUnroll[this->LoopL.Dim]) {
@@ -374,11 +375,11 @@ bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
 
 // ---------------------------------------------
 TacListType StmtWrapper::unroll(LoopInfo L) {
-  Utils::printDebug("StmtWrapper",
-                    "unrolling dimension " + L.Dim + " stmt = " +
-                        Utils::getStringFromStmt(this->getClangStmt()) +
-                        "; Step = " + std::to_string(L.Step) +
-                        "; StepUnrolled = " + std::to_string(L.StepUnrolled));
+  MACVETH_DEBUG("StmtWrapper",
+                "unrolling dimension " + L.Dim + " stmt = " +
+                    Utils::getStringFromStmt(this->getClangStmt()) +
+                    "; Step = " + std::to_string(L.Step) +
+                    "; StepUnrolled = " + std::to_string(L.StepUnrolled));
   long UB = ((L.UpperBound != -1) && (L.FullyUnrolled))
                 ? (L.UpperBound - L.InitVal)
                 : L.StepUnrolled;

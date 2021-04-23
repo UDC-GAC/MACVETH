@@ -25,6 +25,7 @@
 
 #include "include/TAC.h"
 #include "include/CDAG.h"
+#include "include/Debug.h"
 #include "include/MVExpr/MVExprArray.h"
 #include "include/MVExpr/MVExprFactory.h"
 #include "include/MVExpr/MVExprLiteral.h"
@@ -222,7 +223,7 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   if (isa<clang::TypedefType>(S1->getType())) {
     auto aT = dyn_cast<clang::TypedefType>(S1->getType());
     if (!aT->isSugared()) {
-      Utils::printDebug("TAC", "Not sugared!!");
+      MACVETH_DEBUG("TAC", "Not sugared!!");
       llvm::llvm_unreachable_internal();
     }
     auto ET = dyn_cast<ElaboratedType>(aT->desugar());

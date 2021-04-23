@@ -26,6 +26,7 @@
 #ifndef MACVETH_PRAGMAHANDLER_H
 #define MACVETH_PRAGMAHANDLER_H
 
+#include "include/Debug.h"
 #include "include/MVAssert.h"
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/SourceManager.h"
@@ -138,7 +139,7 @@ struct ScopHandler {
   void addStart(SourceManager &SM, SourceLocation Start,
                 ScopLoc::PragmaArgs PA) {
     ScopLoc *Loc = new ScopLoc();
-    Utils::printDebug("MVPragmaHandler", "addStart");
+    MACVETH_DEBUG("MVPragmaHandler", "addStart");
     Loc->FID = SM.getFileID(Start);
     Loc->PA = PA;
     Loc->Scop = Start;

@@ -26,6 +26,16 @@
 #ifndef MACVETH_DEBUG_H
 #define MACVETH_DEBUG_H
 
-#define MACVETH_DEBUG(X)
+#include "include/Utils.h"
+
+/// For printing debug information to file if specified
+void printDebug(std::string M, std::string Msg);
+
+/// For printing debug information to file if specified according to a debugging
+/// level, i.e., if debugging level (specified by user) is higher or equal,
+/// then print. This is useful if we want to discriminate messages
+void printDebug(std::string M, std::string Msg, DebugLevel DB);
+
+#define MACVETH_DEBUG(X, MSG) printDebug(X, MSG)
 
 #endif /* !MACVETH_DEBUG_H */

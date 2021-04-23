@@ -24,6 +24,7 @@
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/Vectorization/VectorIR.h"
+#include "include/Debug.h"
 #include "include/MVExpr/MVExprArray.h"
 #include "include/Utils.h"
 #include <algorithm>
@@ -332,12 +333,12 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
         if (VL > 1) {
           for (int i = 1; i < VL; ++i) {
             T &= ((Idx[i] - 1) == Idx[i - 1]);
-            Utils::printDebug(
-                "VOperand", "Idx[i]-1 = " + std::to_string((Idx[i] - 1)) +
-                                "; Idx[i-1] = " + std::to_string((Idx[i - 1])));
+            MACVETH_DEBUG("VOperand",
+                          "Idx[i]-1 = " + std::to_string((Idx[i] - 1)) +
+                              "; Idx[i-1] = " + std::to_string((Idx[i - 1])));
           }
         }
-        Utils::printDebug("VOperand", "Contiguous = " + std::to_string(T));
+        MACVETH_DEBUG("VOperand", "Contiguous = " + std::to_string(T));
         this->Contiguous = T;
       }
     }
@@ -361,12 +362,12 @@ VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
   bool Atomic_B = isAtomic(VL, VOps, VLoadB);
 
   // Type of VectorOP
-  Utils::printDebug("VectorIR", "Seq = " + std::to_string(Seq) + "; " +
-                                    "RAW_A = " + std::to_string(RAW_A) + "; " +
-                                    "RAW_B = " + std::to_string(RAW_B) + "; " +
-                                    "Atomic_A = " + std::to_string(Atomic_A) +
-                                    "; " +
-                                    "Atomic_B = " + std::to_string(Atomic_B));
+  MACVETH_DEBUG("VectorIR", "Seq = " + std::to_string(Seq) + "; " +
+                                "RAW_A = " + std::to_string(RAW_A) + "; " +
+                                "RAW_B = " + std::to_string(RAW_B) + "; " +
+                                "Atomic_A = " + std::to_string(Atomic_A) +
+                                "; " +
+                                "Atomic_B = " + std::to_string(Atomic_B));
 
   // Decide which type of VectorOp it is according to the features of its
   // VOperands
@@ -386,7 +387,7 @@ VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
   // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
   if (Seq) {
-    Utils::printDebug("CDAG", "Ops are sequential");
+    MACVETH_DEBUG("CDAG", "Ops are sequential");
   }
   // 2.- Check if operands have RAW dependencies with output of the operations
   bool RAW_A = rawDependencies(VL, VOps, VLoadA);
@@ -395,9 +396,9 @@ VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
   bool Atomic_A = isAtomic(VL, VOps, VLoadA);
 
   // Type of VectorOP
-  Utils::printDebug("VectorIR", "Seq = " + std::to_string(Seq));
-  Utils::printDebug("VectorIR", "RAW_A = " + std::to_string(RAW_A));
-  Utils::printDebug("VectorIR", "Atomic_A = " + std::to_string(Atomic_A));
+  MACVETH_DEBUG("VectorIR", "Seq = " + std::to_string(Seq));
+  MACVETH_DEBUG("VectorIR", "RAW_A = " + std::to_string(RAW_A));
+  MACVETH_DEBUG("VectorIR", "Atomic_A = " + std::to_string(Atomic_A));
 
   // Decide which type of VectorOp it is according to the features of its
   // VOperands

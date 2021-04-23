@@ -25,6 +25,7 @@
 
 #include "include/MVFrontend.h"
 #include "include/CostModel/MVCostModel.h"
+#include "include/Debug.h"
 #include "include/MVAssert.h"
 #include "include/MVOptions.h"
 #include "include/TAC.h"
@@ -63,7 +64,7 @@ void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
     auto Scop = getScopLoc(S);
     assert(Scop != nullptr && "Scop not found for these statements");
     if (Scop->PA.UnrollAndJam) {
-      Utils::printDebug("MVConsumer", "unroll and jam...");
+      MACVETH_DEBUG("MVConsumer", "unroll and jam...");
       CouldFullyUnroll = S->unrollAndJam(LI, Scop);
       assert(CouldFullyUnroll &&
              "Need to be able to full unroll when having leftovers");
@@ -77,7 +78,7 @@ void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
 void MVFuncVisitor::scanScops(FunctionDecl *fd) {
   auto CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
-    Utils::printDebug("MVFuncVisitor", "scanScops: no CompoundStmt");
+    MACVETH_DEBUG("MVFuncVisitor", "scanScops: no CompoundStmt");
     llvm::llvm_unreachable_internal();
   }
 
@@ -97,8 +98,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     auto IsLastScop = (Scop == Scops[Scops.size() - 1]);
 
     // Check if ST is within the ROI or not
-    Utils::printDebug("MVConsumer",
-                      "scop = " + std::to_string(Scop->StartLine));
+    MACVETH_DEBUG("MVConsumer", "scop = " + std::to_string(Scop->StartLine));
 
     // Get the info about the loops surrounding this statement
     auto SL = StmtWrapper::genStmtWraps(CS, Scop);
@@ -107,8 +107,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       RegDeclLoc = SL.front()->getClangStmt()->getBeginLoc();
     }
 
-    Utils::printDebug("MVConsumer", "list of stmt wrappers parsed = " +
-                                        std::to_string(SL.size()));
+    MACVETH_DEBUG("MVConsumer", "list of stmt wrappers parsed = " +
+                                    std::to_string(SL.size()));
 
     // Perform unrolling according to the pragmas
     performUnrolling(SL);

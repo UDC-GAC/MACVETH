@@ -26,6 +26,7 @@
 #ifndef MACVETH_MVEXPR_H
 #define MACVETH_MVEXPR_H
 
+#include "include/Debug.h"
 #include "include/MVExpr/MVDataType.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"
@@ -92,7 +93,7 @@ public:
     if (isa<clang::TypedefType>(E->getType())) {
       auto T = dyn_cast<clang::TypedefType>(E->getType());
       if (!T->isSugared()) {
-        Utils::printDebug(
+        MACVETH_DEBUG(
             "MVExpr",
             "This is not 'sugared'... That is an error... Unreachable");
         llvm::llvm_unreachable_internal();

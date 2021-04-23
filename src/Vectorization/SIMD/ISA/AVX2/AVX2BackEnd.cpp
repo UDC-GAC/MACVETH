@@ -1,30 +1,31 @@
 // MACVETH - AVX2BackEnd.cpp
-// 
+//
 // Copyright (c) Colorado State University. 2019-2021
 // Copyright (c) Universidade da Coruña. 2020-2021
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Authors:
 //     Marcos Horro <marcos.horro@udc.es>
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 //     Gabriel Rodríguez <grodriguez@udc.es>
-// 
+//
 // Contact:
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/Vectorization/SIMD/AVX2/AVX2BackEnd.h"
 #include "include/CostModel/CostTable.h"
+#include "include/Debug.h"
 #include "include/Utils.h"
 #include <algorithm>
 #include <map>
@@ -295,7 +296,7 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
   // * [A,A,A,A,A,A,A,A]
   if ((NReductions == 4) || (NReductions == 2) || (NReductions == 1)) {
     int Stride = (int)(NElems / NReductions);
-    for (int R = 0; R < NElems; R += Stride) {
+    for (unsigned R = 0; R < NElems; R += Stride) {
       // The last dance
       if (OpRedux.isBinaryOperation()) {
         addNonSIMDInst(V.StoreValues[R],
@@ -348,7 +349,7 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
       (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "hadd" : "hsub";
 
   auto Stride = 2;
-  Utils::printDebug("AVX2BackEnd", "Stride = " + std::to_string(Stride));
+  MACVETH_DEBUG("AVX2BackEnd", "Stride = " + std::to_string(Stride));
   MVSourceLocation MVSL(Pos, Loc, Off);
   while (true) {
     for (int i = 0; i < NumRedux; i += Stride) {
@@ -555,7 +556,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   std::string Res = "";
   if (NElems > 4) {
     // Need to do the last extraction, shuffle and operation
-    for (size_t R = 0; R < NumRedux; R += 4) {
+    for (unsigned R = 0; R < NumRedux; R += 4) {
       // op(shuffle(hi,lo,mask), shuffle(hi,lo,mask))
       auto Lo = extractArgument(VAccm[R], VIL[R], 0);
       auto Hi = extractArgument(VAccm[R], VIL[R], 1);
@@ -576,7 +577,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
 
   auto ResRegister = (Res != "") ? Res : VAccm[0];
 
-  for (size_t R = 0; R < NumRedux; ++R) {
+  for (unsigned R = 0; R < NumRedux; ++R) {
     std::string Idx = "[" + std::to_string(R) + "]";
     if (OpRedux.isBinaryOperation()) {
       addNonSIMDInst(VRedux[R], VRedux[R] + OP + ResRegister + Idx,
@@ -621,18 +622,18 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
   // This is the horizontal approach, only valid for AVX2 and additions
   // and subtraction
   if (LInsSize == 1) {
-    Utils::printDebug("AVX2BackEnd", "Single reduction approach (" +
-                                         std::to_string(LInsSize) + ")");
+    MACVETH_DEBUG("AVX2BackEnd", "Single reduction approach (" +
+                                     std::to_string(LInsSize) + ")");
     FusedRedux = horizontalSingleVectorReduction(LC, ReduxPos);
   } else if (((OpRedux.isBinaryOperation()) && (OpRedux.isAddOrSub()))) {
     // Horizontal approach only worth it when we have two or more
     // reductions
-    Utils::printDebug("AVX2BackEnd",
-                      "Horizontal approach (" + std::to_string(LInsSize) + ")");
+    MACVETH_DEBUG("AVX2BackEnd",
+                  "Horizontal approach (" + std::to_string(LInsSize) + ")");
     FusedRedux = horizontalReductionFusion(LC, ReduxPos);
   } else {
-    Utils::printDebug("AVX2BackEnd", "General approach approach (" +
-                                         std::to_string(LInsSize) + ")");
+    MACVETH_DEBUG("AVX2BackEnd", "General approach approach (" +
+                                     std::to_string(LInsSize) + ")");
     FusedRedux = generalReductionFusion(LC, ReduxPos);
   }
 
@@ -966,10 +967,6 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vload(VectorIR::VOperand V) {
   std::string Mask = (V.IsPartial) && (V.Size != 2) ? "mask" : "";
 
   // Type of load: load/u
-  // [1]
-  // https://software.intel.com/en-us/forums/intel-isa-extensions/topic/752392
-  // [2] https://stackoverflow.com/questions/36191748/difference-between-\
-  // load1-and-broadcast-intrinsics
   auto Op = Mask + "load";
 
   // List of parameters
@@ -1163,18 +1160,18 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
                                  SIMDBackEnd::SIMDInstListType *IL) {
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
   std::string TypeReg = (V.DType == MVDataType::FLOAT) ? "__m128" : "__m128d";
-  int Half = (int)V.VSize / 2;
+  unsigned Half = (int)V.VSize / 2;
   bool FullVector = false;
   bool FirstHalve = false;
   bool SecondHalve = false;
   auto Ranges = getContiguityRanges(V);
   for (auto Range : Ranges) {
-    FullVector |=
-        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (V.VSize - 1)));
-    FirstHalve |=
-        ((std::get<0>(Range) == 0) && (std::get<1>(Range) == (Half - 1)));
-    SecondHalve |= ((std::get<0>(Range) == (Half)) &&
-                    (std::get<1>(Range) == (2 * Half - 1)));
+    FullVector |= ((std::get<0>(Range) == 0) &&
+                   ((unsigned)std::get<1>(Range) == (V.VSize - 1)));
+    FirstHalve |= ((std::get<0>(Range) == 0) &&
+                   ((unsigned)std::get<1>(Range) == (Half - 1)));
+    SecondHalve |= (((unsigned)std::get<0>(Range) == (Half)) &&
+                    ((unsigned)std::get<1>(Range) == (2 * Half - 1)));
   }
 
   if (FullVector) {

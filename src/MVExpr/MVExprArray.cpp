@@ -89,7 +89,7 @@ const Expr *MVExprArray::getArrayBaseExprAndIdxs(const CXXOperatorCallExpr *C,
   CXXOperatorCallExpr *CXX = const_cast<CXXOperatorCallExpr *>(C);
   while (CXX) {
     if (CXX->getDirectCallee()->getNameAsString() != "operator[]") {
-      Utils::printDebug("MVExprArray", "Operator []");
+      MACVETH_DEBUG("MVExprArray", "Operator []");
       llvm::llvm_unreachable_internal();
     }
     // FIXME: WTF this is fucking awful

@@ -24,6 +24,7 @@
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/CDAG.h"
+#include "include/Debug.h"
 #include "include/PlcmntAlgo.h"
 #include "include/Utils.h"
 #include "include/Vectorization/VectorIR.h"
@@ -80,20 +81,18 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
     // Assumption: a = b op c, c is always the "connector"
     auto N = Node::findOutputNode(T.getC()->getExprStr(), L);
     if (N == nullptr) {
-      Utils::printDebug("CDAG/NODE",
-                        "no output found = " + T.getC()->getExprStr());
+      MACVETH_DEBUG("CDAG/NODE", "no output found = " + T.getC()->getExprStr());
       goto no_output;
     }
-    Utils::printDebug("CDAG/NODE", "output found = " + T.getA()->getExprStr());
+    MACVETH_DEBUG("CDAG/NODE", "output found = " + T.getA()->getExprStr());
     N->setOutputExpr(T.getA());
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
     auto WarNode = findWARDataRace(N, this->NLOps);
     // auto RawNode = findRAWDataRace(N, this->NLOps);
     if (WarNode != nullptr) {
-      Utils::printDebug("CDAG/NODE",
-                        "WAR found = " + WarNode->getRegisterValue() + "; " +
-                            WarNode->getSchedInfoStr());
+      MACVETH_DEBUG("CDAG/NODE", "WAR found = " + WarNode->getRegisterValue() +
+                                     "; " + WarNode->getSchedInfoStr());
       N->setFreeSchedInfo(WarNode->getSchedInfo().FreeSched + 1);
     }
     return nullptr;
@@ -107,8 +106,8 @@ no_output:
   NewNode->setFreeSchedInfo(
       std::max(NewNode->getSchedInfo().FreeSched,
                (RawNode == nullptr) ? 0 : RawNode->getSchedInfo().FreeSched));
-  Utils::printDebug("CDAG/NODE", "new node = " + T.toString() + "; " +
-                                     NewNode->getSchedInfoStr());
+  MACVETH_DEBUG("CDAG/NODE", "new node = " + T.toString() + "; " +
+                                 NewNode->getSchedInfoStr());
   this->NLOps.push_back(NewNode);
   return NewNode;
 }
@@ -131,16 +130,16 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
   }
 
   for (auto R : G->MapRAW) {
-    Utils::printDebug("CDAG", "RAW for TAC = " + std::to_string(R.first));
+    MACVETH_DEBUG("CDAG", "RAW for TAC = " + std::to_string(R.first));
     for (auto RAW : R.second) {
-      Utils::printDebug("CDAG", "\t TAC = " + std::to_string(RAW));
+      MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
     }
   }
 
   for (auto R : G->MapWAR) {
-    Utils::printDebug("CDAG", "WAR for TAC = " + std::to_string(R.first));
+    MACVETH_DEBUG("CDAG", "WAR for TAC = " + std::to_string(R.first));
     for (auto RAW : R.second) {
-      Utils::printDebug("CDAG", "\t TAC = " + std::to_string(RAW));
+      MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
     }
   }
 

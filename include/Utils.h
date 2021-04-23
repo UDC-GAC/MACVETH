@@ -80,31 +80,6 @@ public:
     return S;
   }
 
-  /// For printing debug information to file if specified
-  static void printDebug(std::string M, std::string Msg) {
-    if (MVOptions::Debug) {
-      if (MVOptions::OutDebugFile != "") {
-        std::ofstream O;
-        O.open(getExePath() + MVOptions::OutDebugFile,
-               std::ios_base::app); // append instead of overwrite
-        O << "[" << M << "] " << Msg << std::endl;
-        O.close();
-      } else {
-        std::cout << "[" << M << "] " << Msg << std::endl;
-      }
-    }
-  }
-
-  static void printDebug(std::string M, std::string Msg, DebugLevel DB) {
-    if (!MVOptions::DLevel) {
-      printDebug(M, Msg);
-      return;
-    }
-    if (DB <= MVOptions::DLevel) {
-      printDebug(M, Msg);
-    }
-  }
-
   /// Truncate file: create or rewrite if already created
   static void initFile(std::string FileName) {
     if (FileName != "") {

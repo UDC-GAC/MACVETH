@@ -1,4 +1,4 @@
-// MACVETH - VectorOP.h
+// MACVETH - Debug.cpp
 //
 // Copyright (c) Colorado State University. 2019-2021
 // Copyright (c) Universidade da Coruña. 2020-2021
@@ -22,3 +22,31 @@
 //
 // Contact:
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
+
+#include "include/Debug.h"
+
+// ---------------------------------------------
+void printDebug(std::string M, std::string Msg) {
+  if (MVOptions::Debug) {
+    if (MVOptions::OutDebugFile != "") {
+      std::ofstream O;
+      O.open(Utils::getExePath() + MVOptions::OutDebugFile,
+             std::ios_base::app); // append instead of overwrite
+      O << "[" << M << "] " << Msg << std::endl;
+      O.close();
+    } else {
+      std::cout << "[" << M << "] " << Msg << std::endl;
+    }
+  }
+}
+
+// ---------------------------------------------
+void printDebug(std::string M, std::string Msg, DebugLevel DB) {
+  if (!MVOptions::DLevel) {
+    printDebug(M, Msg);
+    return;
+  }
+  if (DB <= MVOptions::DLevel) {
+    printDebug(M, Msg);
+  }
+}
