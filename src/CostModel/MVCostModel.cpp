@@ -23,9 +23,9 @@
 // Contact:
 //     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
-#include "include/Debug.h"
 #include "include/CostModel/MVCostModel.h"
 #include "include/CostModel/SIMDCostInfo.h"
+#include "include/Debug.h"
 #include "include/PlcmntAlgo.h"
 #include "include/Vectorization/SIMD/SIMDBackEndFactory.h"
 
@@ -325,10 +325,7 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
   // Get all the TAC from all the Stmts
   TacListType TL;
   for (auto SWrap : SL) {
-    for (auto S : SWrap->getTacList()) {
-      S.printTAC();
-      TL.push_back(S);
-    }
+    TL.splice(TL.end(), SWrap->getTacList());
   }
 
   // Creating the CDAG
@@ -337,20 +334,20 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
   // Set placement according to the desired algorithm
   auto NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
 
-  // Debugging
-  for (auto N : NL) {
-    MACVETH_DEBUG("MVCostModel", N->toString());
-  }
-
   // Setting CDAG
   SG->setCDAG(G);
 
   // Execute greedy algorithm
   auto VList = getVectorOpFromCDAG(NL, SG);
 
-  // If debug enabled, it will print the VectorOP obtained
-  for (auto V : VList) {
-    MACVETH_DEBUG("VectorIR", V.toString());
+  // Debugging
+  if (MVOptions::Debug) {
+    for (auto N : NL) {
+      MACVETH_DEBUG("MVCostModel", N->toString());
+    }
+    for (auto V : VList) {
+      MACVETH_DEBUG("VectorIR", V.toString());
+    }
   }
 
   // FIXME: SIMD cost model used backend to generate intrinsics so registers are

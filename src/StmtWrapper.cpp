@@ -101,7 +101,8 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
         MACVETH_DEBUG("StmtWrapper", "adding new stmt, TACs in loop = " +
                                          this->getLoopInfo().getDim());
         for (auto T : SW->getTacList()) {
-          T.printTAC();
+          MACVETH_DEBUG("TAC", T.toString());
+          ;
         }
       }
       TAC::TacScop++;
@@ -112,7 +113,8 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
       MACVETH_DEBUG("StmtWrapper", "adding new stmt, TACs in loop = " +
                                        this->getLoopInfo().getDim());
       for (auto T : SW->getTacList()) {
-        T.printTAC();
+        MACVETH_DEBUG("TAC", T.toString());
+        ;
       }
     }
   } else {
@@ -128,7 +130,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   Loop.EndLoc = ForLoop->getEndLoc();
 
   // Get init val
-  const DeclStmt *NameValInit = dyn_cast<DeclStmt>(ForLoop->getInit());
+  auto NameValInit = dyn_cast<DeclStmt>(ForLoop->getInit());
   const BinaryOperator *ValInit;
   const VarDecl *V = nullptr;
   if (NameValInit != nullptr) {
@@ -165,7 +167,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   }
 
   // Get UpperBound
-  const BinaryOperator *Cond = dyn_cast<BinaryOperator>(ForLoop->getCond());
+  auto Cond = dyn_cast<BinaryOperator>(ForLoop->getCond());
   Loop.UpperBoundComp = Cond->getOpcode();
   const Expr *UpperBoundExpr = Cond->getRHS();
   if (UpperBoundExpr != nullptr) {
@@ -239,6 +241,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     Loop.LeftOver = 0;
   }
 
+  // My eyes are  ...
   Loop.StepUnrolled =
       (Loop.UpperBound == -1)
           ? Loop.StepUnrolled

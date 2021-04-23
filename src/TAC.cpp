@@ -95,7 +95,7 @@ std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
   std::map<std::string, std::vector<std::string>> TmpResToReplace;
   TacListType TCopy(TL);
   for (auto T : TCopy) {
-    if (T.getUnrollFactor() != Offset) {
+    if ((T.getUnrollFactor() != Offset) && (Offset != -1)) {
       continue;
     }
     auto A = T.getA()->getExprStr();
@@ -113,7 +113,7 @@ std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
   TCopy.reverse();
   std::string FinalStr = "";
   for (auto T : TCopy) {
-    if (T.getUnrollFactor() != Offset) {
+    if ((T.getUnrollFactor() != Offset) && (Offset != -1)) {
       continue;
     }
     auto A = T.getA()->getExprStr();
@@ -122,7 +122,7 @@ std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
     if (T.getC() != nullptr) {
       C = T.getC()->getExprStr();
     }
-    // If this, then it is an assignment (by design)
+    // If this, then this TAC is an assignment (by design)
     if (A == B) {
       FinalStr =
           A + " = " + replaceTmpTac(TmpResToReplace, C) + ";\n" + FinalStr;
@@ -262,24 +262,24 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
 
 // ---------------------------------------------
 TacListType TAC::stmtToTAC(clang::Stmt *ST) {
-  // Reset the RegVal in TAC class
-  auto S = dyn_cast<clang::Expr>(ST);
   TacListType TL;
 
+  auto S = dyn_cast<clang::Expr>(ST);
+  if (!S) {
+    MVErr("Statement type not allowed");
+  }
   // Check if the expression is binary
-  clang::BinaryOperator *SBin = nullptr;
-  auto STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
-  if (STypeBin) {
-    stmtToTACRecursive(SBin, &TL, -1);
+  if (auto STypeBin = getBinOp(S->IgnoreImpCasts())) {
+    stmtToTACRecursive(STypeBin, &TL, -1);
     return TL;
   }
 
-  assert(false && "This type of statement is not permitted!!!");
+  assert(TL.size() > 1 && "This type of statement is not allowed!");
   return TL;
 }
 
 // ---------------------------------------------
-TAC TAC::unroll(TAC Tac, int UnrollFactor, int S, std::string LoopLevel,
+TAC TAC::unroll(TAC Tac, int UnrollFactor, std::string LoopLevel,
                 bool FullUnroll) {
   auto NewA = Tac.getA()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll);
   auto NewB = Tac.getB()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll);
@@ -287,7 +287,7 @@ TAC TAC::unroll(TAC Tac, int UnrollFactor, int S, std::string LoopLevel,
                   ? Tac.getC()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll)
                   : nullptr;
   TAC UnrolledTac(NewA, NewB, NewC, Tac.getMVOP(), Tac.getTacID());
-  UnrolledTac.TUnroll = S * UnrollFactor;
+  UnrolledTac.TUnroll = UnrollFactor;
   UnrolledTac.setScop(Tac.getScop());
   UnrolledTac.setLoopName(Tac.getLoopName());
   return UnrolledTac;
@@ -302,7 +302,7 @@ TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
   for (int S = 0; S < Steps; S++) {
     for (auto T : TacList) {
       NewTacList.push_back(
-          TAC::unroll(T, UnrollFactor, S, LoopLevel, FullUnroll));
+          TAC::unroll(T, UnrollFactor * S, LoopLevel, FullUnroll));
     }
   }
   return NewTacList;

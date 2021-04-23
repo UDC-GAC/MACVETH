@@ -114,10 +114,19 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     // Perform unrolling according to the pragmas
     performUnrolling(SL);
 
+    if (MVOptions::Debug) {
+      for (auto SWrap : SL) {
+        for (auto S : SWrap->getTacList()) {
+          MACVETH_DEBUG("TAC", S.toString());
+        }
+      }
+    }
+
     SIMDInfo SInfo;
     if (!Scop->PA.SIMDCode) {
       MVInfo("No SIMD code to generate, just writing "
              "the code with the desired unrolling options");
+      MVR.commentReplacedStmts(SL);
       MVR.renderTACInPlace(SL, -1, -1);
       // Rewriting loops
       DimsDeclFunc.splice(DimsDeclFunc.end(),

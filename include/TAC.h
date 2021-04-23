@@ -121,9 +121,6 @@ public:
     return Op;
   }
 
-  /// Just for debugging purposes
-  void printTAC() { MACVETH_DEBUG("TAC", this->toString()); }
-
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs
   static std::list<TAC> stmtToTAC(clang::Stmt *ST);
@@ -138,7 +135,7 @@ public:
 
   /// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and
   /// the S value which holds the iteration of the unrolling basically
-  static TAC unroll(TAC Tac, int UnrollFactor, int S, std::string LoopLevel,
+  static TAC unroll(TAC Tac, int UnrollFactor, std::string LoopLevel,
                     bool FullUnroll = false);
 
 private:
