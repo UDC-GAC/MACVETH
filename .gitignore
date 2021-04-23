@@ -14,6 +14,10 @@ macveth
 *.S
 *.xml
 
+# Ignore docs, only update when forcing
+docs/
+*.html
+
 # Compressed files
 *.gz
 *.tbz
