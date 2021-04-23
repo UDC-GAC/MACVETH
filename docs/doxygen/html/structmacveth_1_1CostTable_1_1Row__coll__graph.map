@@ -1,0 +1,8 @@
+<map id="macveth::CostTable::Row" name="macveth::CostTable::Row">
+<area shape="rect" id="node1" title="Structure to define the table of costs for the architectures." alt="" coords="192,301,379,328"/>
+<area shape="rect" id="node2" title=" " alt="" coords="5,146,72,173"/>
+<area shape="rect" id="node3" href="$structmacveth_1_1CostTable_1_1Latency.html" title="Latency helper class to parse properly latencies format+." alt="" coords="210,139,361,180"/>
+<area shape="rect" id="node4" title=" " alt="" coords="139,5,178,32"/>
+<area shape="rect" id="node5" title=" " alt="" coords="385,146,444,173"/>
+<area shape="rect" id="node6" title=" " alt="" coords="469,146,574,173"/>
+</map>

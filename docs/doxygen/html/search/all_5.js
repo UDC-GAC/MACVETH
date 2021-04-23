@@ -1,0 +1,22 @@
+var searchData=
+[
+  ['fallbackstyle_129',['FallbackStyle',['../structmacveth_1_1MVOptions.html#ac41fbd69d0c57dea1a461156cdc3a535',1,'macveth::MVOptions::FallbackStyle()'],['../macveth_8cpp.html#a1926c63b4f808d2b08bd86a6a814e5a9',1,'FallbackStyle():&#160;macveth.cpp']]],
+  ['fid_130',['FID',['../structmacveth_1_1ScopLoc.html#af05da33d06764c71e40535b79af1a407',1,'macveth::ScopLoc']]],
+  ['findoutputnode_131',['findOutputNode',['../classmacveth_1_1Node.html#abbf332415ab2462bb1ae01aa74ff0124',1,'macveth::Node']]],
+  ['findrawdatarace_132',['findRAWDataRace',['../classmacveth_1_1CDAG.html#a62e35e1a39ac11f142c65c3f84636f0c',1,'macveth::CDAG']]],
+  ['findwardatarace_133',['findWARDataRace',['../classmacveth_1_1CDAG.html#ae87475549a84f7e1115d940577d36cc2',1,'macveth::CDAG']]],
+  ['float_134',['FLOAT',['../classmacveth_1_1MVDataType.html#a956e6c9efd23646e5ef067ff1064a2eca815acbe4436b017736f7bdf5aa409114',1,'macveth::MVDataType']]],
+  ['floor_135',['FLOOR',['../namespacemacveth.html#a401d0516e2723fed982f3f3ba50d1d62a83c7c387484543d3121193f4bd27cbe9',1,'macveth']]],
+  ['fma_136',['FMA',['../macveth_8cpp.html#ac7abb21bcedcbe8cd88a07dd2049c0ce',1,'macveth.cpp']]],
+  ['fmasupport_137',['FMASupport',['../structmacveth_1_1MVOptions.html#a88e1d2601f8974e34233930ff67e909b',1,'macveth::MVOptions']]],
+  ['freesched_138',['FreeSched',['../structmacveth_1_1Node_1_1SchedInfo.html#aa364e937b786a7063761546a0fb4c4c5',1,'macveth::Node::SchedInfo']]],
+  ['full_139',['FULL',['../namespacemacveth.html#a67eefcfb5f70529eef36c315644bd9f1ab5a7383f3783a1fa2d13df893bd5d278',1,'macveth']]],
+  ['fullunroll_140',['FullUnroll',['../structmacveth_1_1ScopLoc_1_1PragmaArgs.html#ad5d2e758f0a868dc3a65237aacfb64e2',1,'macveth::ScopLoc::PragmaArgs']]],
+  ['fullyunrolled_141',['FullyUnrolled',['../structmacveth_1_1StmtWrapper_1_1LoopInfo.html#a785a2650812435952d08c056bc1fc402',1,'macveth::StmtWrapper::LoopInfo']]],
+  ['funcgetscops_142',['funcGetScops',['../structmacveth_1_1ScopHandler.html#a660ac55131b3516c318c637c8a1cd72f',1,'macveth::ScopHandler']]],
+  ['funchasroi_143',['funcHasROI',['../structmacveth_1_1ScopHandler.html#ac69d969a7af98fda037a32c9084384c5',1,'macveth::ScopHandler']]],
+  ['funcname_144',['FuncName',['../structmacveth_1_1SIMDBackEnd_1_1SIMDInst.html#ae06b336dbf78808f05bf829be4cb2c1e',1,'macveth::SIMDBackEnd::SIMDInst']]],
+  ['fuseaddsubmult_145',['fuseAddSubMult',['../classmacveth_1_1AVX2BackEnd.html#a78884903ad946e12037f3ac1a865ee8b',1,'macveth::AVX2BackEnd']]],
+  ['fusereductions_146',['fuseReductions',['../classmacveth_1_1PlcmntAlgo.html#aa14ec5b15fa6c9fdee5e8d1714e16e1c',1,'macveth::PlcmntAlgo::fuseReductions()'],['../classmacveth_1_1AVX2BackEnd.html#a3bdcdabef1715127a9c4cd12dde2afaf',1,'macveth::AVX2BackEnd::fuseReductions()']]],
+  ['fusereductionslist_147',['fuseReductionsList',['../classmacveth_1_1AVX2BackEnd.html#ad9230e3b867888e7c70ea18d8bcc6163',1,'macveth::AVX2BackEnd']]]
+];

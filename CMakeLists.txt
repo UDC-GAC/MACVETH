@@ -65,10 +65,10 @@ find_package(Doxygen REQUIRED dot)
 
 if ((CMAKE_BUILD_TYPE MATCHES Debug) AND GENERATE_DOC)
     # set input and output files
-    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.cfg)
+    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.cfg)
     set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
     set(abs_srcdir ${CMAKE_CURRENT_SOURCE_DIR})
-    set(abs_builddir ${CMAKE_CURRENT_BINARY_DIR})
+    set(abs_builddir ${CMAKE_CURRENT_SOURCE_DIR}/docs)
 
     # request to configure the file
     configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
