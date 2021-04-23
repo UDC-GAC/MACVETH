@@ -41,6 +41,8 @@ using namespace macveth;
 
 namespace macveth {
 
+/// Expressions in MACVETH inherit from MVExpr
+///
 /// This class holds a double identity for expressions: a string name (for
 /// debugging purposes and for clarity) and the actual Clang Expr, for
 /// transformations. Besides, it also "simplifies" the typing of the expression

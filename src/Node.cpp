@@ -70,19 +70,10 @@ std::string Node::toString() {
 }
 
 // ---------------------------------------------
-void Node::connectInput(Node *N) {
-  this->I.push_back(N);
-  N->OutNodes.push_back(this);
-}
-
-// ---------------------------------------------
-bool Node::hasOutNodes() { return (this->OutNodes.size() == 0); }
+void Node::connectInput(Node *N) { this->I.push_back(N); }
 
 // ---------------------------------------------
 bool Node::hasInputs() { return !(this->I.size() == 0); }
-
-// ---------------------------------------------
-bool Node::isTerminal() { return !(this->hasOutNodes()); }
 
 // ---------------------------------------------
 Node *Node::findOutputNode(std::string NodeName, NodeListType L) {

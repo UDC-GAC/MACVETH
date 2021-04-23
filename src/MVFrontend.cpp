@@ -69,6 +69,7 @@ void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
       assert(CouldFullyUnroll &&
              "Need to be able to full unroll when having leftovers");
     } else if (Scop->PA.Unroll) {
+      MACVETH_DEBUG("MVConsumer", "unroll by dimension");
       CouldFullyUnroll = S->unrollByDim(LI, Scop);
     }
   }
@@ -115,8 +116,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
     SIMDInfo SInfo;
     if (!Scop->PA.SIMDCode) {
-      MVInfo("[MVConsumer] "
-             "No SIMD code to generate, just writing "
+      MVInfo("No SIMD code to generate, just writing "
              "the code with the desired unrolling options");
       MVR.renderTACInPlace(SL, -1, -1);
       // Rewriting loops

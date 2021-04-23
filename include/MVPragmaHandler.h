@@ -50,15 +50,14 @@ struct ScopLoc {
 
   /// File identifier of the scop
   FileID FID;
-
   /// Start location of the pragma
   clang::SourceLocation Scop;
   /// End location of the pragma
   clang::SourceLocation EndScop;
-  unsigned StartLine;
-  unsigned EndLine;
-  unsigned Start;
-  unsigned End;
+  unsigned StartLine = 0;
+  unsigned EndLine = 0;
+  unsigned Start = 0;
+  unsigned End = 0;
   std::list<std::string> DimVisited = {};
   bool ScopHasBeenScanned = false;
 
@@ -184,9 +183,9 @@ static IdentifierInfo *getValue(Token &token) {
 static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
   ScopLoc::PragmaArgs PA;
   IdentifierInfo *II;
-  bool UnrollOptParsed = false;
   Token Tok;
   PP.Lex(Tok);
+  bool UnrollOptParsed = false;
   while ((II = getValue(Tok)) != nullptr) {
     PP.Lex(Tok);
     if (((II->isStr("nounroll")) || (II->isStr("unroll")) ||
@@ -195,7 +194,8 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
       assert(false &&
              "You can not specify twice unrolling options in the same scop!");
     }
-    // Check if unroll
+
+    // Check unroll options
     if (II->isStr("nounroll") || II->isStr("unrollandjam") ||
         II->isStr("unroll")) {
       PA.Unroll = (II->isStr("unrollandjam") || II->isStr("unroll"));
@@ -203,16 +203,15 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
       UnrollOptParsed = true;
       continue;
     }
-    // Check if no SIMD code
-    if (II->isStr("scalar")) {
+
+    // Check whether MACVETH should emit SIMD code or just scalar code
+    if (II->isStr("scalar") || II->isStr("nosimd")) {
       PA.SIMDCode = false;
       continue;
     }
 
     // Otherwise it will be a unrolling dimension
     if ((!Tok.isLiteral())) {
-      // assert(false && "Bad format! Need an integer for the unrolling
-      // factor");
       auto IINext = getValue(Tok);
       if (IINext == nullptr) {
         MVErr("Pragma bad formatting");
@@ -224,7 +223,7 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
         PP.Lex(Tok);
         continue;
       } else {
-        assert(false && "Something went wrong...");
+        MVErr("Pragmas bad syntax...");
       }
     }
 

@@ -100,6 +100,8 @@ public:
     /// Get a list of the dimensions declared in the loop
     static std::string getDimDeclarations(std::list<std::string> DimsDeclared);
 
+    std::string getDim() { return this->Dim; }
+
     /// For debugging purposes
     std::string toString() {
       return Dim + "; init val = " + std::to_string(InitVal) +
@@ -141,11 +143,14 @@ public:
   /// Unrolls the TAC list in the specified dimensions
   bool unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop);
 
+  /// Unroll a list of given loops and return if full unrolling was performed
+  bool unrollLoopList(std::list<LoopInfo> LI);
+
   /// Get list of statements
   std::list<StmtWrapper *> getListStmt() { return this->ListStmt; }
 
   /// Get LoopInfo structure
-  LoopInfo getLoopInfo() { return this->LoopL; }
+  LoopInfo getLoopInfo() { return this->LoopInfoStmt; }
 
   /// Get Clang Stmt
   Stmt *getClangStmt() { return this->ClangStmt; };
@@ -164,21 +169,21 @@ public:
   bool isLeftOver() { return !this->isLoop(); }
 
   /// Set the name of the loop surrounding this Stmt
-  void setInnerLoopName(std::string InnerLoopName) {
-    this->InnerLoopName = InnerLoopName;
+  void setInnerLoopInfo(LoopInfo InnerLoopInfo) {
+    this->InnerLoopInfo = InnerLoopInfo;
     TacListType NewTac;
     for (auto T : this->getTacList()) {
       auto NT = T;
-      NT.setLoopName(InnerLoopName);
+      NT.setLoopName(InnerLoopInfo.getDim());
       NewTac.push_back(NT);
     }
     this->setTacList(NewTac);
   }
 
   /// Get the name of the loop surrounding this clang::Stmt
-  std::string getInnerLoopName() { return this->InnerLoopName; }
+  std::string getInnerLoopName() { return this->InnerLoopInfo.getDim(); }
 
-  bool isInLoop() { return this->InnerLoopName != ""; }
+  bool isInLoop() { return this->InnerLoopInfo.getDim() != ""; }
 
   void setNotVectorized() { this->Vectorized = false; }
 
@@ -192,11 +197,11 @@ private:
   /// Statement if not loop
   Stmt *ClangStmt;
   /// Loop information if needed
-  LoopInfo LoopL;
+  LoopInfo LoopInfoStmt;
   /// TAC list with regard to the Statement S
   TacListType TacList;
-  /// Loop within
-  std::string InnerLoopName = "";
+  /// Loop within the statement is. This only makes sense if Stmt is not a loop
+  LoopInfo InnerLoopInfo;
   /// Has been vectorized or not
   bool Vectorized = true;
 };

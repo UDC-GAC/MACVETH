@@ -143,11 +143,11 @@ public:
 
 private:
   /// TAC result
-  MVExpr *A;
+  MVExpr *A = nullptr;
   /// First operand of TAC
-  MVExpr *B;
+  MVExpr *B = nullptr;
   /// Second operand of TAC
-  MVExpr *C;
+  MVExpr *C = nullptr;
   /// Type of operation
   MVOp MVOP;
   /// Name of the loop level where the TAC is

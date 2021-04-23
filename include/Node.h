@@ -73,9 +73,9 @@ public:
     std::vector<int> Scop = {0};
     /// Topological order of this node
     int FreeSched = 0;
-    /// TODO this value should be calculated by an algorithm
+    /// TODO: this value should be calculated by an algorithm
     int Plcmnt = 0;
-    /// TODO this value stands for the scheduling order of this node; should
+    /// TODO: this value stands for the scheduling order of this node; should
     /// be also calculated when the placement
     int Sched = 0;
     /// If this node belongs to a reduction
@@ -91,11 +91,12 @@ public:
     OutputType Type = MEM_STORE;
     /// Opcode
     MVOp MVOP;
-    /// Tell if it is binary or not
+    /// An output node may be an operation and, therefore, may be a binary
+    /// operation
     bool IsBinaryOp = false;
   };
 
-  /// Get the output info given a TAC
+  /// Set the output information of the given a TAC
   OutputInfo setOutputInfo(TAC T) {
     OutputInfo O;
     O.E = T.getA();
@@ -137,7 +138,6 @@ public:
   Node(const Node &Rhs) {
     this->I = Rhs.I;
     this->O = Rhs.O;
-    this->OutNodes = Rhs.OutNodes;
     this->SI = Rhs.SI;
     this->T = Rhs.T;
     this->Value = Rhs.Value;
@@ -224,10 +224,6 @@ public:
   /// Get the scope of the node
   std::vector<int> getScop() { return this->SI.Scop; }
 
-  /// Get the number of inputs in this Node
-  int getOutputNum() { return this->OutNodes.size(); }
-  /// Get the output Nodes
-  NodeListType getOutputNodes() { return this->OutNodes; }
   /// Get the output information
   OutputInfo getOutputInfo() { return this->O; }
   /// Get the output information
@@ -252,14 +248,8 @@ public:
     return (this->MV == nullptr) ? O.E->getTypeStr() : MV->getTypeStr();
   }
 
-  /// Checks if output list is zero
-  bool hasOutNodes();
   /// Checks if input list is zero
   bool hasInputs();
-  /// Checks if output list is not zero
-  bool isTerminal();
-  /// Checks if given node is in the output list
-  bool hasOutNode(Node *N);
 
   /// Is OP
   bool needsMemLoad() {
@@ -284,37 +274,33 @@ public:
     return this->getValue();
   }
 
-  /// Setting the name of the output value
-  // void setOutputName(std::string S) { this->O.Name = S; }
-
-  /// Get loop name of the loop
   std::string getLoopName() { return this->LoopName; }
 
-  /// Print node: debugging purposes
   std::string toString();
 
-  /// Print node in a short fashion
   std::string toStringShort();
 
   /// This is useful for calculating the difference between two Nodes in terms
   /// of addresses, in some way
   int operator-(const Node &N) { return (*MV - *N.MV); }
 
-  /// Two nodes are equal if and only if they have the same value. Seems
-  /// pretty straight forward but it must be defined someway.
+  /// Two nodes are equal if and only if they have the same value: output value
+  /// (if output nodes) or node value
   bool operator==(const Node &N) {
     return (getRegisterValue() == N.getRegisterValue());
   }
 
+  /// Two nodes are equal if and only if they have the same value: output value
+  /// (if output nodes) or node value
   bool operator==(const Node *N) {
     return (getRegisterValue() == N->getRegisterValue());
   }
 
-  /// Two nodes are not equal if and only if they have the same value. Seems
-  /// pretty straight forward but it must be defined someway.
+  /// Two nodes are not equal if and only if they are not equal (defined in
+  /// operator==)
   bool operator!=(const Node &N) { return !operator==(N); }
 
-  /// For sorting lists of nodes
+  /// Precedence of nodes is defined by the scheduling information
   bool operator<(const Node &N) {
     // FIXME:
     // if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
@@ -348,7 +334,8 @@ public:
     }
   }
 
-  /// For debugging purposes: show information regarding the node
+  /// For debugging purposes: show information regarding the scheduling of the
+  /// node
   std::string getSchedInfoStr() {
     std::string S =
         "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
@@ -364,9 +351,9 @@ public:
   }
 
 private:
-  /// MVExpr info
+  /// Expression holded in the node
   MVExpr *MV = nullptr;
-  /// Holds information regarding the scheduling
+  /// Each node holds information about scheduling
   SchedInfo SI;
   /// Value that identifies this node
   std::string Value = "";
@@ -377,8 +364,6 @@ private:
   /// Info regarding the output register/node. This field only makes sense if
   /// we are dealing with an operation node
   OutputInfo O;
-  /// FIXME: List of output nodes for this node. Is this needed?
-  NodeListType OutNodes;
   /// FIXME: Loop variable where it belongs. This is awful.
   std::string LoopName = "";
 };
