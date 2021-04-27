@@ -27,6 +27,7 @@
 #define MACVETH_MVEXPR_H
 
 #include "include/Debug.h"
+#include "include/MVAssert.h"
 #include "include/MVExpr/MVDataType.h"
 #include "include/Utils.h"
 #include "clang/AST/AST.h"

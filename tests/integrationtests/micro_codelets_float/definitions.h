@@ -1,14 +1,5 @@
-/**
- * This version is stamped on May 10, 2016
- *
- * Contact:
- *   Louis-Noel Pouchet <pouchet.ohio-state.edu>
- *   Tomofumi Yuki <tomofumi.yuki.fr>
- *
- * Web address: http://polybench.sourceforge.net
- */
-#ifndef _JACOBI_1D_H
-#define _JACOBI_1D_H
+#ifndef _MICRO_CODELET_FLOAT_H
+#define _MICRO_CODELET_FLOAT_H
 
 /* Default to LARGE_DATASET. */
 #if !defined(MINI_DATASET) && !defined(SMALL_DATASET) &&                       \
@@ -52,7 +43,7 @@
 /* Default data type */
 #if !defined(DATA_TYPE_IS_INT) && !defined(DATA_TYPE_IS_FLOAT) &&              \
     !defined(DATA_TYPE_IS_DOUBLE)
-#define DATA_TYPE_IS_DOUBLE
+#define DATA_TYPE_IS_FLOAT
 #endif
 
 #ifdef DATA_TYPE_IS_INT

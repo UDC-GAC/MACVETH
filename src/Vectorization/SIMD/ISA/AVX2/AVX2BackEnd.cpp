@@ -160,8 +160,17 @@ std::string AVX2BackEnd::declareAuxArray(MVDataType::VDataType DT) {
 
 // ---------------------------------------------
 int getNumberOfReductions(VectorIR::VOperand V) {
-  int NReductions = 0;
-  // std::map<int, std::tuple<int, int>> Reductions;
+  int NReductions = 1;
+  if (V.Idx.size() == 0) {
+    std::string PrevVal = V.UOP[0]->getRegisterValue();
+    for (int T = 1; T < (int)V.Size; ++T) {
+      if (PrevVal != V.UOP[T]->getRegisterValue()) {
+        PrevVal = V.UOP[T]->getRegisterValue();
+        NReductions++;
+      }
+    }
+    return NReductions;
+  }
   int PrevVal = V.Idx[0];
   for (int T = 1; T < (int)V.Size; ++T) {
     if (PrevVal != V.Idx[T]) {
@@ -169,7 +178,6 @@ int getNumberOfReductions(VectorIR::VOperand V) {
       NReductions++;
     }
   }
-  NReductions++;
   return NReductions;
 }
 
@@ -344,12 +352,12 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
     Off = std::max(Off, VIL[t].VOPResult.Offset);
   }
 
-  auto S = (NumRedux + (NumRedux % 2)) / 2;
-  std::string OP =
+  auto OP =
       (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "hadd" : "hsub";
 
   auto Stride = 2;
-  MACVETH_DEBUG("AVX2BackEnd", "Stride = " + std::to_string(Stride));
+  auto S = (NumRedux + (NumRedux % 2)) / 2;
+  // MACVETH_DEBUG("AVX2BackEnd", "Stride = " + std::to_string(Stride));
   MVSourceLocation MVSL(Pos, Loc, Off);
   while (true) {
     for (int i = 0; i < NumRedux; i += Stride) {
@@ -395,6 +403,7 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   auto No = 0;
   OP = (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? " + " : " - ";
   std::set<std::string> Visited;
+  // Storing elements and adding them to the reduction
   for (auto R : VReduxList) {
     if (Visited.find(R) != Visited.end()) {
       continue;
@@ -994,6 +1003,12 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vload(VectorIR::VOperand V) {
     }
   }
 
+  if (V.isDouble() && V.ContiguousHalves) {
+    Args.push_front(getOpName(V, true, true, 2));
+    V.DType = MVDataType::VDataType::IN_DOUBLE256;
+    SuffS += "2";
+  }
+
   // Adding SIMD inst to the list
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
   genSIMDInst(V, Op, "", SuffS, Args, SIMDType::VPACK, MVSL, &IL);
@@ -1034,16 +1049,16 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vbcast(VectorIR::VOperand V) {
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
   SIMDBackEnd::SIMDInstListType IL;
   auto Op = "gather";
+  std::string PrefS = "";
 
   // List of parameters
   std::list<std::string> Args;
 
   // To gather elements
   // Generate preffix: must be i32 or i64, depending on the VIndex width
-  std::string Scale =
-      (V.getDataType() == MVDataType::VDataType::DOUBLE) ? "8" : "4";
-  std::string VIndexSuffix = "epi32";
-  std::string PrefS = "";
+  auto Scale = "4";
+  auto VIndexSuffix = "epi32";
+  auto PrefGather = "i32";
 
   // Generation of the preffix
   if (V.IsPartial) {
@@ -1057,15 +1072,20 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
                              getMapType(V.getDataType()) + "()";
     Args.push_back(NeutralReg);
   }
-  auto PrefGather = "i32";
-  // if (V.VSize > 4) {
-  //   PrefGather = "i32";
-  //   // VIndexSuffix = "epi32";
-  //   Scale = std::to_string(4);
-  // }
+
+  auto MapWidthSet = MapWidth[MVDataType::VWidth::W256];
+  if ((V.getDataType() == MVDataType::VDataType::FLOAT) && (V.VSize == 4)) {
+    MapWidthSet = MapWidth[MVDataType::VWidth::W128];
+  }
+  if (V.getDataType() == MVDataType::VDataType::DOUBLE) {
+    PrefGather = "i64";
+    Scale = "8";
+    VIndexSuffix = "epi64x";
+  }
+
   PrefS += PrefGather;
 
-  auto VIndex = "_mm" + MapWidth[V.Width] + "_set_" + VIndexSuffix + "(";
+  auto VIndex = "_mm" + MapWidthSet + "_set_" + VIndexSuffix + "(";
   auto CopyIdx = std::vector<long>(V.Idx.begin(), V.Idx.begin() + V.Size);
   auto MinIdx = std::min_element(CopyIdx.begin(), CopyIdx.end());
   auto MinVal = *MinIdx;
@@ -1159,7 +1179,9 @@ void AVX2BackEnd::insertLowAndHighBits(VectorIR::VOperand V, std::string Hi,
 bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
                                  SIMDBackEnd::SIMDInstListType *IL) {
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
-  std::string TypeReg = (V.DType == MVDataType::FLOAT) ? "__m128" : "__m128d";
+  std::string TypeReg = (V.DType == MVDataType::FLOAT) ? "__m128" : "__m256d";
+  auto SingleType = (V.DType == MVDataType::FLOAT) ? MVDataType::HALF_FLOAT
+                                                   : MVDataType::DOUBLE;
   unsigned Half = (int)V.VSize / 2;
   bool FullVector = false;
   bool FirstHalve = false;
@@ -1182,21 +1204,30 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
     return true;
   }
 
+  if (V.DType == MVDataType::DOUBLE) {
+    if (FirstHalve && SecondHalve) {
+      V.ContiguousHalves = true;
+      IL->splice(IL->end(), vload(V));
+      return true;
+    }
+    return false;
+  }
+
   SIMDBackEnd::addRegToDeclare(TypeReg, "__lo128", {0});
+  auto WidthHalve = (V.DType == MVDataType::FLOAT) ? MVDataType::VWidth::W128
+                                                   : MVDataType::VWidth::W256;
   // Fullfill all vector with size 4
   if (FirstHalve) {
     std::string Name = (FirstHalve && SecondHalve) ? V.Name : "__lo128";
     VectorIR::VOperand NewVOp =
-        getSubVOperand(V, Name, V.VSize, Half, MVDataType::VWidth::W128,
-                       MVDataType::VDataType::HALF_FLOAT, 0);
+        getSubVOperand(V, Name, V.VSize, Half, WidthHalve, SingleType, 0);
     SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
     IL->splice(IL->end(), vload(NewVOp));
   }
   if (SecondHalve) {
     std::string Name = (FirstHalve && SecondHalve) ? V.Name : "__lo128";
     VectorIR::VOperand NewVOp =
-        getSubVOperand(V, Name, V.VSize, Half, MVDataType::VWidth::W128,
-                       MVDataType::VDataType::HALF_FLOAT, Half);
+        getSubVOperand(V, Name, V.VSize, Half, WidthHalve, SingleType, Half);
     SIMDBackEnd::addRegToDeclare(TypeReg, Name, {0});
     IL->splice(IL->end(), vload(NewVOp));
   }
@@ -1755,17 +1786,16 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
       }
     }
 
+    auto Width = MVDataType::VWidth::W128;
+    auto DataType = V.getDataType();
+
     // 4 elements strategy
     auto VFirstHalve =
-        getSubVOperand(V, "__lo128", 4, Half, MVDataType::VWidth::W128,
-                       MVDataType::VDataType::FLOAT, 0);
-    bool FirstHalve =
-        vpack4elements(VFirstHalve, MVDataType::VWidth::W128, &IL);
+        getSubVOperand(V, "__lo128", 4, Half, Width, DataType, 0);
+    bool FirstHalve = vpack4elements(VFirstHalve, Width, &IL);
     auto VSecondHalve =
-        getSubVOperand(V, "__hi128", 4, Half, MVDataType::VWidth::W128,
-                       MVDataType::VDataType::FLOAT, Half);
-    bool SecondHalve =
-        vpack4elements(VSecondHalve, MVDataType::VWidth::W128, &IL);
+        getSubVOperand(V, "__hi128", 4, Half, Width, DataType, Half);
+    bool SecondHalve = vpack4elements(VSecondHalve, Width, &IL);
     if (!FirstHalve && !SecondHalve) {
       return vgather(V);
     }

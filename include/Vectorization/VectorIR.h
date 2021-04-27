@@ -133,6 +133,8 @@ public:
     bool Unaligned = false;
     /// Memory is contiguous
     bool Contiguous = true;
+    /// For instance: [x,x+1,y,y+1] where x+2 != y
+    bool ContiguousHalves = false;
     /// Is partial (mask is not all 1)
     bool IsPartial = false;
     /// Values are in the same vector
@@ -163,6 +165,15 @@ public:
       // Be careful with this
       return DType;
     }
+
+    bool isDouble() {
+      return DType == MVDataType::VDataType::DOUBLE;
+    }
+
+    bool isFloat() {
+      return DType == MVDataType::VDataType::FLOAT;
+    }
+
     /// Return name of VOperand
     std::string getName() { return this->Name; }
 

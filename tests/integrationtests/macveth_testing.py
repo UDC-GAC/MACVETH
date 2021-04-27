@@ -13,15 +13,16 @@ build_path = "../../build/"
 macveth_bin = f"{build_path}macveth"
 macveth_path = "macveth_dir/"
 fail_path = "failed_tests/"
+pass_path = "passed_tests/"
 tmp_path = "tmpfiles/"
 test_report = "test_report.txt"
 log_file = "macveth_compiler.log"
 # File extensions
 file_t = ".c"
-comp_suffix = f"_comp{file_t}"
+comp_suffix = f"_macveth{file_t}"
 
 # Compiler options: for testing the outputs obtained
-cc = "gcc"
+cc = "gcc-10"
 
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
@@ -37,7 +38,7 @@ def poly_flags(p):
     return f" -I{p} -I utilities utilities/polybench.c -DPOLYBENCH_DUMP_ARRAYS"
 
 
-def comp_cmd(flags, file, output):
+def compile_cmd(flags, file, output):
     # Get the compilation line
     os.system(f"{cc} {flags} {file} -o {output} ")
 
@@ -84,12 +85,10 @@ def execute_test(path_suite, test, compiler_flags=" -mavx2 -mfma "):
         test (str): Name of the test without the extension
     """
 
-    if not os.path.isdir(macveth_path):
-        os.mkdir(macveth_path)
     if not os.path.isdir(tmp_path):
         os.mkdir(tmp_path)
 
-    macveth_t = macveth_path + test + comp_suffix
+    macveth_t = tmp_path + path_suite.replace("/", "") + "_" + test + comp_suffix
     org_t = path_suite + test + file_t
 
     # Compile with macveth the test
@@ -108,19 +107,27 @@ def execute_test(path_suite, test, compiler_flags=" -mavx2 -mfma "):
     # Compile and run the original
     tmp_org_bin = f"{pref}_org.bin"
     tmp_org_out = f"{pref}_org.output"
-    comp_cmd(poly_flags(path_suite), org_t, tmp_org_bin)
+    compile_cmd(poly_flags(path_suite), org_t, tmp_org_bin)
     run_test(tmp_org_bin, tmp_org_out)
 
     # Compile and run macveth's version
     tmp_mv_bin = f"{pref}_mv.bin"
     tmp_mv_out = f"{pref}_mv.output"
-    comp_cmd(poly_flags(path_suite) + compiler_flags, macveth_t, tmp_mv_bin)
+    compile_cmd(poly_flags(path_suite) + compiler_flags, macveth_t, tmp_mv_bin)
     run_test(tmp_mv_bin, tmp_mv_out)
 
     if test_output(tmp_org_out, tmp_mv_out):
+        if not os.path.isdir(pass_path):
+            os.mkdir(pass_path)
+        os.system(f"mv {macveth_t} {pass_path}")
         print("OK")
     else:
         print("ERROR in test")
+        if not os.path.isdir(fail_path):
+            os.mkdir(fail_path)
+        os.system(f"mv {macveth_t} {fail_path}")
+        os.system(f"cp {org_t} {fail_path}")
+        os.system(f"mv {tmp_mv_out} {tmp_org_out} {fail_path}")
         sys.exit(1)
 
 

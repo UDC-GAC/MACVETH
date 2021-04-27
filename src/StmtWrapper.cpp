@@ -196,7 +196,7 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
     Loop.Step = 1;
     auto V = Utils::getStringFromStmt(IncExpr->getSubExpr());
     if (IncExpr->isPostfix()) {
-      Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(1));
+      Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(2));
     }
     if (IncExpr->isPrefix()) {
       Loop.SRVarInc.setEnd(Loop.SRVarInc.getEnd().getLocWithOffset(V.length()));
@@ -277,7 +277,7 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   LoopInfo Loop = SWrap->getLoopInfo();
   // We have to assume that the loop variable has not been altered
   auto EpiInit = Loop.Dim + " = " + Loop.Dim;
-  auto EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;
+  auto EpiCond = Loop.Dim + " <= " + Loop.StrUpperBound;
   auto EpiInc = Loop.Dim + " += " + std::to_string(Loop.Step);
   Epilog += "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";
   for (auto S : SVec) {
