@@ -135,13 +135,16 @@ endif()
 
 # This list must be in descendant order. This is just a hack...
 set(TESTED_LLVM_VERSIONS 12 11)
+set(TESTED_LLVM_MINOR_VERSIONS 3 2 1 0)
 foreach(LLVM_COMPATIBLE_VERSION ${TESTED_LLVM_VERSIONS})
     # CONFIG file (LLVMConfig.cmake), do not fail [QUIET] if not found: maybe
     # we do not have 11.x but we have 10.x
-    find_package(LLVM ${LLVM_COMPATIBLE_VERSION} CONFIG QUIET)
-    if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 1)
-        break()
-    endif()
+    foreach(LLVM_COMPATIBLE_MINOR_VERSION ${TESTED_LLVM_MINOR_VERSIONS})
+        find_package(LLVM ${LLVM_COMPATIBLE_VERSION}.${LLVM_COMPATIBLE_MINOR_VERSION} CONFIG QUIET)
+        if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 1)
+            break()
+        endif()
+    endforeach()
 endforeach()
 
 # LLVM not found in any version.
