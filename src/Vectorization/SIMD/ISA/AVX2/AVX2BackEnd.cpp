@@ -1101,7 +1101,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
   }
 
   auto MapWidthSet = MapWidth[MVDataType::VWidth::W256];
-  if ((V.getDataType() == MVDataType::VDataType::FLOAT) && (V.VSize == 4)) {
+  if (((V.getDataType() == MVDataType::VDataType::FLOAT) && (V.VSize == 4)) ||
+      ((V.getDataType() == MVDataType::VDataType::DOUBLE) && (V.VSize == 2))) {
     MapWidthSet = MapWidth[MVDataType::VWidth::W128];
   }
   if (V.getDataType() == MVDataType::VDataType::DOUBLE) {

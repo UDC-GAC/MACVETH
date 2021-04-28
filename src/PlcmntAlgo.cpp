@@ -138,20 +138,20 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     Reduction.clear();
   }
   std::reverse(std::begin(*NL), std::end(*NL));
-  if (LRedux.size() <= 2) {
-    for (auto R : LRedux) {
-      R->setNodeAsNonReduction();
-      for (auto RIn : R->getInputs()) {
-        if (RIn != nullptr) {
-          RIn->setNodeAsNonReduction();
-        }
-      }
-    }
-    NL->insert(NL->end(), LRedux.begin(), LRedux.end());
-    (*NL) = sortGraph(*NL);
-    // Undo reductions
-    LRedux.clear();
-  }
+  // if (LRedux.size() <= 2) {
+  //   for (auto R : LRedux) {
+  //     R->setNodeAsNonReduction();
+  //     for (auto RIn : R->getInputs()) {
+  //       if (RIn != nullptr) {
+  //         RIn->setNodeAsNonReduction();
+  //       }
+  //     }
+  //   }
+  //   NL->insert(NL->end(), LRedux.begin(), LRedux.end());
+  //   (*NL) = sortGraph(*NL);
+  //   // Undo reductions
+  //   LRedux.clear();
+  // }
   return LRedux;
 }
 
