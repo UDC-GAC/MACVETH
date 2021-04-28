@@ -1,8 +1,0 @@
-<map id="macveth::SIMDBackEnd" name="macveth::SIMDBackEnd">
-<area shape="rect" id="node1" title="Abstract class implemented by each architecture (AVX, AVX2, AVX512, etc.) to generate specific intrin..." alt="" coords="329,124,506,151"/>
-<area shape="rect" id="node2" title=" " alt="" coords="5,5,176,32"/>
-<area shape="rect" id="node3" title=" " alt="" coords="200,5,373,32"/>
-<area shape="rect" id="node4" title=" " alt="" coords="398,5,437,32"/>
-<area shape="rect" id="node5" title=" " alt="" coords="461,5,619,32"/>
-<area shape="rect" id="node6" title=" " alt="" coords="644,5,703,32"/>
-</map>

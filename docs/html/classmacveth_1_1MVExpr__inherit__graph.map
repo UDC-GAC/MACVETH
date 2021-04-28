@@ -1,6 +1,0 @@
-<map id="macveth::MVExpr" name="macveth::MVExpr">
-<area shape="rect" id="node1" title="Expressions in MACVETH inherit from MVExpr." alt="" coords="223,5,360,32"/>
-<area shape="rect" id="node2" href="$classmacveth_1_1MVExprArray.html" title="Abstraction of arrays for simplicity." alt="" coords="5,80,177,107"/>
-<area shape="rect" id="node3" href="$classmacveth_1_1MVExprLiteral.html" title="Abstraction of variables for simplicity." alt="" coords="202,80,381,107"/>
-<area shape="rect" id="node4" href="$classmacveth_1_1MVExprVar.html" title="Abstraction of variables for simplicity." alt="" coords="405,80,564,107"/>
-</map>

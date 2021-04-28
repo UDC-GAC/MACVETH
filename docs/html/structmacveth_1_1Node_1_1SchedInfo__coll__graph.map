@@ -1,6 +1,0 @@
-<map id="macveth::Node::SchedInfo" name="macveth::Node::SchedInfo">
-<area shape="rect" id="node1" title="Holds information regarding the scheduling for this Node." alt="" coords="63,168,256,195"/>
-<area shape="rect" id="node2" title=" " alt="" coords="5,5,116,32"/>
-<area shape="rect" id="node3" title=" " alt="" coords="140,5,179,32"/>
-<area shape="rect" id="node4" title=" " alt="" coords="243,5,294,32"/>
-</map>
