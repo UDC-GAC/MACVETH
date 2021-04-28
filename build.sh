@@ -27,6 +27,5 @@ if [[ $testing == "testing" ]]; then
     # parameters, only make test. Anyways, ctest could be done using something like:
     # OMP_NUM_THREADS=1 ctest --rerun-failed
     ctest
-    [ $status -eq 0 ] && echo "TESTING command was successful" || echo "TESTING failed"
-    exit $status
+    [ $? -eq 0 ] && echo "TESTING command was successful" || exit 1
 fi
