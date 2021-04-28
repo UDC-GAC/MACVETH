@@ -26,8 +26,7 @@ if [[ $testing == "testing" ]]; then
     # simplicity, I think using Makefile is better, as there are no input
     # parameters, only make test. Anyways, ctest could be done using something like:
     # OMP_NUM_THREADS=1 ctest --rerun-failed
-    make test
+    ctest
     [ $status -eq 0 ] && echo "TESTING command was successful" || echo "TESTING failed"
-    # FIXME: this is only for coverage reports to run...
-    exit 0
+    exit $status
 fi

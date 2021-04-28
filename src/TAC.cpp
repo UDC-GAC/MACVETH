@@ -140,6 +140,7 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   bool IsTerminalS2 = false;
   bool IsUnary = false;
   MVOp Op;
+  // FIXME: for LLVM < 11 this does not seem to work for +=
   auto S = dyn_cast<BinaryOperator>(ST);
   auto F = dyn_cast<CallExpr>(ST);
   // This is something like Lhs [+-]= Rhs
