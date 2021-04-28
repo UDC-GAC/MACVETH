@@ -258,6 +258,7 @@ repeat:
                                      VOps[n]->getSchedInfoStr());
   }
 
+  // FIXME: to implement cost model here
   if (Cursor != 0) {
     // Compute the vector cost
     auto NewVectInst = VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB);
@@ -267,12 +268,15 @@ repeat:
     if (!IsUnary) {
       CostNodes += computeCostForNodeOperandsList(Cursor, VLoadB);
     }
-    auto DoVectorize = (CostVect <= CostNodes);
+    // FIXME:
+    auto DoVectorize = true;
     if ((DoVectorize) ||
         (MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
       VList.push_back(NewVectInst);
     } else {
-      // FIXME: Undo newvectorinst?
+      // FIXME: undo vectorized version or directly emit sequential code for
+      // rest of the tree
+      MVWarn("Region not vectorized");
     }
   }
 
