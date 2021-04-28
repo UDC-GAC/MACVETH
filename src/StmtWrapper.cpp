@@ -171,14 +171,19 @@ StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   Loop.UpperBoundComp = Cond->getOpcode();
   const Expr *UpperBoundExpr = Cond->getRHS();
   if (UpperBoundExpr != nullptr) {
-    Loop.StrUpperBound = Utils::getStringFromExpr(UpperBoundExpr);
     Loop.UpperBound = Utils::getIntFromExpr(UpperBoundExpr);
     if (Loop.UpperBound != -1) {
       if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_LE) {
         Loop.UpperBound++;
       }
-      if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_GE) {
-        Loop.UpperBound--;
+      // if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_LT) {
+      //   Loop.UpperBound--;
+      // }
+      Loop.StrUpperBound = std::to_string(Loop.UpperBound);
+    } else {
+      Loop.StrUpperBound = Utils::getStringFromExpr(UpperBoundExpr);
+      if (Loop.UpperBoundComp == BinaryOperator::Opcode::BO_LE) {
+        Loop.StrUpperBound += " + 1";
       }
     }
   }
@@ -277,7 +282,7 @@ std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
   LoopInfo Loop = SWrap->getLoopInfo();
   // We have to assume that the loop variable has not been altered
   auto EpiInit = Loop.Dim + " = " + Loop.Dim;
-  auto EpiCond = Loop.Dim + " <= " + Loop.StrUpperBound;
+  auto EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;
   auto EpiInc = Loop.Dim + " += " + std::to_string(Loop.Step);
   Epilog += "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";
   for (auto S : SVec) {

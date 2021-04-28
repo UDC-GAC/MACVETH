@@ -15,14 +15,11 @@
 /* Include polybench common header. */
 #include <polybench.h>
 
+#define DATA_TYPE_IS_FLOAT
+
 /* Include benchmark-specific header. */
 /* Default data type is float, default size is N=1024. */
 #include "definitions.h"
-
-#ifdef DATA_TYPE
-#undef DATA_TYPE
-#define DATA_TYPE float
-#endif
 
 /* Array initialization. */
 static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {

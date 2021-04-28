@@ -243,13 +243,15 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
       } else {
         LoRes = AccmReg;
       }
-      // 4 elements
-      // hi = movehl(lo);
-      genSIMDInst(HiRes, "move", "", "hl", MVDataType::VWidth::W128, Type,
-                  {LoRes, LoRes}, SIMDType::VOPT, MVSL, &IL);
-      // lo = op(lo,hi);
-      genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
-                  {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
+      if (NElems > 2) {
+        // 4 elements
+        // hi = movehl(lo);
+        genSIMDInst(HiRes, "move", "", "hl", MVDataType::VWidth::W128, Type,
+                    {LoRes, LoRes}, SIMDType::VOPT, MVSL, &IL);
+        // lo = op(lo,hi);
+        genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
+                    {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
+      }
       // 2 elements
       // hi = shuffle(lo);
       genSIMDInst(HiRes, "shuffle", "", "", MVDataType::VWidth::W128, Type,
@@ -257,6 +259,7 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
       // lo = op(lo,hi);
       genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
                   {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
+
     } else {
       // FIXME: should we implement this for integer arithmetic?
       MVErr("Not implemented this approach yet for other types than float or "
@@ -270,15 +273,14 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
     SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
     SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
     if (Type == MVDataType::VDataType::FLOAT) {
-      auto RegType = getRegisterType(Type, MVDataType::VWidth::W256);
-      auto TmpReg0 = "__tmp0_256";
-      auto TmpReg1 = "__tmp1_256";
-      auto TmpReg2 = "__tmp2_256";
-      SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
-      SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
-      SIMDBackEnd::addRegToDeclare(RegType, TmpReg2, {0});
       // 8 elements
       if (NElems > 4) {
+        auto TmpReg0 = "__tmp0_256";
+        auto TmpReg1 = "__tmp1_256";
+        auto TmpReg2 = "__tmp2_256";
+        SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
+        SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
+        SIMDBackEnd::addRegToDeclare(RegType, TmpReg2, {0});
         genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W256, Type,
                     {AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
         genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
@@ -287,14 +289,31 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
                     {TmpReg1, TmpReg1, "0x01"}, SIMDType::VPERM, MVSL, &IL);
         genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W256, Type,
                     {TmpReg1, TmpReg2}, SIMDType::VADD, MVSL, &IL);
-      } else {
+      } else if (NElems > 2) {
+        RegType = getRegisterType(Type, MVDataType::VWidth::W128);
+        auto TmpReg0 = "__tmp0_128";
+        auto TmpReg1 = "__tmp1_128";
+        LoRes = "__tmp1_128";
+        SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
+        SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
         genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W128, Type,
                     {AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
         genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W128, Type,
                     {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
       }
     } else {
-      MVErr("TO IMPLEMENT REDUCTIONS WITH DOUBLES");
+      if (NElems > 2) {
+        auto TmpReg0 = "__tmp0_256";
+        auto TmpReg1 = "__tmp1_256";
+        LoRes = "__tmp1_256";
+        SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
+        SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
+        genSIMDInst(TmpReg0, "permute", "", "2f128", MVDataType::VWidth::W256,
+                    Type, {AccmReg, AccmReg, "0b10000001"}, SIMDType::VPERM,
+                    MVSL, &IL);
+        genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
+                    {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
+      }
     }
   }
 
@@ -303,9 +322,13 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
   // * [A,A,A,A,C,C,C,C]
   // * [A,A,A,A,A,A,A,A]
   if ((NReductions == 4) || (NReductions == 2) || (NReductions == 1)) {
-    int Stride = (int)(NElems / NReductions);
-    for (unsigned R = 0; R < NElems; R += Stride) {
-      // The last dance
+    int Stride = 1 + ((NElems - 1) / NReductions);
+    unsigned UB = NElems;
+    if (NElems < 4) {
+      UB = NElems > 1 ? (NElems - 1) : NElems;
+      Stride = 1;
+    }
+    for (unsigned R = 0; R < UB; R += Stride) {
       if (OpRedux.isBinaryOperation()) {
         addNonSIMDInst(V.StoreValues[R],
                        V.StoreValues[R] + OP + LoRes + "[" + std::to_string(R) +
@@ -391,7 +414,7 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
       auto Op1 = genGenericFunc(Blend, {V0, V1, Mask1});
       auto Op2 = genGenericFunc(Perm, {V0, V1, Mask2});
 
-      OP = (OP == "hadd") ? "add" : "sub";
+      OP = (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "add" : "sub";
       genSIMDInst(VIL[0].VOPResult, OP, "", "", {Op1, Op2}, SIMDType::VOPT,
                   MVSL, &IL, VAccm[0]);
       break;
@@ -563,6 +586,7 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
 
   std::string AuxArray = declareAuxArray(VIL[0].DT);
   std::string Res = "";
+
   if (NElems > 4) {
     // Need to do the last extraction, shuffle and operation
     for (unsigned R = 0; R < NumRedux; R += 4) {
@@ -585,6 +609,9 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   }
 
   auto ResRegister = (Res != "") ? Res : VAccm[0];
+  if ((NElems > 4) && (NumRedux > 1)) {
+    ResRegister = AuxArray;
+  }
 
   for (unsigned R = 0; R < NumRedux; ++R) {
     std::string Idx = "[" + std::to_string(R) + "]";
@@ -1885,9 +1912,11 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
 
   if (!NeedsMask) {
     if (V.R.Size == 2) {
-      // Args.push_front(V.R.Name);
-      SuffS += (V.R.LowBits) ? "l" : "";
-      SuffS += (V.R.HighBits) ? "h" : "";
+      SuffS = (V.R.LowBits) ? "l" : SuffS;
+      SuffS = (V.R.HighBits) ? "h" : SuffS;
+      if (V.R.isFloat()) {
+        V.R.DType = MVDataType::VDataType::HALF_FLOAT;
+      }
     }
   }
 

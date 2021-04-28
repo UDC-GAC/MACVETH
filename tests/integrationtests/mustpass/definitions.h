@@ -13,8 +13,8 @@
 /* Default to LARGE_DATASET. */
 #if !defined(MINI_DATASET) && !defined(SMALL_DATASET) &&                       \
     !defined(MEDIUM_DATASET) && !defined(LARGE_DATASET) &&                     \
-    !defined(EXTRALARGE_DATASET)
-#define SMALL_DATASET
+    !defined(MEDIUM_DATASET)
+#define MINI_DATASET
 #endif
 
 #if !defined(TSTEPS) && !defined(N)
@@ -62,7 +62,7 @@
 
 #ifdef DATA_TYPE_IS_FLOAT
 #define DATA_TYPE float
-#define DATA_PRINTF_MODIFIER "%0.2f "
+#define DATA_PRINTF_MODIFIER "%.0f "
 #define SCALAR_VAL(x) x##f
 #define SQRT_FUN(x) sqrtf(x)
 #define EXP_FUN(x) expf(x)

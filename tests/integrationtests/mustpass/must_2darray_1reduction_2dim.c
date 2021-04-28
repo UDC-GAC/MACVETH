@@ -15,6 +15,8 @@
 /* Include polybench common header. */
 #include <polybench.h>
 
+#define DATA_TYPE_IS_DOUBLE
+
 /* Include benchmark-specific header. */
 /* Default data type is double, default size is N=1024. */
 #include "definitions.h"
@@ -60,7 +62,7 @@ static void kernel_template(int n, double *S,
                             DATA_TYPE POLYBENCH_1D(redux, N, n),
                             DATA_TYPE POLYBENCH_2D(A, N, N, n, n)) {
   DATA_TYPE tmp = (*S);
-#pragma macveth
+#pragma macveth i 1 j 4
   for (int i = 0; i < _PB_N; i++) {
     for (int j = 0; j < _PB_N; j++) {
       tmp = tmp + A[i][j];
@@ -81,7 +83,7 @@ int main(int argc, char **argv) {
   /* Initialize array(s). */
   init_2darray(n, POLYBENCH_ARRAY(x));
 
-  double S = 0;
+  DATA_TYPE S = 0.0;
 
   /* Start timer. */
   polybench_start_instruments;

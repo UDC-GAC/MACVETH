@@ -15,14 +15,11 @@
 /* Include polybench common header. */
 #include <polybench.h>
 
+#define DATA_TYPE_IS_FLOAT
+
 /* Include benchmark-specific header. */
 /* Default data type is double, default size is N=1024. */
 #include "definitions.h"
-
-#ifdef DATA_TYPE
-#undef DATA_TYPE
-#define DATA_TYPE float
-#endif
 
 /* Array initialization. */
 static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
@@ -31,15 +28,6 @@ static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   for (i = 0; i < n; i++)
     x[i] = 1.5f;
 }
-
-static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
-  int i, j;
-
-  for (i = 0; i < n; i++)
-    for (j = 0; j < n; j++)
-      C[i][j] = 42;
-}
-
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
 static void print_value(DATA_TYPE S) {

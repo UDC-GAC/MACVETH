@@ -243,7 +243,9 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   }
   // This is the number of elements not null in this Vector. This is different
   // from the regular size (this->Size), which is the actual vector size
+  // FIXME: this is not true...
   this->VSize = VL;
+
   for (int i = 0; i < VL; ++i) {
     this->UOP.push_back(V[i]);
   }
@@ -342,7 +344,11 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
         this->Contiguous = T;
       }
     }
+    if (this->Width == MVDataType::VWidth::W64) {
+      this->LowBits = true;
+    }
   }
+
 };
 
 // ---------------------------------------------

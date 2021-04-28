@@ -35,7 +35,9 @@ mv_poly_flags_end = f" -- -I{cwd}/utilities"
 
 
 def poly_flags(p):
-    return f" -I{p} -I utilities utilities/polybench.c -DPOLYBENCH_DUMP_ARRAYS"
+    return (
+        f" -O3 -mavx2 -I{p} -I utilities utilities/polybench.c -DPOLYBENCH_DUMP_ARRAYS"
+    )
 
 
 def compile_cmd(flags, file, output):

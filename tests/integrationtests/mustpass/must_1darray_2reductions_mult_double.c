@@ -15,6 +15,8 @@
 /* Include polybench common header. */
 #include <polybench.h>
 
+#define DATA_TYPE_IS_DOUBLE
+
 /* Include benchmark-specific header. */
 /* Default data type is double, default size is N=1024. */
 #include "definitions.h"
