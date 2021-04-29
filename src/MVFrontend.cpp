@@ -248,7 +248,11 @@ MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
 static FileID createInMemoryFile(StringRef FileName, MemoryBuffer *Source,
                                  SourceManager &Sources, FileManager &Files,
                                  llvm::vfs::InMemoryFileSystem *MemFS) {
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 11)
+  MemFS->addFileNoOwn(FileName, 0, *Source);
+#else
   MemFS->addFileNoOwn(FileName, 0, Source);
+#endif
   auto File = Files.getFile(FileName);
   return Sources.createFileID(File ? *File : nullptr, SourceLocation(),
                               SrcMgr::C_User);
