@@ -47,7 +47,7 @@ script:
 
 after_success:
   - sudo chmod +x code_coverage.sh
-  - ./code_coverage.sh
+  - sudo -E env "PATH=$PATH" ./code_coverage.sh
 
 notifications:
   email:
