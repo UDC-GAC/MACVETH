@@ -1,5 +1,32 @@
+// MACVETH - MVOptions.h
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+
 #ifndef MACVETH_MVOPTIONS_H
 #define MACVETH_MVOPTIONS_H
+
+#include "include/CPUID.h"
 
 #include <algorithm>
 #include <cassert>
@@ -8,90 +35,80 @@
 #include <string>
 
 namespace macveth {
-/// Supported ISA
-enum MVISA {
-  /// TODO: detect architecture
-  NATIVE = -1,
-  /// SSE support
-  SSE = 10,
-  /// AVX support
-  AVX = 20,
-  /// AVX2 support
-  AVX2 = 21,
-  /// AVX512 support
-  AVX512 = 22
-};
-
 /// Costs models naming
 enum MVSIMDCostModel {
   /// Vectorize always, despite the not vectorized estimation cost
   UNLIMITED,
-  /// If the sequential code vs the SIMDized code has a better estimation, then
+  /// If the sequential code vs the SIMD-zed code has a better estimation, then
   /// MACVETH does not vectorize the code
-  CONSERVATIVE
+  CONSERVATIVE,
+  /// Region to vectorize can have parts where vectorization provides better
+  /// performance
+  AGGRESSIVE
 };
 
 /// Map costs models to strings
 static std::map<MVSIMDCostModel, std::string> CostModelStr = {
-    {UNLIMITED, "unlimited"}, {CONSERVATIVE, "conservative"}};
+    {UNLIMITED, "unlimited"},
+    {CONSERVATIVE, "conservative"},
+    {AGGRESSIVE, "conservative"}};
 
 /// Mapping ISAs
-static std::map<MVISA, std::string> MVISAStr = {
-    {SSE, "SSE"}, {AVX, "AVX"}, {AVX2, "AVX2"}, {AVX512, "AVX512"}};
+static std::map<MVCPUInfo::MVISA, std::string> MVISAStr = {
+    {MVCPUInfo::MVISA::SSE, "SSE"},
+    {MVCPUInfo::MVISA::AVX, "AVX"},
+    {MVCPUInfo::MVISA::AVX2, "AVX2"},
+    {MVCPUInfo::MVISA::AVX512, "AVX512"}};
 
-/// Supported architectures. This enum is util for computing the cost model, as
-/// different architectures may differ in the latencies and thoughputs of
-/// operations for the same ISA
-enum MVArch {
-  /// TODO Autodetect the architecture underlying
-  AUTODETECT,
-  /// Intel Nehalem (2009) architecture (tock): SSE4.2
-  Nehalem,
-  /// Intel Westmere (2010) architecture (tick): SSE4.2
-  Westmere,
-  /// Intel Sandy Bridge (2011) architecture (tock): AVX
-  SandyBridge,
-  /// Intel Ivy Bridge (2012) architecture (tick): AVX
-  IvyBridge,
-  /// Intel Haswell (2013) architecture (tock): AVX2
-  Haswell,
-  /// Intel Broadwell (2014) architecture: AVX2
-  Broadwell,
-  /// Intel Skylake (2015) architecture: AVX2, AVX512 (Skylake-SP)
-  Skylake,
-  /// Intel Kaby Lake (2016) architecture: AVX2
-  KabyLake,
-  /// Intel Coffee Lake (2017) architecture: AVX2
-  CoffeeLake,
-  /// Intel Cascade Lake (2019) architecture: AVX512
-  CascadeLake,
-  /// AMD Zen architecture: AVX2
-  Zen,
-};
-
-static std::map<MVArch, std::string> MVArchStr = {{Nehalem, "Nehalem"},
-                                                  {Westmere, "Westmere"},
-                                                  {SandyBridge, "SandyBridge"},
-                                                  {IvyBridge, "IvyBridge"},
-                                                  {Haswell, "Haswell"},
-                                                  {Broadwell, "Broadwell"},
-                                                  {Skylake, "Skylake"},
-                                                  {KabyLake, "KabyLake"},
-                                                  {CoffeeLake, "CoffeeLake"},
-                                                  {CascadeLake, "CascadeLake"},
-                                                  {Zen, "Zen"}};
+static std::map<MVCPUInfo::MVArch, std::string> MVArchStr = {
+    {MVCPUInfo::MVArch::DEFAULT, "Default"},
+    {MVCPUInfo::MVArch::Nehalem, "Nehalem"},
+    {MVCPUInfo::MVArch::Westmere, "Westmere"},
+    {MVCPUInfo::MVArch::SandyBridge, "SandyBridge"},
+    {MVCPUInfo::MVArch::IvyBridge, "IvyBridge"},
+    {MVCPUInfo::MVArch::Haswell, "Haswell"},
+    {MVCPUInfo::MVArch::Broadwell, "Broadwell"},
+    {MVCPUInfo::MVArch::Skylake, "Skylake"},
+    {MVCPUInfo::MVArch::KabyLake, "KabyLake"},
+    {MVCPUInfo::MVArch::CoffeeLake, "CoffeeLake"},
+    {MVCPUInfo::MVArch::CascadeLake, "CascadeLake"},
+    {MVCPUInfo::MVArch::IceLake, "IceLake"},
+    {MVCPUInfo::MVArch::Zen, "Zen"},
+    {MVCPUInfo::MVArch::Zen2, "Zen2"},
+    {MVCPUInfo::MVArch::AMDDef, "Zen"},
+    {MVCPUInfo::MVArch::IntelDef, "Broadwell"}};
 
 /// Mapping between the ISA and supported architectures
-static std::map<MVISA, std::list<MVArch>> SupportedISAArch = {
-    {SSE,
-     {Nehalem, Westmere, SandyBridge, IvyBridge, Haswell, Broadwell, Skylake,
-      KabyLake, CoffeeLake, CascadeLake}},
-    {AVX,
-     {SandyBridge, IvyBridge, Haswell, Broadwell, Skylake, KabyLake, CoffeeLake,
-      CascadeLake}},
-    {AVX2,
-     {Haswell, Broadwell, Skylake, KabyLake, CoffeeLake, CascadeLake, Zen}},
-    {AVX512, {Skylake, CascadeLake}}};
+static std::map<MVCPUInfo::MVISA, std::list<MVCPUInfo::MVArch>>
+    SupportedISAArch = {
+        {MVCPUInfo::MVISA::SSE,
+         {MVCPUInfo::MVArch::Nehalem, MVCPUInfo::MVArch::Westmere,
+          MVCPUInfo::MVArch::SandyBridge, MVCPUInfo::MVArch::IvyBridge,
+          MVCPUInfo::MVArch::Haswell, MVCPUInfo::MVArch::Broadwell,
+          MVCPUInfo::MVArch::Skylake, MVCPUInfo::MVArch::KabyLake,
+          MVCPUInfo::MVArch::CoffeeLake, MVCPUInfo::MVArch::CascadeLake,
+          MVCPUInfo::MVArch::IceLake, MVCPUInfo::MVArch::Zen,
+          MVCPUInfo::MVArch::Zen2, MVCPUInfo::MVArch::AMDDef,
+          MVCPUInfo::MVArch::IntelDef}},
+        {MVCPUInfo::MVISA::AVX,
+         {MVCPUInfo::MVArch::SandyBridge, MVCPUInfo::MVArch::IvyBridge,
+          MVCPUInfo::MVArch::Haswell, MVCPUInfo::MVArch::Broadwell,
+          MVCPUInfo::MVArch::Skylake, MVCPUInfo::MVArch::KabyLake,
+          MVCPUInfo::MVArch::CoffeeLake, MVCPUInfo::MVArch::CascadeLake,
+          MVCPUInfo::MVArch::IceLake, MVCPUInfo::MVArch::Zen,
+          MVCPUInfo::MVArch::Zen2, MVCPUInfo::MVArch::AMDDef,
+          MVCPUInfo::MVArch::IntelDef}},
+        {MVCPUInfo::MVISA::AVX2,
+         {MVCPUInfo::MVArch::Haswell, MVCPUInfo::MVArch::Broadwell,
+          MVCPUInfo::MVArch::Skylake, MVCPUInfo::MVArch::KabyLake,
+          MVCPUInfo::MVArch::CoffeeLake, MVCPUInfo::MVArch::CascadeLake,
+          MVCPUInfo::MVArch::IceLake, MVCPUInfo::MVArch::Zen,
+          MVCPUInfo::MVArch::Zen2, MVCPUInfo::MVArch::AMDDef,
+          MVCPUInfo::MVArch::IntelDef}},
+        {MVCPUInfo::MVISA::AVX512,
+         {MVCPUInfo::MVArch::Skylake, MVCPUInfo::MVArch::CascadeLake,
+          MVCPUInfo::MVArch::IceLake, MVCPUInfo::MVArch::AMDDef,
+          MVCPUInfo::MVArch::IntelDef}}};
 
 enum DebugLevel {
   /// All levels below
@@ -114,20 +131,30 @@ struct MVOptions {
   static inline std::string InCDAGFile = "";
   /// Name of the output debug file (-output-debug=<file>)
   static inline std::string OutDebugFile = "";
-  /// Name of the output debug file (-report-file=<file>)
-  static inline std::string ReportFile = "";
+  /// Name of the output debug file (-simd-info=<file>)
+  static inline std::string SIMDReportFile = "";
+  /// Name of the output debug file (-simd-info-missed=<file>)
+  static inline std::string SIMDReportMissFile = "";
+  /// Format style output
+  static inline std::string Style = "";
+  /// Fallback format style output
+  static inline std::string FallbackStyle = "";
   /// Target ISA
-  static inline MVISA ISA = MVISA::NATIVE;
+  static inline MVCPUInfo::MVISA ISA = MVCPUInfo::MVISA::AUTODETECT;
   /// Target architecture
-  static inline MVArch Arch = MVArch::AUTODETECT;
+  static inline MVCPUInfo::MVArch Arch = MVCPUInfo::MVArch::DEFAULT;
   /// FMA support
   static inline bool FMASupport = false;
   /// Disable FMA support
   static inline bool DisableFMA = false;
-  /// Debug
+  /// Enable use of scatter instruction
+  static inline bool ScatterInstruction = false;
+  /// Print debug information
   static inline bool Debug = false;
   /// Debug level
   static inline DebugLevel DLevel = DebugLevel::ALL;
+  /// No reformatting the final code
+  static inline bool NoReformat = false;
   /// Generate or not macro-based code
   static inline bool MacroCode = false;
   /// Include headers (--no-headers)
@@ -139,10 +166,32 @@ struct MVOptions {
   /// Target function
   static inline std::string TargetFunc = "";
 
+  static MVCPUInfo::MVArch getMVArch() {
+    MVCPUInfo CInfo;
+    return CInfo.getArchitecture();
+  }
+
+  static MVCPUInfo::MVISA getMVISA() {
+    MVCPUInfo CInfo;
+    if (CInfo.isAVX512F()) {
+      // FIXME: this is not correct
+      return MVCPUInfo::MVISA::AVX512;
+    }
+    if (CInfo.isAVX2()) {
+      return MVCPUInfo::MVISA::AVX2;
+    }
+    if (CInfo.isAVX()) {
+      return MVCPUInfo::MVISA::AVX;
+    }
+    if (CInfo.isSSE42()) {
+      return MVCPUInfo::MVISA::SSE;
+    }
+    return MVCPUInfo::MVISA::AVX2;
+  }
+
   /// Print options as a string for reports and so
   static std::string toString() {
-    std::string S;
-    S += "-------------------------------\n";
+    std::string S = "-------------------------------\n";
     S += "\toutput file\t= " + OutFile + "\n";
     S += "\tCDAG file\t= " + InCDAGFile + "\n";
     S += "\toutput debug\t= " + OutDebugFile + "\n";
@@ -156,24 +205,25 @@ struct MVOptions {
 
   /// Main function to check options of the compiler
   static void validateOptions() {
-    // TODO:
-    if (MVOptions::ISA == MVISA::NATIVE) {
+    if (MVOptions::ISA == MVCPUInfo::MVISA::AUTODETECT) {
+      MVOptions::ISA = getMVISA();
     }
-    if (MVOptions::Arch == MVArch::AUTODETECT) {
+    if (MVOptions::Arch == MVCPUInfo::MVArch::NATIVE) {
+      MVOptions::Arch = getMVArch();
     }
     checkIfArchISACompatible();
   }
 
   /// Dumb method to check compatibility between options
   static void checkIfArchISACompatible() {
-    if ((MVOptions::ISA == MVISA::NATIVE) ||
-        (MVOptions::Arch == MVArch::AUTODETECT)) {
-      return;
-    }
     auto LArch = SupportedISAArch[MVOptions::ISA];
     assert((std::find(LArch.begin(), LArch.end(), MVOptions::Arch) !=
             LArch.end()) &&
            "Incompatible architecture and ISA");
+    /// Check incompatible options:
+    assert(
+        !(MVOptions::FMASupport && MVOptions::DisableFMA) &&
+        "FMA support enabled and disabled at the same time is not possible!");
   }
 };
 }; // namespace macveth

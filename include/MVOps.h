@@ -1,10 +1,27 @@
-/**
- * File              : MVOps.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Dom 05 Xan 2020 11:51:39 MST
- * Last Modified Date: Xov 09 Xan 2020 21:16:38 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
+// MACVETH - MVOps.h
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #ifndef MACVETH_MVOPS_H
 #define MACVETH_MVOPS_H
@@ -26,6 +43,14 @@ enum MVOpType {
 enum MVOpCode {
   /// Operation not known/defined
   UNDEF,
+  /// Addition
+  ADD,
+  /// Substraction
+  SUB,
+  /// Multiplication
+  MUL,
+  /// Division
+  DIV,
   /// Exponential
   EXP,
   /// Power
@@ -53,7 +78,9 @@ enum MVOpCode {
 /// a 'union' over 'std::variant' (C++14) since both possible types are enums
 /// and may have the same values; this way we can explicitly handle each case
 struct MVOp {
-  /// Tyep of the MVOp
+  /// Prefix
+  std::string Prefix = "";
+  /// Type of the MVOp
   MVOpType T;
   /// We can handle Clang BinOps or MVOps
   union {
@@ -62,45 +89,6 @@ struct MVOp {
     /// When MVFUNC
     MVOpCode MVOpC;
   };
-
-  /// Get operation cost
-  /// FIXME: this should be architecture-dependent
-  static long getOperationCost(MVOp Op) {
-    long Cost = 100000;
-    auto Type = Op.getType();
-    if (Type == MVOpType::MVFUNC) {
-      auto Code = Op.MVOpC;
-      switch (Code) {
-      case UNDEF:
-        return Cost;
-      case EXP:
-      case POW:
-      case MAX:
-      case MIN:
-      case AVG:
-      case CEIL:
-      case FLOOR:
-      case ROUND:
-      case SIN:
-      case COS:
-      default:
-        return 10000;
-      }
-    }
-    if (Type == MVOpType::CLANG_BINOP) {
-      Cost = 2;
-      if (Op.ClangOP == BinaryOperator::Opcode::BO_Mul) {
-        Cost = 12;
-      }
-      if (Op.ClangOP == BinaryOperator::Opcode::BO_Div) {
-        Cost = 20;
-      }
-      if (Op.ClangOP == BinaryOperator::Opcode::BO_Xor) {
-        Cost = 15;
-      }
-    }
-    return Cost;
-  }
 
   /// Given a string it returns the type of function based on the MVOpCode it
   /// is defined for this compiler
@@ -137,6 +125,14 @@ struct MVOp {
   /// Return the equivalent string given a MVOpCode
   std::string getStrFromMVCode(MVOpCode C) {
     switch (C) {
+    case MVOpCode::ADD:
+      return "add";
+    case MVOpCode::SUB:
+      return "sub";
+    case MVOpCode::DIV:
+      return "div";
+    case MVOpCode::MUL:
+      return "mul";
     case MVOpCode::EXP:
       return "exp";
     case MVOpCode::MAX:
@@ -160,22 +156,73 @@ struct MVOp {
     }
     return "undef";
   }
+
+  /// Return the equivalent string given a MVOpCode
+  std::string
+  getStrFromBinaryOperatorOpcode(clang::BinaryOperator::Opcode ClangOP) {
+    switch (ClangOP) {
+    case clang::BinaryOperator::Opcode::BO_Add:
+      return "add";
+    case clang::BinaryOperator::Opcode::BO_Sub:
+      return "sub";
+    case clang::BinaryOperator::Opcode::BO_Div:
+      return "div";
+    case clang::BinaryOperator::Opcode::BO_Mul:
+      return "mul";
+    default:
+      return "undef";
+    }
+    return "undef";
+  }
+
   /// Shortcut to check whether a MVOp is of type BO_Assign
   bool isAssignment() {
     return (getType() == MVOpType::CLANG_BINOP) &&
            (this->ClangOP == clang::BinaryOperator::Opcode::BO_Assign);
   }
 
+  /// Check whether the operation is binary or not. An operation is binary if
+  /// it is placed between two operands, in other case if is a function
+  bool isBinaryOperation() { return (getType() == MVOpType::CLANG_BINOP); }
+
+  /// Check whether the operation is an addition or a substraction. This is
+  /// useful for reductions
+  bool isAddOrSub() {
+    return (this->ClangOP == BinaryOperator::Opcode::BO_Add) ||
+           (this->ClangOP == BinaryOperator::Opcode::BO_Sub);
+  }
+
+  /// Get equivalent MVOP string for searching in the Table Cost
+  std::string getTableMVOPstr(std::string T) {
+    std::string Suffix = "_" + Utils::toUppercase(T);
+    if (getType() == MVOpType::CLANG_BINOP) {
+      return Utils::toUppercase(getStrFromBinaryOperatorOpcode(this->ClangOP)) +
+             Suffix;
+    }
+    return Utils::toUppercase(getStrFromMVCode(this->MVOpC)) + Suffix;
+  }
+
+  /// Get the namespace of the expression
+  std::string getPrefixFromStr(std::string S) {
+    std::string P = "";
+    std::string NameSpace = "::";
+    auto FoundNameSpace = S.find(NameSpace);
+    if (FoundNameSpace != std::string::npos) {
+      P = S.substr(0, FoundNameSpace + NameSpace.size());
+    }
+    return P;
+  }
+
   /// Convert MVOp to string
   std::string toString() {
     if (getType() == MVOpType::CLANG_BINOP) {
-      return clang::BinaryOperator::getOpcodeStr(this->ClangOP);
-    } else if (getType() == MVOpType::MVFUNC) {
-      return getStrFromMVCode(this->MVOpC);
+      return clang::BinaryOperator::getOpcodeStr(this->ClangOP).str();
     }
-    MVAssert(false, "This can not ever happen!");
-    return "";
+    return getStrFromMVCode(this->MVOpC);
   }
+
+  /// Get the prefix
+  std::string getOpPrefix() { return this->Prefix; }
 
   /// Return the type of the operation
   MVOpType getType() { return T; }
@@ -184,6 +231,7 @@ struct MVOp {
   MVOp(std::string S) {
     this->T = MVOpType::MVFUNC;
     this->MVOpC = getTypeFromStr(S);
+    this->Prefix = getPrefixFromStr(S);
   }
 
   /// Given a BinaryOperator::Opcode the MVOp will be of CLANG_BINOP type
@@ -197,7 +245,7 @@ struct MVOp {
     this->T = MVOpType::MVFUNC;
     this->MVOpC = MVOpCode::UNDEF;
   }
-}; // namespace macveth
+};
 
 } // namespace macveth
 #endif /* !MACVETH_MVOPS_H */

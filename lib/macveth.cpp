@@ -1,42 +1,41 @@
-/**
- * File              : macveth.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Mér 06 Nov 2019 12:29:24 MST
- * Last Modified Date: Mar 17 Mar 2020 18:58:40 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- *
- * Copyright (c) 2019 Marcos Horro <marcos.horro@udc.gal>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+// MACVETH - macveth.cpp
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
+#include "lib/macveth.h"
 #include "include/MVFrontend.h"
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
+#include "clang/Format/Format.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Signals.h"
 
-#ifndef LLVM_VERSION
-#define LLVM_VERSION 10
+#if !defined(DEBUG)
+#define DEBUG 0
 #endif
 
 using namespace clang;
@@ -49,13 +48,24 @@ using namespace macveth;
 // Set up the command line options
 static llvm::cl::OptionCategory MacvethCategory("Macveth Options");
 static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
+
 // Custom cmd options
 static llvm::cl::opt<std::string>
     OutputFile("o", cl::cat(MacvethCategory),
                llvm::cl::desc("Output file to write the code, otherwise "
                               "it will just print int std output"));
+
+static llvm::cl::opt<std::string>
+    SIMDInfoFile("simd-info", cl::cat(MacvethCategory),
+                 llvm::cl::desc("Report with all the SIMD information"));
+
+static llvm::cl::opt<std::string> SIMDInfoMissedFile(
+    "simd-info-missed", cl::cat(MacvethCategory),
+    llvm::cl::desc("Report with all missed SIMD opportunities"));
+
 static llvm::cl::opt<std::string> TargetFunc("func", cl::cat(MacvethCategory),
                                              llvm::cl::desc("Target function"));
+
 static llvm::cl::opt<std::string>
     CDAGInFile("input-cdag", cl::cat(MacvethCategory),
                llvm::cl::desc("Input file to read the custom CDAG placement"));
@@ -67,101 +77,174 @@ static llvm::cl::opt<MVSIMDCostModel> SIMDCostModel(
         clEnumValN(MVSIMDCostModel::CONSERVATIVE, "conservative",
                    "Vectorize if and only if the sequential estimation is "
                    "worse than the vectorized"),
+        clEnumValN(MVSIMDCostModel::AGGRESSIVE, "aggressive",
+                   "Vectorize partially if beneficial according to cost model"),
         clEnumValN(MVSIMDCostModel::UNLIMITED, "unlimited",
                    "Unlimited SIMD cost, i.e. vectorize regardless the cost")));
 
-static llvm::cl::opt<MVISA>
-    ISA("misa", llvm::cl::desc("Target ISA"), llvm::cl::init(MVISA::NATIVE),
+static llvm::cl::opt<MVCPUInfo::MVISA>
+    ISA("misa", llvm::cl::desc("Target ISA"),
+        llvm::cl::init(MVCPUInfo::MVISA::AUTODETECT),
         llvm::cl::cat(MacvethCategory),
-        llvm::cl::values(clEnumValN(MVISA::NATIVE, "native",
+        llvm::cl::values(clEnumValN(MVCPUInfo::MVISA::AUTODETECT, "native",
                                     "Detect ISA of the architecture"),
-                         clEnumValN(MVISA::AVX, "sse", "SSE ISA"),
-                         clEnumValN(MVISA::AVX, "avx", "AVX ISA"),
-                         clEnumValN(MVISA::AVX2, "avx2", "AVX2 ISA"),
-                         clEnumValN(MVISA::AVX512, "avx512", "AVX512 ISA")));
+                         clEnumValN(MVCPUInfo::MVISA::SSE, "sse", "SSE ISA"),
+                         clEnumValN(MVCPUInfo::MVISA::AVX, "avx", "AVX ISA"),
+                         clEnumValN(MVCPUInfo::MVISA::AVX2, "avx2", "AVX2 ISA"),
+                         clEnumValN(MVCPUInfo::MVISA::AVX512, "avx512",
+                                    "AVX512 ISA")));
 
-static llvm::cl::opt<MVArch> Architecture(
-    "march", llvm::cl::desc("Target architecture"),
-    llvm::cl::init(MVArch::AUTODETECT), llvm::cl::cat(MacvethCategory),
+static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
+    "arch", llvm::cl::desc("Target architecture"),
+    llvm::cl::init(MVCPUInfo::MVArch::NATIVE), llvm::cl::cat(MacvethCategory),
     llvm::cl::values(
-        clEnumValN(MVArch::AUTODETECT, "native", "Detect the architecture"),
-        clEnumValN(MVArch::Nehalem, "nehalem",
+        clEnumValN(MVCPUInfo::MVArch::NATIVE, "native",
+                   "Detect the architecture"),
+        clEnumValN(MVCPUInfo::MVArch::Nehalem, "nehalem",
                    "Intel Nehalem (2009) architecture (tock): SSE4.2"),
-        clEnumValN(MVArch::Westmere, "westmere",
+        clEnumValN(MVCPUInfo::MVArch::Westmere, "westmere",
                    "Intel Westmere (2010) architecture (tick): SSE4.2"),
-        clEnumValN(MVArch::SandyBridge, "sandybridge",
+        clEnumValN(MVCPUInfo::MVArch::SandyBridge, "sandybridge",
                    "Intel SandyBridge (2011) architecture (tock): AVX"),
-        clEnumValN(MVArch::IvyBridge, "ivybridge",
+        clEnumValN(MVCPUInfo::MVArch::IvyBridge, "ivybridge",
                    "Intel IvyBridge (2012) architecture (tick): AVX"),
-        clEnumValN(MVArch::Haswell, "haswell",
+        clEnumValN(MVCPUInfo::MVArch::Haswell, "haswell",
                    "Intel Haswell (2013) architecture (tock): AVX2"),
-        clEnumValN(MVArch::Broadwell, "broadwell",
+        clEnumValN(MVCPUInfo::MVArch::Broadwell, "broadwell",
                    "Intel Broadwell (2014) architecture (tick): AVX2"),
-        clEnumValN(MVArch::Skylake, "skylake",
+        clEnumValN(MVCPUInfo::MVArch::Skylake, "skylake",
                    "Intel Skylake (2015) architecture (tock): AVX512"),
-        clEnumValN(MVArch::KabyLake, "kabylake",
+        clEnumValN(MVCPUInfo::MVArch::KabyLake, "kabylake",
                    "Intel Kaby Lake (2016) architecture (tock): AVX2"),
-        clEnumValN(MVArch::CoffeeLake, "coffeelake",
+        clEnumValN(MVCPUInfo::MVArch::CoffeeLake, "coffeelake",
                    "Intel Coffee Lake (2017) architecture (tock): AVX2"),
-        clEnumValN(MVArch::CascadeLake, "cascadelake",
+        clEnumValN(MVCPUInfo::MVArch::CascadeLake, "cascadelake",
                    "Intel Cascade Lake (2019) architecture (tock): AVX512"),
-        clEnumValN(MVArch::Zen, "Zen", "AMD Zen (2019) architecture: AVX2")));
+        clEnumValN(MVCPUInfo::MVArch::IceLake, "icelake",
+                   "Intel Ice Lake (2020) architecture (tick): AVX512"),
+        clEnumValN(MVCPUInfo::MVArch::Zen, "zen",
+                   "AMD Zen (2019) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::Zen2, "zen2",
+                   "AMD Zen 2 (2020) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::AMDDef, "amd",
+                   "AMD architecture not specified"),
+        clEnumValN(MVCPUInfo::MVArch::IntelDef, "intel",
+                   "Intel architecture not specified")));
 
-/// FMA support flag
+// Main format style
+static cl::opt<std::string> Style(
+    "format-style",
+    cl::desc("Coding style, currently supports:\n"
+             "  LLVM, GNU, Google, Chromium, Microsoft, Mozilla, WebKit.\n"
+             "Use -format-style=file to load style configuration from\n"
+             ".clang-format file located in one of the parent\n"
+             "directories of the source file (or current\n"
+             "directory for stdin).\n"
+             "Use -format-style=\"{key: value, ...}\" to set specific\n"
+             "parameters, e.g.:\n"
+             "  -format-style=\"{BasedOnStyle: llvm, IndentWidth: 8}\""),
+    cl::init(clang::format::DefaultFormatStyle), cl::cat(MacvethCategory));
+
+// Format style fallback
+static cl::opt<std::string> FallbackStyle(
+    "format-fallback-style",
+    cl::desc("The name of the predefined style used as a\n"
+             "fallback in case clang-format is invoked with\n"
+             "-format-style=file, but can not find the .clang-format\n"
+             "file to use.\n"
+             "Use -format-fallback-style=none to skip formatting."),
+    cl::init(clang::format::DefaultFallbackStyle), cl::cat(MacvethCategory));
+
+// FMA support flag
 static llvm::cl::opt<bool> FMA("fma",
-                               llvm::cl::desc("Explicitly tell if FMA support"),
+                               llvm::cl::desc("Support for FMA instructions"),
                                llvm::cl::init(false),
                                llvm::cl::cat(MacvethCategory));
 
-/// Disable Intrinsics SVML
+// FMA support flag
+static llvm::cl::opt<bool>
+    ScatterInstruction("scatter",
+                       llvm::cl::desc("Support AVX512 scatter instructions"),
+                       llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
+// Disable Intrinsics SVML
 static llvm::cl::opt<bool> NoSVML("no-svml",
                                   llvm::cl::desc("Disable Intrinsics SVML"),
                                   llvm::cl::init(false),
                                   llvm::cl::cat(MacvethCategory));
 
-/// Disable FMA support flag
+// Disable FMA support flag
 static llvm::cl::opt<bool> DisableFMA(
     "nofma",
     llvm::cl::desc("Explicitly tell to not generate FMA instructions even if "
                    "architecture supports them"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
-/// Debug flag
-static llvm::cl::opt<bool> Debug("debug",
+// Debug flag
+static llvm::cl::opt<bool> Debug("debug-mv",
                                  llvm::cl::desc("Print debug information"),
                                  llvm::cl::init(false),
                                  llvm::cl::cat(MacvethCategory));
-/// Macro-free code
-static llvm::cl::opt<bool> MacroCode(
-    "macro-code",
-    llvm::cl::desc("If set, *do* use macro for generating vectorized code"),
+
+// Whether to reformat code
+static llvm::cl::opt<bool> NoFormatCode(
+    "no-format",
+    llvm::cl::desc("MACVETH by defaults reformats code as "
+                   "clang-format does, using LLVM style. If this option is "
+                   "enabled, then no reformatting is applied"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
-/// Do not include headers in top of the file
+// Do not include headers in top of the file
 static llvm::cl::opt<bool> NoHeaders(
     "no-headers",
     llvm::cl::desc(
         "If set, do *not* include header files, such as <immintrin.h>"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
-/// Output debug
+// Output debug
 static llvm::cl::opt<std::string>
     DebugFile("debug-file", cl::cat(MacvethCategory),
               llvm::cl::desc("Output file to print the debug information"));
 
-// Main program
+// Main program: entry point for compiler
 int main(int argc, const char **argv) {
-  llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
+  if (DEBUG) {
+    llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
+  }
+
+  if (argc <= 1) {
+    std::cout << "MACVETH: not enough arguments. Use --help option for more "
+                 "information."
+              << std::endl;
+    return 0;
+  }
+
+  // I do not like this code but I have not found any other way to do it
+  // properly... for some reason, LLVM does not like "-v" option.
+  for (int t = 0; t < argc; ++t) {
+    if ((strcmp(argv[1], "-v") == 0)) {
+      argv[t] = "--version";
+    }
+
+    // Note for dumbs as me: const char* != std::string
+    if ((strcmp(argv[t], "--version") == 0)) {
+      std::cout << "MACVETH v" << std::to_string(MACVETH_VERSION_MAJOR) << "."
+                << std::to_string(MACVETH_VERSION_MINOR) << "."
+                << std::to_string(MACVETH_VERSION_PATCH) << std::endl;
+      break;
+    }
+  }
 
   // Parser for options common to all cmd-line Clang tools
   CommonOptionsParser Op(argc, argv, MacvethCategory);
+
   // Utility to run a FrontendAction over a set of files
   // * getCompilations(): contains compile cmd lines for the given source
   // paths
   // * getSourcePathList(): source files to run over
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
-  /// MVOptions
+  // MVOptions
   MVOptions::OutFile =
       OutputFile.getValue() == "" ? "macveth_output.c" : OutputFile.getValue();
   MVOptions::InCDAGFile = CDAGInFile.getValue();
@@ -170,18 +253,20 @@ int main(int argc, const char **argv) {
   MVOptions::Arch = Architecture.getValue();
   MVOptions::FMASupport = FMA.getValue();
   MVOptions::DisableFMA = DisableFMA.getValue();
+  MVOptions::ScatterInstruction = ScatterInstruction.getValue();
   MVOptions::Debug = Debug.getValue();
-  MVOptions::MacroCode = MacroCode.getValue();
+  MVOptions::NoReformat = NoFormatCode.getValue();
   MVOptions::Headers = !NoHeaders.getValue();
   MVOptions::SIMDCostModel = SIMDCostModel.getValue();
   MVOptions::IntrinsicsSVML = !NoSVML.getValue();
   MVOptions::TargetFunc = TargetFunc.getValue();
+  MVOptions::Style = Style.getValue();
+  MVOptions::FallbackStyle = FallbackStyle.getValue();
 
-  /// Check incompatible options:
-  assert(!(MVOptions::FMASupport && MVOptions::DisableFMA) &&
-         "FMA support enabled and disabled at the same time is not possible!");
+  // Check if there are incompatible options
+  MVOptions::validateOptions();
 
-  /// Create needed files
+  // Create needed files
   Utils::initFile(MVOptions::OutFile);
   Utils::initFile(MVOptions::OutDebugFile);
 

@@ -1,12 +1,46 @@
-/**
- * File              : Node.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Mér 18 Dec 2019 17:01:36 MST
- * Last Modified Date: Lun 13 Xan 2020 23:33:27 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
+// MACVETH - Node.cpp
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/Node.h"
+
+// ---------------------------------------------
+std::string Node::toStringShort() {
+  std::string Str;
+  Str += this->getValue() + " (" + this->getRegisterValue() + ");";
+  if (this->getNodeType() != Node::NODE_MEM) {
+    Str += " O = " + this->getOutputInfoName() + "; ";
+  }
+  for (size_t i = 0; i < this->getInputs().size(); ++i) {
+    if (this->getInputs()[i] != nullptr) {
+      Str +=
+          " I(" + std::to_string(i) + ") = " + this->getInputs()[i]->getValue();
+      Str += (this->getInputs()[i + 1] == nullptr) ? "" : ";";
+    }
+  }
+  return Str;
+}
 
 // ---------------------------------------------
 std::string Node::toString() {
@@ -21,7 +55,7 @@ std::string Node::toString() {
   if (this->getNodeType() != Node::NODE_MEM) {
     Str += "\tOutput\t\t= " + this->getOutputInfoName() + "\n";
   }
-  for (int i = 0; i < this->getInputs().size(); ++i) {
+  for (size_t i = 0; i < this->getInputs().size(); ++i) {
     if (this->getInputs()[i] != nullptr) {
       Str += "\tInput " + std::to_string(i) +
              "\t\t= " + this->getInputs()[i]->getValue() + " (ID = " +
@@ -36,19 +70,10 @@ std::string Node::toString() {
 }
 
 // ---------------------------------------------
-void Node::connectInput(Node *N) {
-  this->I.push_back(N);
-  N->OutNodes.push_back(this);
-}
-
-// ---------------------------------------------
-bool Node::hasOutNodes() { return (this->OutNodes.size() == 0); }
+void Node::connectInput(Node *N) { this->I.push_back(N); }
 
 // ---------------------------------------------
 bool Node::hasInputs() { return !(this->I.size() == 0); }
-
-// ---------------------------------------------
-bool Node::isTerminal() { return !(this->hasOutNodes()); }
 
 // ---------------------------------------------
 Node *Node::findOutputNode(std::string NodeName, NodeListType L) {

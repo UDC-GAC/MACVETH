@@ -4,7 +4,6 @@ macveth
 *.bin
 *_report.txt
 *.warn
-*.s
 *__tmp*
 .vscode/*
 *.spf
@@ -12,11 +11,26 @@ macveth
 *.tar.xz
 *.bz2
 *.s
+*.S
+*.xml
+
+# Ignore docs, only update when forcing
+docs/
+*.html
+
+# Compressed files
+*.gz
+*.tbz
+*.tar.xz
+*.tgz
+*_org/
 
 # Results
 *.csv
 *.output
 */SPF_org/*
+macveth_output_arch_isa
+*.dump
 
 # Temp files
 output/
@@ -28,6 +42,7 @@ tests/warn
 tests/macveth_output.c
 tests/test
 results/
+macveth_output.c
 
 # Benchmarking
 ubench
@@ -59,7 +74,6 @@ build/
 Makefile
 *Cache*
 *CMakeFiles*
-*.cmake
 compile_options.json
 compile_commands.json
 
@@ -98,7 +112,17 @@ compile_commands.json
 
 # Python
 __pycache__/
+*.pyc
+
+# Assembly
+*.asm
 
 # Latex
 *.fls
 *.fdb*
+
+# Code coverage
+*.info
+
+# vscode
+*.code-workspace

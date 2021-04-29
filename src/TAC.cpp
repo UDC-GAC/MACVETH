@@ -1,35 +1,31 @@
-/**
- * File					 : src/TAC.cpp
- * Author				 : Marcos Horro
- * Date					 : Wed 03 Jun 2020 04:24 +02:00
- * Last Modified : Wed 10 Jun 2020 10:21 +02:00
- * Modified By	 : Marcos Horro (marcos.horro@udc.gal)
- *
- * MIT License
- *
- * Copyright (c) 2020 Colorado State University
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+// MACVETH - TAC.cpp
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/TAC.h"
 #include "include/CDAG.h"
+#include "include/Debug.h"
 #include "include/MVExpr/MVExprArray.h"
 #include "include/MVExpr/MVExprFactory.h"
 #include "include/MVExpr/MVExprLiteral.h"
@@ -37,7 +33,7 @@
 #include "clang/AST/Expr.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Lex/Lexer.h"
-#include <llvm-10/llvm/Support/ErrorHandling.h>
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace clang;
 using namespace macveth;
@@ -99,7 +95,7 @@ std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
   std::map<std::string, std::vector<std::string>> TmpResToReplace;
   TacListType TCopy(TL);
   for (auto T : TCopy) {
-    if (T.getUnrollFactor() != Offset) {
+    if ((T.getUnrollFactor() != Offset) && (Offset != -1)) {
       continue;
     }
     auto A = T.getA()->getExprStr();
@@ -117,7 +113,7 @@ std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
   TCopy.reverse();
   std::string FinalStr = "";
   for (auto T : TCopy) {
-    if (T.getUnrollFactor() != Offset) {
+    if ((T.getUnrollFactor() != Offset) && (Offset != -1)) {
       continue;
     }
     auto A = T.getA()->getExprStr();
@@ -126,7 +122,7 @@ std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
     if (T.getC() != nullptr) {
       C = T.getC()->getExprStr();
     }
-    // If this, then it is an assignment (by design)
+    // If this, then this TAC is an assignment (by design)
     if (A == B) {
       FinalStr =
           A + " = " + replaceTmpTac(TmpResToReplace, C) + ";\n" + FinalStr;
@@ -144,6 +140,7 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   bool IsTerminalS2 = false;
   bool IsUnary = false;
   MVOp Op;
+  // FIXME: for LLVM < 11 this does not seem to work for +=
   auto S = dyn_cast<BinaryOperator>(ST);
   auto F = dyn_cast<CallExpr>(ST);
   // This is something like Lhs [+-]= Rhs
@@ -154,19 +151,35 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     clang::BinaryOperator *RhsBin = nullptr;
     Op = MVOp(S->getOpcode());
     if (S->getOpcode() == BinaryOperator::Opcode::BO_AddAssign) {
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR < 11)
       auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Add,
                                          S1->getType(), S1->getValueKind(),
                                          S1->getObjectKind(), S1->getBeginLoc(),
                                          clang::FPOptions());
       S2 = &NewOp;
+#else
+      auto NewOp = clang::BinaryOperator::Create(
+          *(Utils::getCtx()), S1, S2, BinaryOperator::Opcode::BO_Add,
+          S1->getType(), S1->getValueKind(), S1->getObjectKind(),
+          S1->getBeginLoc(), clang::FPOptionsOverride());
+      S2 = NewOp;
+#endif
       Op = MVOp(BinaryOperator::Opcode::BO_Assign);
     }
     if (S->getOpcode() == BinaryOperator::Opcode::BO_SubAssign) {
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR < 11)
       auto NewOp = clang::BinaryOperator(S1, S2, BinaryOperator::Opcode::BO_Sub,
                                          S1->getType(), S1->getValueKind(),
                                          S1->getObjectKind(), S1->getBeginLoc(),
                                          clang::FPOptions());
       S2 = &NewOp;
+#else
+      auto NewOp = clang::BinaryOperator::Create(
+          *(Utils::getCtx()), S1, S2, BinaryOperator::Opcode::BO_Sub,
+          S1->getType(), S1->getValueKind(), S1->getObjectKind(),
+          S1->getBeginLoc(), clang::FPOptionsOverride());
+      S2 = NewOp;
+#endif
       Op = MVOp(BinaryOperator::Opcode::BO_Assign);
     }
     if ((LhsBin = getBinOp(S1))) {
@@ -211,6 +224,7 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   if (isa<clang::TypedefType>(S1->getType())) {
     auto aT = dyn_cast<clang::TypedefType>(S1->getType());
     if (!aT->isSugared()) {
+      MACVETH_DEBUG("TAC", "Not sugared!!");
       llvm::llvm_unreachable_internal();
     }
     auto ET = dyn_cast<ElaboratedType>(aT->desugar());
@@ -227,13 +241,13 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
   auto TmpB = (!IsTerminalS1) ? MVExprFactory::createMVExpr(
                                     getNameTempReg(), true, TmpA->getExprStr())
                               : MVExprFactory::createMVExpr(S1);
-  MVExpr *TmpC = nullptr;
 
   int Inc = 1;
   if (!IsTerminalS1) {
     stmtToTACRecursive(S1, TacList, Val + Inc);
   }
 
+  MVExpr *TmpC = nullptr;
   if (!IsUnary) {
     TmpC = (!IsTerminalS2) ? MVExprFactory::createMVExpr(getNameTempReg(), true,
                                                          TmpA->getExprStr())
@@ -244,65 +258,53 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     stmtToTACRecursive(S2, TacList, Val + Inc + 1);
   }
 
-  TAC NewTac(TmpA, TmpB, TmpC, Op);
-  TacList->push_back(NewTac);
+  TacList->push_back(TAC(TmpA, TmpB, TmpC, Op));
 }
 
 // ---------------------------------------------
 TacListType TAC::stmtToTAC(clang::Stmt *ST) {
-  // Reset the RegVal in TAC class
-  auto S = dyn_cast<clang::Expr>(ST);
   TacListType TL;
 
+  auto S = dyn_cast<clang::Expr>(ST);
+  if (!S) {
+    MVErr("Statement type not allowed");
+  }
   // Check if the expression is binary
-  clang::BinaryOperator *SBin = nullptr;
-  auto STypeBin = (SBin = getBinOp(S->IgnoreImpCasts()));
-  if (STypeBin) {
-    stmtToTACRecursive(SBin, &TL, -1);
+  if (auto STypeBin = getBinOp(S->IgnoreImpCasts())) {
+    stmtToTACRecursive(STypeBin, &TL, -1);
     return TL;
   }
 
-  assert(false && "This type of statement is not permitted!!!");
+  assert(TL.size() > 1 && "This type of statement is not allowed!");
   return TL;
 }
 
 // ---------------------------------------------
-TAC *TAC::unroll(TAC *Tac, int UnrollFactor, int S, unsigned int mask,
-                 std::string LoopLevel) {
-  int UnrollA = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_A) >> TAC::BITS_OP_A);
-  int UnrollB = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_B) >> TAC::BITS_OP_B);
-  int UnrollC = S * UnrollFactor +
-                UnrollFactor * ((mask & TAC::MASK_OP_C) >> TAC::BITS_OP_C);
-
-  auto NewA = Tac->getA()->unrollExpr(UnrollA, LoopLevel);
-  auto NewB = Tac->getB()->unrollExpr(UnrollB, LoopLevel);
-  auto NewC = Tac->getC() != nullptr
-                  ? Tac->getC()->unrollExpr(UnrollC, LoopLevel)
+TAC TAC::unroll(TAC Tac, int UnrollFactor, std::string LoopLevel,
+                bool FullUnroll) {
+  auto NewA = Tac.getA()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll);
+  auto NewB = Tac.getB()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll);
+  auto NewC = Tac.getC() != nullptr
+                  ? Tac.getC()->unrollExpr(UnrollFactor, LoopLevel, FullUnroll)
                   : nullptr;
-  auto UnrolledTac = new TAC(NewA, NewB, NewC, Tac->getMVOP(), Tac->getTacID());
-  UnrolledTac->TUnroll = S * UnrollFactor;
-  UnrolledTac->setScop(Tac->getScop());
-  UnrolledTac->setLoopName(Tac->getLoopName());
+  TAC UnrolledTac(NewA, NewB, NewC, Tac.getMVOP(), Tac.getTacID());
+  UnrolledTac.TUnroll = UnrollFactor;
+  UnrolledTac.setScop(Tac.getScop());
+  UnrolledTac.setLoopName(Tac.getLoopName());
   return UnrolledTac;
 }
 
 // ---------------------------------------------
 TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
-                               int UpperBound, std::string LoopLevel) {
-  TacListType TacListOrg;
+                               int UpperBound, std::string LoopLevel,
+                               bool FullUnroll) {
+  TacListType NewTacList;
   auto Steps = UpperBound / UnrollFactor;
   for (int S = 0; S < Steps; S++) {
     for (auto T : TacList) {
-      auto NT = (TAC::unroll(&T, UnrollFactor, S, 0x000000, LoopLevel));
-      if (NT != nullptr) {
-        TacListOrg.push_back(*NT);
-      }
-      if ((NT == nullptr) && (S == 0)) {
-        TacListOrg.push_back(T);
-      }
+      NewTacList.push_back(
+          TAC::unroll(T, UnrollFactor * S, LoopLevel, FullUnroll));
     }
   }
-  return TacListOrg;
+  return NewTacList;
 }

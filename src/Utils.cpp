@@ -1,14 +1,35 @@
-/**
- * File              : Utils.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Sáb 23 Nov 2019 10:51:03 MST
- * Last Modified Date: Lun 13 Xan 2020 19:35:31 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
+// MACVETH - Utils.cpp
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/Utils.h"
+#if __GNUC__ >= 8
 #include <filesystem>
-#include <llvm-10/llvm/ADT/APFloat.h>
+#else
+#include <experimental/filesystem>
+#endif
+#include "llvm/ADT/APFloat.h"
 
 using namespace macveth;
 
@@ -39,12 +60,9 @@ std::string Utils::getExePath() {
 
 //-------------------------------------------------------------
 template <typename T>
-bool Utils::contains(std::list<T> listOfElements, T element) {
-  // Find the iterator if element in list
-  auto it = std::find(listOfElements.begin(), listOfElements.end(), element);
-  // return if iterator points to end or not. It points to end then it
-  // means element does not exists in list
-  return it != listOfElements.end();
+bool Utils::contains(std::list<T> ListOfElements, T Element) {
+  return std::find(ListOfElements.begin(), ListOfElements.end(), Element) !=
+         ListOfElements.end();
 }
 
 //-------------------------------------------------------------
@@ -64,17 +82,50 @@ void Utils::setOpts(SourceManager *SO, LangOptions *LO, ASTContext *C) {
 }
 
 //-------------------------------------------------------------
-int64_t Utils::getIntFromExpr(const Expr *E, const ASTContext *C) {
+int64_t evaluateBinaryOperator(const BinaryOperator *OP) {
+  auto LHS = Utils::getIntFromExpr(OP->getLHS());
+  auto RHS = Utils::getIntFromExpr(OP->getRHS());
+  if ((LHS == -1) || (RHS == -1)) {
+    return -1;
+  }
+  switch (OP->getOpcode()) {
+  case BinaryOperator::Opcode::BO_Add:
+    return LHS + RHS;
+  case BinaryOperator::Opcode::BO_Sub:
+    return LHS - RHS;
+  case BinaryOperator::Opcode::BO_Mul:
+    return LHS * RHS;
+  default:
+    return LHS + RHS;
+  }
+}
+//-------------------------------------------------------------
+int64_t Utils::getIntFromExpr(const Expr *E) {
+  if (E == nullptr) {
+    return -1;
+  }
+  auto C = Utils::getCtx();
   clang::Expr::EvalResult R;
+  // First try general case
   if (E->EvaluateAsInt(R, *C)) {
     return R.Val.getInt().getExtValue();
+  }
+  // Reference to a variable already declared
+  if (auto D = dyn_cast<DeclRefExpr>(E->IgnoreImpCasts())) {
+    if (auto VD = dyn_cast<VarDecl>(D->getDecl())) {
+      return getIntFromExpr(VD->getInit());
+    }
+  }
+  // Reference to a variable already declared
+  if (auto BO = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
+    return evaluateBinaryOperator(BO);
   }
   return -1;
 }
 
 //-------------------------------------------------------------
 bool Utils::isNumericValue(Expr *E) {
-  ASTContext *C = Utils::getCtx();
+  auto C = Utils::getCtx();
   clang::Expr::EvalResult R;
   /// Is numeric if it can be evaluated as a integer
   if (E->EvaluateAsInt(R, *C)) {
@@ -91,20 +142,18 @@ bool Utils::isNumericValue(Expr *E) {
 
 //-------------------------------------------------------------
 std::string Utils::getStringFromStmt(const clang::Stmt *S) {
-  SourceManager *SM = Utils::getSourceMgr();
-  LangOptions *LO = Utils::getLangOpts();
-  clang::CharSourceRange CharRangeExpr =
+  auto SM = Utils::getSourceMgr();
+  auto LO = Utils::getLangOpts();
+  auto CharRangeExpr =
       clang::CharSourceRange::getTokenRange(S->getSourceRange());
-  std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO);
-  return Text;
+  return Lexer::getSourceText(CharRangeExpr, *SM, *LO).str();
 }
 
 //-------------------------------------------------------------
 std::string Utils::getStringFromExpr(const clang::Expr *E) {
-  SourceManager *SM = Utils::getSourceMgr();
-  LangOptions *LO = Utils::getLangOpts();
-  clang::CharSourceRange CharRangeExpr =
+  auto SM = Utils::getSourceMgr();
+  auto LO = Utils::getLangOpts();
+  auto CharRangeExpr =
       clang::CharSourceRange::getTokenRange(E->getSourceRange());
-  std::string Text = Lexer::getSourceText(CharRangeExpr, *SM, *LO);
-  return Text;
+  return Lexer::getSourceText(CharRangeExpr, *SM, *LO).str();
 }

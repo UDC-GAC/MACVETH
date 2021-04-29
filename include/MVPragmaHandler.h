@@ -1,14 +1,33 @@
-/**
- * File              : MVPragmaHandler.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Lun 06 Xan 2020 10:54:41 MST
- * Last Modified Date: Ven 20 Mar 2020 10:24:19 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
+// MACVETH - MVPragmaHandler.h
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #ifndef MACVETH_PRAGMAHANDLER_H
 #define MACVETH_PRAGMAHANDLER_H
 
+#include "include/Debug.h"
+#include "include/MVAssert.h"
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Parse/Parser.h"
@@ -31,15 +50,14 @@ struct ScopLoc {
 
   /// File identifier of the scop
   FileID FID;
-
   /// Start location of the pragma
   clang::SourceLocation Scop;
   /// End location of the pragma
   clang::SourceLocation EndScop;
-  unsigned StartLine;
-  unsigned EndLine;
-  unsigned Start;
-  unsigned End;
+  unsigned StartLine = 0;
+  unsigned EndLine = 0;
+  unsigned Start = 0;
+  unsigned End = 0;
   std::list<std::string> DimVisited = {};
   bool ScopHasBeenScanned = false;
 
@@ -62,7 +80,7 @@ struct ScopLoc {
   PragmaArgs PA;
 };
 
-/// List of pairs of #pragma macveth and #pragma macvethend Locations.
+/// List of pairs of #pragma macveth and #pragma endmacveth source locations
 struct ScopHandler {
   static inline std::vector<ScopLoc *> List;
 
@@ -92,7 +110,8 @@ struct ScopHandler {
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
     std::vector<ScopLoc *> SList;
     for (auto SL : List) {
-      if (SL->FID != SM.getFileID(fd->getBeginLoc())) {
+      auto FunctionFileID = SM.getFileID(fd->getLocation());
+      if (SL->FID != FunctionFileID) {
         continue;
       }
       unsigned int StartL = SM.getFileOffset(
@@ -119,7 +138,7 @@ struct ScopHandler {
   void addStart(SourceManager &SM, SourceLocation Start,
                 ScopLoc::PragmaArgs PA) {
     ScopLoc *Loc = new ScopLoc();
-    Utils::printDebug("MVPragmaHandler", "addStart");
+    MACVETH_DEBUG("MVPragmaHandler", "addStart");
     Loc->FID = SM.getFileID(Start);
     Loc->PA = PA;
     Loc->Scop = Start;
@@ -154,6 +173,9 @@ static IdentifierInfo *getValue(Token &token) {
   if (token.isNot(tok::identifier)) {
     return nullptr;
   }
+  if (token.getKind() == tok::eod) {
+    return nullptr;
+  }
   return token.getIdentifierInfo();
 }
 
@@ -161,11 +183,9 @@ static IdentifierInfo *getValue(Token &token) {
 static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
   ScopLoc::PragmaArgs PA;
   IdentifierInfo *II;
-  IdentifierInfo *IIPrev;
-  bool UnrollOptParsed = false;
-  bool DimensionFound = false;
   Token Tok;
   PP.Lex(Tok);
+  bool UnrollOptParsed = false;
   while ((II = getValue(Tok)) != nullptr) {
     PP.Lex(Tok);
     if (((II->isStr("nounroll")) || (II->isStr("unroll")) ||
@@ -174,7 +194,8 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
       assert(false &&
              "You can not specify twice unrolling options in the same scop!");
     }
-    // Check if unroll
+
+    // Check unroll options
     if (II->isStr("nounroll") || II->isStr("unrollandjam") ||
         II->isStr("unroll")) {
       PA.Unroll = (II->isStr("unrollandjam") || II->isStr("unroll"));
@@ -182,17 +203,19 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
       UnrollOptParsed = true;
       continue;
     }
-    // Check if no SIMD code
-    if (II->isStr("nosimd")) {
+
+    // Check whether MACVETH should emit SIMD code or just scalar code
+    if (II->isStr("scalar") || II->isStr("nosimd")) {
       PA.SIMDCode = false;
       continue;
     }
 
     // Otherwise it will be a unrolling dimension
     if ((!Tok.isLiteral())) {
-      // assert(false && "Bad format! Need an integer for the unrolling
-      // factor");
       auto IINext = getValue(Tok);
+      if (IINext == nullptr) {
+        MVErr("Pragma bad formatting");
+      }
       if (IINext->isStr("full")) {
         PA.FullUnroll[II->getName().str()] = true;
         PA.UnrollDim.push_back(
@@ -200,7 +223,7 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
         PP.Lex(Tok);
         continue;
       } else {
-        assert(false && "Something went wrong...");
+        MVErr("Pragmas bad syntax...");
       }
     }
 

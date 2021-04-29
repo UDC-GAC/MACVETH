@@ -1,10 +1,19 @@
+#==============================================================================#
+#                                                                              #
+#                            MACVETH sources                                   #
+#                                                                              #
+#==============================================================================#
+
+
+# FIXME: this is quite awful, right?
 # set of files to compile and create the library and this stuff
 file(GLOB MACVETH_SRC ${CMAKE_CURRENT_SOURCE_DIR}/*
-    ${CMAKE_CURRENT_SOURCE_DIR}/*/* ${CMAKE_CURRENT_SOURCE_DIR}/*/*/*)
+    ${CMAKE_CURRENT_SOURCE_DIR}/*/* ${CMAKE_CURRENT_SOURCE_DIR}/*/*/* ${CMAKE_CURRENT_SOURCE_DIR}/*/*/*/* ${CMAKE_CURRENT_SOURCE_DIR}/*/*/*/*/*)
 
 add_library(macveth_lib OBJECT ${MACVETH_SRC})
 
 target_include_directories(macveth_lib PUBLIC ../include ../)
+target_link_libraries(macveth_lib PUBLIC coverage_config)
 set_property(TARGET macveth_lib PROPERTY ENABLE_EXPORTS 1)
 
 install(TARGETS macveth_lib DESTINATION build)

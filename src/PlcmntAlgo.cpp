@@ -1,11 +1,30 @@
-/**
- * File              : PlcmntAlgo.cpp
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Sáb 29 Feb 2020 16:55:54 CET
- * Last Modified Date: Lun 02 Mar 2020 17:53:38 CET
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
+// MACVETH - PlcmntAlgo.cpp
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+
 #include "include/PlcmntAlgo.h"
+#include "include/Debug.h"
 #include "include/MVOptions.h"
 
 // ---------------------------------------------
@@ -57,7 +76,7 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   loop:
     for (auto In : S) {
       if (In == nullptr) {
-        Utils::printDebug("PlcmntAlgo", "Skipping");
+        MACVETH_DEBUG("PlcmntAlgo", "Skipping");
         continue;
       }
       // Since we are checking the inputs of a node, we are do not have to check
@@ -71,8 +90,25 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
           (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched)) &&
           ((R->getSchedInfo().TacID == (In->getSchedInfo().TacID)) ||
            R->getSchedInfo().Scop[0] == (In->getSchedInfo().Scop[0]))) {
-        Utils::printDebug("PlcmntAlgo",
-                          "Reduction found for " + In->getRegisterValue());
+
+        // FIXME: should we consider this or not...
+        // if ((R->getSchedInfo().TacID != In->getSchedInfo().TacID) &&
+        //     (R->getSchedInfo().Scop[0] == In->getSchedInfo().Scop[0])) {
+
+        //   // Corner case, e.g.:
+        //   // [0,1,2,3] and [2,3,4,5]
+        //   // There is no gain in doing 2,3 as reductions, better a gather or
+        //   // something
+        //   // if ((R->getSchedInfo().UnrollFactor) !=
+        //   //     (In->getSchedInfo().UnrollFactor)) {
+        //   //   continue;
+        //   // }
+        //   // Corner case, e.g.:
+        //   // [0,1,2,3] and [-1,1,4,5]
+        // }
+
+        MACVETH_DEBUG("PlcmntAlgo",
+                      "Reduction found for " + In->getRegisterValue());
         ReductionFound = true;
         Reduction.push_back(In);
         Visited.push_back(In);
@@ -102,6 +138,20 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
     Reduction.clear();
   }
   std::reverse(std::begin(*NL), std::end(*NL));
+  // if (LRedux.size() <= 2) {
+  //   for (auto R : LRedux) {
+  //     R->setNodeAsNonReduction();
+  //     for (auto RIn : R->getInputs()) {
+  //       if (RIn != nullptr) {
+  //         RIn->setNodeAsNonReduction();
+  //       }
+  //     }
+  //   }
+  //   NL->insert(NL->end(), LRedux.begin(), LRedux.end());
+  //   (*NL) = sortGraph(*NL);
+  //   // Undo reductions
+  //   LRedux.clear();
+  // }
   return LRedux;
 }
 
@@ -135,7 +185,7 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
           continue;
         } else {
           if (!(L.find_first_not_of("0123456789") == std::string::npos)) {
-            llvm::outs() << "CDAG input file is not correct!\n";
+            MACVETH_DEBUG("PlcmntAlgo", "CDAG input file is not correct!");
             llvm::llvm_unreachable_internal();
           }
           // Clang does not allow to perform any type of exception handling in
@@ -150,7 +200,7 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
       }
     }
   } else {
-    assert(false && "");
+    MACVETH_DEBUG("PlcmntAlgo", "CDAG input file can not be opened");
     llvm::llvm_unreachable_internal();
   }
   CF.close();

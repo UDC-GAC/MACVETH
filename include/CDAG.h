@@ -1,25 +1,44 @@
-/**
- * File              : CDAG.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Lun 09 Dec 2019 15:10:51 MST
- * Last Modified Date: Lun 13 Xan 2020 15:04:08 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
+// MACVETH - CDAG.h
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #ifndef MACVETH_CDAG_H
 #define MACVETH_CDAG_H
 
 #include "include/Node.h"
 #include "include/TAC.h"
-//#include "include/Vectorization/SIMD/SIMDGenerator.h"
 
 using namespace macveth;
 
 namespace macveth {
 
-/// The CDAG only holds a list of Nodes which are of type NODE_OP
+/// Computation Directed Acyclic Graph (CDAG).
+/// The CDAG is in charge of connecting nodes, detecting data races and,
+/// therefore, depencies
 class CDAG {
 public:
+  /// Structure for dependency mappings
   using DepMap = std::map<int, std::set<int>>;
 
   /// Given a list of TACs, create its correspondent CDAG
@@ -28,17 +47,16 @@ public:
   /// Compute cost model for a set of Nodes
   static int computeCostModel(Node::NodeListType NL);
 
-  /// Computer the free schedule, basically the topology order
+  /// Compute the free schedule or topology order
   static void computeFreeSchedule(CDAG *C);
 
-  /// Computer the free schedule, basically the topology order for a list or set
-  /// of Nodes
+  /// Compute the free schedule for a list of nodes (topology order)
   static void computeFreeSchedule(Node::NodeListType NL);
 
-  /// Compute WAR anti-dependencies for a given node
+  /// Compute WAR (anti-dependencies) for a given node
   Node *findWARDataRace(Node *N, Node::NodeListType NL);
 
-  /// Compute RAW dependencies for a given node
+  /// Compute RAW (data dependencies) for a given node
   Node *findRAWDataRace(Node *N, Node::NodeListType NL);
 
   /// Get the node of list registered for this CDAG
@@ -48,7 +66,7 @@ public:
   DepMap getWARs() { return this->MapWAR; }
 
 private:
-  /// Insert TAC instruction to the CDAG
+  /// Insert TAC abstraction to the CDAG
   Node *insertTac(TAC T, Node::NodeListType L);
   /// List of OP nodes
   Node::NodeListType NLOps;

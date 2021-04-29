@@ -1,17 +1,33 @@
-/**
- * File              : MVExprArray.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Xov 12 Dec 2019 10:03:14 MST
- * Last Modified Date: Mér 15 Xan 2020 12:07:59 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
+// MACVETH - MVExprArray.h
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #ifndef MACVETH_MVEXPRARRAY_H
 #define MACVETH_MVEXPRARRAY_H
 
 #include "include/MVExpr/MVExpr.h"
-#include <llvm-10/llvm/Support/Casting.h>
-#include <string.h>
+#include "llvm/Support/Casting.h"
 
 using namespace macveth;
 
@@ -26,7 +42,8 @@ public:
     MVAffineIndex *LHS = nullptr;
     /// Right part of the expression, if it has
     MVAffineIndex *RHS = nullptr;
-    /// Value of the expression (we do not care of its type, we handle strings)
+    /// FIXME: Value of the expression (we do not care of its type, we handle
+    /// strings)
     std::string Val = "";
     /// Unrolled
     std::map<std::string, bool> Unrolled;
@@ -74,6 +91,62 @@ public:
       }
     }
 
+    /// Main constructor
+    MVAffineIndex(const Expr *E) {
+      if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
+          dyn_cast<IntegerLiteral>(E->IgnoreImpCasts()) ||
+          dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
+        // This is useful for macros
+        auto ComputedValue = dyn_cast<IntegerLiteral>(E->IgnoreImpCasts());
+        if (ComputedValue) {
+          this->Val = std::to_string(Utils::getIntFromExpr(ComputedValue));
+        } else {
+          this->Val = Utils::getStringFromExpr(E);
+        }
+      }
+      if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
+        this->LHS = new MVAffineIndex(Op->getLHS());
+        this->LHS->simplifyIndex();
+        this->RHS = new MVAffineIndex(Op->getRHS());
+        this->RHS->simplifyIndex();
+        this->OP = Op->getOpcode();
+        this->Val = "";
+        this->simplifyIndex();
+      }
+      if (auto P = dyn_cast<ParenExpr>(E->IgnoreImpCasts())) {
+        auto PE = P->getSubExpr();
+        // FIXME: this is awful, prolly
+        if (dyn_cast<DeclRefExpr>(PE->IgnoreImpCasts()) ||
+            dyn_cast<IntegerLiteral>(PE->IgnoreImpCasts()) ||
+            dyn_cast<UnaryOperator>(PE->IgnoreImpCasts())) {
+          // This is useful for macros
+          auto ComputedValue = dyn_cast<IntegerLiteral>(PE->IgnoreImpCasts());
+          if (ComputedValue) {
+            this->Val = std::to_string(Utils::getIntFromExpr(ComputedValue));
+          } else {
+            this->Val = Utils::getStringFromExpr(PE);
+          }
+        }
+        if (auto Op = dyn_cast<BinaryOperator>(PE->IgnoreImpCasts())) {
+          this->LHS = new MVAffineIndex(Op->getLHS());
+          this->LHS->simplifyIndex();
+          this->RHS = new MVAffineIndex(Op->getRHS());
+          this->RHS->simplifyIndex();
+          this->OP = Op->getOpcode();
+          this->Val = "";
+          this->simplifyIndex();
+        }
+      }
+    }
+
+    /// Constructor when given only a string
+    MVAffineIndex(std::string S) {
+      this->LHS = nullptr;
+      this->RHS = nullptr;
+      this->Val = S;
+      this->Unrolled[S] = true;
+    }
+
     /// If we set a Val, then there it has no leaves
     void setVal(std::string Val) {
       this->Val = Val;
@@ -114,74 +187,85 @@ public:
       if (this->isTerminal()) {
         return;
       }
-      // Addition or substraction: E +/-
-      if ((this->OP == BinaryOperator::Opcode::BO_Add) ||
-          (this->OP == BinaryOperator::Opcode::BO_Sub)) {
-        if (this->LHS->isTerminal() && (this->LHS->Val == "0")) {
-          deleteLhs();
-          return;
-        }
-        if (this->RHS->isTerminal() && (this->RHS->Val == "0")) {
-          deleteRhs();
-          return;
-        }
-      }
-      // Multiplication: E * 0 or E * 1
-      if (this->OP == BinaryOperator::Opcode::BO_Mul) {
-        if ((this->LHS->isTerminal() && (this->LHS->Val == "0")) ||
-            (this->RHS->isTerminal() && (this->RHS->Val == "0"))) {
-          this->setVal("0");
-          return;
-        }
-        if (this->LHS->isTerminal() && (this->LHS->Val == "1")) {
-          deleteLhs();
-          return;
-        }
-        if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
-          deleteRhs();
-          return;
-        }
-      }
-      // Division: N / 1
-      if (this->OP == BinaryOperator::Opcode::BO_Div) {
-        if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
-          deleteRhs();
-          return;
-        }
-      }
-    }
+      // FIXME: this brings me a lot of pain
+      // // Addition or substraction: E +/-
+      // if ((this->OP == BinaryOperator::Opcode::BO_Add) ||
+      //     (this->OP == BinaryOperator::Opcode::BO_Sub)) {
+      //   if (this->LHS->isTerminal() && (this->LHS->Val == "0")) {
+      //     deleteLhs();
+      //     return;
+      //   }
+      //   if (this->RHS->isTerminal() && (this->RHS->Val == "0")) {
+      //     deleteRhs();
+      //     return;
+      //   }
+      // }
+      // // Multiplication: E * 0 or E * 1
+      // if (this->OP == BinaryOperator::Opcode::BO_Mul) {
+      //   if ((this->LHS->isTerminal() && (this->LHS->Val == "0")) ||
+      //       (this->RHS->isTerminal() && (this->RHS->Val == "0"))) {
+      //     this->setVal("0");
+      //     return;
+      //   }
+      //   if (this->LHS->isTerminal() && (this->LHS->Val == "1")) {
+      //     deleteLhs();
+      //     return;
+      //   }
+      //   if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
+      //     deleteRhs();
+      //     return;
+      //   }
+      // }
+      // // Division: N / 1
+      // if (this->OP == BinaryOperator::Opcode::BO_Div) {
+      //   if (this->RHS->isTerminal() && (this->RHS->Val == "1")) {
+      //     deleteRhs();
+      //     return;
+      //   }
+      // }
 
-    /// Main constructor
-    MVAffineIndex(const Expr *E) {
-      if (dyn_cast<DeclRefExpr>(E->IgnoreImpCasts()) ||
-          dyn_cast<IntegerLiteral>(E->IgnoreImpCasts()) ||
-          dyn_cast<UnaryOperator>(E->IgnoreImpCasts())) {
-        this->Val = Utils::getStringFromExpr(E);
-        this->LHS = nullptr;
-        this->RHS = nullptr;
+      if (this->RHS->isTerminal() && this->LHS->isTerminal()) {
+        char *P0 = nullptr, *P1 = nullptr;
+        auto LVal = this->LHS->Val;
+        auto RVal = this->RHS->Val;
+        auto I0 = strtol(LVal.c_str(), &P0, 10);
+        auto I1 = strtol(RVal.c_str(), &P1, 10);
+        auto IsANumber = !((*P0) || (*P1));
+        if (!IsANumber) {
+          return;
+        }
+        if (this->OP == BinaryOperator::Opcode::BO_Add) {
+          auto Val = I0 + I1;
+          this->setVal(std::to_string(Val));
+          return;
+        }
+        if (this->OP == BinaryOperator::Opcode::BO_Sub) {
+          auto Val = I0 - I1;
+          this->setVal(std::to_string(Val));
+          return;
+        }
+        if (this->OP == BinaryOperator::Opcode::BO_Mul) {
+          auto Val = I0 * I1;
+          this->setVal(std::to_string(Val));
+          return;
+        }
+        if (this->OP == BinaryOperator::Opcode::BO_Div) {
+          auto Val = I0 / I1;
+          this->setVal(std::to_string(Val));
+          return;
+        }
       }
-      if (auto Op = dyn_cast<BinaryOperator>(E->IgnoreImpCasts())) {
-        this->LHS = new MVAffineIndex(Op->getLHS());
-        this->LHS->simplifyIndex();
-        this->RHS = new MVAffineIndex(Op->getRHS());
-        this->RHS->simplifyIndex();
-        this->OP = Op->getOpcode();
-        this->Val = "";
-        this->simplifyIndex();
-      }
-    }
-
-    /// Constructor when given only a string
-    MVAffineIndex(std::string S) {
-      this->LHS = nullptr;
-      this->RHS = nullptr;
-      this->Val = S;
-      this->Unrolled[S] = true;
     }
 
     /// Update index recursively
-    bool updateIndex(int UF, std::string LL) {
+    bool updateIndex(int UF, std::string LL, bool SubstituteVal) {
       if ((isTerminal()) && (LL != this->Val)) {
+        return false;
+      }
+
+      if ((isTerminal()) && (LL == this->Val) && !Unrolled[LL] &&
+          SubstituteVal) {
+        this->Val = std::to_string(UF);
         return false;
       }
 
@@ -199,29 +283,54 @@ public:
         return true;
       }
       if (this->LHS != nullptr) {
-        if (this->LHS->updateIndex(UF, LL)) {
+        if (this->LHS->updateIndex(UF, LL, SubstituteVal)) {
           this->LHS->RHS = new MVAffineIndex(std::to_string(UF));
+        } else {
+          this->simplifyIndex();
         }
       }
       if (this->RHS != nullptr) {
-        if (this->RHS->updateIndex(UF, LL)) {
+        if (this->RHS->updateIndex(UF, LL, SubstituteVal)) {
           this->RHS->RHS = new MVAffineIndex(std::to_string(UF));
+        } else {
+          this->simplifyIndex();
         }
       }
       return false;
     }
 
     // This is awful, but should do the job. Recursive functions as a way of
-    // life lol xd
+    // life lol xd.
+    // PS 1: Author of this code should be in jail... oh, wait.
+    // PS 2: How taught me how to program? He/she/it did it wrong
+    // PS 3 (some months later): kill me please
     int operator-(const MVAffineIndex &M) {
       if (!this->isTerminal()) {
         if (M.OP != this->OP) {
           return INT_MIN;
         }
-        auto Lhs = ((*this->LHS) - (*M.LHS));
-        auto Rhs = ((*this->RHS) - (*M.RHS));
-        auto StrLhs = std::to_string(Lhs);
-        auto StrRhs = std::to_string(Rhs);
+
+        auto MLHS = M.LHS;
+        auto MRHS = M.RHS;
+        if (MLHS == nullptr) {
+          if ((this->OP == BinaryOperator::Opcode::BO_Add) ||
+              (this->OP == BinaryOperator::Opcode::BO_Sub)) {
+            MLHS = new MVAffineIndex("0");
+          } else {
+            MLHS = new MVAffineIndex("1");
+          }
+        }
+        if (MRHS == nullptr) {
+          if ((this->OP == BinaryOperator::Opcode::BO_Add) ||
+              (this->OP == BinaryOperator::Opcode::BO_Sub)) {
+            MRHS = new MVAffineIndex("0");
+          } else {
+            MRHS = new MVAffineIndex("1");
+          }
+        }
+
+        auto Lhs = ((*this->LHS) - (*MLHS));
+        auto Rhs = ((*this->RHS) - (*MRHS));
         if ((Lhs == INT_MIN + 2) || (Rhs == INT_MIN + 2)) {
           return INT_MIN;
         } else {
@@ -252,14 +361,22 @@ public:
         }
       } else {
         char *P0 = nullptr, *P1 = nullptr;
-        auto I0 = strtol(M.Val.c_str(), &P0, 10);
-        auto I1 = strtol(this->Val.c_str(), &P1, 10);
+        bool SameVal = (M.Val == this->Val);
+        long I0 = strtol(M.Val.c_str(), &P0, 10);
+        long I1 = strtol(this->Val.c_str(), &P1, 10);
         auto IsANumber = !((*P0) || (*P1));
-        auto SameVal = M.Val == this->Val;
+        auto LIsANumber = !(*P0);
+        auto RIsANumber = !(*P1);
         if (SameVal) {
           return 0;
         }
         if (!IsANumber) {
+          if (LIsANumber) {
+            return I0;
+          }
+          if (RIsANumber) {
+            return I1;
+          }
           return INT_MIN + 2;
         }
         return I1 - I0;
@@ -299,6 +416,7 @@ public:
       this->BaseName = Utils::getStringFromExpr(TmpExpr);
       return;
     }
+    MACVETH_DEBUG("MVExprArray", "This is not a std::vector nor array[]");
     llvm::llvm_unreachable_internal();
   }
 
@@ -327,9 +445,19 @@ public:
     return T;
   }
 
+  /// FIXME: this is garbage
+  std::string toStringWithOffset(int Offset) {
+    std::string T = this->BaseName;
+    for (auto I : this->Idx) {
+      T += "[" + I.toString() + " + (" + std::to_string(Offset) + ")]";
+    }
+    return T;
+  }
+
   /// Implementation of unrolling for arrays. In this case we will need to
   /// create a new MVExpr
-  virtual MVExpr *unrollExpr(int UF, std::string LL) override;
+  virtual MVExpr *unrollExpr(int UF, std::string LL,
+                             bool SubstituteVal = false) override;
 
   /// As we may not know the total size of the array at compilation time, we
   /// can only know the difference between two indices
@@ -348,7 +476,7 @@ public:
 private:
   /// Given a dimension LL and a unrolling factor UF, regenerates the expression
   /// with the indexes updated
-  void updateIndex(int UF, std::string LL);
+  void updateIndex(int UF, std::string LL, bool SubstituteVal = false);
   /// Given a ArraySubscriptExpr, recursively gets the base name and the indexes
   /// from the outermost to the innermost
   const Expr *getArrayBaseExprAndIdxs(const ArraySubscriptExpr *ASE,

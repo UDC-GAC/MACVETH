@@ -1,42 +1,36 @@
-/**
- * File					 : src/CDAG.cpp
- * Author				 : Marcos Horro
- * Date					 : Wed 08 Apr 2020 01:00 +02:00
- *
- * Last Modified : Thu 11 Jun 2020 11:13 +02:00
- * Modified By	 : Marcos Horro (marcos.horro@udc.gal>)
- *
- * MIT License
- *
- * Copyright (c) 2020 Colorado State University
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+// MACVETH - CDAG.cpp
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
 
 #include "include/CDAG.h"
+#include "include/Debug.h"
 #include "include/PlcmntAlgo.h"
 #include "include/Utils.h"
-#include "include/Vectorization/SIMD/SIMDGeneratorFactory.h"
 #include "include/Vectorization/VectorIR.h"
 #include "clang/AST/Expr.h"
-#include <llvm-10/llvm/Support/ErrorHandling.h>
-#include <llvm-10/llvm/Support/raw_ostream.h>
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/raw_ostream.h"
 #include <stdexcept>
 
 using namespace macveth;
@@ -87,35 +81,33 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
     // Assumption: a = b op c, c is always the "connector"
     auto N = Node::findOutputNode(T.getC()->getExprStr(), L);
     if (N == nullptr) {
-      Utils::printDebug("CDAG/NODE",
-                        "no output found = " + T.getC()->getExprStr());
+      MACVETH_DEBUG("CDAG/NODE", "no output found = " + T.getC()->getExprStr());
       goto no_output;
     }
-    Utils::printDebug("CDAG/NODE", "output found = " + T.getA()->getExprStr());
+    MACVETH_DEBUG("CDAG/NODE", "output found = " + T.getA()->getExprStr());
     N->setOutputExpr(T.getA());
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
     auto WarNode = findWARDataRace(N, this->NLOps);
-    auto RawNode = findRAWDataRace(N, this->NLOps);
+    // auto RawNode = findRAWDataRace(N, this->NLOps);
     if (WarNode != nullptr) {
-      Utils::printDebug("CDAG/NODE",
-                        "WAR found = " + WarNode->getRegisterValue() + "; " +
-                            WarNode->getSchedInfoStr());
+      MACVETH_DEBUG("CDAG/NODE", "WAR found = " + WarNode->getRegisterValue() +
+                                     "; " + WarNode->getSchedInfoStr());
       N->setFreeSchedInfo(WarNode->getSchedInfo().FreeSched + 1);
     }
     return nullptr;
   }
 no_output:
   auto NewNode = new Node(T, L);
-  auto WarNode = findWARDataRace(NewNode, this->NLOps);
+  // auto WarNode = findWARDataRace(NewNode, this->NLOps);
   auto RawNode = findRAWDataRace(NewNode, this->NLOps);
 
   PlcmntAlgo::computeFreeSchedule(NewNode);
   NewNode->setFreeSchedInfo(
       std::max(NewNode->getSchedInfo().FreeSched,
                (RawNode == nullptr) ? 0 : RawNode->getSchedInfo().FreeSched));
-  Utils::printDebug("CDAG/NODE", "new node = " + T.toString() + "; " +
-                                     NewNode->getSchedInfoStr());
+  MACVETH_DEBUG("CDAG/NODE", "new node = " + T.toString() + "; " +
+                                 NewNode->getSchedInfoStr());
   this->NLOps.push_back(NewNode);
   return NewNode;
 }
@@ -133,20 +125,21 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
     // connections between the inputs and outputs. Actually we are looking
     // for outputs of of already connected Nodes that match the input of this
     // new NODE_OP. Looking for inputs
-    Node *PrevNode = G->insertTac(T, G->getNodeListOps());
+    // Node *PrevNode = G->insertTac(T, G->getNodeListOps());
+    G->insertTac(T, G->getNodeListOps());
   }
 
   for (auto R : G->MapRAW) {
-    Utils::printDebug("CDAG", "RAW for TAC = " + std::to_string(R.first));
+    MACVETH_DEBUG("CDAG", "RAW for TAC = " + std::to_string(R.first));
     for (auto RAW : R.second) {
-      Utils::printDebug("CDAG", "\t TAC = " + std::to_string(RAW));
+      MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
     }
   }
 
   for (auto R : G->MapWAR) {
-    Utils::printDebug("CDAG", "WAR for TAC = " + std::to_string(R.first));
+    MACVETH_DEBUG("CDAG", "WAR for TAC = " + std::to_string(R.first));
     for (auto RAW : R.second) {
-      Utils::printDebug("CDAG", "\t TAC = " + std::to_string(RAW));
+      MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
     }
   }
 

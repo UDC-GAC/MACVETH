@@ -1,10 +1,28 @@
-/**
- * File              : MVExprLiteral.h
- * Author            : Marcos Horro <marcos.horro@udc.gal>
- * Date              : Xov 12 Dec 2019 10:05:57 MST
- * Last Modified Date: Xov 09 Xan 2020 21:34:48 MST
- * Last Modified By  : Marcos Horro <marcos.horro@udc.gal>
- */
+// MACVETH - MVExprLiteral.h
+//
+// Copyright (c) Colorado State University. 2019-2021
+// Copyright (c) Universidade da Coruña. 2020-2021
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors:
+//     Marcos Horro <marcos.horro@udc.es>
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Gabriel Rodríguez <grodriguez@udc.es>
+//
+// Contact:
+//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+
 #ifndef MACVETH_MVEXPRLITERAL_H
 #define MACVETH_MVEXPRLITERAL_H
 
@@ -27,7 +45,8 @@ public:
   MVExprLiteral(Expr *E) : MVExpr(MVK_Literal, E) {}
 
   /// Unroll expression
-  virtual MVExpr *unrollExpr(int UF, std::string LL);
+  virtual MVExpr *unrollExpr(int UF, std::string LL,
+                             bool SubstituteVal = false);
 
   /// To string
   virtual std::string toString() const {

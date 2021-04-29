@@ -1,0 +1,18 @@
+This chapter is structured as follows.
+\section{Front-end}
+\section{Middle-end}
+\section{Back-end}
+In order to synthesize the vector operations gathered in the VectorIR, there
+must exists a target-specific backend for each ISA. MACVETH disposes a general
+interface called \texttt{SIMDBackEnd}. This interface must be
+implemented by each architecture and/or ISA in order to generate
+target-specific code for each machine or system.
+
+Furthermore, each backend has a table with costs for all instructions and 
+operations, and their intrinsics equivalence, if they have. This table is 
+generated from data gathered in~\cite{bib:uops} and~\cite{bib:intrinsics}. 
+Thus, data for each ISA and architecture are provided to the compiler in 
+separate files. It is at runtime when compiler decides what file to read.
+\section{Cost Table}
+\section{Testing}
+\section{Deployment}
