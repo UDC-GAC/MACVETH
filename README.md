@@ -32,14 +32,16 @@ Intrinsics for 'packed-single'. Same way, the shape of Psi greek letter has
 three fleurons, as the Three Witches in the very first Act of the tragedy (or
 is this too twisted?).
 
-## Main dependencies:
+## Environments tested:
 
-- Clang/LLVM >= 10.0.0
-  - Maybe the latest version is not compatible the day after its release,
-    due to obvious reasons.
+- Clang/LLVM >= 11
 - CMake >= 3.12
 - GNU/GCC >= 8.3.0
 - Doxygen >= 1.8.13
+- lcov >= 1.14
+
+For Clang/LLVM sources are needed. If using Ubuntu/Debian, you can add them by
+just installing `*-dev` versions.
 
 ### How to build and install LLVM/Clang:
 
@@ -171,16 +173,16 @@ A program can hold different scops, even a function, but scops can never be nest
 
 Available options for scops are:
 
-    - unroll_factor [var0 val0] [[var1 val1] [...]]: explicitly tell the compiler the
+    - unroll [var0 val0] [[var1 val1] [...]]: explicitly tell the compiler the
     unroll factor of each dimension of the nested loop/s. val# can be either 'full'
     or a positive integer. This is the default option so it does not have to be explicit.
 
     - nounroll: avoid unrolling the code within. This may be useful if we have
-    a irregular code and we just want to vectorize it.
+    a irregular code and we just want to vectorize it. This has the same behavior as unrolling with factor 1.
 
     - unroll_and_jam: perform unroll-and-jam in the loops within the scop.
 
-    - scalar: do not generate SIMD code; useful, for instance, for only unrolling code.
+    - scalar/nosimd: do not generate SIMD code; useful, for instance, for only unrolling code.
 
 Pragmas to be implemented (soon):
 
