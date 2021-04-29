@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# -e: exit on command error
-#set -eo pipefail
-
 # Reading arguments
 testing=$1
 
@@ -19,13 +16,10 @@ cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-8 -DCMAKE_C_COMPILER=gcc
 # using cmake: cmake --build . --config Debug -- -j8
 make -j4
 
-# Whether perform testing or not
-if [[ $testing == "testing" ]]; then
-    # Testing is performed using CTest, taking full advantage of CMake suite.
-    # Therefore, testing can be called either using Makefile or ctest. For
-    # simplicity, I think using Makefile is better, as there are no input
-    # parameters, only make test. Anyways, ctest could be done using something like:
-    # OMP_NUM_THREADS=1 ctest --rerun-failed
-    ctest
-    [ $? -eq 0 ] && echo "TESTING command was successful" || exit 1
-fi
+# Testing is performed using CTest, taking full advantage of CMake suite.
+# Therefore, testing can be called either using Makefile or ctest. For
+# simplicity, I think using Makefile is better, as there are no input
+# parameters, only make test. Anyways, ctest could be done using something like:
+# OMP_NUM_THREADS=1 ctest --rerun-failed
+ctest
+[ $? -eq 0 ] && echo "TESTING command was successful" || exit 1
