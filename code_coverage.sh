@@ -2,12 +2,15 @@
 
 cd build
 
+# Important note:
+# For GCC >= 8.x needed lcov 1.14>=. Also important: need to match gcov version
+# to GCC version used for compiling
 { read x y z version ; } < <(lcov --version)
-if (( $version < 1.14 )) then
+if [[ $version < 1.14 ]]; then
     mkdir tmp && cd tmp
     wget http://mirrors.kernel.org/ubuntu/pool/universe/l/lcov/lcov_1.14-2_all.deb
     sudo dpkg -i lcov_1.14-2_all.deb
-    if (( $? != 0 )) then
+    if [[ $? != 0 ]]; then
         sudo apt --fix-broken install -y
         sudo dpkg -i lcov_1.14-2_all.deb
     fi
@@ -15,7 +18,7 @@ if (( $version < 1.14 )) then
     rm -Rf tmp
 fi
 # Create lcov report: capture coverage info
-lcov --directory . --capture --output-file coverage.info --gcov-tool gcov-9
+lcov --directory . --capture --output-file coverage.info --gcov-tool gcov-8
 # filter out system and extra files.
 # To also not include test code in coverage add them with full path to the patterns: '*/tests/*'
 lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' --output-file coverage.info
