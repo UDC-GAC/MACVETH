@@ -5,7 +5,7 @@
 # MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors in HPC
 
 [![Build Status][travis-badge]][travis-link]
-[![codecov][codecov-badge]][codecov-link]
+[![codecov](https://codecov.io/gh/markoshorro/MACVETH/branch/master/graph/badge.svg?token=BRvGSUAVby)](https://codecov.io/gh/markoshorro/MACVETH)
 [![License: MIT][mit-badge]][mit-link]
 
 Main authors (refer to [License](#license) section for further details):
