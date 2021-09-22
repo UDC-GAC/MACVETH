@@ -17,11 +17,11 @@
 //
 // Authors:
 //     Marcos Horro <marcos.horro@udc.es>
-//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Louis-Noël Pouchet <pouchet@colostate.edu>
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #ifndef MACVETH_VECTORIR_H
 #define MACVETH_VECTORIR_H
@@ -166,13 +166,9 @@ public:
       return DType;
     }
 
-    bool isDouble() {
-      return DType == MVDataType::VDataType::DOUBLE;
-    }
+    bool isDouble() { return DType == MVDataType::VDataType::DOUBLE; }
 
-    bool isFloat() {
-      return DType == MVDataType::VDataType::FLOAT;
-    }
+    bool isFloat() { return DType == MVDataType::VDataType::FLOAT; }
 
     /// Return name of VOperand
     std::string getName() { return this->Name; }

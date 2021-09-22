@@ -17,17 +17,17 @@
 //
 // Authors:
 //     Marcos Horro <marcos.horro@udc.es>
-//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Louis-Noël Pouchet <pouchet@colostate.edu>
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #ifndef MACVETH_CONFIG_FILE_H
 #define MACVETH_CONFIG_FILE_H
 
-#define MACVETH_VERSION_MAJOR @MACVETH_VERSION_MAJOR@
-#define MACVETH_VERSION_MINOR @MACVETH_VERSION_MINOR@
-#define MACVETH_VERSION_PATCH @MACVETH_VERSION_PATCH@
+#define MACVETH_VERSION_MAJOR @MACVETH_VERSION_MAJOR @
+#define MACVETH_VERSION_MINOR @MACVETH_VERSION_MINOR @
+#define MACVETH_VERSION_PATCH @MACVETH_VERSION_PATCH @
 
 #endif /* !MACVETH_CONFIG_FILE_H */

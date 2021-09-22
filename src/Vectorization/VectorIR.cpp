@@ -17,11 +17,11 @@
 //
 // Authors:
 //     Marcos Horro <marcos.horro@udc.es>
-//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Louis-Noël Pouchet <pouchet@colostate.edu>
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #include "include/Vectorization/VectorIR.h"
 #include "include/Debug.h"
@@ -348,7 +348,6 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
       this->LowBits = true;
     }
   }
-
 };
 
 // ---------------------------------------------

@@ -17,11 +17,11 @@
 //
 // Authors:
 //     Marcos Horro <marcos.horro@udc.es>
-//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Louis-Noël Pouchet <pouchet@colostate.edu>
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Nöel Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #ifndef MACVETH_SOURCELOCATION_H
 #define MACVETH_SOURCELOCATION_H
