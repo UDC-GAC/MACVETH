@@ -59,11 +59,10 @@ endif()
 # Check if Doxygen is installed
 option(GENERATE_DOC "Generate documentation with Doxygen" OFF)
 
-# dot requirements:
-# https://github.com/labapart/gattlib/issues/129#issuecomment-609394695
-find_package(Doxygen REQUIRED dot)
-
 if ((CMAKE_BUILD_TYPE MATCHES Debug) AND GENERATE_DOC)
+    # dot requirements:
+    # https://github.com/labapart/gattlib/issues/129#issuecomment-609394695
+    find_package(Doxygen REQUIRED dot)
     # set input and output files
     set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.cfg)
     set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
