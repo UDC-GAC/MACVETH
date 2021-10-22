@@ -38,15 +38,16 @@ jobs:
       #   with:
       #     version: ${{ matrix.llvm }}
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
+      # - name: Setup tmate session
+      #   uses: mxschmitt/action-tmate@v3
 
       - name: Install LLVM from ATP
         run: |
+          sudo apt update
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm-sh ${{ matrix.llvm }}
-      - name: Install libClang
+          sudo ./llvm.sh ${{ matrix.llvm }}
+      - name: Install all Clang dependencies
         run: sudo apt install clang-${{ matrix.llvm }} \
           clang-tools-${{ matrix.llvm }} clang-${{ matrix.llvm }}-doc\
           libclang-common-${{ matrix.llvm }}-dev\
