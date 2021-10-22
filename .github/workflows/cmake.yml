@@ -49,7 +49,7 @@ jobs:
           sudo ./llvm.sh ${{ matrix.llvm }}
       - name: Install all Clang dependencies
         run: |
-          sudo apt update && apt install clang-tools-${{ matrix.llvm }} clang-${{ matrix.llvm }}-doc\
+          sudo apt update && sudo apt install clang-tools-${{ matrix.llvm }} clang-${{ matrix.llvm }}-doc\
           libclang-${{ matrix.llvm }}-dev
 
       - name: Configure CMake
