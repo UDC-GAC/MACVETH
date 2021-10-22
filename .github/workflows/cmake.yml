@@ -48,11 +48,9 @@ jobs:
           chmod +x llvm.sh
           sudo ./llvm.sh ${{ matrix.llvm }}
       - name: Install all Clang dependencies
-        run: sudo apt install clang-${{ matrix.llvm }} \
-          clang-tools-${{ matrix.llvm }} clang-${{ matrix.llvm }}-doc\
-          libclang-common-${{ matrix.llvm }}-dev\
-          libclang-${{ matrix.llvm }}-dev libclang1-${{ matrix.llvm }}\
-          clang-format-${{ matrix.llvm }} clangd-${{ matrix.llvm }}
+        run: |
+          sudo apt update && apt install clang-tools-${{ matrix.llvm }} clang-${{ matrix.llvm }}-doc\
+          libclang-${{ matrix.llvm }}-dev
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
