@@ -23,7 +23,7 @@ jobs:
         #gcc: [10, 11]
         gcc: [10]
         #llvm: ["11.0.0", "12.0.0"]
-        llvm: ["11.0.0", "12.0.0"]
+        llvm: [12, 13]
         os: [ubuntu-18.04, ubuntu-20.04]
 
     steps:
@@ -33,13 +33,18 @@ jobs:
           CXX: g++-${{ matrix.gcc }}
           BUILD_TYPE: Release
 
-      - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1.4.1
-        with:
-          version: ${{ matrix.llvm }}
+      # - name: Install LLVM and Clang
+      #   uses: KyleMayes/install-llvm-action@v1.4.1
+      #   with:
+      #     version: ${{ matrix.llvm }}
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
+      # - name: Setup tmate session
+      #   uses: mxschmitt/action-tmate@v3
+
+      - name: Install LLVM from ATP
+        run: wget https://apt.llvm.org/llvm.sh; chmod +x llvm.sh; sudo ./llvm-sh ${{ matrix.llvm }}
+      - name: Install libClang
+        run: sudo apt install clang-${{ matrix.llvm }} clang-tools-${{ matrix.llvm }} clang-${{ matrix.llvm }}-doc libclang-common-${{ matrix.llvm }}-dev libclang-${{ matrix.llvm }}-dev libclang1-${{ matrix.llvm }} clang-format-${{ matrix.llvm }} clangd-${{ matrix.llvm }}
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -49,8 +54,8 @@ jobs:
       - name: Build MACVETH
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-        env:
-          LIBRARY_PATH: "${{ env.LLVM_PATH }}/lib"
+        # env:
+        #   LIBRARY_PATH: "${{ env.LLVM_PATH }}/lib"
 
       - name: Test
         working-directory: ${{github.workspace}}/build
