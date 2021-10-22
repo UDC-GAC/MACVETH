@@ -313,7 +313,11 @@ static bool formatMACVETH(StringRef FileName) {
   }
 
   unsigned CursorPosition = 0;
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 12)
+  FormatStyle->SortIncludes = clang::format::FormatStyle::SI_CaseSensitive;
+#else
   FormatStyle->SortIncludes = true;
+#endif
   Replacements Replaces = clang::format::sortIncludes(
       *FormatStyle, Code->getBuffer(), Ranges, FileName, &CursorPosition);
   auto ChangedCode = tooling::applyAllReplacements(Code->getBuffer(), Replaces);
@@ -360,7 +364,11 @@ void MVFrontendAction::EndSourceFileAction() {
   auto &SM = TheRewriter.getSourceMgr();
   std::error_code ErrorCode;
   auto OutFileName = Utils::getExePath() + MVOptions::OutFile;
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 12)
+  llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::OF_None);
+#else
   llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
+#endif
   // According to [1] it is not safe to do .write(). Nonetheless, I have not
   // found any other way to save a RewriterBuffer onto another file.
   // [1] (as of 16th November 2020)

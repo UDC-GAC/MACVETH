@@ -134,7 +134,7 @@ endif()
 # path returned by your llvm-config --cmakedir
 
 # This list must be in descendant order. This is just a hack...
-set(TESTED_LLVM_MAJOR 12 11)
+set(TESTED_LLVM_MAJOR 14 13 12 11)
 set(TESTED_LLVM_MINOR 1 0)
 set(TESTED_LLVM_PATCH 1 0)
 foreach(LLVM_COMP_MAJOR ${TESTED_LLVM_MAJOR})
@@ -159,8 +159,8 @@ endforeach()
 
 # LLVM not found in any version.
 if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 0)
-    message(FATAL_ERROR "Please, install LLVM/Clang >= 11.x")
-    message(FATAL_ERROR "Consider installing llvm-VERSION-dev if you are in Debian/Ubuntu")
+    message(FATAL_ERROR  "Please, install LLVM/Clang >= 11.x\n"
+    "Consider installing llvm-VERSION-dev if you are in Debian/Ubuntu")
 endif()
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

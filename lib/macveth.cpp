@@ -28,6 +28,7 @@
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
+#include "clang/Frontend/FrontendActions.h"
 #include "clang/Format/Format.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
@@ -236,7 +237,17 @@ int main(int argc, const char **argv) {
   }
 
   // Parser for options common to all cmd-line Clang tools
+#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 12)
+  auto Result = CommonOptionsParser::create(argc, argv, MacvethCategory);
+  if (auto E = Result.takeError()) {
+    std::cout << "Something went wrong when parsing options..."
+              << std::endl;
+    return 0;
+  }
+  auto Op = std::move(*Result);
+#else
   CommonOptionsParser Op(argc, argv, MacvethCategory);
+#endif
 
   // Utility to run a FrontendAction over a set of files
   // * getCompilations(): contains compile cmd lines for the given source
