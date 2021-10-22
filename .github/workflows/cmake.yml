@@ -32,7 +32,7 @@ jobs:
           CC: gcc-${{ matrix.gcc }}
           CXX: g++-${{ matrix.gcc }}
           BUILD_TYPE: Release
-          LIBRARY_PATH: "$HOME/work/MACVETH/MACVETH/lib"
+
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1.4.1
         with:
@@ -46,9 +46,11 @@ jobs:
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
-      - name: Build
+      - name: Build MACVETH
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        env:
+          LIBRARY_PATH: "{{ env.LLVM_PATH }}/lib"
 
       - name: Test
         working-directory: ${{github.workspace}}/build
