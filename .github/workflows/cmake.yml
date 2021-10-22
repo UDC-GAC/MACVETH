@@ -50,7 +50,7 @@ jobs:
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
         env:
-          LIBRARY_PATH: "{{ env.LLVM_PATH }}/lib"
+          LIBRARY_PATH: "${{ env.LLVM_PATH }}/lib"
 
       - name: Test
         working-directory: ${{github.workspace}}/build
