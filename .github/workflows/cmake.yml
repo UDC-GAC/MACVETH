@@ -30,7 +30,8 @@ jobs:
           CC: gcc-${{ matrix.gcc }}
           CXX: g++-${{ matrix.gcc }}
           BUILD_TYPE: Release
-
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1.4.1
         with:
