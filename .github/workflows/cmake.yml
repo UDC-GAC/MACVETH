@@ -57,3 +57,13 @@ jobs:
         # detail
         if: ${{ matrix.build_type == 'Debug' }}
         run: ctest -C ${{env.BUILD_TYPE}}
+
+      - name: Code coverage.
+        working-directory: ${{github.workspace}}/
+        # Execute tests defined by the CMake configuration.
+        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more
+        # detail
+        if: ${{ matrix.build_type == 'Debug' }}
+        run: |
+          chmod +x code_coverage.sh
+          ./code_coverage.sh

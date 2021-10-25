@@ -1,10 +1,9 @@
 <p align="center">
-  <img src="https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg">
+  <img src="https://raw.githubusercontent.com/markoshorro/MACVETH/master/docs/report/img/MACVETHLOGO.svg?token=ABHMITHSQHUB2GWFSJJ4LCTBP64P6">
 </p>
 
 # MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors in HPC
-
-[![Build Status][travis-badge]][travis-link]
+[![CMake Compilation and Test](https://github.com/markoshorro/MACVETH/actions/workflows/cmake.yml/badge.svg)](https://github.com/markoshorro/MACVETH/actions/workflows/cmake.yml)
 [![codecov](https://codecov.io/gh/markoshorro/MACVETH/branch/master/graph/badge.svg?token=BRvGSUAVby)](https://codecov.io/gh/markoshorro/MACVETH)
 [![License: MIT][mit-badge]][mit-link]
 
