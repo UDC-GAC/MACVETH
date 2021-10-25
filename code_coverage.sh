@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 cd build
 
 # Important note:
@@ -18,7 +20,7 @@ if [[ $version < 1.14 ]]; then
     rm -Rf tmp
 fi
 # Create lcov report: capture coverage info
-lcov --directory . --capture --output-file coverage.info --gcov-tool gcov-8
+lcov --directory . --capture --output-file coverage.info --gcov-tool gcov
 # filter out system and extra files.
 # To also not include test code in coverage add them with full path to the patterns: '*/tests/*'
 lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' --output-file coverage.info
