@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 cd build
 
 # Important note:

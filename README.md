@@ -59,7 +59,7 @@ Simple guide to get started with the compiler.
 
 ### Compilation of the project:
 
-Recommended steps for a clean building of the project (Linux):
+Recommended steps for a clean building of the project (for Linux systems):
 
 ```
 $> mkdir -p build && cd build
@@ -74,6 +74,8 @@ environment variables set with, at least, the path for LLVM/Clang's libraries.
 
 These steps will create an executable in the same folder called `macveth`, and also
 will create a symbolic link to its executable.
+
+You have also an example script with these tasks in [`build.sh`](build.sh).
 
 ### Executing:
 
