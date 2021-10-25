@@ -59,11 +59,10 @@ endif()
 # Check if Doxygen is installed
 option(GENERATE_DOC "Generate documentation with Doxygen" OFF)
 
-# dot requirements:
-# https://github.com/labapart/gattlib/issues/129#issuecomment-609394695
-find_package(Doxygen REQUIRED dot)
-
 if ((CMAKE_BUILD_TYPE MATCHES Debug) AND GENERATE_DOC)
+    # dot requirements:
+    # https://github.com/labapart/gattlib/issues/129#issuecomment-609394695
+    find_package(Doxygen REQUIRED dot)
     # set input and output files
     set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.cfg)
     set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
@@ -134,7 +133,7 @@ endif()
 # path returned by your llvm-config --cmakedir
 
 # This list must be in descendant order. This is just a hack...
-set(TESTED_LLVM_MAJOR 12 11)
+set(TESTED_LLVM_MAJOR 14 13 12 11)
 set(TESTED_LLVM_MINOR 1 0)
 set(TESTED_LLVM_PATCH 1 0)
 foreach(LLVM_COMP_MAJOR ${TESTED_LLVM_MAJOR})
@@ -159,8 +158,8 @@ endforeach()
 
 # LLVM not found in any version.
 if (DEFINED LLVM_FOUND AND LLVM_FOUND EQUAL 0)
-    message(FATAL_ERROR "Please, install LLVM/Clang >= 11.x")
-    message(FATAL_ERROR "Consider installing llvm-VERSION-dev if you are in Debian/Ubuntu")
+    message(FATAL_ERROR  "Please, install LLVM/Clang >= 11.x\n"
+    "Consider installing llvm-VERSION-dev if you are in Debian/Ubuntu")
 endif()
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

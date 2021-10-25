@@ -1,10 +1,9 @@
 <p align="center">
-  <img src="https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg">
+  <img src="https://raw.githubusercontent.com/markoshorro/MACVETH/master/docs/report/img/MACVETHLOGO.svg?token=ABHMITHSQHUB2GWFSJJ4LCTBP64P6">
 </p>
 
 # MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors in HPC
-
-[![Build Status][travis-badge]][travis-link]
+[![CMake Compilation and Test](https://github.com/markoshorro/MACVETH/actions/workflows/cmake.yml/badge.svg)](https://github.com/markoshorro/MACVETH/actions/workflows/cmake.yml)
 [![codecov](https://codecov.io/gh/markoshorro/MACVETH/branch/master/graph/badge.svg?token=BRvGSUAVby)](https://codecov.io/gh/markoshorro/MACVETH)
 [![License: MIT][mit-badge]][mit-link]
 
@@ -12,6 +11,7 @@ Main authors (refer to [License](#license) section for further details):
 
 - Marcos Horro Varela (marcos.horro@udc.es)
 - Dr. Louis-Noël Pouchet (pouchet@colostate.edu)
+- Dr. Gabriel Rodríguez (gabriel.rodriguez@udc.es)
 
 MACVETH is a source-to-source compiler for C/C++ codes to compilable
 SIMD-fashion codes. It is platform or ISA and architecture dependent.
@@ -59,7 +59,7 @@ Simple guide to get started with the compiler.
 
 ### Compilation of the project:
 
-Recommended steps for a clean building of the project (Linux):
+Recommended steps for a clean building of the project (for Linux systems):
 
 ```
 $> mkdir -p build && cd build
@@ -74,6 +74,8 @@ environment variables set with, at least, the path for LLVM/Clang's libraries.
 
 These steps will create an executable in the same folder called `macveth`, and also
 will create a symbolic link to its executable.
+
+You have also an example script with these tasks in [`build.sh`](build.sh).
 
 ### Executing:
 
@@ -295,74 +297,77 @@ accurate latency information improves the quality of SIMD-zed code.
 This the list of restrictions and assumptions that the user must take into
 account when using this compiler:
 
-    - Input languages:
-        + C/C++ files *only* have been tested.
+- Input languages:
+    + C/C++ files *only* have been tested.
 
-    - ISA support:
-        + Currently only working for AVX2 ISA architectures
+- ISA support:
+    + Currently only working for AVX2 ISA architectures
 
-    - Types:
-        + Pointers are not allowed at the moment, e.g.:
+- Types:
+    + Pointers are not allowed at the moment, e.g.:
 
-            (*S) = (*S) + A[i];
+        ```
+        (*S) = (*S) + A[i];
+        ```
+        This may be a common scenario when writing reductions in the code
+        (when passing variables to the function by reference). You can simply
+        avoid this issue by using a temporal variable.
 
-            This may be a common scenario when writing reductions in the code
-            (when passing variables to the function by reference). You can simply
-            avoid this issue by using a temporal variable.
+    + Reductions are of the form:
+        ```
+        S = S + <expr> || S += <expr>
+        ```
+        in order to be detected properly.
 
-        + Reductions should look like:
+- Declarations within scop:
+    + Not permitted any kind or type of declaration within, e.g. `int var = 42;`
+    + Assignments are permitted, e.g. `var = 42;`
 
-            S = S + <expr> || S += <expr>
+- Statements:
+    + Must be binary, i.e. all statements should be contained in the following
+    grammar, in Backus-Naur Form:
 
-            in order to be detected properly
+    ```
+        Syntax ::= <Statement>
 
-    - Declarations within scop:
-        + Not permitted any kind or type of declaration within, e.g. int var = 42;
-        + Assignments are permitted, e.g. var = 42;
+        Statement ::=
+            | <expr> = <S>
 
-    - Statements:
-        + Must be binary, i.e. all statements should be contained in the following
-        grammar, in Backus-Naur Form:
+        S ::=
+            | for(<expr> = <expr>; <expr> < <expr>; <expr>) {
+                <S>; }
+            | <S> binary_op <S>
+            | f(<S>,<S>)
+            | f(<S>)
+            | <expr>
 
-            Syntax ::= <Statement>
+        binary_op ::= + | - | / | * | %
 
-            Statement ::=
-                | <expr> = <S>
+        expr ::= array | literal | var
+    ```
 
-            S ::=
-                | for(<expr> = <expr>; <expr> < <expr>; <expr>) {
-                    <S>; }
-                | <S> binary_op <S>
-                | f(<S>,<S>)
-                | f(<S>)
-                | <expr>
+- Loop related:
+    + Only "for" loops are supported
+    + Declaration of variables within the loop is allowed, e.g.:
 
-            binary_op ::= + | - | / | * | %
+            for (int i = 0; ...
 
-            expr ::= array | literal | var
+        Also declaration outside the loop is allowed, e.g.:
 
-    - Loop related:
-        + Only "for" loops are supported
-        + Declaration of variables within the loop is allowed, e.g.:
+            int i;
+            ...
+            for (i = 0; ...
 
-                for (int i = 0; ...
+        Nonetheless, some compilers may allow declarations in both sides,
+        MACVETH does not, e.g.:
 
-            Also declaration outside the loop is allowed, e.g.:
+            int i;
+            ...
+            for (int i = 0; ...
 
-                int i;
-                ...
-                for (i = 0; ...
-
-            Nonetheless, some compilers may allow declarations in both sides,
-            MACVETH does not, e.g.:
-
-                int i;
-                ...
-                for (int i = 0; ...
-
-        + There are no increments in the body of the loop of the region of
-        interest, i.e. the loop condition is only incremented in the for
-        statement.
+    + There are no increments in the body of the loop of the region of
+    interest, i.e. the loop condition is only incremented in the for
+    statement.
 
 ## Testing
 
@@ -379,8 +384,8 @@ Refer to `tests/README`.
 
 MIT License.
 
-Copyright (c) 2019-2020 the Colorado State University.
-Copyright (c) 2020 Universidade da Coruña.
+Copyright (c) 2019-2021 the Colorado State University.
+Copyright (c) 2021 Universidade da Coruña.
 
 Under development, code disclosed only under request.
 
