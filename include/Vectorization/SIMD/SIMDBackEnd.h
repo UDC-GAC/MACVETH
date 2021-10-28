@@ -36,6 +36,8 @@ using namespace macveth;
 
 namespace macveth {
 
+using MVStrVector = std::vector<std::string>;
+
 /// Abstract class implemented by each architecture (AVX, AVX2, AVX512, etc.) to
 /// generate specific intrinsics and calculate the associated cost for the
 /// operations provided by the VectorAPI
@@ -93,9 +95,8 @@ public:
       this->SIMD_UID = SIMDInst::UID++;
     }
     /// Constructor
-    SIMDInst(std::string R, std::string FN, std::list<std::string> Args,
-             std::string MVFunc, std::list<std::string> MVArgs,
-             MVSourceLocation SL)
+    SIMDInst(std::string R, std::string FN, MVStrVector Args,
+             std::string MVFunc, MVStrVector MVArgs, MVSourceLocation SL)
         : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFunc),
           MVArgs(MVArgs), MVSL(SL) {
       this->SIMD_UID = SIMDInst::UID++;
@@ -114,13 +115,13 @@ public:
     /// Signature of the function
     std::string FuncName;
     /// List of *sorted* arguments of the function
-    std::list<std::string> Args;
+    MVStrVector Args;
     /// Signature of the function (macro approach)
     std::string MVFuncName;
     /// Type of the function
     SIMDType SType;
     /// List of *sorted* arguments of the function (macro approach)
-    std::list<std::string> MVArgs;
+    MVStrVector MVArgs;
     /// Source location according to our TACs
     MVSourceLocation MVSL;
     /// Cost of the instruction
@@ -240,7 +241,7 @@ public:
   virtual std::string getMapType(MVDataType::VDataType D) = 0;
 
   /// Generate the declaration of the necessary registers for the operations
-  virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S) = 0;
+  virtual MVStrVector renderSIMDRegister(SIMDInstListType S) = 0;
 
   /// Perform some peephole optimizations after generating SIMD instructions
   virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) = 0;
@@ -249,22 +250,19 @@ public:
   virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V) = 0;
 
   /// Add SIMD instruction
-  virtual SIMDBackEnd::SIMDInst
-  genSIMDInst(std::string Result, std::string Op, std::string PrefS,
-              std::string SuffS, MVDataType::VWidth Width,
-              MVDataType::VDataType Type, std::list<std::string> Args,
-              SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
-              SIMDBackEnd::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "", std::list<std::string> MVArgs = {},
-              MVOp MVOP = MVOp()) = 0;
+  virtual SIMDBackEnd::SIMDInst genSIMDInst(
+      std::string Result, std::string Op, std::string PrefS, std::string SuffS,
+      MVDataType::VWidth Width, MVDataType::VDataType Type, MVStrVector Args,
+      SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
+      SIMDBackEnd::SIMDInstListType *IL, std::string NameOp = "",
+      std::string MVFunc = "", MVStrVector MVArgs = {}, MVOp MVOP = MVOp()) = 0;
 
   virtual SIMDBackEnd::SIMDInst
   genSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
-              std::string SuffS, std::list<std::string> OPS,
-              SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
-              SIMDBackEnd::SIMDInstListType *IL = nullptr,
+              std::string SuffS, MVStrVector OPS, SIMDBackEnd::SIMDType SType,
+              MVSourceLocation SL, SIMDBackEnd::SIMDInstListType *IL = nullptr,
               std::string NameOp = "", std::string MVFunc = "",
-              std::list<std::string> MVArgs = {}, MVOp MVOP = MVOp()) = 0;
+              MVStrVector MVArgs = {}, MVOp MVOP = MVOp()) = 0;
 
   /// Get headers needed (include files)
   virtual std::list<std::string> getHeadersNeeded() = 0;

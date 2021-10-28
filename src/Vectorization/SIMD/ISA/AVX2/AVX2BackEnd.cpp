@@ -46,7 +46,7 @@ std::map<std::string, std::string> OpEq = {
 SIMDBackEnd::SIMDInst createSIMDInst(std::string Op, std::string Res,
                                      std::string Width, std::string DataType,
                                      std::string PrefS, std::string SuffS,
-                                     std::list<std::string> Args,
+                                     MVStrVector Args,
                                      SIMDBackEnd::SIMDType SType,
                                      MVSourceLocation MVSL) {
   Op = OpEq[Op] != "" ? OpEq[Op] : Op;
@@ -72,7 +72,7 @@ SIMDBackEnd::SIMDInst AVX2BackEnd::genMultAccOp(SIMDBackEnd::SIMDInst Mul,
   auto Op = (Acc.SType == SIMDType::VADD) ? "fmadd" : "fmsub";
   std::string PrefS = "";
   std::string SuffS = "";
-  std::list<std::string> Args;
+  MVStrVector Args;
 
   // Format is: (a * b) + c
   for (auto OP : Mul.Args) {
@@ -480,8 +480,8 @@ std::string AVX2BackEnd::extractArgument(std::string A, SIMDBackEnd::SIMDInst I,
 }
 
 // ---------------------------------------------
-std::list<std::string> AVX2BackEnd::renderSIMDRegister(SIMDInstListType S) {
-  std::list<std::string> L;
+MVStrVector AVX2BackEnd::renderSIMDRegister(SIMDInstListType S) {
+  MVStrVector L;
   // Render register declarations
   for (auto It : RegDeclared) {
     auto TypeRegDecl = It.first + " ";
@@ -849,12 +849,13 @@ std::string AVX2BackEnd::getRegisterType(MVDataType::VDataType DT,
 }
 
 // ---------------------------------------------
-SIMDBackEnd::SIMDInst AVX2BackEnd::genSIMDInst(
-    std::string Result, std::string Op, std::string PrefS, std::string SuffS,
-    MVDataType::VWidth Width, MVDataType::VDataType Type,
-    std::list<std::string> Args, SIMDBackEnd::SIMDType SType,
-    MVSourceLocation SL, SIMDBackEnd::SIMDInstListType *IL, std::string NameOp,
-    std::string MVFunc, std::list<std::string> MVArgs, MVOp MVOP) {
+SIMDBackEnd::SIMDInst
+AVX2BackEnd::genSIMDInst(std::string Result, std::string Op, std::string PrefS,
+                         std::string SuffS, MVDataType::VWidth Width,
+                         MVDataType::VDataType Type, MVStrVector Args,
+                         SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
+                         SIMDBackEnd::SIMDInstListType *IL, std::string NameOp,
+                         std::string MVFunc, MVStrVector MVArgs, MVOp MVOP) {
 
   auto WStr = getMapWidth(Width);
   auto TStr = getMapType(Type);
@@ -908,11 +909,12 @@ SIMDBackEnd::SIMDInst AVX2BackEnd::genSIMDInst(
 }
 
 // ---------------------------------------------
-SIMDBackEnd::SIMDInst AVX2BackEnd::genSIMDInst(
-    VectorIR::VOperand V, std::string Op, std::string PrefS, std::string SuffS,
-    std::list<std::string> Args, SIMDBackEnd::SIMDType SType,
-    MVSourceLocation SL, SIMDBackEnd::SIMDInstListType *IL, std::string NameOp,
-    std::string MVFunc, std::list<std::string> MVArgs, MVOp MVOP) {
+SIMDBackEnd::SIMDInst
+AVX2BackEnd::genSIMDInst(VectorIR::VOperand V, std::string Op,
+                         std::string PrefS, std::string SuffS, MVStrVector Args,
+                         SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
+                         SIMDBackEnd::SIMDInstListType *IL, std::string NameOp,
+                         std::string MVFunc, MVStrVector MVArgs, MVOp MVOP) {
 
   if (OpEq[Op] != "") {
     Op = OpEq[Op];
@@ -1036,9 +1038,11 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vload(VectorIR::VOperand V) {
     SuffS += "2";
   }
 
+  MVStrVector ArgsVector{std::make_move_iterator(Args.begin()),
+                         std::make_move_iterator(Args.end())};
   // Adding SIMD inst to the list
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
-  genSIMDInst(V, Op, "", SuffS, Args, SIMDType::VPACK, MVSL, &IL);
+  genSIMDInst(V, Op, "", SuffS, ArgsVector, SIMDType::VPACK, MVSL, &IL);
 
   return IL;
 }
@@ -1053,7 +1057,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vbcast(VectorIR::VOperand V) {
   auto SuffS = "";
 
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
   Args.push_back(getOpName(V, true, true));
 
   if (V.EqualVal) {
@@ -1079,7 +1083,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
   std::string PrefS = "";
 
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
 
   // To gather elements
   // Generate preffix: must be i32 or i64, depending on the VIndex width
@@ -1340,21 +1344,21 @@ bool AVX2BackEnd::vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
 }
 
 // ---------------------------------------------
-void AVX2BackEnd::store(VectorIR::VOperand V, std::list<std::string> Args,
+void AVX2BackEnd::store(VectorIR::VOperand V, MVStrVector Args,
                         MVSourceLocation MVSL,
                         SIMDBackEnd::SIMDInstListType *IL) {
   genSIMDInst(V, "storeu", "", "", Args, SIMDType::VSTORE, MVSL, IL);
 }
 
 // ---------------------------------------------
-void AVX2BackEnd::load(VectorIR::VOperand V, std::list<std::string> Args,
+void AVX2BackEnd::load(VectorIR::VOperand V, MVStrVector Args,
                        MVSourceLocation MVSL,
                        SIMDBackEnd::SIMDInstListType *IL) {
   genSIMDInst(V, "loadu", "", "", Args, SIMDType::VPACK, MVSL, IL);
 }
 
 // ---------------------------------------------
-void AVX2BackEnd::loads(VectorIR::VOperand V, std::list<std::string> Args,
+void AVX2BackEnd::loads(VectorIR::VOperand V, MVStrVector Args,
                         MVSourceLocation MVSL,
                         SIMDBackEnd::SIMDInstListType *IL) {
   V.DType = (V.DType == MVDataType::FLOAT) ? MVDataType::VDataType::SFLOAT
@@ -1364,7 +1368,7 @@ void AVX2BackEnd::loads(VectorIR::VOperand V, std::list<std::string> Args,
 }
 
 // ---------------------------------------------
-void AVX2BackEnd::moves(VectorIR::VOperand V, std::list<std::string> Args,
+void AVX2BackEnd::moves(VectorIR::VOperand V, MVStrVector Args,
                         MVSourceLocation MVSL,
                         SIMDBackEnd::SIMDInstListType *IL) {
   V.DType = (V.DType == MVDataType::FLOAT) ? MVDataType::VDataType::SFLOAT
@@ -1374,14 +1378,14 @@ void AVX2BackEnd::moves(VectorIR::VOperand V, std::list<std::string> Args,
 }
 
 // ---------------------------------------------
-void AVX2BackEnd::blend(VectorIR::VOperand V, std::list<std::string> Args,
+void AVX2BackEnd::blend(VectorIR::VOperand V, MVStrVector Args,
                         MVSourceLocation MVSL,
                         SIMDBackEnd::SIMDInstListType *IL) {
   genSIMDInst(V, "blend", "", "", Args, SIMDType::VPACK, MVSL, IL);
 }
 
 // ---------------------------------------------
-void AVX2BackEnd::insert(VectorIR::VOperand V, std::list<std::string> Args,
+void AVX2BackEnd::insert(VectorIR::VOperand V, MVStrVector Args,
                          MVSourceLocation MVSL,
                          SIMDBackEnd::SIMDInstListType *IL) {
   genSIMDInst(V, "insert", "", "", Args, SIMDType::VPACK, MVSL, IL);
@@ -1864,9 +1868,11 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vset(VectorIR::VOperand V) {
     }
   }
   Args.reverse();
+  MVStrVector ArgsVector{std::make_move_iterator(Args.begin()),
+                         std::make_move_iterator(Args.end())};
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
   // Adding SIMD inst to the list
-  genSIMDInst(V, Op, "", SuffS, Args, SIMDType::VSET, MVSL, &IL);
+  genSIMDInst(V, Op, "", SuffS, ArgsVector, SIMDType::VSET, MVSL, &IL);
 
   return IL;
 }
@@ -1881,7 +1887,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
   std::string Op = "store";
 
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
   // Hack: if data type is integer then use the si128/si256 notation instead
   // of epi
   if (V.R.DType > MVDataType::VDataType::SFLOAT) {
@@ -1937,7 +1943,7 @@ AVX2BackEnd::vscatterAVX512(VectorIR::VectorOP VOP) {
   auto Op = "scatter";
 
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
 
   // To gather elements
   // Generate preffix: must be i32 or i64, depending on the VIndex width
@@ -2191,7 +2197,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vadd(VectorIR::VectorOP V) {
 
   // TODO: check
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
   Args.push_back(V.OpA.getName());
   Args.push_back(V.OpB.getName());
 
@@ -2218,7 +2224,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vmul(VectorIR::VectorOP V) {
   }
 
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
   Args.push_back(V.OpA.getName());
   Args.push_back(V.OpB.getName());
 
@@ -2242,7 +2248,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vsub(VectorIR::VectorOP V) {
 
   // TODO: check
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
   Args.push_back(V.OpA.getName());
   Args.push_back(V.OpB.getName());
 
@@ -2266,7 +2272,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vdiv(VectorIR::VectorOP V) {
 
   // TODO: check
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
   Args.push_back(V.OpA.getName());
   Args.push_back(V.OpB.getName());
 
@@ -2290,7 +2296,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vmod(VectorIR::VectorOP V) {
 
   // TODO: check
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
   Args.push_back(V.OpA.getName());
   Args.push_back(V.OpB.getName());
 
@@ -2314,7 +2320,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vfunc(VectorIR::VectorOP V) {
 
   // TODO: check
   // List of parameters
-  std::list<std::string> Args;
+  MVStrVector Args;
   Args.push_back(V.OpA.getName());
   if (V.OpB.getName() != "") {
     Args.push_back(V.OpB.getName());
@@ -2329,8 +2335,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vfunc(VectorIR::VectorOP V) {
 }
 
 // ---------------------------------------------
-std::vector<std::string> AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
-  std::vector<std::string> InitVal;
+MVStrVector AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
+  MVStrVector InitVal;
   std::string NeutralValue = "0";
   if (V.isBinOp()) {
     switch (V.getBinOp()) {
@@ -2348,7 +2354,7 @@ std::vector<std::string> AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
     InitVal.push_back(NeutralValue);
   }
 
-  std::list<std::string> InitValList(InitVal.begin(), InitVal.end());
+  MVStrVector InitValList(InitVal.begin(), InitVal.end());
   auto Reg = V.R.Name;
   // Fuck, this is awful...
   if (getAccmReg(Reg) != "") {
@@ -2357,7 +2363,7 @@ std::vector<std::string> AVX2BackEnd::getInitValues(VectorIR::VectorOP V) {
   MVSourceLocation MVSL(MVSourceLocation::Position::PREORDER, V.R.Order,
                         V.R.Offset);
   auto Op = "setzero";
-  std::list<std::string> Values = {};
+  MVStrVector Values = {};
   if (V.isBinOp() &&
       ((V.getBinOp() == clang::BO_Mul) || (V.getBinOp() == clang::BO_Div))) {
     Op = "set";

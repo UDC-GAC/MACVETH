@@ -85,23 +85,23 @@ public:
   bool vscatter4elements(VectorIR::VectorOP V, MVDataType::VWidth Width,
                          SIMDBackEnd::SIMDInstListType *IL);
 
-  void store(VectorIR::VOperand V, std::list<std::string> Args,
-             MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+  void store(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+             SIMDBackEnd::SIMDInstListType *IL);
 
-  void load(VectorIR::VOperand V, std::list<std::string> Args,
-            MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+  void load(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+            SIMDBackEnd::SIMDInstListType *IL);
 
-  void loads(VectorIR::VOperand V, std::list<std::string> Args,
-             MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+  void loads(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+             SIMDBackEnd::SIMDInstListType *IL);
 
-  void moves(VectorIR::VOperand V, std::list<std::string> Args,
-             MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+  void moves(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+             SIMDBackEnd::SIMDInstListType *IL);
 
-  void blend(VectorIR::VOperand V, std::list<std::string> Args,
-             MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+  void blend(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+             SIMDBackEnd::SIMDInstListType *IL);
 
-  void insert(VectorIR::VOperand V, std::list<std::string> Args,
-              MVSourceLocation MVSL, SIMDBackEnd::SIMDInstListType *IL);
+  void insert(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+              SIMDBackEnd::SIMDInstListType *IL);
 
   // Binary operations
 
@@ -133,7 +133,7 @@ public:
   virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) override;
 
   /// Set values for registers which need to be initalized
-  virtual std::list<std::string> renderSIMDRegister(SIMDInstListType S);
+  virtual MVStrVector renderSIMDRegister(SIMDInstListType S);
 
   /// Trick for inserting two 128-bit registers onto a 256-bit register
   void insertLowAndHighBits(VectorIR::VOperand V, std::string Hi,
@@ -241,20 +241,19 @@ private:
   virtual SIMDBackEnd::SIMDInst
   genSIMDInst(std::string Result, std::string Op, std::string PrefS,
               std::string SuffS, MVDataType::VWidth Width,
-              MVDataType::VDataType Type, std::list<std::string> Args,
+              MVDataType::VDataType Type, MVStrVector Args,
               SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
               SIMDBackEnd::SIMDInstListType *IL, std::string NameOp = "",
-              std::string MVFunc = "", std::list<std::string> MVArgs = {},
+              std::string MVFunc = "", MVStrVector MVArgs = {},
               MVOp MVOP = MVOp()) override;
 
   /// Auxiliary function for generating the SIMDInst to the list
   virtual SIMDBackEnd::SIMDInst
   genSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
-              std::string SuffS, std::list<std::string> OPS,
-              SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
-              SIMDBackEnd::SIMDInstListType *IL = nullptr,
+              std::string SuffS, MVStrVector OPS, SIMDBackEnd::SIMDType SType,
+              MVSourceLocation SL, SIMDBackEnd::SIMDInstListType *IL = nullptr,
               std::string NameOp = "", std::string MVFunc = "",
-              std::list<std::string> MVArgs = {}, MVOp MVOP = MVOp()) override;
+              MVStrVector MVArgs = {}, MVOp MVOP = MVOp()) override;
 
   /// Shuffle method for reductions
   std::string shuffleArguments(std::string A1, std::string A2,

@@ -188,7 +188,7 @@ list(APPEND CMAKE_PREFIX_PATH "${CLANG_CMAKE_DIR}")
 
 # Set the LLVM and Clang header and library paths
 include_directories(SYSTEM "${LLVM_INCLUDE_DIRS};${CLANG_INCLUDE_DIRS}")
-
+link_directories(SYSTEM "${LLVM_LIBRARY_DIRS}")
 # LLVM/Clang is normally built without RTTI. Be consistent with that.
 if(NOT LLVM_ENABLE_RTTI)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
