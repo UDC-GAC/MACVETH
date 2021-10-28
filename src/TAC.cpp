@@ -21,7 +21,7 @@
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Noël Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #include "include/TAC.h"
 #include "include/CDAG.h"
@@ -132,8 +132,7 @@ std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
 }
 
 // ---------------------------------------------
-void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
-                        int Val) {
+void stmtToTACRecursive(const clang::Stmt *ST, TacListType &TacList, int Val) {
   Expr *S1 = nullptr;
   Expr *S2 = nullptr;
   bool IsTerminalS1 = false;
@@ -258,11 +257,11 @@ void stmtToTACRecursive(const clang::Stmt *ST, std::list<TAC> *TacList,
     stmtToTACRecursive(S2, TacList, Val + Inc + 1);
   }
 
-  TacList->push_back(TAC(TmpA, TmpB, TmpC, Op));
+  TacList.push_back(TAC(TmpA, TmpB, TmpC, Op));
 }
 
 // ---------------------------------------------
-TacListType TAC::stmtToTAC(clang::Stmt *ST) {
+TacListType TAC::stmtToTAC(clang::Stmt *const ST) {
   TacListType TL;
 
   auto S = dyn_cast<clang::Expr>(ST);
@@ -271,7 +270,7 @@ TacListType TAC::stmtToTAC(clang::Stmt *ST) {
   }
   // Check if the expression is binary
   if (auto STypeBin = getBinOp(S->IgnoreImpCasts())) {
-    stmtToTACRecursive(STypeBin, &TL, -1);
+    stmtToTACRecursive(STypeBin, TL, -1);
     return TL;
   }
 

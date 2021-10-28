@@ -108,21 +108,6 @@ if((CMAKE_BUILD_TYPE MATCHES Debug) OR
 endif()
 
 #===============================================================================
-# TESTING CONFIGURATION
-# -DBUILD_TESTING:BOOL=TRUE to activate
-#===============================================================================
-option(BUILD_TESTING "Build the testing tree" OFF)
-# Only build tests if we are the top-level project
-# Allows this to be used by super projects with `add_subdirectory`
-if ((CMAKE_BUILD_TYPE MATCHES Debug) OR
-    (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)))
-    message(STATUS "Testing enabled")
-    enable_testing()
-    add_subdirectory(tests)
-endif()
-
-
-#===============================================================================
 # LOAD CLANG/LLVM CONFIGURATION
 # For more info: http://llvm.org/docs/CMake.html#embedding-llvm-in-your-project
 #===============================================================================
@@ -208,6 +193,21 @@ add_subdirectory(src)
 add_executable(macveth
     lib/macveth.cpp
     )
+
+#===============================================================================
+# TESTING CONFIGURATION
+# -DBUILD_TESTING:BOOL=TRUE to activate
+#===============================================================================
+option(BUILD_TESTING "Build the testing tree" OFF)
+# Only build tests if we are the top-level project
+# Allows this to be used by super projects with `add_subdirectory`
+if ((CMAKE_BUILD_TYPE MATCHES Debug) OR
+    (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)))
+    message(STATUS "Testing enabled")
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
 
 #===============================================================================
 # BUILDING TARGET

@@ -40,6 +40,11 @@ using namespace macveth;
 
 namespace macveth {
 
+class TAC;
+
+/// List of TACs
+using TacListType = std::list<TAC>;
+
 /// Class TAC: three-address-code. This abstraction is a way of representing the
 /// Single-Statement Assignment (SSA).
 /// This class is meant to hold structures such as:
@@ -81,15 +86,15 @@ public:
   /// Get first (result) operand of the TAC expression
   MVExpr *getA() { return this->A; };
   /// Set first (result) operand of the TAC expression
-  void setA(MVExpr *A) { this->A = A; };
+  void setA(MVExpr *const A) { this->A = A; };
   /// Get second operand of the TAC expression
   MVExpr *getB() { return this->B; };
   /// Set second operand of the TAC expression
-  void setB(MVExpr *B) { this->B = B; };
+  void setB(MVExpr *const B) { this->B = B; };
   /// Get third operand of the TAC expression
   MVExpr *getC() { return this->C; };
   /// Set third operand of the TAC expression
-  void setC(MVExpr *C) { this->C = C; };
+  void setC(MVExpr *const C) { this->C = C; };
   /// Set TacID value
   void setTacID(int TacID) { this->TacID = TacID; }
   /// Set scope of the TAC
@@ -123,15 +128,15 @@ public:
 
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs
-  static std::list<TAC> stmtToTAC(clang::Stmt *ST);
+  static TacListType stmtToTAC(clang::Stmt *const ST);
 
   /// Print/render TAC as regular statements
-  static std::string renderTacAsStmt(std::list<TAC> TL, int Offset);
+  static std::string renderTacAsStmt(TacListType TL, int Offset);
 
   /// Unrolls TacList given onto a new list
-  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
-                                      int UpperBound, std::string LoopLevel,
-                                      bool FullUnroll = false);
+  static TacListType unrollTacList(TacListType Tac, int UnrollFactor,
+                                   int UpperBound, std::string LoopLevel,
+                                   bool FullUnroll = false);
 
   /// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and
   /// the S value which holds the iteration of the unrolling basically
@@ -157,9 +162,6 @@ private:
   /// Represents with a unique ID the part of the
   long TScop = 0;
 };
-
-/// List of TACs
-using TacListType = std::list<TAC>;
 
 } // namespace macveth
 #endif /* !MACVETH_TAC_H */
