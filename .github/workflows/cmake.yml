@@ -20,7 +20,8 @@ jobs:
         llvm: [12, 13]
         os: [ubuntu-18.04, ubuntu-20.04]
         build_type: ["Debug", "Release"]
-      # DEBUG
+
+      # [DEBUG]
       # - name: Setup tmate session
       #   uses: mxschmitt/action-tmate@v3
 

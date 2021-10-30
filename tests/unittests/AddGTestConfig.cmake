@@ -4,8 +4,8 @@
 #                                                                              #
 #==============================================================================#
 
-if (${LLVM_BUILD_TYPE} MATCHES Debug)
-  message(STATUS "No need to compile again googletest, as LLVM built type is Debug")
+if ("${LLVM_LINK_LLVM_DYLIB}" STREQUAL "")
+  message(STATUS "No need to compile again googletest")
 else()
   # Fetching content
   message(STATUS "Fetching googletest")

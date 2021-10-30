@@ -10,6 +10,7 @@ cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 #===============================================================================
 # PROJECT VARIABLES
 #===============================================================================
+
 # Minimum C++ std
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -56,6 +57,7 @@ endif()
 # DOCUMENTATION GENERATION
 # -DGENERATE_DOC:BOOL=TRUE to activate
 #===============================================================================
+
 # Check if Doxygen is installed
 option(GENERATE_DOC "Generate documentation with Doxygen" OFF)
 
@@ -89,6 +91,7 @@ endif()
 # CODE COVERAGE CONFIGURATION
 # -DCODE_COVERAGE:BOOL=TRUE to activate
 #===============================================================================
+
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 if((CMAKE_BUILD_TYPE MATCHES Debug) OR
@@ -198,6 +201,7 @@ add_executable(macveth
 # TESTING CONFIGURATION
 # -DBUILD_TESTING:BOOL=TRUE to activate
 #===============================================================================
+
 option(BUILD_TESTING "Build the testing tree" OFF)
 # Only build tests if we are the top-level project
 # Allows this to be used by super projects with `add_subdirectory`
@@ -213,7 +217,8 @@ endif()
 # BUILDING TARGET
 #===============================================================================
 
-find_package(Threads REQUIRED)  # Threads library
+# Threads library
+find_package(Threads REQUIRED)
 
 # Configuration file
 configure_file(macveth.h.in lib/macveth.h)
@@ -229,7 +234,7 @@ target_include_directories(macveth PUBLIC
 target_link_libraries(macveth
     PRIVATE
     macveth_lib
-    coverage_config # need for code coverage. Only built if -DCODE_COVERAGE
+    coverage_config # Only built if -DCODE_COVERAGE
     )
 
 # MACVETH Clang libraries dependencies
@@ -274,7 +279,7 @@ target_link_libraries(macveth
     LLVM
     )
 
-# needed flags
+# Flags needed
 target_link_libraries(macveth
     PUBLIC
     pthread
@@ -286,5 +291,6 @@ target_link_libraries(macveth
 #===============================================================================
 # INSTALLING TARGET
 #===============================================================================
+
 install(TARGETS macveth DESTINATION build)
 

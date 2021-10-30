@@ -22,7 +22,21 @@ file_t = ".c"
 comp_suffix = f"_macveth{file_t}"
 
 # Compiler options: for testing the outputs obtained
-cc = "gcc-10"
+cc = "gcc"
+gcc_version = os.popen(f"{cc} --version").read().split("\n")[0].split(" ")[-1].split(".")[0]
+
+if gcc_version == "" or int(gcc_version) < 9:
+    cc = ""
+    for i in range(9,12):
+        tmp = f"gcc-{i}"
+        if os.popen(f"{tmp} --version").read() != "":
+            cc = tmp
+
+if cc=="":
+    print("Needed gcc >= 9")
+    exit(1)
+
+print(f"gcc version: {gcc_version}")
 
 # Clang tool takes as the relative path from where the CMake does. I hate this
 # behavior; will have a look at this sometime someday
