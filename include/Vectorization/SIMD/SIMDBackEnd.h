@@ -326,6 +326,16 @@ public:
   /// Get list of registers declared
   RegistersMapT getRegDeclared() { return SIMDBackEnd::RegDeclared; }
 
+private:
+  /// Auxiliary function to dispatch the VectorOP operation
+  void mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
+
+  /// Auxiliary function to dispatch the VectorOP operation
+  void reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
+
+  /// CDAG information
+  CDAG *C;
+
 protected:
   /// Add register to declare
   static void addRegToDeclare(std::string Type, std::string Name,
@@ -411,17 +421,6 @@ protected:
     addRegToDeclare(Type, Name + "[" + std::to_string(Size) + "]");
     return Name;
   }
-
-private:
-  /// Auxiliary function to dispatch the VectorOP operation
-  void mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
-
-  /// Auxiliary function to dispatch the VectorOP operation
-  void reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
-
-  /// CDAG information
-  // std::unique_ptr<CDAG> C;
-  CDAG *C;
 };
 
 } // namespace macveth

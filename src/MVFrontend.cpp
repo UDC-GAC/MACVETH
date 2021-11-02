@@ -133,7 +133,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
                           MVR.rewriteLoops(SL, DimsDeclFunc));
     } else {
       // Get SIMD back end according to the option chosen
-      auto &SIMDGen = SIMDBackEndFactory::getBackend(MVOptions::ISA);
+      auto SIMDGen = SIMDBackEndFactory::getBackend(MVOptions::ISA);
 
       int Code = setjmp(GotoEndScop);
       if (Code) {
@@ -144,32 +144,21 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       }
 
       // Computing the cost model of the CDAG created
-      SInfo = MVCostModel::computeCostModel(SL, &SIMDGen);
+      SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
       if (SInfo.isThereAnyVectorization()) {
         // Comment statements
         MVR.commentReplacedStmts(SL);
-
         // Render
-        // for (auto InsSIMD : SInfo.SIMDList) {
-        //   MVR.renderSIMDInstInPlace(InsSIMD, SL);
-        // }
-
-        std::for_each(SInfo.SIMDList.begin(), SInfo.SIMDList.end(),
-                      [&](SIMDBackEnd::SIMDInst InsSIMD) {
-                        MVR.renderSIMDInstInPlace(InsSIMD, SL);
-                      });
+        for (auto InsSIMD : SInfo.SIMDList) {
+          MVR.renderSIMDInstInPlace(InsSIMD, SL);
+        }
 
         // Render initializations if needed for special cases such as
         // reductions
-        // for (auto InitRedux : SIMDGen->getInitReg()) {
-        //   MVR.renderSIMDInstBeforePlace(InitRedux, SL);
-        // }
-
-        std::for_each(SIMDGen.getInitReg().begin(), SIMDGen.getInitReg().end(),
-                      [&](SIMDBackEnd::SIMDInst InitRedux) {
-                        MVR.renderSIMDInstBeforePlace(InitRedux, SL);
-                      });
+        for (auto InitRedux : SIMDGen->getInitReg()) {
+          MVR.renderSIMDInstBeforePlace(InitRedux, SL);
+        }
 
         // Rewrite loops
         DimsDeclFunc.splice(DimsDeclFunc.end(),
@@ -177,7 +166,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
         // Add includes if option
         if (MVOptions::Headers) {
-          MVR.addHeaders(SIMDGen.getHeadersNeeded(), Scop->FID);
+          MVR.addHeaders(SIMDGen->getHeadersNeeded(), Scop->FID);
           MVOptions::Headers = false;
         }
 
@@ -198,13 +187,9 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
     last_scop:
       // Render the registers we are going to use, declarations
       if (IsLastScop) {
-        auto SIMDReg = SIMDGen.renderSIMDRegister(SInfo.SIMDList);
-        std::for_each(SIMDReg.begin(), SIMDReg.end(), [&](std::string InsSIMD) {
+        for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
           Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
-        });
-        // for (auto InsSIMD : SIMDGen.renderSIMDRegister(SInfo.SIMDList)) {
-        //   Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
-        // }
+        }
       }
     }
   }

@@ -38,7 +38,8 @@ namespace macveth {
 class SIMDBackEndFactory {
 public:
   /// Return a specific backend given as input
-  static SIMDBackEnd &getBackend(MVCPUInfo::MVISA ISA) {
+  static SIMDBackEnd *getBackend(MVCPUInfo::MVISA ISA) {
+    SIMDBackEnd *G = nullptr;
     /// TODO: only AVX2 implemented yet...
     switch (ISA) {
     case MVCPUInfo::MVISA::SSE:
@@ -48,11 +49,15 @@ public:
       MVErr("This ISA has not been implemented yet!");
       break;
     case MVCPUInfo::MVISA::AVX2:
-      return AVX2BackEnd::getInstance();
+      G = AVX2BackEnd::getSingleton();
+      break;
+      // case MVCPUInfo::MVISA::AVX512:
+      //  G = AVX512BackEnd::getSingleton();
+      //  break;
     default:
       MVErr("No backend chosen!");
     }
-    throw 0;
+    return G;
   }
 };
 

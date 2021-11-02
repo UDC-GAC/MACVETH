@@ -221,9 +221,11 @@ public:
   virtual ~AVX2BackEnd(){};
 
   /// Singleton pattern
-  static SIMDBackEnd &getInstance() {
-    static AVX2BackEnd _instance;
-    return _instance;
+  static SIMDBackEnd *getSingleton() {
+    if (AVX2BackEnd::_instance == nullptr) {
+      AVX2BackEnd::_instance = new AVX2BackEnd();
+    }
+    return AVX2BackEnd::_instance;
   };
 
 private:
@@ -231,6 +233,9 @@ private:
   AVX2BackEnd() : SIMDBackEnd() {
     SIMDBackEnd::populateTable(MVCPUInfo::MVISA::AVX2);
   }
+
+  /// Singletton pattern
+  static inline SIMDBackEnd *_instance = 0;
 
   /// Add SIMD instruction
   virtual SIMDBackEnd::SIMDInst
