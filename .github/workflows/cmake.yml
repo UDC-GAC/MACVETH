@@ -57,9 +57,6 @@ jobs:
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more
         # detail
         if: ${{ matrix.build_type == 'Debug' }}
-            # [DEBUG]
-     # - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
         run: ctest -C ${{env.BUILD_TYPE}}
 
       - name: Code coverage.
