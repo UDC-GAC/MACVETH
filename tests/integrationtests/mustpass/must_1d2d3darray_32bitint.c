@@ -98,7 +98,7 @@ static void kernel_template(int n, DATA_TYPE POLYBENCH_1D(x, N, n),
 
 int main(int argc, char **argv) {
   /* Retrieve problem size. */
-  int n = 32;
+  int n = 16;
 
   /* Variable declaration/allocation. */
   POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
