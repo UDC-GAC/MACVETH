@@ -61,22 +61,17 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
 
       //   0 ,    1     , 2 ,    3    , 4 ,  5  , 6 , 7, 8  , 9
       // MVOP,intrinsics,ASM,XED_iform,ISA,CPUID,lat,th,uops,ports
-
-      std::stringstream TMP(L);
-      std::vector<std::string> Args;
-      while (getline(TMP, W, '|')) {
-        Args.push_back(W);
-      }
+      std::vector<std::string> Args = Split<'|'>::split(L);
 
       CostTable::addRow(Args[0], Args[1], Args[2], Args[3], Args[6], Args[7],
                         Args[8], Args[9]);
     }
     F.close();
-  } else {
-    MACVETH_DEBUG("SIMDBackEnd",
-                  "This should never happen: PATH for costs file not found");
-    llvm::llvm_unreachable_internal();
+    return;
   }
+  MACVETH_DEBUG("SIMDBackEnd",
+                "This should never happen: PATH for costs file not found");
+  llvm::llvm_unreachable_internal();
 }
 
 // ---------------------------------------------

@@ -199,13 +199,17 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
 // ---------------------------------------------
 bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
+  MACVETH_DEBUG("MVFuncVisitor", "VisitFunctionDecl");
+
   // Continue if empty function
   if (!F->hasBody()) {
+    // MACVETH_DEBUG("MVFuncVisitor", "No body");
     return true;
   }
 
   // Check if pragmas to parse
   if (!ScopHandler::funcHasROI(F)) {
+    MACVETH_DEBUG("MVFuncVisitor", "No ROI");
     return true;
   }
 
@@ -214,6 +218,7 @@ bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
 
   if ((MVOptions::TargetFunc != "") &&
       (F->getNameAsString() != MVOptions::TargetFunc)) {
+    MACVETH_DEBUG("MVFuncVisitor", "No target function");
     return true;
   }
 
@@ -235,13 +240,7 @@ MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
   PP.AddPragmaHandler(new PragmaScopHandler(Scops));
   PP.AddPragmaHandler(new PragmaEndScopHandler(Scops));
 
-  // std::make_unique is C++14, while LLVM 9 is written in C++11, this
-  // is the reason of this custom implementation
-#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 9)
   return std::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), Scops);
-#else
-  return llvm::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), Scops);
-#endif
 }
 
 // ---------------------------------------------

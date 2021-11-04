@@ -16,9 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gcc: [10, 11]
+        #gcc: [10, 11]
+        gcc: [10]
         llvm: [12, 13]
-        os: [ubuntu-18.04, ubuntu-20.04]
+        os: [ubuntu-20.04]
         build_type: ["Debug", "Release"]
 
       # [DEBUG]
@@ -32,9 +33,9 @@ jobs:
           CXX: g++-${{ matrix.gcc }}
           BUILD_TYPE: ${{ matrix.build_type }}
 
-      - name: Install LLVM from ATP
+      - name: Install dependencies and LLVM from ATP
         run: |
-          sudo apt update
+          sudo apt update && sudo apt install cmake -y
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh ${{ matrix.llvm }}

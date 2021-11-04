@@ -1105,9 +1105,11 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
   }
 
   auto MapWidthSet = MapWidth[MVDataType::VWidth::W256];
-  if (((V.getDataType() == MVDataType::VDataType::FLOAT) && (V.VSize == 4)) ||
-      ((V.getDataType() == MVDataType::VDataType::DOUBLE) && (V.VSize == 2))) {
+  auto LeftOver = 8 - V.VSize;
+  if (((V.getDataType() == MVDataType::VDataType::FLOAT) && (V.VSize <= 4)) ||
+      ((V.getDataType() == MVDataType::VDataType::DOUBLE) && (V.VSize <= 2))) {
     MapWidthSet = MapWidth[MVDataType::VWidth::W128];
+    LeftOver = 4 - V.VSize;
   }
   if (V.getDataType() == MVDataType::VDataType::DOUBLE) {
     PrefGather = "i64";
@@ -1129,7 +1131,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vgather(VectorIR::VOperand V) {
     }
   }
   std::reverse(CopyIdx.begin(), CopyIdx.end());
-  for (size_t T = 0; T != V.VSize % 2; ++T) {
+  for (size_t T = 0; T < LeftOver; ++T) {
     VIndex += std::to_string(0) + ",";
   }
   for (size_t T = 0; T != CopyIdx.size(); ++T) {
@@ -1175,7 +1177,7 @@ std::vector<std::tuple<int, int>> getContiguityRanges(VectorIR::VOperand V) {
 }
 
 // ---------------------------------------------
-VectorIR::VOperand getSubVOperand(VectorIR::VOperand V, std::string Name,
+VectorIR::VOperand getSubVOperand(const VectorIR::VOperand &V, std::string Name,
                                   int VSize, int Size, MVDataType::VWidth Width,
                                   MVDataType::VDataType DType, int Offset) {
   VectorIR::VOperand NewVOp = V;
@@ -1392,6 +1394,19 @@ void AVX2BackEnd::insert(VectorIR::VOperand V, MVStrVector Args,
 }
 
 // ---------------------------------------------
+// SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
+//   // This is where magic happens.
+//   // This is a heavy and probably buggy function.
+//   auto Ranges = getContiguityRanges(V);
+//   // This is better implemented as a gather, since there is no contiguity in
+//   // retrieving operands
+//   if (Ranges.size() == V.VSize) {
+//     return vgather(V);
+//   }
+// }
+
+// ---------------------------------------------
+
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   // This is where magic happens.
   // This is a heavy and probably buggy function.

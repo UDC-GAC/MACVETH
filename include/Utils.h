@@ -39,6 +39,7 @@
 #include "clang/Lex/Lexer.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 using namespace clang;
 using namespace macveth;
@@ -101,6 +102,33 @@ public:
   /// Get execution path of the binary; not just a getcwd() call
   static std::string getExePath();
 };
+
+/// Split string according to a delimiter D (char)
+inline std::vector<std::string> split(const std::string &S, char D) {
+  std::vector<std::string> Tokens;
+  std::string Token;
+  std::stringstream TokenStream(S);
+  while (std::getline(TokenStream, Token, D)) {
+    Tokens.push_back(Token);
+  }
+  return Tokens;
+}
+
+template <char D> class Split {
+public:
+  static std::vector<std::string> split(const std::string &S);
+};
+
+template <char D>
+std::vector<std::string> Split<D>::split(const std::string &S) {
+  std::vector<std::string> Tokens;
+  std::string Token;
+  std::stringstream TokenStream(S);
+  while (std::getline(TokenStream, Token, D)) {
+    Tokens.push_back(Token);
+  }
+  return Tokens;
+}
 
 } // namespace macveth
 #endif

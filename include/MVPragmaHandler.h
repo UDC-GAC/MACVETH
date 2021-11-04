@@ -80,17 +80,19 @@ struct ScopLoc {
   PragmaArgs PA;
 };
 
+using ScopVector = std::vector<ScopLoc *>;
+
 /// List of pairs of #pragma macveth and #pragma endmacveth source locations
 struct ScopHandler {
-  static inline std::vector<ScopLoc *> List;
+  static inline ScopVector List;
 
   /// Empty constructor
   ScopHandler(){};
 
   /// Return a SourceLocation for Line "Line", column "col" of file "FID".
   static SourceLocation translateLineCol(SourceManager &SM, FileID FID,
-                                         unsigned Line, unsigned col) {
-    return SM.translateLineCol(FID, Line, col);
+                                         unsigned Line, unsigned Col) {
+    return SM.translateLineCol(FID, Line, Col);
   }
 
   /// Update scop to visited
@@ -104,11 +106,11 @@ struct ScopHandler {
   }
 
   /// Get ROI of a concrete function
-  static std::vector<ScopLoc *> funcGetScops(FunctionDecl *fd) {
+  static ScopVector funcGetScops(FunctionDecl *fd) {
     SourceManager &SM = fd->getParentASTContext().getSourceManager();
     unsigned int StartFD = SM.getExpansionLineNumber(fd->getBeginLoc());
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
-    std::vector<ScopLoc *> SList;
+    ScopVector SList;
     for (auto SL : List) {
       auto FunctionFileID = SM.getFileID(fd->getLocation());
       if (SL->FID != FunctionFileID) {
@@ -137,7 +139,7 @@ struct ScopHandler {
   /// "Start" points to the location of the macveth pragma.
   void addStart(SourceManager &SM, SourceLocation Start,
                 ScopLoc::PragmaArgs PA) {
-    ScopLoc *Loc = new ScopLoc();
+    auto *Loc = new ScopLoc();
     MACVETH_DEBUG("MVPragmaHandler", "addStart");
     Loc->FID = SM.getFileID(Start);
     Loc->PA = PA;
@@ -158,6 +160,7 @@ struct ScopHandler {
   /// is already set, then ignore the spurious #pragma endmacveth.
   /// "end" points to the location of the endmacveth pragma.
   void addEnd(SourceManager &SM, SourceLocation End) {
+    MACVETH_DEBUG("MVPragmaHandler", "addEnd");
     if (List.size() == 0 || List[List.size() - 1]->End != 0)
       return;
     List[List.size() - 1]->EndScop = End;
