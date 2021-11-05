@@ -287,7 +287,7 @@ void SIMDBackEnd::reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
-SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP V) {
+SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP &V) {
   SIMDInstListType IL;
 
   // Arranging the operation
@@ -337,8 +337,7 @@ void SIMDBackEnd::addRegToDeclare(std::string Type, std::string Name,
       return;
     }
   }
-  std::vector<std::string> L;
-  L.push_back(std::to_string(InitVal));
+  std::vector<std::string> L{std::to_string(InitVal)};
   RegDeclared[Type].push_back(std::make_tuple(Name, L));
 }
 

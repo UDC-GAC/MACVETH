@@ -40,10 +40,8 @@ namespace macveth {
 
 using PragmaTupleDim = std::vector<std::tuple<std::string, int>>;
 
-/// The Location of the Scop, as delimited by macveth and endmacveth
+/// The Location of the Scop, as delimited by "macveth" and "endmacveth"
 /// pragmas by the user.
-/// "macveth" and "endmacveth" are the source locations of the macveth and
-/// endmacveth pragmas.
 /// "StartLine" is the Line number of the Start position.
 struct ScopLoc {
   ScopLoc() : End(0) {}

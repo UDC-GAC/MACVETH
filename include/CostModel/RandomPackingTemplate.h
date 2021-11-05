@@ -34,6 +34,40 @@
 
 namespace macveth {
 
+class TemplateOperand {
+public:
+  TemplateOperand(std::string &S) {
+    int TokenInt;
+    size_t Pos = 0;
+    int T = 0;
+    while ((Pos = S.find(":")) != std::string::npos) {
+      TokenInt = std::atoi(S.substr(0, Pos).c_str());
+      S.erase(0, Pos + 1);
+      if (T++ == 0) {
+        ID = TokenInt;
+      } else {
+        MOD = TokenInt;
+      }
+    }
+    assert(T == 2);
+    Type = S;
+  }
+
+  int getID() { return ID; }
+
+  int getOffset() {
+    assert(isMem());
+    return MOD;
+  }
+
+  bool isMem() { return Type == "MEM"; }
+
+private:
+  int ID = 0;
+  int MOD = 0;
+  std::string Type = "MEM";
+};
+
 class RandomPackingTemplate {
 public:
   void generateCode();
@@ -46,12 +80,8 @@ public:
 private:
   static inline unsigned long long _UID = 0;
   unsigned long long ID = 0;
-  std::string Signature = "";
   unsigned long long Cost = 0;
-
-  struct Template {
-    std::vector 
-  };
+  std::string Signature = "";
 };
 } // namespace macveth
 

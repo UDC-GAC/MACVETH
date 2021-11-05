@@ -30,7 +30,7 @@
 #include <algorithm>
 
 // ---------------------------------------------
-bool opsAreSequential(int VL, Node::NodeListType &VOps) {
+bool opsAreSequential(int VL, const Node::NodeListType &VOps) {
   bool Sequential = true;
   for (int i = 1; i < VL; ++i) {
     auto PrevOpInfo = VOps[i - 1]->getSchedInfo();
@@ -46,8 +46,8 @@ bool opsAreSequential(int VL, Node::NodeListType &VOps) {
 }
 
 // ---------------------------------------------
-bool rawDependencies(int VL, Node::NodeListType &VOps,
-                     Node::NodeListType &VLoad) {
+bool rawDependencies(int VL, const Node::NodeListType &VOps,
+                     const Node::NodeListType &VLoad) {
   for (int i = 0; i < VL - 1; ++i) {
     if (VOps[i]->getOutputInfoName() == VLoad[i + 1]->getRegisterValue()) {
       return true;
@@ -58,7 +58,8 @@ bool rawDependencies(int VL, Node::NodeListType &VOps,
 }
 
 // ---------------------------------------------
-bool isAtomic(int VL, Node::NodeListType &VOps, Node::NodeListType &VLoad) {
+bool isAtomic(int VL, const Node::NodeListType &VOps,
+              const Node::NodeListType &VLoad) {
   for (int i = 0; i < VL; ++i) {
     if (VOps[i]->getSchedInfo().FreeSched <=
         VLoad[i]->getSchedInfo().FreeSched) {
@@ -114,18 +115,16 @@ std::string VectorIR::VectorOP::toString() {
 
 // ---------------------------------------------
 bool VectorIR::VectorOP::isBinOp() {
-  return this->R.UOP[0]->getOutputInfo().IsBinaryOp;
+  return R.UOP[0]->getOutputInfo().IsBinaryOp;
 }
 
 // ---------------------------------------------
 BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
-  return this->R.UOP[0]->getOutputInfo().MVOP.ClangOP;
+  return R.UOP[0]->getOutputInfo().MVOP.ClangOP;
 }
 
 // ---------------------------------------------
-MVOp VectorIR::VectorOP::getMVOp() {
-  return this->R.UOP[0]->getOutputInfo().MVOP;
-}
+MVOp VectorIR::VectorOP::getMVOp() { return R.UOP[0]->getOutputInfo().MVOP; }
 
 // ---------------------------------------------
 bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
@@ -351,9 +350,9 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
 };
 
 // ---------------------------------------------
-VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
-                                Node::NodeListType &VLoadA,
-                                Node::NodeListType &VLoadB) {
+VectorIR::VType getVectorOpType(int VL, const Node::NodeListType &VOps,
+                                const Node::NodeListType &VLoadA,
+                                const Node::NodeListType &VLoadB) {
   // Premises of our algorithm
   // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
@@ -380,14 +379,13 @@ VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
     return VectorIR::VType::REDUCE;
   } else if ((!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
     return VectorIR::VType::MAP;
-  } else {
-    return VectorIR::VType::SEQ;
   }
+  return VectorIR::VType::SEQ;
 }
 
 // ---------------------------------------------
-VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
-                                Node::NodeListType &VLoadA) {
+VectorIR::VType getVectorOpType(int VL, const Node::NodeListType &VOps,
+                                const Node::NodeListType &VLoadA) {
   // Premises of our algorithm
   // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
@@ -411,9 +409,8 @@ VectorIR::VType getVectorOpType(int VL, Node::NodeListType &VOps,
     return VectorIR::VType::REDUCE;
   } else if ((!Seq) && (!RAW_A) && Atomic_A) {
     return VectorIR::VType::MAP;
-  } else {
-    return VectorIR::VType::SEQ;
   }
+  return VectorIR::VType::SEQ;
 }
 
 // ---------------------------------------------

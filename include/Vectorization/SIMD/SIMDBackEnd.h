@@ -90,16 +90,18 @@ public:
     SIMDInst(){};
 
     /// Constructor for not SIMD code
-    SIMDInst(std::string LHS, std::string RHS, MVSourceLocation SL)
+    SIMDInst(const std::string &LHS, const std::string &RHS,
+             const MVSourceLocation &SL)
         : Result(LHS), FuncName(RHS), MVSL(SL) {
-      this->SIMD_UID = SIMDInst::UID++;
+      SIMD_UID = SIMDInst::UID++;
     }
     /// Constructor
-    SIMDInst(std::string R, std::string FN, MVStrVector Args,
-             std::string MVFunc, MVStrVector MVArgs, MVSourceLocation SL)
+    SIMDInst(const std::string &R, const std::string &FN,
+             const MVStrVector &Args, const std::string &MVFunc,
+             const MVStrVector &MVArgs, const MVSourceLocation &SL)
         : Result(R), FuncName(FN), Args(Args), MVFuncName(MVFunc),
           MVArgs(MVArgs), MVSL(SL) {
-      this->SIMD_UID = SIMDInst::UID++;
+      SIMD_UID = SIMDInst::UID++;
     }
 
     /// VOperand result
@@ -134,23 +136,22 @@ public:
     /// Render instruction as a string
     std::string render();
 
+    /// Get the source location of the SIMD instruction
     MVSourceLocation getMVSourceLocation() { return MVSL; }
 
     /// Check if the vectorial type of the operation is sequential
-    bool isSequential() { return this->SType == SIMDBackEnd::SIMDType::VSEQ; }
+    bool isSequential() { return SType == SIMDBackEnd::SIMDType::VSEQ; }
 
     /// Check if the vectorial type of the operation is a reduction
-    bool isReduction() { return this->SType == SIMDType::VREDUC; }
+    bool isReduction() { return SType == SIMDType::VREDUC; }
 
     /// Comparison operator
     bool operator==(const SIMDInst &S) const {
-      return (S.SIMD_UID == this->SIMD_UID);
+      return (S.SIMD_UID == SIMD_UID);
     }
 
     /// This is util if we want to use SIMDInst in std::map
-    bool operator<(const SIMDInst &S) const {
-      return S.SIMD_UID < this->SIMD_UID;
-    }
+    bool operator<(const SIMDInst &S) const { return S.SIMD_UID < SIMD_UID; }
   };
 
   /// Alias for list of SIMDInst structures
@@ -299,7 +300,7 @@ public:
 
   /// Entry point: this method basically redirects to any of the operations
   /// supported
-  SIMDInstListType getSIMDfromVectorOP(VectorIR::VectorOP V);
+  SIMDInstListType getSIMDfromVectorOP(VectorIR::VectorOP &V);
 
   /// Basically calls its other overloaded function iterating over the input
   /// list of VectorOP
@@ -309,10 +310,10 @@ public:
   SIMDInstListType getInitReg() { return InitReg; }
 
   /// Setting CDAG
-  void setCDAG(CDAG *C) { this->C = C; }
+  void setCDAG(const CDAG &C) { this->C = C; }
 
   /// Getting CDAG
-  CDAG *getCDAG() { return this->C; }
+  CDAG getCDAG() { return C; }
 
   SIMDBackEnd(){};
 
@@ -334,7 +335,7 @@ private:
   void reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
 
   /// CDAG information
-  CDAG *C;
+  CDAG C;
 
 protected:
   /// Add register to declare
@@ -376,7 +377,10 @@ protected:
     return VEC_PREFIX + std::to_string(AccmToReg.at(V));
   }
 
+  /// Check if the accumulator register is in a dirty state
   static bool isAccmClean(std::string V) { return !AccmDirty[V]; }
+
+  /// Mark the accumulator register as dirty
   static void markDirtyAccm(std::string V) { AccmDirty[V] = 1; }
 
   /// Get the current accumulator register

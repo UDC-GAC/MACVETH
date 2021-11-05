@@ -33,25 +33,19 @@ using namespace macveth;
 
 namespace macveth {
 
+/// Structure for dependency mappings
+using DepMap = std::map<int, std::set<int>>;
+
 /// Computation Directed Acyclic Graph (CDAG).
 /// The CDAG is in charge of connecting nodes, detecting data races and,
 /// therefore, depencies
 class CDAG {
 public:
-  /// Structure for dependency mappings
-  using DepMap = std::map<int, std::set<int>>;
-
   /// Given a list of TACs, create its correspondent CDAG
-  static CDAG *createCDAGfromTAC(TacListType TL);
+  static CDAG createCDAGfromTAC(const TacListType &TL);
 
   /// Compute cost model for a set of Nodes
   static int computeCostModel(Node::NodeListType NL);
-
-  /// Compute the free schedule or topology order
-  static void computeFreeSchedule(CDAG *C);
-
-  /// Compute the free schedule for a list of nodes (topology order)
-  static void computeFreeSchedule(Node::NodeListType NL);
 
   /// Compute WAR (anti-dependencies) for a given node
   Node *findWARDataRace(Node *N, Node::NodeListType NL);
@@ -60,10 +54,10 @@ public:
   Node *findRAWDataRace(Node *N, Node::NodeListType NL);
 
   /// Get the node of list registered for this CDAG
-  Node::NodeListType getNodeListOps() { return this->NLOps; }
+  Node::NodeListType getNodeListOps() { return NLOps; }
 
-  DepMap getRAWs() { return this->MapRAW; }
-  DepMap getWARs() { return this->MapWAR; }
+  DepMap getRAWs() { return MapRAW; }
+  DepMap getWARs() { return MapWAR; }
 
 private:
   /// Insert TAC abstraction to the CDAG

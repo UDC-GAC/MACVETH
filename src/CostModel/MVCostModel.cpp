@@ -336,7 +336,7 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
   auto G = CDAG::createCDAGfromTAC(TL);
 
   // Set placement according to the desired algorithm
-  auto NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
+  auto NL = PlcmntAlgo::sortGraph(G.getNodeListOps());
 
   // Setting CDAG
   SG->setCDAG(G);

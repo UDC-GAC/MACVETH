@@ -697,7 +697,7 @@ AVX2BackEnd::fuseReductionsList(SIMDBackEnd::SIMDInstListType L) {
 bool AVX2BackEnd::hasRawDependencies(SIMDBackEnd::SIMDInstListType L,
                                      SIMDBackEnd::SIMDInst I) {
   auto Last = I.VOPResult.Order;
-  auto RAW = this->getCDAG()->getRAWs();
+  auto RAW = getCDAG().getRAWs();
   for (auto Ins : L) {
     auto Order = Ins.VOPResult.Order;
     auto It = RAW.find(Order);
@@ -716,7 +716,7 @@ bool AVX2BackEnd::reductionIsContiguous(SIMDBackEnd::SIMDInstListType L,
                                         SIMDBackEnd::SIMDInst I) {
   auto Last = I.VOPResult.Order;
   auto LastAccm = I.Result;
-  auto RAW = this->getCDAG()->getRAWs();
+  auto RAW = getCDAG().getRAWs();
   for (auto Ins : L) {
     auto Order = Ins.VOPResult.Order;
     auto Accm = Ins.Result;
@@ -1394,16 +1394,21 @@ void AVX2BackEnd::insert(VectorIR::VOperand V, MVStrVector Args,
 }
 
 // ---------------------------------------------
-// SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
-//   // This is where magic happens.
-//   // This is a heavy and probably buggy function.
-//   auto Ranges = getContiguityRanges(V);
-//   // This is better implemented as a gather, since there is no contiguity in
-//   // retrieving operands
-//   if (Ranges.size() == V.VSize) {
-//     return vgather(V);
-//   }
-// }
+std::string getContiguity(VectorIR::VOperand V) {
+  std::string Cont = "";
+  for (int Idx = 1; Idx < (int)V.Size; ++Idx) {
+    if (V.Idx[Idx - 1] + 1 != V.Idx[Idx]) {
+    }
+  }
+  return Cont;
+}
+
+// ---------------------------------------------
+SIMDBackEnd::SIMDInstListType vrandompacking(VectorIR::VOperand V) {
+  auto Cont = getContiguity(V);
+  // Generate search string, search, get template
+  // For each line, substitute
+}
 
 // ---------------------------------------------
 

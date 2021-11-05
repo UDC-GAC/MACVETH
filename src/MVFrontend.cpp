@@ -199,17 +199,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
 // ---------------------------------------------
 bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
-  MACVETH_DEBUG("MVFuncVisitor", "VisitFunctionDecl");
-
-  // Continue if empty function
-  if (!F->hasBody()) {
-    // MACVETH_DEBUG("MVFuncVisitor", "No body");
-    return true;
-  }
-
-  // Check if pragmas to parse
-  if (!ScopHandler::funcHasROI(F)) {
-    MACVETH_DEBUG("MVFuncVisitor", "No ROI");
+  // Continue if empty function or no pramgas
+  if ((!F->hasBody()) || (!ScopHandler::funcHasROI(F))) {
     return true;
   }
 
@@ -223,7 +214,7 @@ bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
   }
 
   // If the function has scops to parse, then scan them
-  this->scanScops(F);
+  scanScops(F);
 
   return true;
 }

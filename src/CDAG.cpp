@@ -113,9 +113,9 @@ no_output:
 }
 
 // ---------------------------------------------
-CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
+CDAG CDAG::createCDAGfromTAC(const TacListType &TL) {
   // Literally create a new CDAG
-  CDAG *G = new CDAG();
+  CDAG G;
   // Restarting numbering of nodes
   Node::restart();
   for (TAC T : TL) {
@@ -126,22 +126,23 @@ CDAG *CDAG::createCDAGfromTAC(TacListType TL) {
     // for outputs of of already connected Nodes that match the input of this
     // new NODE_OP. Looking for inputs
     // Node *PrevNode = G->insertTac(T, G->getNodeListOps());
-    G->insertTac(T, G->getNodeListOps());
+    G.insertTac(T, G.getNodeListOps());
   }
 
-  for (auto R : G->MapRAW) {
-    MACVETH_DEBUG("CDAG", "RAW for TAC = " + std::to_string(R.first));
-    for (auto RAW : R.second) {
-      MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
+  if (MVOptions::Debug) {
+    for (auto R : G.MapRAW) {
+      MACVETH_DEBUG("CDAG", "RAW for TAC = " + std::to_string(R.first));
+      for (auto RAW : R.second) {
+        MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
+      }
+    }
+
+    for (auto R : G.MapWAR) {
+      MACVETH_DEBUG("CDAG", "WAR for TAC = " + std::to_string(R.first));
+      for (auto RAW : R.second) {
+        MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
+      }
     }
   }
-
-  for (auto R : G->MapWAR) {
-    MACVETH_DEBUG("CDAG", "WAR for TAC = " + std::to_string(R.first));
-    for (auto RAW : R.second) {
-      MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
-    }
-  }
-
   return G;
 }
