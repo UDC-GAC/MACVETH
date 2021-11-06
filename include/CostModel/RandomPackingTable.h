@@ -31,25 +31,35 @@
 #include "include/Utils.h"
 #include <list>
 #include <map>
+#include <optional>
 #include <sstream>
-#include <string.h>
+#include <string>
 
 namespace macveth {
 
+using RPTableMap = std::map<std::string, RandomPackingTemplate>;
+
 class RandomPackingTable {
 public:
-  RandomPackingTemplate &getTemplate(std::string Signature) {
-    return this->Table[Signature];
+  /// Return a RandomPackingTemplate according to the signature key given.
+  const std::optional<RandomPackingTemplate>
+  getTemplate(const std::string &Signature) const {
+    auto Search = RandomPackingTable::Table.find(Signature);
+    if ((Search) != Table.end()) {
+      return Search->second;
+    }
+    return {};
   }
 
   RandomPackingTable() {
     std::string dir(__FILE__);
     dir = dir.substr(0, dir.find_last_of("\\/"));
-    std::string RPModel = dir + "RandomPackingModel.csv";
+    std::string RPModel = dir + "/RandomPackingModel.csv";
     std::ifstream F(RPModel);
+    assert(!F.fail() && "File does not exist for Random Packing Table!");
     std::string L, W;
     auto Arch = MVArchStr[MVOptions::Arch];
-    auto ISA = MVArchStr[MVOptions::ISA];
+    auto ISA = MVISAStr[MVOptions::ISA];
     if (F.is_open()) {
       while (getline(F, L)) {
         if ((L.rfind("#", 0) == 0) || (L == "")) {
@@ -61,19 +71,21 @@ public:
         if ((Tok[2] != Arch) || (Tok[3] != ISA)) {
           continue;
         }
-        this->Table[Tok[0]] =
-            RandomPackingTemplate(Tok[0], std::atoi(Tok[1].c_str()));
+        RandomPackingTable::Table.insert(std::make_pair(
+            Tok[0], RandomPackingTemplate(Tok[0], std::atoi(Tok[1].c_str()))));
       }
       F.close();
       return;
     }
-    MACVETH_DEBUG("SIMDBackEnd",
+    MACVETH_DEBUG("RandomPackingTable",
                   "This should never happen: PATH for costs file not found");
     llvm::llvm_unreachable_internal();
   };
 
 private:
-  std::map<std::string, RandomPackingTemplate> Table;
+  /// Table holding the RandomPackingTemplates, containing the skeletons or
+  /// "cooking recipes".
+  static inline RPTableMap Table;
 };
 
 } // namespace macveth

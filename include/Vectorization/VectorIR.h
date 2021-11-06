@@ -171,7 +171,10 @@ public:
     bool isFloat() { return DType == MVDataType::VDataType::FLOAT; }
 
     /// Return name of VOperand
-    std::string getName() { return this->Name; }
+    std::string getName() { return Name; }
+
+    /// Return name of the VOperand (const)
+    std::string getName() const {return Name;}
 
     /// Returns if operands have been already loaded from memory
     bool checkIfAlreadyLoaded(Node *PrimaryNode);
@@ -183,7 +186,7 @@ public:
     std::string genNewVOpName() { return VOP_PREFIX + std::to_string(VID++); }
 
     /// Return register name
-    std::string getRegName(int Position, int Offset) {
+    std::string getRegName(int Position, int Offset) const {
       if (Offset != 0) {
         auto Operand = this->UOP[Position]->getMVExpr();
         if (Operand != nullptr) {
@@ -273,6 +276,9 @@ public:
     BinaryOperator::Opcode getBinOp();
     /// Get the MVOp
     MVOp getMVOp();
+    /// Get the result operand
+    VOperand getResult() { return R; }
+    VOperand getResult() const { return R; }
     /// Constructor from the CDAG
     VectorOP(int VL, Node::NodeListType &VOps, Node::NodeListType &VLoadA,
              Node::NodeListType &VLoadB);

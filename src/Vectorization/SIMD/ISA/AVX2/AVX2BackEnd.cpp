@@ -29,6 +29,7 @@
 #include "include/Utils.h"
 #include <algorithm>
 #include <map>
+#include <regex>
 #include <unordered_set>
 #include <utility>
 
@@ -404,15 +405,14 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
       auto Mask1 =
           VIL[0].DT == MVDataType::VDataType::DOUBLE ? "0b1100" : "0b11110000";
       // Operand 2
-      auto PermS = "2f128";
-      auto Mask2 = "0x21";
-      auto Perm = replacePatterns("permute", W, MapType[VIL[0].DT], "", PermS);
+      auto Perm =
+          replacePatterns("permute", W, MapType[VIL[0].DT], "", "2f128");
       auto V0 = VAccm[0];
       auto V1 = (NumRedux > 4)   ? VAccm[4]
                 : (NumRedux > 2) ? VAccm[2]
                                  : VAccm[1];
       auto Op1 = genGenericFunc(Blend, {V0, V1, Mask1});
-      auto Op2 = genGenericFunc(Perm, {V0, V1, Mask2});
+      auto Op2 = genGenericFunc(Perm, {V0, V1, "0x21"});
 
       OP = (OpRedux.ClangOP == BinaryOperator::Opcode::BO_Add) ? "add" : "sub";
       genSIMDInst(VIL[0].VOPResult, OP, "", "", {Op1, Op2}, SIMDType::VOPT,
@@ -1394,24 +1394,48 @@ void AVX2BackEnd::insert(VectorIR::VOperand V, MVStrVector Args,
 }
 
 // ---------------------------------------------
-std::string getContiguity(VectorIR::VOperand V) {
+std::string getContiguityStr(VectorIR::VOperand V) {
   std::string Cont = "";
   for (int Idx = 1; Idx < (int)V.Size; ++Idx) {
-    if (V.Idx[Idx - 1] + 1 != V.Idx[Idx]) {
-    }
+    Cont = "_" + std::to_string(V.Idx[Idx - 1] + 1 != V.Idx[Idx]) + Cont;
   }
   return Cont;
 }
 
 // ---------------------------------------------
-SIMDBackEnd::SIMDInstListType vrandompacking(VectorIR::VOperand V) {
-  auto Cont = getContiguity(V);
+SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
+  auto SearchStr = "n" + std::to_string(V.VSize) + getContiguityStr(V);
   // Generate search string, search, get template
   // For each line, substitute
+  auto Template = getRPTable().getTemplate(SearchStr);
+  if (Template.has_value()) {
+    auto RPTemplate = Template.value();
+    // Core function
+    for (const auto &Line : RPTemplate.getTemplates()) {
+      std::regex OutputRegex("(#output:REG#)");
+      std::string Output = std::regex_replace(Line, OutputRegex, Output);
+      std::regex ValRegex("(#[a-z0-9:]+#)+", std::regex::icase);
+      for (auto i =
+               std::sregex_iterator(Output.begin(), Output.end(), ValRegex);
+           i != std::sregex_iterator(); ++i) {
+        auto Match = (*i).str();                        // this is the match
+        auto Split = Match.substr(1, Match.size() - 2); // remove # characters
+        auto Value = TemplateOperand(Split);
+        std::string ReplaceStr = "";
+
+        // Last but not least
+        std::regex NewReplace(Match);
+        Output = std::regex_replace(Output, NewReplace, ReplaceStr);
+      }
+      std::cout << Output << '\n';
+      // ADD SIMD instruction
+    }
+  }
+  return vgather(V);
 }
 
 // ---------------------------------------------
-
+/*
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
   // This is where magic happens.
   // This is a heavy and probably buggy function.
@@ -1866,7 +1890,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
 
   return IL;
 }
-
+*/
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vset(VectorIR::VOperand V) {
   SIMDBackEnd::SIMDInstListType IL;

@@ -30,7 +30,7 @@
 #include <list>
 #include <map>
 #include <sstream>
-#include <string.h>
+#include <string>
 
 namespace macveth {
 

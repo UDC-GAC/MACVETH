@@ -19,7 +19,7 @@
 #include "llvm/Support/VirtualFileSystem.h"
 #include "gtest/gtest.h"
 #include <memory>
-#include <string>
+#include <string.h>
 #include <vector>
 
 namespace tac {
@@ -101,6 +101,6 @@ protected:
 };
 
 } // namespace test
-} //
+} // namespace tac
 
 #endif

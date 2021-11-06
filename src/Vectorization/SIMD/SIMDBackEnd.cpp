@@ -50,6 +50,7 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
   PathISA = dir + PathISA;
   auto Arch = MVArchStr[MVOptions::Arch];
   std::ifstream F(PathISA);
+  assert(!F.fail() && "File does not exist for SIMDBackend");
   std::string L, W;
   MACVETH_DEBUG("SIMDBackEnd", PathISA + " path");
   if (F.is_open()) {
@@ -69,21 +70,18 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
     F.close();
     return;
   }
-  MACVETH_DEBUG("SIMDBackEnd",
-                "This should never happen: PATH for costs file not found");
-  llvm::llvm_unreachable_internal();
 }
 
 // ---------------------------------------------
-std::string SIMDBackEnd::getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal,
-                                   int Position, int Offset) {
+std::string SIMDBackEnd::getOpName(const VectorIR::VOperand &V, bool Ptr,
+                                   bool RegVal, int Position, int Offset) {
   if ((Ptr) && (V.IsStore || V.IsLoad)) {
     return "&" + V.getRegName(Position, Offset);
   }
   if (RegVal) {
     return V.getRegName(Position, Offset);
   }
-  return V.Name;
+  return V.getName();
 }
 
 // ---------------------------------------------
@@ -93,7 +91,7 @@ SIMDBackEnd::addNonSIMDInst(VectorIR::VectorOP OP, SIMDBackEnd::SIMDType SType,
                             SIMDBackEnd::SIMDInstListType *IL) {
   // Generate SIMD inst
   std::string Rhs;
-  auto Lhs = OP.R.getName();
+  auto Lhs = OP.getResult().getName();
 
   SIMDBackEnd::SIMDInst I(Lhs, Rhs, MVSL);
   // Retrieving cost of function
@@ -121,12 +119,12 @@ SIMDBackEnd::addNonSIMDInst(std::string Lhs, std::string Rhs,
 
 // ---------------------------------------------
 std::string SIMDBackEnd::SIMDInst::render() {
-  std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
+  const std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
   std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
                           (SType == SIMDType::VSCATTER))
                              ? FN
                              : Result + " = " + FN;
-  if ((SType == SIMDType::VSEQ) ||
+  if ((SType == SIMDType::VSEQ) || (SType == SIMDType::VTEMPLATE) ||
       ((Args.size() == 0) && (SType == SIMDType::VOPT))) {
     return FullFunc;
   }
@@ -367,10 +365,12 @@ std::string SIMDBackEnd::genGenericFunc(std::string F,
 }
 
 // ---------------------------------------------
-std::string SIMDBackEnd::replacePatterns(std::string Pattern, std::string W,
-                                         std::string D, std::string P,
-                                         std::string S) {
-  return "_mm" + W + "_" + P + Pattern + S + "_" + D;
+std::string SIMDBackEnd::replacePatterns(const std::string &Pattern,
+                                         const std::string &Width,
+                                         const std::string &DataSuffix,
+                                         const std::string &Prefix,
+                                         const std::string &Suffix) {
+  return "_mm" + Width + "_" + Prefix + Pattern + Suffix + "_" + DataSuffix;
 }
 
 // ---------------------------------------------

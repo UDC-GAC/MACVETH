@@ -133,7 +133,7 @@ public:
   virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) override;
 
   /// Set values for registers which need to be initalized
-  virtual MVStrVector renderSIMDRegister(SIMDInstListType S);
+  virtual MVStrVector renderSIMDRegister(SIMDInstListType S) override;
 
   /// Trick for inserting two 128-bit registers onto a 256-bit register
   void insertLowAndHighBits(VectorIR::VOperand V, std::string Hi,
@@ -270,7 +270,7 @@ private:
   std::string declareAuxArray(MVDataType::VDataType DT);
 
   /// Max width
-  static inline const int MaxWidth = 256;
+  static constexpr int MaxWidth = 256;
 };
 
 } // namespace macveth

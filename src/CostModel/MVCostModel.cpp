@@ -30,7 +30,7 @@
 #include "include/Vectorization/SIMD/SIMDBackEndFactory.h"
 
 // ---------------------------------------------
-InstCostInfo getOperationCost(MVOp Op, std::string T) {
+InstCostInfo getOperationCost(const MVOp &Op, const std::string &T) {
   if (Op.isAssignment()) {
     return InstCostInfo(CostTable::getMVOPRow("ST_" + Utils::toUppercase(T)),
                         InstType::MVOP);
@@ -55,8 +55,8 @@ InstCostInfo MVCostModel::computeCostForNodeOp(Node *N) {
 }
 
 // ---------------------------------------------
-InstCostInfo MVCostModel::computeCostForNodeOpsList(int VL,
-                                                    Node::NodeListType &NL) {
+InstCostInfo
+MVCostModel::computeCostForNodeOpsList(int VL, const Node::NodeListType &NL) {
   InstCostInfo TotalCost;
   for (int i = 0; i < VL; ++i) {
     TotalCost += computeCostForNodeOp(NL[i]);
@@ -70,7 +70,8 @@ InstCostInfo MVCostModel::computeCostForNodeOpsList(int VL,
 
 // ---------------------------------------------
 InstCostInfo
-MVCostModel::computeCostForNodeOperandsList(int VL, Node::NodeListType &NL) {
+MVCostModel::computeCostForNodeOperandsList(int VL,
+                                            const Node::NodeListType &NL) {
   InstCostInfo TotalCost;
   for (int i = 0; i < VL; ++i) {
     auto M = NL[i]->getMVExpr();
@@ -118,20 +119,21 @@ MVCostModel::computeCostForStmtWrapperList(std::list<StmtWrapper *> &SL) {
 
 //---------------------------------------------
 InstCostInfo MVCostModel::computeVectorOPCost(VectorIR::VectorOP V,
-                                              SIMDBackEnd *SG) {
+                                              SIMDBackEnd *Backend) {
   InstCostInfo C;
-  auto S = SG->getSIMDfromVectorOP(V);
-  for (auto I : S) {
-    if (I.isSequential()) {
-      C.Latency += 10;
+  auto SIMDList = Backend->getSIMDfromVectorOP(V);
+  for (auto Ins : SIMDList) {
+    if ((Ins.isSequential()) || (Ins.isTemplate())) {
+      C.Latency += Ins.getCost();
       continue;
     }
-    C += InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp);
-    MACVETH_DEBUG(
-        "MVCostModel",
-        "SIMD inst = " + I.FuncName + " ( " + I.render() + "); cost = " +
-            InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp)
-                .toString());
+    C += InstCostInfo(CostTable::getIntrinRow(Ins.FuncName), InstType::SIMDOp);
+    MACVETH_DEBUG("MVCostModel",
+                  "SIMD inst = " + Ins.FuncName + " ( " + Ins.render() +
+                      "); cost = " +
+                      InstCostInfo(CostTable::getIntrinRow(Ins.FuncName),
+                                   InstType::SIMDOp)
+                          .toString());
   }
   return C;
 }
@@ -157,7 +159,7 @@ SIMDInfo MVCostModel::generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S) {
 
 //---------------------------------------------
 std::list<VectorIR::VectorOP>
-MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *SG) {
+MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *Backend) {
   std::list<VectorIR::VectorOP> VList;
   auto CopyNL = NL;
   Node::NodeListType VLoadA;
@@ -207,7 +209,7 @@ repeat:
     VOps[Cursor] = NextNode;
 
     // Get vector length
-    VL = SG->getMaxVectorSize(VOps[Cursor]->getDataType());
+    VL = Backend->getMaxVectorSize(VOps[Cursor]->getDataType());
     // NOTE: how do you solve this? I mean, for reductions, for instance,
     // you will have different Plcmnts, something like: 1,2,3,4; but this
     // algorithm should be able to select them. So maybe when selecting
@@ -262,7 +264,7 @@ repeat:
   if (Cursor != 0) {
     // Compute the vector cost
     auto NewVectInst = VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB);
-    auto CostVect = computeVectorOPCost(NewVectInst, SG);
+    auto CostVect = computeVectorOPCost(NewVectInst, Backend);
     auto CostNodes = computeCostForNodeOpsList(Cursor, VOps);
     CostNodes += computeCostForNodeOperandsList(Cursor, VLoadA);
     if (!IsUnary) {
@@ -295,7 +297,8 @@ repeat:
 
 //---------------------------------------------
 std::list<VectorIR::VectorOP>
-MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *SG) {
+MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList,
+                                 SIMDBackEnd *Backend) {
   // Returning list
   std::list<VectorIR::VectorOP> VList;
 
@@ -310,9 +313,9 @@ MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *SG) {
   }
 
   MACVETH_DEBUG("MVCostModel", "General case");
-  VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
+  VList.splice(VList.end(), greedyOpsConsumer(NL, Backend));
   MACVETH_DEBUG("MVCostModel", "Reductions case");
-  VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
+  VList.splice(VList.end(), greedyOpsConsumer(NRedux, Backend));
 
   // Order Vector Operations by TAC ID
   VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {
@@ -324,7 +327,7 @@ MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *SG) {
 
 // ---------------------------------------------
 SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
-                                       SIMDBackEnd *SG) {
+                                       SIMDBackEnd *Backend) {
 
   // Get all the TAC from all the Stmts
   TacListType TL;
@@ -339,10 +342,10 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
   auto NL = PlcmntAlgo::sortGraph(G.getNodeListOps());
 
   // Setting CDAG
-  SG->setCDAG(G);
+  Backend->setCDAG(G);
 
   // Execute greedy algorithm
-  auto VList = getVectorOpFromCDAG(NL, SG);
+  auto VList = getVectorOpFromCDAG(NL, Backend);
 
   // Debugging
   if (MVOptions::Debug) {
@@ -356,10 +359,10 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
 
   // FIXME: SIMD cost model used backend to generate intrinsics so registers are
   // polluted, need to clean them
-  // SG->clearMappings();
+  // Backend->clearMappings();
 
   // Generate the SIMD list
-  auto SIMD = SG->getSIMDfromVectorOP(VList);
+  auto SIMD = Backend->getSIMDfromVectorOP(VList);
 
   return MVCostModel::generateSIMDInfoReport(SIMD);
 }

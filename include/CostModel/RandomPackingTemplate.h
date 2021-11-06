@@ -26,18 +26,21 @@
 #ifndef MACVETH_RANDOMPACKINGTEMPLATE_H
 #define MACVETH_RANDOMPACKINGTEMPLATE_H
 
+#include "include/MVOptions.h"
 #include "include/Utils.h"
+#include <algorithm>
+#include <cassert>
 #include <list>
 #include <map>
 #include <sstream>
-#include <string.h>
+#include <string>
 
 namespace macveth {
 
 class TemplateOperand {
 public:
   TemplateOperand(std::string &S) {
-    int TokenInt;
+    int TokenInt = 0;
     size_t Pos = 0;
     int T = 0;
     while ((Pos = S.find(":")) != std::string::npos) {
@@ -49,39 +52,57 @@ public:
         MOD = TokenInt;
       }
     }
-    assert(T == 2);
+    assert((T == 2) && "Bad template!");
     Type = S;
   }
 
-  int getID() { return ID; }
-
-  int getOffset() {
+  int getOffset() const {
     assert(isMem());
     return MOD;
   }
 
-  bool isMem() { return Type == "MEM"; }
+  int getID() const { return ID; }
+  bool isMem() const { return Type == "MEM"; }
 
 private:
-  int ID = 0;
-  int MOD = 0;
-  std::string Type = "MEM";
+  mutable int ID = 0;
+  mutable int MOD = 0;
+  mutable std::string Type = "MEM";
 };
+
+using TemplateListT = std::vector<std::string>;
 
 class RandomPackingTemplate {
 public:
-  void generateCode();
-
-  RandomPackingTemplate(std::string Signature, int Cost)
+  RandomPackingTemplate(const std::string &Signature, int Cost)
       : Signature(Signature), Cost(Cost) {
-    this->ID = RandomPackingTable::_UID++;
+    ID = RandomPackingTemplate::_UID++;
+    std::string dir(__FILE__);
+    dir = dir.substr(0, dir.find_last_of("\\/"));
+    std::string TemplateFile = MVArchStr[MVOptions::Arch] + "_" +
+                               MVISAStr[MVOptions::ISA] + "_" + Signature;
+    TemplatePath = dir + "/RandomPackingTemplates/" + TemplateFile;
+  }
+
+  void readFile() const {
+    std::ifstream F(TemplatePath);
+    assert(!F.fail() && "File does not exist for Random Packing Template!");
+    std::istream_iterator<std::string> Start(F), End;
+    TemplateList = TemplateListT(Start, End);
+  }
+
+  TemplateListT getTemplates() const {
+    readFile();
+    return TemplateList;
   }
 
 private:
   static inline unsigned long long _UID = 0;
   unsigned long long ID = 0;
-  unsigned long long Cost = 0;
   std::string Signature = "";
+  unsigned long long Cost = 0;
+  std::string TemplatePath = "";
+  mutable TemplateListT TemplateList;
 };
 } // namespace macveth
 

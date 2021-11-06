@@ -28,6 +28,7 @@
 
 #include "include/CDAG.h"
 #include "include/CostModel/CostTable.h"
+#include "include/CostModel/RandomPackingTable.h"
 #include "include/MVExpr/MVDataType.h"
 #include "include/MVSourceLocation.h"
 #include "include/Vectorization/VectorIR.h"
@@ -79,7 +80,9 @@ public:
     /// multiply-accumulation) we will call it VOPT
     VOPT,
     /// Initializing some value, for instance, in reductions
-    INIT
+    INIT,
+    /// Template
+    VTEMPLATE
   };
 
   /// Wrap for representing the SIMDInst not just as single strings to print,
@@ -132,6 +135,13 @@ public:
     MVDataType::VDataType DT;
     /// Width
     MVDataType::VWidth W;
+    /// Cost
+    unsigned int Cost = 10;
+    /// For random packing templates
+    bool Template = false;
+
+    const unsigned int getCost() { return Cost; }
+    const bool isTemplate() { return Template; }
 
     /// Render instruction as a string
     std::string render();
@@ -281,16 +291,18 @@ public:
   static void populateTable(MVCPUInfo::MVISA ISA);
 
   /// Auxiliary function for replacing patterns in a string
-  static std::string replacePatterns(std::string Pattern, std::string W,
-                                     std::string D, std::string P,
-                                     std::string S);
+  static std::string replacePatterns(const std::string &Pattern,
+                                     const std::string &Width,
+                                     const std::string &DataSuffix,
+                                     const std::string &Prefix,
+                                     const std::string &Suffix);
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
   std::list<std::string> renderSIMDasString(SIMDInstListType S);
 
   /// Auxiliary function to retrieve properly the operands
-  std::string getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal,
+  std::string getOpName(const VectorIR::VOperand &V, bool Ptr, bool RegVal,
                         int Position = 0, int Offset = 0);
 
   /// Insert the SIMDInst in the list given an VOperand
@@ -327,7 +339,11 @@ public:
   /// Get list of registers declared
   RegistersMapT getRegDeclared() { return SIMDBackEnd::RegDeclared; }
 
+  const RandomPackingTable &getRPTable() const { return RPTable; }
+
 private:
+  const RandomPackingTable &RPTable = RandomPackingTable();
+
   /// Auxiliary function to dispatch the VectorOP operation
   void mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
 
@@ -369,7 +385,7 @@ protected:
   inline static std::map<std::string, int> AccmDirty;
 
   /// Get the next available accumulator register
-  static std::string getNextAccmRegister(std::string V) {
+  static std::string getNextAccmRegister(const std::string &V) {
     if (AccmToReg.count(V) == 0) {
       AccmDirty[V] = 0;
       AccmToReg[V] = SIMDBackEnd::AccmReg++;
@@ -378,13 +394,13 @@ protected:
   }
 
   /// Check if the accumulator register is in a dirty state
-  static bool isAccmClean(std::string V) { return !AccmDirty[V]; }
+  static bool isAccmClean(const std::string &V) { return !AccmDirty[V]; }
 
   /// Mark the accumulator register as dirty
-  static void markDirtyAccm(std::string V) { AccmDirty[V] = 1; }
+  static void markDirtyAccm(const std::string &V) { AccmDirty[V] = 1; }
 
   /// Get the current accumulator register
-  static std::string getAccmReg(std::string V) {
+  static std::string getAccmReg(const std::string &V) {
     if (AccmToReg.count(V) == 0) {
       return "";
     }
@@ -398,7 +414,7 @@ protected:
   inline static std::map<std::string, int> AuxReg;
 
   /// Get the name of the auxiliar register for a operand and increment
-  static std::string getNextAuxRegister(std::string V) {
+  static std::string getNextAuxRegister(const std::string &V) {
     if (AuxReg.count(V) == 0) {
       AuxReg[V] = SIMDBackEnd::AuxRegId++;
     }
@@ -406,7 +422,7 @@ protected:
   }
 
   /// Get the name of the auxiliar register for a operand
-  static std::string getAuxReg(std::string V) {
+  static std::string getAuxReg(const std::string &V) {
     if (AuxReg.count(V) == 0) {
       return "";
     }
@@ -414,13 +430,14 @@ protected:
   }
 
   /// Check if value has been already been mapped for an accumulator
-  static bool hasAlreadyBeenMapped(std::string V) {
+  static bool hasAlreadyBeenMapped(const std::string &V) {
     return !(AccmToReg.count(V) == 0);
   }
 
   /// Auxiliary array numbering for auxiliary operations such as reduce
   inline static int AuxArrayReg = 0;
-  static std::string getNextArrRegister(std::string Type, int Size) {
+  static std::string getNextArrRegister(const std::string &Type,
+                                        const int &Size) {
     auto Name = ARR_PREFIX + std::to_string(AuxArrayReg++);
     addRegToDeclare(Type, Name + "[" + std::to_string(Size) + "]");
     return Name;

@@ -49,30 +49,31 @@ public:
   static InstCostInfo computeCostForNodeOp(Node *N);
 
   /// Compute cost of a region or set of operation nodes
-  static InstCostInfo computeCostForNodeOpsList(int VL, Node::NodeListType &NL);
+  static InstCostInfo computeCostForNodeOpsList(int VL,
+                                                const Node::NodeListType &NL);
 
   /// Compute cost of set of operand nodes
-  static InstCostInfo computeCostForNodeOperandsList(int VL,
-                                                     Node::NodeListType &NL);
+  static InstCostInfo
+  computeCostForNodeOperandsList(int VL, const Node::NodeListType &NL);
 
   /// Compute cost of a vector operation generated in the Vector IR
   static InstCostInfo computeVectorOPCost(VectorIR::VectorOP V,
-                                          SIMDBackEnd *SG);
+                                          SIMDBackEnd *Backend);
 
   /// Compute the cost model according to the latency-uops
   static SIMDInfo computeCostModel(std::list<StmtWrapper *> SL,
-                                   SIMDBackEnd *SG);
+                                   SIMDBackEnd *Backend);
 
   /// Generate SIMD report, with all costs for different operations
   static SIMDInfo generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S);
 
   /// Get the vector operations from the CDAG
   static std::list<VectorIR::VectorOP>
-  getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *SG);
+  getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *Backend);
 
   /// Greedy algorithm for consuming nodes in the CDAG
   static std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType &NL,
-                                                         SIMDBackEnd *SG);
+                                                         SIMDBackEnd *Backend);
 };
 
 } // namespace macveth

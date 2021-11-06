@@ -172,8 +172,9 @@ Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
 
 // ---------------------------------------------
 void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
-  std::ifstream CF;
-  CF.open(Utils::getExePath() + MVOptions::InCDAGFile, std::ios_base::in);
+  std::ifstream CF(Utils::getExePath() + MVOptions::InCDAGFile,
+                   std::ios_base::in);
+  assert(!CF.fail() && "File does not exist for PlcmntAlgo!");
   if (CF.is_open()) {
     std::string L;
     // For each node, read until lines skipping those with comments. Fail if
@@ -199,9 +200,6 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
         }
       }
     }
-  } else {
-    MACVETH_DEBUG("PlcmntAlgo", "CDAG input file can not be opened");
-    llvm::llvm_unreachable_internal();
   }
   CF.close();
 }
