@@ -1,0 +1,2 @@
+#output:REG# = _mm_loadu_ps(#rq0:0:REG#,&#0:-1:MEM#);
+#output:REG# = _mm_loadu_ps(#rq0:0:REG#,&#0:0:MEM#);

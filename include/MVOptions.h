@@ -27,7 +27,8 @@
 #define MACVETH_MVOPTIONS_H
 
 #include "include/CPUID.h"
-
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Host.h"
 #include <algorithm>
 #include <cassert>
 #include <list>
@@ -62,52 +63,70 @@ static std::map<MVCPUInfo::MVISA, std::string> MVISAStr = {
 
 static std::map<MVCPUInfo::MVArch, std::string> MVArchStr = {
     {MVCPUInfo::MVArch::DEFAULT, "Default"},
-    {MVCPUInfo::MVArch::Nehalem, "Nehalem"},
-    {MVCPUInfo::MVArch::Westmere, "Westmere"},
-    {MVCPUInfo::MVArch::SandyBridge, "SandyBridge"},
-    {MVCPUInfo::MVArch::IvyBridge, "IvyBridge"},
-    {MVCPUInfo::MVArch::Haswell, "Haswell"},
-    {MVCPUInfo::MVArch::Broadwell, "Broadwell"},
-    {MVCPUInfo::MVArch::Skylake, "Skylake"},
-    {MVCPUInfo::MVArch::KabyLake, "KabyLake"},
-    {MVCPUInfo::MVArch::CoffeeLake, "CoffeeLake"},
-    {MVCPUInfo::MVArch::CascadeLake, "CascadeLake"},
-    {MVCPUInfo::MVArch::IceLake, "IceLake"},
-    {MVCPUInfo::MVArch::Zen, "Zen"},
-    {MVCPUInfo::MVArch::Zen2, "Zen2"},
-    {MVCPUInfo::MVArch::AMDDef, "Zen"},
-    {MVCPUInfo::MVArch::IntelDef, "Broadwell"}};
+    {MVCPUInfo::MVArch::nehalem, "nehalem"},
+    {MVCPUInfo::MVArch::westmere, "westmere"},
+    {MVCPUInfo::MVArch::sandybridge, "sandybridge"},
+    {MVCPUInfo::MVArch::ivybridge, "ivybridge"},
+    {MVCPUInfo::MVArch::haswell, "haswell"},
+    {MVCPUInfo::MVArch::broadwell, "broadwell"},
+    {MVCPUInfo::MVArch::skylake, "skylake"},
+    {MVCPUInfo::MVArch::kabylake, "kabylake"},
+    {MVCPUInfo::MVArch::coffeelake, "coffeelake"},
+    {MVCPUInfo::MVArch::cascadelake, "cascadelake"},
+    {MVCPUInfo::MVArch::icelake, "icelake"},
+    {MVCPUInfo::MVArch::zen, "zen"},
+    {MVCPUInfo::MVArch::zen2, "zen2"},
+    {MVCPUInfo::MVArch::AMDDef, "zen"},
+    {MVCPUInfo::MVArch::IntelDef, "cascadelake"}};
+
+static std::map<std::string, MVCPUInfo::MVArch> MVStrArch = {
+    {"Default", MVCPUInfo::MVArch::DEFAULT},
+    {"nehalem", MVCPUInfo::MVArch::nehalem},
+    {"westmere", MVCPUInfo::MVArch::westmere},
+    {"sandybridge", MVCPUInfo::MVArch::sandybridge},
+    {"ivybridge", MVCPUInfo::MVArch::ivybridge},
+    {"haswell", MVCPUInfo::MVArch::haswell},
+    {"broadwell", MVCPUInfo::MVArch::broadwell},
+    {"skylake", MVCPUInfo::MVArch::skylake},
+    {"kabylake", MVCPUInfo::MVArch::kabylake},
+    {"coffeelake", MVCPUInfo::MVArch::coffeelake},
+    {"cascadelake", MVCPUInfo::MVArch::cascadelake},
+    {"icelake", MVCPUInfo::MVArch::icelake},
+    {"zen", MVCPUInfo::MVArch::zen},
+    {"zen2", MVCPUInfo::MVArch::zen2},
+    {"zen", MVCPUInfo::MVArch::AMDDef},
+    {"cascadelake", MVCPUInfo::MVArch::IntelDef}};
 
 /// Mapping between the ISA and supported architectures
 static std::map<MVCPUInfo::MVISA, std::list<MVCPUInfo::MVArch>>
     SupportedISAArch = {
         {MVCPUInfo::MVISA::SSE,
-         {MVCPUInfo::MVArch::Nehalem, MVCPUInfo::MVArch::Westmere,
-          MVCPUInfo::MVArch::SandyBridge, MVCPUInfo::MVArch::IvyBridge,
-          MVCPUInfo::MVArch::Haswell, MVCPUInfo::MVArch::Broadwell,
-          MVCPUInfo::MVArch::Skylake, MVCPUInfo::MVArch::KabyLake,
-          MVCPUInfo::MVArch::CoffeeLake, MVCPUInfo::MVArch::CascadeLake,
-          MVCPUInfo::MVArch::IceLake, MVCPUInfo::MVArch::Zen,
-          MVCPUInfo::MVArch::Zen2, MVCPUInfo::MVArch::AMDDef,
+         {MVCPUInfo::MVArch::nehalem, MVCPUInfo::MVArch::westmere,
+          MVCPUInfo::MVArch::sandybridge, MVCPUInfo::MVArch::ivybridge,
+          MVCPUInfo::MVArch::haswell, MVCPUInfo::MVArch::broadwell,
+          MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::kabylake,
+          MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
+          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::zen,
+          MVCPUInfo::MVArch::zen2, MVCPUInfo::MVArch::AMDDef,
           MVCPUInfo::MVArch::IntelDef}},
         {MVCPUInfo::MVISA::AVX,
-         {MVCPUInfo::MVArch::SandyBridge, MVCPUInfo::MVArch::IvyBridge,
-          MVCPUInfo::MVArch::Haswell, MVCPUInfo::MVArch::Broadwell,
-          MVCPUInfo::MVArch::Skylake, MVCPUInfo::MVArch::KabyLake,
-          MVCPUInfo::MVArch::CoffeeLake, MVCPUInfo::MVArch::CascadeLake,
-          MVCPUInfo::MVArch::IceLake, MVCPUInfo::MVArch::Zen,
-          MVCPUInfo::MVArch::Zen2, MVCPUInfo::MVArch::AMDDef,
+         {MVCPUInfo::MVArch::sandybridge, MVCPUInfo::MVArch::ivybridge,
+          MVCPUInfo::MVArch::haswell, MVCPUInfo::MVArch::broadwell,
+          MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::kabylake,
+          MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
+          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::zen,
+          MVCPUInfo::MVArch::zen2, MVCPUInfo::MVArch::AMDDef,
           MVCPUInfo::MVArch::IntelDef}},
         {MVCPUInfo::MVISA::AVX2,
-         {MVCPUInfo::MVArch::Haswell, MVCPUInfo::MVArch::Broadwell,
-          MVCPUInfo::MVArch::Skylake, MVCPUInfo::MVArch::KabyLake,
-          MVCPUInfo::MVArch::CoffeeLake, MVCPUInfo::MVArch::CascadeLake,
-          MVCPUInfo::MVArch::IceLake, MVCPUInfo::MVArch::Zen,
-          MVCPUInfo::MVArch::Zen2, MVCPUInfo::MVArch::AMDDef,
+         {MVCPUInfo::MVArch::haswell, MVCPUInfo::MVArch::broadwell,
+          MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::kabylake,
+          MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
+          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::zen,
+          MVCPUInfo::MVArch::zen2, MVCPUInfo::MVArch::AMDDef,
           MVCPUInfo::MVArch::IntelDef}},
         {MVCPUInfo::MVISA::AVX512,
-         {MVCPUInfo::MVArch::Skylake, MVCPUInfo::MVArch::CascadeLake,
-          MVCPUInfo::MVArch::IceLake, MVCPUInfo::MVArch::AMDDef,
+         {MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::cascadelake,
+          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::AMDDef,
           MVCPUInfo::MVArch::IntelDef}}};
 
 enum DebugLevel {
@@ -166,11 +185,6 @@ struct MVOptions {
   /// Target function
   static inline std::string TargetFunc = "";
 
-  static MVCPUInfo::MVArch getMVArch() {
-    MVCPUInfo CInfo;
-    return CInfo.getArchitecture();
-  }
-
   static MVCPUInfo::MVISA getMVISA() {
     MVCPUInfo CInfo;
     if (CInfo.isAVX512F()) {
@@ -209,7 +223,10 @@ struct MVOptions {
       MVOptions::ISA = getMVISA();
     }
     if (MVOptions::Arch == MVCPUInfo::MVArch::NATIVE) {
-      MVOptions::Arch = getMVArch();
+      auto HostArch = std::string(llvm::sys::getHostCPUName());
+      assert((MVStrArch.find(HostArch) != MVStrArch.end()) &&
+             "Architecture not supported");
+      MVOptions::Arch = MVStrArch[HostArch];
     }
     checkIfArchISACompatible();
   }

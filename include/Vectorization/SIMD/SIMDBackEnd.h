@@ -150,7 +150,7 @@ public:
     MVSourceLocation getMVSourceLocation() { return MVSL; }
 
     /// Check if the vectorial type of the operation is sequential
-    bool isSequential() { return SType == SIMDBackEnd::SIMDType::VSEQ; }
+    bool isSequential() { return SType == SIMDType::VSEQ; }
 
     /// Check if the vectorial type of the operation is a reduction
     bool isReduction() { return SType == SIMDType::VREDUC; }
@@ -171,17 +171,13 @@ public:
 
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions, given a VectorOP
-  SIMDBackEnd::SIMDInst addNonSIMDInst(VectorIR::VectorOP OP,
-                                       SIMDBackEnd::SIMDType SType,
-                                       MVSourceLocation MVSL,
-                                       SIMDBackEnd::SIMDInstListType *IL);
+  SIMDInst addNonSIMDInst(VectorIR::VectorOP OP, SIMDType SType,
+                          MVSourceLocation MVSL, SIMDInstListType *IL);
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions specifying explicitly the LHS
   /// and the RHS
-  SIMDBackEnd::SIMDInst addNonSIMDInst(std::string Lhs, std::string Rhs,
-                                       SIMDBackEnd::SIMDType SType,
-                                       MVSourceLocation MVSL,
-                                       SIMDBackEnd::SIMDInstListType *IL);
+  SIMDInst addNonSIMDInst(std::string Lhs, std::string Rhs, SIMDType SType,
+                          MVSourceLocation MVSL, SIMDInstListType *IL);
 
   // VectorAPI: instructions to implement by the specific backends
 
@@ -261,19 +257,22 @@ public:
   virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V) = 0;
 
   /// Add SIMD instruction
-  virtual SIMDBackEnd::SIMDInst genSIMDInst(
-      std::string Result, std::string Op, std::string PrefS, std::string SuffS,
-      MVDataType::VWidth Width, MVDataType::VDataType Type, MVStrVector Args,
-      SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
-      SIMDBackEnd::SIMDInstListType *IL, std::string NameOp = "",
-      std::string MVFunc = "", MVStrVector MVArgs = {}, MVOp MVOP = MVOp()) = 0;
+  virtual SIMDInst genSIMDInst(std::string Result, std::string Op,
+                               std::string PrefS, std::string SuffS,
+                               MVDataType::VWidth Width,
+                               MVDataType::VDataType Type, MVStrVector Args,
+                               SIMDType SType, MVSourceLocation SL,
+                               SIMDInstListType *IL, std::string NameOp = "",
+                               std::string MVFunc = "", MVStrVector MVArgs = {},
+                               MVOp MVOP = MVOp()) = 0;
 
-  virtual SIMDBackEnd::SIMDInst
-  genSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
-              std::string SuffS, MVStrVector OPS, SIMDBackEnd::SIMDType SType,
-              MVSourceLocation SL, SIMDBackEnd::SIMDInstListType *IL = nullptr,
-              std::string NameOp = "", std::string MVFunc = "",
-              MVStrVector MVArgs = {}, MVOp MVOP = MVOp()) = 0;
+  virtual SIMDInst genSIMDInst(VectorIR::VOperand V, std::string Op,
+                               std::string PrefS, std::string SuffS,
+                               MVStrVector OPS, SIMDType SType,
+                               MVSourceLocation SL,
+                               SIMDInstListType *IL = nullptr,
+                               std::string NameOp = "", std::string MVFunc = "",
+                               MVStrVector MVArgs = {}, MVOp MVOP = MVOp()) = 0;
 
   /// Get headers needed (include files)
   virtual std::list<std::string> getHeadersNeeded() = 0;
@@ -337,7 +336,7 @@ public:
                std::vector<std::tuple<std::string, std::vector<std::string>>>>;
 
   /// Get list of registers declared
-  RegistersMapT getRegDeclared() { return SIMDBackEnd::RegDeclared; }
+  RegistersMapT getRegDeclared() { return RegDeclared; }
 
   const RandomPackingTable &getRPTable() const { return RPTable; }
 
@@ -388,7 +387,7 @@ protected:
   static std::string getNextAccmRegister(const std::string &V) {
     if (AccmToReg.count(V) == 0) {
       AccmDirty[V] = 0;
-      AccmToReg[V] = SIMDBackEnd::AccmReg++;
+      AccmToReg[V] = AccmReg++;
     }
     return VEC_PREFIX + std::to_string(AccmToReg.at(V));
   }
@@ -416,15 +415,7 @@ protected:
   /// Get the name of the auxiliar register for a operand and increment
   static std::string getNextAuxRegister(const std::string &V) {
     if (AuxReg.count(V) == 0) {
-      AuxReg[V] = SIMDBackEnd::AuxRegId++;
-    }
-    return AUX_PREFIX + std::to_string(AuxReg.at(V));
-  }
-
-  /// Get the name of the auxiliar register for a operand
-  static std::string getAuxReg(const std::string &V) {
-    if (AuxReg.count(V) == 0) {
-      return "";
+      AuxReg[V] = AuxRegId++;
     }
     return AUX_PREFIX + std::to_string(AuxReg.at(V));
   }
@@ -432,6 +423,14 @@ protected:
   /// Check if value has been already been mapped for an accumulator
   static bool hasAlreadyBeenMapped(const std::string &V) {
     return !(AccmToReg.count(V) == 0);
+  }
+
+  /// Return auxiliar register given a type and a vector name to map
+  std::string mapNewAuxRegister(const std::string &Type,
+                                const std::string &Name, int InitVal = 0) {
+    auto Reg = getNextAuxRegister(Name);
+    addRegToDeclare(Type, Reg, InitVal);
+    return Reg;
   }
 
   /// Auxiliary array numbering for auxiliary operations such as reduce

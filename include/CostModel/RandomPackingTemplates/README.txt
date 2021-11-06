@@ -11,8 +11,7 @@ Where:
     <contiguity_form> ::= (_[01]){nnz - 1}
 
 Their syntax is quite simple:
-
-        line ::= <expr>
-        <expr> ::= <reg> = <inst> | <inst>
-        <inst> ::= signature(<args>)
-        <args> ::= <reg> | <mem> | *args
+    line ::= <expr>
+    <expr> ::= <reg> = <inst> | <inst>
+    <inst> ::= signature(<args>)
+    <args> ::= <reg> | <mem> | *args

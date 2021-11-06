@@ -21,7 +21,7 @@
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Noël Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #include "include/PlcmntAlgo.h"
 #include "include/Debug.h"
@@ -176,10 +176,11 @@ void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
                    std::ios_base::in);
   assert(!CF.fail() && "File does not exist for PlcmntAlgo!");
   if (CF.is_open()) {
-    std::string L;
     // For each node, read until lines skipping those with comments. Fail if
     // line with no numbers
     for (auto N : NL) {
+
+      std::string L;
       while (getline(CF, L)) {
         if (L.rfind("//", 0) == 0) {
           // This is a comment, skip it

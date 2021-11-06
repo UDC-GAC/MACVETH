@@ -368,4 +368,9 @@ void MVFrontendAction::EndSourceFileAction() {
   if (!MVOptions::NoReformat) {
     formatMACVETH(OutFileName);
   }
+  // FIXME: COPY macveth_api.h file if not created
+  //   std::string CopyDir = OutFileName.substr(0,
+  //   OutFileName.find_last_of("\\/")); std::ifstream src("from.ogv",
+  //   std::ios::binary); std::ofstream dst(CopyDir + "/macveth_api.h",
+  //   std::ios::binary); dst << src.rdbuf();
 }

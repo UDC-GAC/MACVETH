@@ -446,10 +446,16 @@ public:
   }
 
   /// FIXME: this is garbage
-  std::string toStringWithOffset(int Offset) {
+  std::string toStringWithOffset(int Offset, int Level = -1) {
     std::string T = this->BaseName;
+    size_t Counter = 0;
     for (auto I : this->Idx) {
-      T += "[" + I.toString() + " + (" + std::to_string(Offset) + ")]";
+      if ((Level == -1) && (Counter == (this->Idx.size() - 1))) {
+        T += "[" + I.toString() + " + (" + std::to_string(Offset) + ")]";
+      } else {
+        T += "[" + I.toString() + "]";
+      }
+      Counter++;
     }
     return T;
   }

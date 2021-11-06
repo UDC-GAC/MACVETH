@@ -26,6 +26,7 @@
 #include "include/Vectorization/SIMD/AVX2/AVX2BackEnd.h"
 #include "include/CostModel/CostTable.h"
 #include "include/Debug.h"
+#include "include/MVExpr/MVExprArray.h"
 #include "include/Utils.h"
 #include <algorithm>
 #include <map>
@@ -1015,7 +1016,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vload(VectorIR::VOperand V) {
   if (V.DType > MVDataType::VDataType::SFLOAT) {
     V.DType = (V.VSize > 4) ? MVDataType::VDataType::UNDEF256
                             : MVDataType::VDataType::UNDEF128;
-    std::string Cast = getRegisterType(V.DType, V.Width);
+    auto Cast = getRegisterType(V.DType, V.Width);
     Args.push_back("(" + Cast + "*)" + getOpName(V, true, true));
   } else {
     Args.push_back(getOpName(V, true, true));
@@ -1397,40 +1398,64 @@ void AVX2BackEnd::insert(VectorIR::VOperand V, MVStrVector Args,
 std::string getContiguityStr(VectorIR::VOperand V) {
   std::string Cont = "";
   for (int Idx = 1; Idx < (int)V.Size; ++Idx) {
-    Cont = "_" + std::to_string(V.Idx[Idx - 1] + 1 != V.Idx[Idx]) + Cont;
+    Cont = "_" + std::to_string(V.Idx[Idx - 1] + 1 == V.Idx[Idx]) + Cont;
   }
   return Cont;
 }
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vpack(VectorIR::VOperand V) {
-  auto SearchStr = "n" + std::to_string(V.VSize) + getContiguityStr(V);
+  // Search for the pattern in the templates
+  auto SearchStr = MVDataType::VDTypeToCType[V.getDataType()] + "_n" +
+                   std::to_string(V.VSize) + getContiguityStr(V);
   // Generate search string, search, get template
   // For each line, substitute
   auto Template = getRPTable().getTemplate(SearchStr);
   if (Template.has_value()) {
+    SIMDBackEnd::SIMDInstListType IL;
     auto RPTemplate = Template.value();
-    // Core function
+    std::string Output;
+    // Iterate all lines, and substitute elements
     for (const auto &Line : RPTemplate.getTemplates()) {
       std::regex OutputRegex("(#output:REG#)");
-      std::string Output = std::regex_replace(Line, OutputRegex, Output);
-      std::regex ValRegex("(#[a-z0-9:]+#)+", std::regex::icase);
-      for (auto i =
-               std::sregex_iterator(Output.begin(), Output.end(), ValRegex);
-           i != std::sregex_iterator(); ++i) {
+      Output = std::regex_replace(Line, OutputRegex, V.getName());
+      std::regex ValRegex("(#[-a-z0-9:]+#)+", std::regex::icase);
+      auto i = std::sregex_iterator(Output.begin(), Output.end(), ValRegex);
+      for (; i != std::sregex_iterator(); ++i) {
         auto Match = (*i).str();                        // this is the match
         auto Split = Match.substr(1, Match.size() - 2); // remove # characters
         auto Value = TemplateOperand(Split);
+        // Value to replace
         std::string ReplaceStr = "";
-
+        if (Value.isMem()) {
+          auto *NodeArray =
+              dyn_cast<MVExprArray>(V.UOP[Value.getMemPos()]->getMVExpr());
+          if (NodeArray) {
+            ReplaceStr = (Value.getOffset() != 0)
+                             ? ReplaceStr = NodeArray->toStringWithOffset(
+                                   Value.getOffset())
+                             : NodeArray->getExprStrRaw();
+          } else {
+            /// FIXME: not tested this...
+            ReplaceStr = V.UOP[Value.getMemPos()]->getRegisterValue();
+          }
+        } else {
+          // Get auxiliar register
+          std::string Type = "__m" + std::to_string(Value.getMOD());
+          ReplaceStr = mapNewAuxRegister(Type, Value.getID(), 0);
+        }
         // Last but not least
         std::regex NewReplace(Match);
         Output = std::regex_replace(Output, NewReplace, ReplaceStr);
       }
-      std::cout << Output << '\n';
       // ADD SIMD instruction
+      MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order,
+                            V.Offset);
+      addNonSIMDInst("", Output, SIMDType::VTEMPLATE, MVSL, &IL);
     }
+    return IL;
   }
+  // Fallback: in case gather is more profitable or packing not found...
   return vgather(V);
 }
 

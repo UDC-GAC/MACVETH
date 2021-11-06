@@ -57,22 +57,24 @@ public:
     std::string RPModel = dir + "/RandomPackingModel.csv";
     std::ifstream F(RPModel);
     assert(!F.fail() && "File does not exist for Random Packing Table!");
-    std::string L, W;
-    auto Arch = MVArchStr[MVOptions::Arch];
-    auto ISA = MVISAStr[MVOptions::ISA];
+    auto Arch = Utils::toLowercase(MVArchStr[MVOptions::Arch]);
+    auto ISA = Utils::toLowercase(MVISAStr[MVOptions::ISA]);
     if (F.is_open()) {
+      std::string L, W;
       while (getline(F, L)) {
         if ((L.rfind("#", 0) == 0) || (L == "")) {
           // Check if line is a comment
           continue;
         }
         // Signature, Cost, Arch, ISA
-        std::vector<std::string> Tok = split(L, ',');
+        auto Tok = Split<','>::split(L);
         if ((Tok[2] != Arch) || (Tok[3] != ISA)) {
           continue;
         }
-        RandomPackingTable::Table.insert(std::make_pair(
-            Tok[0], RandomPackingTemplate(Tok[0], std::atoi(Tok[1].c_str()))));
+        auto Signature = Tok[4] + "_n" + Tok[0];
+        int Cost = std::atoi(Tok[1].c_str());
+        RandomPackingTable::Table.insert(
+            std::make_pair(Signature, RandomPackingTemplate(Signature, Cost)));
       }
       F.close();
       return;

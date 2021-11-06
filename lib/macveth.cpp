@@ -28,8 +28,8 @@
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
-#include "clang/Frontend/FrontendActions.h"
 #include "clang/Format/Format.h"
+#include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
@@ -101,32 +101,32 @@ static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
     llvm::cl::values(
         clEnumValN(MVCPUInfo::MVArch::NATIVE, "native",
                    "Detect the architecture"),
-        clEnumValN(MVCPUInfo::MVArch::Nehalem, "nehalem",
-                   "Intel Nehalem (2009) architecture (tock): SSE4.2"),
-        clEnumValN(MVCPUInfo::MVArch::Westmere, "westmere",
-                   "Intel Westmere (2010) architecture (tick): SSE4.2"),
-        clEnumValN(MVCPUInfo::MVArch::SandyBridge, "sandybridge",
-                   "Intel SandyBridge (2011) architecture (tock): AVX"),
-        clEnumValN(MVCPUInfo::MVArch::IvyBridge, "ivybridge",
-                   "Intel IvyBridge (2012) architecture (tick): AVX"),
-        clEnumValN(MVCPUInfo::MVArch::Haswell, "haswell",
-                   "Intel Haswell (2013) architecture (tock): AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::Broadwell, "broadwell",
-                   "Intel Broadwell (2014) architecture (tick): AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::Skylake, "skylake",
-                   "Intel Skylake (2015) architecture (tock): AVX512"),
-        clEnumValN(MVCPUInfo::MVArch::KabyLake, "kabylake",
+        clEnumValN(MVCPUInfo::MVArch::nehalem, "nehalem",
+                   "Intel nehalem (2009) architecture (tock): SSE4.2"),
+        clEnumValN(MVCPUInfo::MVArch::westmere, "westmere",
+                   "Intel westmere (2010) architecture (tick): SSE4.2"),
+        clEnumValN(MVCPUInfo::MVArch::sandybridge, "sandybridge",
+                   "Intel sandybridge (2011) architecture (tock): AVX"),
+        clEnumValN(MVCPUInfo::MVArch::ivybridge, "ivybridge",
+                   "Intel ivybridge (2012) architecture (tick): AVX"),
+        clEnumValN(MVCPUInfo::MVArch::haswell, "haswell",
+                   "Intel haswell (2013) architecture (tock): AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::broadwell, "broadwell",
+                   "Intel broadwell (2014) architecture (tick): AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::skylake, "skylake",
+                   "Intel skylake (2015) architecture (tock): AVX512"),
+        clEnumValN(MVCPUInfo::MVArch::kabylake, "kabylake",
                    "Intel Kaby Lake (2016) architecture (tock): AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::CoffeeLake, "coffeelake",
+        clEnumValN(MVCPUInfo::MVArch::coffeelake, "coffeelake",
                    "Intel Coffee Lake (2017) architecture (tock): AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::CascadeLake, "cascadelake",
+        clEnumValN(MVCPUInfo::MVArch::cascadelake, "cascadelake",
                    "Intel Cascade Lake (2019) architecture (tock): AVX512"),
-        clEnumValN(MVCPUInfo::MVArch::IceLake, "icelake",
+        clEnumValN(MVCPUInfo::MVArch::icelake, "icelake",
                    "Intel Ice Lake (2020) architecture (tick): AVX512"),
-        clEnumValN(MVCPUInfo::MVArch::Zen, "zen",
-                   "AMD Zen (2019) architecture: AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::Zen2, "zen2",
-                   "AMD Zen 2 (2020) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::zen, "zen",
+                   "AMD zen (2019) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::zen2, "zen2",
+                   "AMD zen 2 (2020) architecture: AVX2"),
         clEnumValN(MVCPUInfo::MVArch::AMDDef, "amd",
                    "AMD architecture not specified"),
         clEnumValN(MVCPUInfo::MVArch::IntelDef, "intel",
@@ -240,8 +240,7 @@ int main(int argc, const char **argv) {
 #if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 12)
   auto Result = CommonOptionsParser::create(argc, argv, MacvethCategory);
   if (auto E = Result.takeError()) {
-    std::cout << "Something went wrong when parsing options..."
-              << std::endl;
+    std::cout << "Something went wrong when parsing options..." << std::endl;
     return 0;
   }
   auto Op = std::move(*Result);

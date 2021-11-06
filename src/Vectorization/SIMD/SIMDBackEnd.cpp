@@ -31,6 +31,7 @@
 #include "include/Utils.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Type.h"
+#include <algorithm>
 #include <regex>
 #include <sstream>
 #include <unistd.h>
@@ -44,26 +45,22 @@ using namespace macveth;
 
 // ---------------------------------------------
 void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
-  auto PathISA = "/ISA/" + MVISAStr[ISA] + "/" + MVArchStr[MVOptions::Arch];
   std::string dir(__FILE__);
   dir = dir.substr(0, dir.find_last_of("\\/"));
-  PathISA = dir + PathISA;
-  auto Arch = MVArchStr[MVOptions::Arch];
+  auto PathISA =
+      dir + "/ISA/" + MVISAStr[ISA] + "/" + MVArchStr[MVOptions::Arch] + ".mvi";
   std::ifstream F(PathISA);
   assert(!F.fail() && "File does not exist for SIMDBackend");
-  std::string L, W;
-  MACVETH_DEBUG("SIMDBackEnd", PathISA + " path");
   if (F.is_open()) {
+    std::string L, W;
     while (getline(F, L)) {
       if ((L.rfind("#", 0) == 0) || (L == "")) {
         // Check if line is a comment
         continue;
       }
-
       //   0 ,    1     , 2 ,    3    , 4 ,  5  , 6 , 7, 8  , 9
       // MVOP,intrinsics,ASM,XED_iform,ISA,CPUID,lat,th,uops,ports
       std::vector<std::string> Args = Split<'|'>::split(L);
-
       CostTable::addRow(Args[0], Args[1], Args[2], Args[3], Args[6], Args[7],
                         Args[8], Args[9]);
     }
@@ -120,11 +117,14 @@ SIMDBackEnd::addNonSIMDInst(std::string Lhs, std::string Rhs,
 // ---------------------------------------------
 std::string SIMDBackEnd::SIMDInst::render() {
   const std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
+  if ((SType == SIMDType::VTEMPLATE)) {
+    return FN;
+  }
   std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
                           (SType == SIMDType::VSCATTER))
                              ? FN
                              : Result + " = " + FN;
-  if ((SType == SIMDType::VSEQ) || (SType == SIMDType::VTEMPLATE) ||
+  if ((SType == SIMDType::VSEQ) ||
       ((Args.size() == 0) && (SType == SIMDType::VOPT))) {
     return FullFunc;
   }
@@ -184,17 +184,6 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
   auto ExpVal = !V.MemOp;
 
   auto NullIndex = false;
-  // FIXME:
-  // if (V.Idx.size() > 0) {
-  //   auto I0 = V.Idx[0];
-  //   for (size_t i = 1; i < V.VSize; ++i) {
-  //     if (V.Idx[i] == I0) {
-  //       NullIndex = true;
-  //       break;
-  //     }
-  //   }
-  // }
-
   MACVETH_DEBUG("SIMDBackEnd",
                 "V = " + V.Name + "; EqualVal = " + std::to_string(EqualVal) +
                     "; ContMem = " + std::to_string(ContMem) +

@@ -81,6 +81,13 @@ public:
     return S;
   }
 
+  /// String to lowercase
+  static std::string toLowercase(std::string S) {
+    std::transform(S.begin(), S.end(), S.begin(),
+                   [](unsigned char C) { return std::tolower(C); });
+    return S;
+  }
+
   /// Truncate file: create or rewrite if already created
   static void initFile(std::string FileName) {
     if (FileName != "") {
