@@ -262,9 +262,6 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   for (unsigned int i = 0; i < VSize; ++i) {
     this->UOP.push_back(V[i]);
   }
-  // for (unsigned int i = VSize; i < Size; ++i) {
-  //   this->UOP.push_back(new Node());
-  // }
 
   // Check whether the operand is a store or not
   if ((PrimaryNode->getNodeType() == Node::NODE_STORE) && (Res)) {
@@ -439,9 +436,11 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
     this->IsUnary = true;
   }
 
+  bool HasTempRegisters = false;
+
   // If this operation is sequential, then we do not care about its vector
   // form, as it will be synthesized in its original form
-  if (this->VT == VectorIR::VType::SEQ) {
+  if ((this->VT == VectorIR::VType::SEQ) && (!HasTempRegisters)) {
     return;
   }
 

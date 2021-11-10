@@ -55,6 +55,53 @@ void PlcmntAlgo::computeFreeSchedule(Node::NodeListType NL) {
 }
 
 // ---------------------------------------------
+void PlcmntAlgo::markReductions(Node::NodeListType *NL) {
+  Node::NodeListType Visited;
+  Node::NodeListType Reduction;
+
+  std::reverse(std::begin(*NL), std::end(*NL));
+  for (auto R : *NL) {
+    if (std::find(Visited.begin(), Visited.end(), R) != Visited.end()) {
+      continue;
+    }
+    Visited.push_back(R);
+    Reduction.insert(Reduction.begin(), R);
+    auto S = R->getInputs();
+  loop:
+    for (auto In : S) {
+      if (In == nullptr) {
+        MACVETH_DEBUG("PlcmntAlgo", "Skipping");
+        continue;
+      }
+      if ((R->getValue() == In->getValue()) &&
+          (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched))) {
+
+        MACVETH_DEBUG("PlcmntAlgo",
+                      "Reduction found for " + In->getRegisterValue());
+        Reduction.push_back(In);
+        Visited.push_back(In);
+        for (auto Sin : S) {
+          if (Sin != nullptr) {
+            Sin->setNodeAsReduction();
+          }
+        }
+        S = In->getInputs();
+        R->setNodeAsReduction();
+        In->setNodeAsReduction();
+        for (auto Sin : S) {
+          if (Sin != nullptr) {
+            Sin->setNodeAsReduction();
+          }
+        }
+        goto loop;
+      }
+    }
+    Reduction.clear();
+  }
+  std::reverse(std::begin(*NL), std::end(*NL));
+}
+
+// ---------------------------------------------
 Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
   Node::NodeListType NCopy(*NL);
   Node::NodeListType LRedux;
@@ -86,11 +133,15 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
       // 2 .- Check if sequential (FreeSched)
       // 3a.- Check if they belong to the same TAC
       // 3b.- Check if same scop
+      // if ((R->getValue() == In->getValue()) &&
+      //     (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched)) &&
+      //     ((R->getSchedInfo().TacID == (In->getSchedInfo().TacID)) ||
+      //      R->getSchedInfo().Scop[0] == (In->getSchedInfo().Scop[0]))) {
       if ((R->getValue() == In->getValue()) &&
-          (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched)) &&
-          ((R->getSchedInfo().TacID == (In->getSchedInfo().TacID)) ||
-           R->getSchedInfo().Scop[0] == (In->getSchedInfo().Scop[0]))) {
-
+          (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched))) {
+        // &&
+        // ((R->getSchedInfo().TacID == (In->getSchedInfo().TacID)) ||
+        //  R->getSchedInfo().Scop[0] == (In->getSchedInfo().Scop[0]))) {
         // FIXME: should we consider this or not...
         // if ((R->getSchedInfo().TacID != In->getSchedInfo().TacID) &&
         //     (R->getSchedInfo().Scop[0] == In->getSchedInfo().Scop[0])) {

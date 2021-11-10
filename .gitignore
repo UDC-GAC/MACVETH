@@ -43,6 +43,7 @@ tests/macveth_output.c
 tests/test
 results/
 macveth_output.c
+tests/*/macveth_api.h
 
 # Benchmarking
 ubench

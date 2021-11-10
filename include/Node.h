@@ -108,7 +108,7 @@ public:
 
   void setNodeAsReduction() { this->SI.IsReduction = true; }
   void setNodeAsNonReduction() { this->SI.IsReduction = false; }
-  bool belongsToAReduction() { return this->SI.IsReduction; }
+  bool belongsToAReduction() const { return this->SI.IsReduction; }
 
   /// Setting the scheduling info without any other information
   void setSchedInfo() { this->SI.NodeID = Node::UUID++; }
@@ -176,7 +176,8 @@ public:
     setSchedInfo(T);
     this->LoopName = T.getLoopName();
     auto NB = findOutputNode(T.getB()->getExprStr(), L);
-    if (NB == nullptr || this->getScop()[0] != NB->getScop()[0]) {
+    // if (NB == nullptr || this->getScop()[0] != NB->getScop()[0]) {
+    if (NB == nullptr) {
       connectInput(new Node(T.getB()));
     } else {
       connectInput(NB);
@@ -184,7 +185,8 @@ public:
     Node *NC = nullptr;
     if (T.getC() != nullptr) {
       NC = findOutputNode(T.getC()->getExprStr(), L);
-      if (NC == nullptr || this->getScop()[0] != NC->getScop()[0]) {
+      // if (NC == nullptr || this->getScop()[0] != NC->getScop()[0]) {
+      if (NC == nullptr) {
         connectInput(new Node(T.getC()));
       } else {
         connectInput(NC);
@@ -318,6 +320,9 @@ public:
     // } else {
     //   return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
     // }
+
+    // return (this->getSchedInfo().NodeID < N.SI.NodeID);
+
     if (this->getSchedInfo().TacID == N.SI.TacID) {
       if (this->getSchedInfo().UnrollFactor == N.SI.UnrollFactor) {
         if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
@@ -329,13 +334,19 @@ public:
         return (this->getSchedInfo().UnrollFactor < N.SI.UnrollFactor);
       }
     } else {
-      if ((!this->belongsToAReduction()) && (!N.SI.IsReduction)) {
+      if ((!this->belongsToAReduction()) && (!N.belongsToAReduction())) {
         if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
           return (this->getSchedInfo().NodeID < N.SI.NodeID);
         } else {
           return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
         }
+        return (this->getSchedInfo().NodeID < N.SI.NodeID);
+      } else if ((this->belongsToAReduction()) || (N.belongsToAReduction())) {
+        return (this->getSchedInfo().NodeID < N.SI.NodeID);
       }
+      // else {
+      //   return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
+      // }
       return (this->getSchedInfo().TacID < N.SI.TacID);
     }
   }
@@ -357,7 +368,7 @@ public:
   }
 
 private:
-  /// Expression holded in the node
+  /// Expression holden in the node
   MVExpr *MV = nullptr;
   /// Each node holds information about scheduling
   SchedInfo SI;

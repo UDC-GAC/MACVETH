@@ -193,12 +193,12 @@ repeat:
     //   MVSkip("Skipping region... PARTIAL REDUCTION? DUNNO", GotoEndScop);
     // }
 
-    if ((Cursor > 0) &&
-        ((NextNode->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
-         (NextNode->belongsToAReduction() !=
-          VOps[Cursor - 1]->belongsToAReduction()))) {
-      break;
-    }
+    // if ((Cursor > 0) &&
+    //     ((NextNode->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
+    //      (NextNode->belongsToAReduction() !=
+    //       VOps[Cursor - 1]->belongsToAReduction()))) {
+    //   break;
+    // }
 
     // Corner case...
     // if ((NextNode->getSchedInfo().UnrollFactor % 4) != (Cursor % 4)) {
@@ -303,19 +303,21 @@ MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList,
   std::list<VectorIR::VectorOP> VList;
 
   // Working with a copy
-  Node::NodeListType NL(NList);
+  // Node::NodeListType NL(NList);
 
   // Detecting reductions
   MACVETH_DEBUG("MVCostModel", "Detecting reductions");
-  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  if (NRedux.size() == 0) {
-    MACVETH_DEBUG("MVCostModel", "No reductions detected");
-  }
+  // Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  // if (NRedux.size() == 0) {
+  //   MACVETH_DEBUG("MVCostModel", "No reductions detected");
+  // }
 
-  MACVETH_DEBUG("MVCostModel", "General case");
-  VList.splice(VList.end(), greedyOpsConsumer(NL, Backend));
-  MACVETH_DEBUG("MVCostModel", "Reductions case");
-  VList.splice(VList.end(), greedyOpsConsumer(NRedux, Backend));
+  // MACVETH_DEBUG("MVCostModel", "General case");
+  // VList.splice(VList.end(), greedyOpsConsumer(NL, Backend));
+  // MACVETH_DEBUG("MVCostModel", "Reductions case");
+  // VList.splice(VList.end(), greedyOpsConsumer(NRedux, Backend));
+  PlcmntAlgo::markReductions(&NList);
+  VList.splice(VList.end(), greedyOpsConsumer(NList, Backend));
 
   // Order Vector Operations by TAC ID
   VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {

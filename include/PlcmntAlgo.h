@@ -43,6 +43,7 @@ public:
 
   /// Detect reductions in the list of input nodes
   static Node::NodeListType detectReductions(Node::NodeListType *NL);
+  static void markReductions(Node::NodeListType *NL);
 
   /// Fuse reductions. Input **MUST** contain reductions in order to operate
   /// properly, in any other way it will not generate anything at all.

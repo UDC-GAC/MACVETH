@@ -89,11 +89,16 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
     auto WarNode = findWARDataRace(N, this->NLOps);
-    // auto RawNode = findRAWDataRace(N, this->NLOps);
+    auto RawNode = findRAWDataRace(N, this->NLOps);
     if (WarNode != nullptr) {
       MACVETH_DEBUG("CDAG/NODE", "WAR found = " + WarNode->getRegisterValue() +
                                      "; " + WarNode->getSchedInfoStr());
       N->setFreeSchedInfo(WarNode->getSchedInfo().FreeSched + 1);
+    }
+    if (RawNode != nullptr) {
+      MACVETH_DEBUG("CDAG/NODE", "RAW found = " + RawNode->getRegisterValue() +
+                                     "; " + RawNode->getSchedInfoStr());
+      N->setFreeSchedInfo(RawNode->getSchedInfo().FreeSched + 1);
     }
     return nullptr;
   }

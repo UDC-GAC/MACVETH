@@ -174,7 +174,7 @@ public:
     std::string getName() { return Name; }
 
     /// Return name of the VOperand (const)
-    std::string getName() const {return Name;}
+    std::string getName() const { return Name; }
 
     /// Returns if operands have been already loaded from memory
     bool checkIfAlreadyLoaded(Node *PrimaryNode);
@@ -283,7 +283,9 @@ public:
     VectorOP(int VL, Node::NodeListType &VOps, Node::NodeListType &VLoadA,
              Node::NodeListType &VLoadB);
     /// Check if operation is sequential or not
-    bool isSequential() { return this->VT == VType::SEQ; }
+    bool isSequential() { return VT == VType::SEQ; }
+    /// Check if operation is sequential or not
+    bool isReduction() { return VT == VType::REDUCE; }
     /// Render vector operation as string
     std::string toString();
   };
