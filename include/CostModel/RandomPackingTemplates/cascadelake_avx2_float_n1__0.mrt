@@ -1,0 +1,1 @@
+#output:REG# = _mm_load_ss(&#0:0:MEM#)

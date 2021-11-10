@@ -236,8 +236,8 @@ void MVRewriter::addHeaders(std::list<std::string> S, FileID FID) {
                        "/* begin INFO MACVETH: headers added */\n", true, true);
   }
   for (auto I : S) {
-    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
-                       "#include <" + I + ">\n", true, true);
+    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1), "#include " + I + "\n",
+                       true, true);
   }
   if (S.size() > 0) {
     Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),

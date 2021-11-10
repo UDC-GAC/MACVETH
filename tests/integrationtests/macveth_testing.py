@@ -40,11 +40,13 @@ def get_gcc_binary():
         os.popen(f"{cc} --version").read().split("\n")[0].split(" ")[-1].split(".")[0]
     )
 
-    if gcc_version == "" or int(gcc_version) < 9:
+    if gcc_version == "" or int(gcc_version) < 10:
         cc = ""
         for i in range(9, 12):
             tmp = f"gcc-{i}"
-            if os.popen(f"{tmp} --version").read() != "":
+            output = os.popen(f"{tmp} --version").read()
+            if output != "" and not "command not found" in output and f"{i}." in output:
+                gcc_version = i
                 cc = tmp
 
     if cc == "":
@@ -62,7 +64,7 @@ cc = get_gcc_binary()
 # mv_poly_flags = "
 # --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/utilities'
 # --misa=avx2 "
-mv_poly_flags = ["--misa=avx2", "--no-format"]
+mv_poly_flags = ["--misa=avx2", "--march=cascadelake", "--no-format"]
 mv_poly_flags_end = ["--", f"-I{cwd}/utilities"]
 
 
@@ -164,7 +166,7 @@ def execute_test(path_suite, test, compiler_flags=["-mavx2", "-mfma"]):
     if test_output(tmp_org_out, tmp_mv_out):
         if not os.path.isdir(pass_path):
             os.mkdir(pass_path)
-        # os.system(f"mv {macveth_t} {pass_path}")
+        os.system(f"mv {macveth_t} {pass_path}")
         print("OK")
     else:
         print("ERROR in test")

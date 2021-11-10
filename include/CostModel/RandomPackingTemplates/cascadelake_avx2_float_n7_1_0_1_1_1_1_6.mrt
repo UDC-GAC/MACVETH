@@ -1,0 +1,4 @@
+#r0:REG# = _mm_loadu_ps(&#0:0:MEM#)
+_mv_blend_mem_ps(#r1:REG#,_mm_set_epi32(0,0,0,0),#4:0:MEM#,0x00000007)
+_mv_blend_mem_ps(#r2:REG#,#r1:REG#,#1:12:MEM#,0x00000006)
+#output:REG# = _mm256_set_m128(#r2:REG#,#r0:REG#)

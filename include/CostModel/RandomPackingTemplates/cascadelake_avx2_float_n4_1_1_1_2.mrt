@@ -1,0 +1,1 @@
+_mv_blend_mem_ps(#output:REG#,_mm_set_epi32(0,0,0,0),#0:0:MEM#,0x0000000f)

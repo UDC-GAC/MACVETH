@@ -225,7 +225,7 @@ struct MVOptions {
     if (MVOptions::Arch == MVCPUInfo::MVArch::NATIVE) {
       auto HostArch = std::string(llvm::sys::getHostCPUName());
       assert((MVStrArch.find(HostArch) != MVStrArch.end()) &&
-             "Architecture not supported");
+             "Architecture not supported: try skylake, broadwell, zen, etc.");
       MVOptions::Arch = MVStrArch[HostArch];
     }
     checkIfArchISACompatible();

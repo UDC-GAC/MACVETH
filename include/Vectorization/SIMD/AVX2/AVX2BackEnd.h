@@ -42,10 +42,8 @@ public:
   /// Name of the ISA
   static inline std::string NISA = "AVX2";
   /// Name of the headers needed
-  static inline std::list<std::string> Headers = {
-      "immintrin.h"
-      //"macveth_api.h"
-  };
+  static inline std::list<std::string> Headers = {"<immintrin.h>",
+                                                  "\"macveth_api.h\""};
 
   /// Get headers
   virtual std::list<std::string> getHeadersNeeded() override {
@@ -64,8 +62,8 @@ public:
   virtual SIMDInstListType vpack(VectorIR::VOperand V) override;
 
   /// Packing of four elements taking into account the contiguity of data
-  bool vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
-                      SIMDBackEnd::SIMDInstListType *IL);
+  // bool vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
+  //                     SIMDBackEnd::SIMDInstListType *IL);
 
   /// Intel intrisnics gather approach
   SIMDInstListType vgather(VectorIR::VOperand V);

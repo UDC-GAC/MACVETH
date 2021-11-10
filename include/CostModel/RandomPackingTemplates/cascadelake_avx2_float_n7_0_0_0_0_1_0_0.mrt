@@ -1,0 +1,8 @@
+#r0:REG# = _mm_load_ss(&#0:0:MEM#)
+_mv_insert_mem_ps(#r1:REG#,#r0:REG#,#1:0:MEM#,0x00000058)
+_mv_insert_mem_ps(#r2:REG#,#r1:REG#,#2:0:MEM#,0x00000028)
+_mv_insert_mem_ps(#r3:REG#,#r2:REG#,#3:0:MEM#,0x00000070)
+#r4:REG# = _mm_load_ss(&#4:0:MEM#)
+_mv_insert_mem_ps(#r5:REG#,#r4:REG#,#5:0:MEM#,0x0000001c)
+_mv_insert_mem_ps(#r6:REG#,#r5:REG#,#6:0:MEM#,0x00000028)
+#output:REG# = _mm256_set_m128(#r6:REG#,#r3:REG#)

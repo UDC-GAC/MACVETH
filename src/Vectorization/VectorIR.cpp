@@ -245,12 +245,8 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // FIXME: this is not true...
   this->VSize = VL;
 
-  for (int i = 0; i < VL; ++i) {
-    this->UOP.push_back(V[i]);
-  }
-  auto PrimaryNode = V[0];
-
   // Get data type
+  auto PrimaryNode = V[0];
   this->DType = MVDataType::CTypeToVDataType[PrimaryNode->getDataType()];
   if ((this->EqualVal) && (this->MemOp)) {
     if ((this->DType == MVDataType::VDataType::FLOAT) ||
@@ -262,6 +258,13 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Computing data width
   this->Width = getWidthFromVDataType(this->VSize, this->DType);
   this->Size = this->Width / MVDataType::VDataTypeWidthBits[this->DType];
+
+  for (unsigned int i = 0; i < VSize; ++i) {
+    this->UOP.push_back(V[i]);
+  }
+  // for (unsigned int i = VSize; i < Size; ++i) {
+  //   this->UOP.push_back(new Node());
+  // }
 
   // Check whether the operand is a store or not
   if ((PrimaryNode->getNodeType() == Node::NODE_STORE) && (Res)) {

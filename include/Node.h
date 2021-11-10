@@ -125,6 +125,12 @@ public:
     this->SI.Scop[0] = T.getScop();
   }
 
+  Node() {}
+
+  bool isEmptyNode() {
+    return (MV == nullptr) && (T == UNDEF) && (Value == "");
+  }
+
   /// When creating a Node from a TempExpr, the connections will be created by
   /// the TAC which creates this Node
   Node(MVExpr *TE) {

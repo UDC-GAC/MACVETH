@@ -39,6 +39,8 @@
 #include "clang/Frontend/FrontendActions.h"
 #include "llvm/Support/ErrorHandling.h"
 
+#include <fstream>
+
 jmp_buf GotoStartScop, GotoEndScop;
 
 // ---------------------------------------------
@@ -369,8 +371,13 @@ void MVFrontendAction::EndSourceFileAction() {
     formatMACVETH(OutFileName);
   }
   // FIXME: COPY macveth_api.h file if not created
-  //   std::string CopyDir = OutFileName.substr(0,
-  //   OutFileName.find_last_of("\\/")); std::ifstream src("from.ogv",
+  std::string DstFile =
+      OutFileName.substr(0, OutFileName.find_last_of("\\/")) + "/macveth_api.h";
+  std::string SrcFile(__FILE__);
+  SrcFile = SrcFile.substr(0, SrcFile.find_last_of("\\/")) + "/macveth_api.h";
+  std::ifstream src(SrcFile, std::ios::binary);
+  std::ofstream dst(DstFile, std::ios::binary);
+  dst << src.rdbuf();
   //   std::ios::binary); std::ofstream dst(CopyDir + "/macveth_api.h",
   //   std::ios::binary); dst << src.rdbuf();
 }

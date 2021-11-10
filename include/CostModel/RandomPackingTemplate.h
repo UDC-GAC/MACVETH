@@ -55,7 +55,6 @@ public:
       }
       S.erase(0, Pos + 1);
     }
-    assert((T == 2) && "Bad template!");
     Type = S;
   }
 
@@ -75,7 +74,7 @@ public:
 
 private:
   mutable std::string ID = "0";
-  mutable int MOD = 0;
+  mutable int MOD = 128;
   mutable std::string Type = "MEM";
 };
 
@@ -84,16 +83,16 @@ using TemplateListT = std::vector<std::string>;
 class RandomPackingTemplate {
 public:
   RandomPackingTemplate(const std::string &Signature, int Cost,
-                        const std::string &DataType = "float")
-      : Signature(Signature), Cost(Cost) {
+                        const std::string &DataType = "float", int Version = 0)
+      : Signature(Signature), Cost(Cost), DataType(DataType), Version(Version) {
     this->ID = RandomPackingTemplate::_UID++;
     std::string dir(__FILE__);
     dir = dir.substr(0, dir.find_last_of("\\/"));
     std::string TemplateFile = MVArchStr[MVOptions::Arch] + "_" +
                                Utils::toLowercase(MVISAStr[MVOptions::ISA]) +
-                               "_" + Signature + ".mrt";
+                               "_" + DataType + "_n" + Signature + "_" +
+                               std::to_string(Version) + ".mrt";
     this->TemplatePath = dir + "/RandomPackingTemplates/" + TemplateFile;
-    this->DataType = DataType;
   }
 
   void readFile() const {
@@ -116,6 +115,7 @@ private:
   std::string Signature = "";
   unsigned long long Cost = 0;
   std::string DataType = "";
+  unsigned int Version = 0;
   std::string TemplatePath = "";
   mutable TemplateListT TemplateList;
 };

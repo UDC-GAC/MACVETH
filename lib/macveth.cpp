@@ -96,7 +96,7 @@ static llvm::cl::opt<MVCPUInfo::MVISA>
                                     "AVX512 ISA")));
 
 static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
-    "arch", llvm::cl::desc("Target architecture"),
+    "march", llvm::cl::desc("Target architecture"),
     llvm::cl::init(MVCPUInfo::MVArch::NATIVE), llvm::cl::cat(MacvethCategory),
     llvm::cl::values(
         clEnumValN(MVCPUInfo::MVArch::NATIVE, "native",

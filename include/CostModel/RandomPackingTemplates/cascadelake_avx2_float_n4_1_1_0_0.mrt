@@ -1,0 +1,2 @@
+#r0:REG# = _mm_load_ss(&#0:0:MEM#)
+_mv_blend_mem_ps(#output:REG#,#r0:REG#,#1:-1:MEM#,0x0000000e)

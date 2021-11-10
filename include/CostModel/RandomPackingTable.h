@@ -66,15 +66,18 @@ public:
           // Check if line is a comment
           continue;
         }
-        // Signature, Cost, Arch, ISA
+        // id, signature, cost, arch, isa, data type, version
         auto Tok = Split<','>::split(L);
-        if ((Tok[2] != Arch) || (Tok[3] != ISA)) {
+        if ((Tok[IDX_arch] != Arch) || (Tok[IDX_isa] != ISA)) {
           continue;
         }
-        auto Signature = Tok[4] + "_n" + Tok[0];
-        int Cost = std::atoi(Tok[1].c_str());
-        RandomPackingTable::Table.insert(
-            std::make_pair(Signature, RandomPackingTemplate(Signature, Cost)));
+        auto Signature = Tok[IDX_sig];
+        auto DataType = Tok[IDX_datatype];
+        int Cost = std::atoi(Tok[IDX_cost].c_str());
+        int Version = std::atoi(Tok[IDX_version].c_str());
+        RandomPackingTable::Table.insert(std::make_pair(
+            DataType + "_n" + Signature,
+            RandomPackingTemplate(Signature, Cost, DataType, Version)));
       }
       F.close();
       return;
@@ -88,6 +91,13 @@ private:
   /// Table holding the RandomPackingTemplates, containing the skeletons or
   /// "cooking recipes".
   static inline RPTableMap Table;
+  static constexpr int IDX_id = 0;
+  static constexpr int IDX_sig = 1;
+  static constexpr int IDX_cost = 2;
+  static constexpr int IDX_arch = 3;
+  static constexpr int IDX_isa = 4;
+  static constexpr int IDX_datatype = 5;
+  static constexpr int IDX_version = 6;
 };
 
 } // namespace macveth
