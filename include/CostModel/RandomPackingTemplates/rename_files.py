@@ -35,8 +35,8 @@ def check_naming(name):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Need two arguments")
+    if len(sys.argv) < 3:
+        print("Need two arguments at least")
         exit(1)
     arch = sys.argv[1]
     if arch not in archs:
