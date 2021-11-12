@@ -21,7 +21,7 @@
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Noël Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #include "include/MVFrontend.h"
 #include "include/CostModel/MVCostModel.h"
@@ -149,6 +149,9 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
       if (SInfo.isThereAnyVectorization()) {
+        // Rewrite loops
+        DimsDeclFunc.splice(DimsDeclFunc.end(),
+                            MVR.rewriteLoops(SL, DimsDeclFunc));
         // Comment statements
         MVR.commentReplacedStmts(SL);
         // Render
@@ -161,10 +164,6 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         for (auto InitRedux : SIMDGen->getInitReg()) {
           MVR.renderSIMDInstBeforePlace(InitRedux, SL);
         }
-
-        // Rewrite loops
-        DimsDeclFunc.splice(DimsDeclFunc.end(),
-                            MVR.rewriteLoops(SL, DimsDeclFunc));
 
         // Add includes if option
         if (MVOptions::Headers) {

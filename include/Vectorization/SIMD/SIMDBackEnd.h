@@ -193,11 +193,13 @@ public:
   virtual SIMDInstListType vpack(VectorIR::VOperand V) = 0;
   /// Generate set instrucctions. Set is meant for literal values
   virtual SIMDInstListType vset(VectorIR::VOperand V) = 0;
+  virtual SIMDInstListType vregisterpacking(VectorIR::VOperand V) = 0;
 
   /// Generate store instructions to memory
   virtual SIMDInstListType vstore(VectorIR::VectorOP V) = 0;
   /// Generate store instructions to memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vscatterop(VectorIR::VectorOP V) = 0;
 
   // Binary operations
 

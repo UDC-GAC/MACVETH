@@ -73,8 +73,10 @@ bool isAtomic(int VL, const Node::NodeListType &VOps,
 bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node::NodeListType &V,
                                                MVDataType::VWidth Width) {
   for (int n = 0; n < VL; ++n) {
-    if (MapRegToVReg.find(std::make_tuple(V[n]->getRegisterValue(), Width)) ==
-        MapRegToVReg.end()) {
+    // if (MapRegToVReg.find(std::make_tuple(V[n]->getRegisterValue(), Width))
+    // ==
+    //     MapRegToVReg.end()) {
+    if (MapRegToVReg.find(V[n]->getRegisterValue()) == MapRegToVReg.end()) {
       return false;
     }
   }
@@ -273,13 +275,51 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     }
   }
 
+  // Determine whether is partial or not
+  this->IsPartial = !(this->Size == this->VSize);
+
   // Check if there is a vector assigned for these operands
   auto VecAssigned = checkIfVectorAssigned(VL, V, this->getWidth());
 
+  // Does it requires a register shuffling
+  if (VecAssigned) {
+    std::set<std::string> RegistersUsed;
+    for (int n = 0; n < VL; ++n) {
+      auto NewRegIdx = MapRegToVReg[V[n]->getRegisterValue()];
+      this->RegIdx.push_back(NewRegIdx);
+      auto Reg = std::get<0>(NewRegIdx);
+      RegistersUsed.insert(Reg);
+      LiveOut[Reg] = std::max(this->Order, (int)LiveOut[Reg]);
+      // Check if index of the register is the same
+      this->RequiresRegisterPacking |= (n != std::get<1>(NewRegIdx));
+      // MACVETH_DEBUG("VOperand",
+      //               std::get<0>(NewRegIdx) + "; order " +
+      //                   std::to_string(this->Order) +
+      //                   "; n = " + std::to_string(n) +
+      //                   "; RegIdx = " +
+      //                   std::to_string(std::get<1>(NewRegIdx)) +
+      //                   "; RequiresRegisterPacking = " +
+      //                   std::to_string(this->RequiresRegisterPacking));
+    }
+    assert(RegistersUsed.size() >= 1 &&
+           "We should have used at least one register");
+    this->SameVector = (RegistersUsed.size() == 1);
+    this->IsPartial = !this->SameVector;
+    if (this->SameVector) {
+      this->IsPartial = (MapRegSize[*RegistersUsed.begin()] == (int)this->Size);
+    }
+    // Another condition to determine if register is partial or not: check
+    // vector width of original register and this new vector:
+  }
+
   // Get name of this operand, otherwise create a custom name
-  this->Name = VecAssigned
-                   ? MapRegToVReg[std::make_tuple(
-                         PrimaryNode->getRegisterValue(), this->getWidth())]
+  // this->Name = VecAssigned
+  //                  ? MapRegToVReg[std::make_tuple(
+  //                        PrimaryNode->getRegisterValue(), this->getWidth())]
+  //                  : genNewVOpName();
+
+  this->Name = (VecAssigned && !this->RequiresRegisterPacking)
+                   ? std::get<0>(MapRegToVReg[PrimaryNode->getRegisterValue()])
                    : genNewVOpName();
 
   auto AlreadyLoaded = checkIfAlreadyLoaded(PrimaryNode);
@@ -306,9 +346,12 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   for (int n = 0; n < VL; ++n) {
     IsMemOp = (IsMemOp) && (V[n]->needsMemLoad());
     if (!VecAssigned) {
-      MapRegToVReg[std::make_tuple(V[n]->getRegisterValue(),
-                                   this->getWidth())] = this->Name;
+      // MapRegToVReg[std::make_tuple(V[n]->getRegisterValue(),
+      //                              this->getWidth())] = this->Name;
+      MapRegToVReg[V[n]->getRegisterValue()] = std::make_tuple(this->Name, n);
     }
+    LiveIn[this->Name] = this->Order;
+    MapRegSize[this->Name] = VL;
     if (n > 0) {
       this->EqualVal = this->EqualVal && (V[n]->getRegisterValue() ==
                                           V[n - 1]->getRegisterValue());
@@ -318,9 +361,6 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
 
   // Get data mask
   this->Mask = getMask(this->VSize, this->Size, V);
-
-  // Determine whether is partial or not
-  this->IsPartial = !(this->Size == this->VSize);
 
   // In case we have to access to memory we are also interested in how we do it:
   // if we have to use an index for it, or if we have to shuffle data
@@ -334,19 +374,18 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
         if (VL > 1) {
           for (int i = 1; i < VL; ++i) {
             T &= ((Idx[i] - 1) == Idx[i - 1]);
-            MACVETH_DEBUG("VOperand",
-                          "Idx[i]-1 = " + std::to_string((Idx[i] - 1)) +
-                              "; Idx[i-1] = " + std::to_string((Idx[i - 1])));
+            // MACVETH_DEBUG("VOperand",
+            //               "Idx[i]-1 = " + std::to_string((Idx[i] - 1)) +
+            //                   "; Idx[i-1] = " + std::to_string((Idx[i -
+            //                   1])));
           }
         }
-        MACVETH_DEBUG("VOperand", "Contiguous = " + std::to_string(T));
+        // MACVETH_DEBUG("VOperand", "Contiguous = " + std::to_string(T));
         this->Contiguous = T;
       }
     }
-    if (this->Width == MVDataType::VWidth::W64) {
-      this->LowBits = true;
-    }
   }
+  this->LowBits = (this->VSize == 2) && (this->Size == 4);
 };
 
 // ---------------------------------------------

@@ -126,6 +126,7 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
 StmtWrapper::LoopInfo StmtWrapper::getLoop(clang::ForStmt *ForLoop) {
   LoopInfo Loop;
   // Get location of the loop
+  Loop.LoopStmt = ForLoop;
   Loop.BegLoc = ForLoop->getBeginLoc();
   Loop.EndLoc = ForLoop->getEndLoc();
 

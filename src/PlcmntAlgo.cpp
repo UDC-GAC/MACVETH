@@ -158,8 +158,9 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
         //   // [0,1,2,3] and [-1,1,4,5]
         // }
 
-        MACVETH_DEBUG("PlcmntAlgo",
-                      "Reduction found for " + In->getRegisterValue());
+        MACVETH_DEBUG("PlcmntAlgo", "Reduction found for " +
+                                        In->getRegisterValue() + ", " +
+                                        In->toString());
         ReductionFound = true;
         Reduction.push_back(In);
         Visited.push_back(In);

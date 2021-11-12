@@ -61,21 +61,19 @@ public:
   /// Gather data from memory
   virtual SIMDInstListType vpack(VectorIR::VOperand V) override;
 
-  /// Packing of four elements taking into account the contiguity of data
-  // bool vpack4elements(VectorIR::VOperand V, MVDataType::VWidth Width,
-  //                     SIMDBackEnd::SIMDInstListType *IL);
-
-  /// Intel intrisnics gather approach
+  /// Intel intrinsics gather approach
   SIMDInstListType vgather(VectorIR::VOperand V);
 
   /// Set values to registers
   virtual SIMDInstListType vset(VectorIR::VOperand V) override;
+  virtual SIMDInstListType vregisterpacking(VectorIR::VOperand V) override;
 
   /// Store values in memory
   virtual SIMDInstListType vstore(VectorIR::VectorOP V) override;
 
   /// Store values in memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vscatterop(VectorIR::VectorOP V) override;
 
   SIMDInstListType singleElementScatter(VectorIR::VectorOP VOP);
 

@@ -169,8 +169,8 @@ MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *Backend) {
   VLoadB.reserve(8);
   VOps.reserve(8);
   int Cursor = 0;
-  std::set<int> SetTAC;
-  std::set<int> SetFS;
+  // std::set<int> SetTAC;
+  // std::set<int> SetFS;
 repeat:
   bool IsUnary = false;
   // Consume nodes
@@ -178,8 +178,8 @@ repeat:
   // This is where magic should happen
   while (!CopyNL.empty()) {
     auto NextNode = CopyNL.front();
-    SetTAC.insert(NextNode->getTacID());
-    SetFS.insert(NextNode->getSchedInfo().FreeSched);
+    // SetTAC.insert(NextNode->getTacID());
+    // SetFS.insert(NextNode->getSchedInfo().FreeSched);
 
     // FIXME:
     // if ((SetTAC.size() > 1) && (SetFS.size() > 1) &&
@@ -252,12 +252,14 @@ repeat:
   }
 
   // Debugging
-  for (int n = 0; n < Cursor; ++n) {
-    auto B = IsUnary ? "" : VLoadB[n]->getRegisterValue() + "; ";
-    MACVETH_DEBUG("MVCostModel", VOps[n]->getRegisterValue() + " = " +
-                                     VLoadA[n]->getRegisterValue() + " " +
-                                     VOps[n]->getValue() + " " + B +
-                                     VOps[n]->getSchedInfoStr());
+  if (MVOptions::Debug) {
+    for (int n = 0; n < Cursor; ++n) {
+      auto B = IsUnary ? "" : VLoadB[n]->getRegisterValue() + "; ";
+      MACVETH_DEBUG("MVCostModel", VOps[n]->getRegisterValue() + " = " +
+                                       VLoadA[n]->getRegisterValue() + " " +
+                                       VOps[n]->getValue() + " " + B +
+                                       VOps[n]->getSchedInfoStr());
+    }
   }
 
   // FIXME: to implement cost model here
@@ -270,11 +272,13 @@ repeat:
     if (!IsUnary) {
       CostNodes += computeCostForNodeOperandsList(Cursor, VLoadB);
     }
-    // FIXME:
-    auto DoVectorize = true;
-    if ((DoVectorize) ||
-        (MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
+    if ((MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
       VList.push_back(NewVectInst);
+      // for (auto Op : VOps) {
+      //   if (Op->isStoreNodeOp()) {
+      //     Op->setAlreadyStored();
+      //   }
+      // }
     } else {
       // FIXME: undo vectorized version or directly emit sequential code for
       // rest of the tree
@@ -288,8 +292,8 @@ repeat:
     for (int i = 0; i < VL; ++i) {
       VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
     }
-    SetFS.clear();
-    SetTAC.clear();
+    // SetFS.clear();
+    // SetTAC.clear();
     goto repeat;
   }
   return VList;
@@ -301,23 +305,23 @@ MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList,
                                  SIMDBackEnd *Backend) {
   // Returning list
   std::list<VectorIR::VectorOP> VList;
-
+  MACVETH_DEBUG("MVCostModel", "Detecting reductions");
   // Working with a copy
-  // Node::NodeListType NL(NList);
+  Node::NodeListType NL(NList);
 
   // Detecting reductions
-  MACVETH_DEBUG("MVCostModel", "Detecting reductions");
-  // Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  // if (NRedux.size() == 0) {
-  //   MACVETH_DEBUG("MVCostModel", "No reductions detected");
-  // }
+  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
+  if (NRedux.size() == 0) {
+    MACVETH_DEBUG("MVCostModel", "No reductions detected");
+  }
 
-  // MACVETH_DEBUG("MVCostModel", "General case");
-  // VList.splice(VList.end(), greedyOpsConsumer(NL, Backend));
-  // MACVETH_DEBUG("MVCostModel", "Reductions case");
-  // VList.splice(VList.end(), greedyOpsConsumer(NRedux, Backend));
-  PlcmntAlgo::markReductions(&NList);
-  VList.splice(VList.end(), greedyOpsConsumer(NList, Backend));
+  MACVETH_DEBUG("MVCostModel", "General case");
+  VList.splice(VList.end(), greedyOpsConsumer(NL, Backend));
+  MACVETH_DEBUG("MVCostModel", "Reductions case");
+  VList.splice(VList.end(), greedyOpsConsumer(NRedux, Backend));
+
+  // PlcmntAlgo::markReductions(&NList);
+  // VList.splice(VList.end(), greedyOpsConsumer(NList, Backend));
 
   // Order Vector Operations by TAC ID
   VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {
@@ -350,14 +354,14 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
   auto VList = getVectorOpFromCDAG(NL, Backend);
 
   // Debugging
-  if (MVOptions::Debug) {
-    for (auto N : NL) {
-      MACVETH_DEBUG("MVCostModel", N->toString());
-    }
-    for (auto V : VList) {
-      MACVETH_DEBUG("VectorIR", V.toString());
-    }
-  }
+  // if (MVOptions::Debug) {
+  //   for (auto N : NL) {
+  //     MACVETH_DEBUG("MVCostModel", N->toString());
+  //   }
+  //   for (auto V : VList) {
+  //     MACVETH_DEBUG("VectorIR", V.toString());
+  //   }
+  // }
 
   // FIXME: SIMD cost model used backend to generate intrinsics so registers are
   // polluted, need to clean them

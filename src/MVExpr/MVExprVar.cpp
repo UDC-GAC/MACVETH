@@ -21,7 +21,7 @@
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Noël Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #include "include/MVExpr/MVExprVar.h"
 #include <string>

@@ -51,6 +51,7 @@ public:
 
   /// Helper structure to handle the loop information for this statement
   struct LoopInfo {
+    clang::ForStmt *LoopStmt = nullptr;
     /// List of dimensions declared
     static inline std::list<std::string> DimDeclared = {};
     /// Location of the loop itself

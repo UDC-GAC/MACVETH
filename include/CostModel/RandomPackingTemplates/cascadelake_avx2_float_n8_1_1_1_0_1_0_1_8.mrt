@@ -1,5 +1,5 @@
-#r0:REG# = _mm_maskload_ps(&#0:0:MEM#,_mm_set_epi32(-1,0,-1,-1));
-_mv_insert_mem_ps(#r1:REG#,#r0:REG#,#2:0:MEM#,0x00000060);
-_mv_insert_mem_ps(#r2:REG#,#r1:REG#,#3:0:MEM#,0x00000030);
-_mv_blend_mem_ps(#r3:REG#,_mm_set_epi32(0,0,0,0),#4:0:MEM#,0x0000000f);
-#output:REG# = _mm256_set_m128(#r3:REG#,#r2:REG#);
+#r0:REG# = _mm_maskload_ps(&#0:0:MEM#,_mm_set_epi32(-1,0,-1,-1))
+_mv_insert_mem_ps(#r1:REG#,#r0:REG#,#2:0:MEM#,0x00000060)
+_mv_insert_mem_ps(#r2:REG#,#r1:REG#,#3:0:MEM#,0x00000030)
+_mv_blend_mem_ps(#r3:REG#,_mm_set_epi32(0,0,0,0),#4:0:MEM#,0x0000000f)
+#output:REG# = _mm256_set_m128(#r3:REG#,#r2:REG#)

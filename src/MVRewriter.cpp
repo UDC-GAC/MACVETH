@@ -39,6 +39,18 @@ MVRewriter::rewriteLoops(std::list<StmtWrapper *> SList,
     auto Loop = SWrap->getLoopInfo();
     MACVETH_DEBUG("MVConsumers", "Rewriting loop = " + Loop.Dim);
 
+    // Remove loop if already unrolled and so
+    if (Loop.FullyUnrolled) {
+      auto Begin = Loop.BegLoc;
+      auto End = Loop.SRVarInc.getEnd().getLocWithOffset(3);
+      auto SR =
+          clang::CharSourceRange::getCharRange(clang::SourceRange(Begin, End));
+      Rewrite.RemoveText(SR);
+      Rewrite.RemoveText(Loop.LoopStmt->getEndLoc());
+      rewriteLoops(SWrap->getListStmt(), DimAlreadyDecl);
+      continue;
+    }
+
     // Rewrite headers
     Rewrite.ReplaceText(Loop.SRVarInc,
                         Loop.Dim + " += " + std::to_string(Loop.StepUnrolled));
@@ -78,7 +90,8 @@ MVRewriter::rewriteLoops(std::list<StmtWrapper *> SList,
       auto Epilog = StmtWrapper::LoopInfo::getEpilogs(SWrap);
       Rewrite.InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
     }
-    rewriteLoops(SWrap->getListStmt(), DimAlreadyDecl);
+    if (!Loop.FullyUnrolled)
+      rewriteLoops(SWrap->getListStmt(), DimAlreadyDecl);
   }
   // Declare variables
   SourceLocation Loc = SList.front()->getClangStmt()->getBeginLoc();
@@ -156,13 +169,18 @@ void MVRewriter::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
                                    std::list<StmtWrapper *> SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
+      // if (S->getLoopInfo().FullyUnrolled) {
+      //   renderSIMDInstAfterPlace(SI, S->getListStmt());
+      // } else {
       renderSIMDInstInPlace(SI, S->getListStmt());
+      //}
     } else {
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
           // FIXME:
+          // Rewrite.InsertTextAfter(S->getClangStmt()->getBeginLoc(),
           Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                             SI.render() + ";\n");
+                             "\n" + SI.render() + ";");
           return;
         }
       }
@@ -175,10 +193,12 @@ void MVRewriter::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
                                        std::list<StmtWrapper *> SL) {
   // Scalar case: is this needed?
   if (SI.isSequential() && SI.getMVSourceLocation().isInOrder()) {
-    MACVETH_DEBUG("MVFuncVisitor", "Scalar for " + SI.render());
     for (auto S : SL) {
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
+          MACVETH_DEBUG("MVFuncVisitor",
+                        "Scalar for " +
+                            TAC::renderTacAsStmt(S->getTacList(), 0));
           renderTACInPlace({S}, SI.getMVSourceLocation().getOrder(),
                            SI.getMVSourceLocation().getOffset());
           return;
@@ -233,15 +253,15 @@ void MVRewriter::addHeaders(std::list<std::string> S, FileID FID) {
   auto SM = Utils::getSourceMgr();
   if (S.size() > 0) {
     Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
-                       "/* begin INFO MACVETH: headers added */\n", true, true);
+                       "/* BEGIN MACVETH headers*/\n", true, true);
   }
   for (auto I : S) {
     Rewrite.InsertText(SM->translateLineCol(FID, 1, 1), "#include " + I + "\n",
                        true, true);
   }
   if (S.size() > 0) {
-    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),
-                       "/* end INFO MACVETH */\n", true, true);
+    Rewrite.InsertText(SM->translateLineCol(FID, 1, 1), "/* END MACVETH */\n",
+                       true, true);
   }
 }
 

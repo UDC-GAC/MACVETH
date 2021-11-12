@@ -94,6 +94,7 @@ public:
     /// An output node may be an operation and, therefore, may be a binary
     /// operation
     bool IsBinaryOp = false;
+    bool alreadyStored = false;
   };
 
   /// Set the output information of the given a TAC
@@ -108,6 +109,8 @@ public:
 
   void setNodeAsReduction() { this->SI.IsReduction = true; }
   void setNodeAsNonReduction() { this->SI.IsReduction = false; }
+  void setAlreadyStored() { this->O.alreadyStored = true; }
+  bool isAlreadyStored() { return this->O.alreadyStored; }
   bool belongsToAReduction() const { return this->SI.IsReduction; }
 
   /// Setting the scheduling info without any other information
@@ -261,8 +264,9 @@ public:
 
   /// Is OP
   bool needsMemLoad() {
-    return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)) &&
-            (this->MV->needsToBeLoaded()));
+    return (((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)) &&
+             (this->MV->needsToBeLoaded())) ||
+            isAlreadyStored());
   }
 
   /// Check if Node type is NODE_STORE
@@ -340,9 +344,6 @@ public:
         } else {
           return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
         }
-        return (this->getSchedInfo().NodeID < N.SI.NodeID);
-      } else if ((this->belongsToAReduction()) || (N.belongsToAReduction())) {
-        return (this->getSchedInfo().NodeID < N.SI.NodeID);
       }
       // else {
       //   return (this->getSchedInfo().FreeSched < N.SI.FreeSched);

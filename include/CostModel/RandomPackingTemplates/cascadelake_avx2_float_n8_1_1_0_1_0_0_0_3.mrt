@@ -1,8 +1,8 @@
-_mv_blend_mem_ps(#r0:REG#,_mm_set_epi32(0,0,0,0),#0:0:MEM#,0x0000000d);
-_mv_insert_mem_ps(#r1:REG#,#r0:REG#,#1:0:MEM#,0x00000014);
-_mv_insert_mem_ps(#r2:REG#,#r0:REG#,#2:0:MEM#,0x0000008e);
-_mv_insert_mem_ps(#r3:REG#,#r2:REG#,#3:0:MEM#,0x00000054);
-#r4:REG# = _mm_movelh_ps(#r1:REG#,#r3:REG#);
-#r5:REG# = _mm_load_ss(&#4:0:MEM#);
-_mv_blend_mem_ps(#r6:REG#,#r5:REG#,#1:30:MEM#,0x0000000e);
-#output:REG# = _mm256_set_m128(#r6:REG#,#r4:REG#);
+_mv_blend_mem_ps(#r0:REG#,_mm_set_epi32(0,0,0,0),#0:0:MEM#,0x0000000d)
+_mv_insert_mem_ps(#r1:REG#,#r0:REG#,#1:0:MEM#,0x00000014)
+_mv_insert_mem_ps(#r2:REG#,#r0:REG#,#2:0:MEM#,0x0000008e)
+_mv_insert_mem_ps(#r3:REG#,#r2:REG#,#3:0:MEM#,0x00000054)
+#r4:REG# = _mm_movelh_ps(#r1:REG#,#r3:REG#)
+#r5:REG# = _mm_load_ss(&#4:0:MEM#)
+_mv_blend_mem_ps(#r6:REG#,#r5:REG#,#1:30:MEM#,0x0000000e)
+#output:REG# = _mm256_set_m128(#r6:REG#,#r4:REG#)

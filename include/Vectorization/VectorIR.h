@@ -51,7 +51,8 @@ public:
     INDUCTION,
     /// In any other case, we just say that the vector operation must be
     /// sequential
-    SEQ
+    SEQ,
+    SCATTER
   };
 
   /// Compute the vector width needed from the number of operands and the type
@@ -63,25 +64,43 @@ public:
       return MVDataType::VWidth::W512;
     } else if (Bits > 128) {
       return MVDataType::VWidth::W256;
-    } else if (Bits > 64) {
-      return MVDataType::VWidth::W128;
-    } else if (Bits > 32) {
-      return MVDataType::VWidth::W64;
-    } else if (Bits > 16) {
-      return MVDataType::VWidth::W32;
-    } else if (Bits > 8) {
-      return MVDataType::VWidth::W16;
     }
-    return MVDataType::VWidth::W8;
+    //} else if (Bits >= 64) {
+    return MVDataType::VWidth::W128;
+    // } else if (Bits > 32) {
+    //   return MVDataType::VWidth::W64;
+    // } else if (Bits > 16) {
+    //   return MVDataType::VWidth::W32;
+    // } else if (Bits > 8) {
+    //   return MVDataType::VWidth::W16;
+    // }
+    // return MVDataType::VWidth::W8;
   }
 
   /// Unique identifier for the operand
   static inline unsigned int VID = 0;
   /// Keeping track of the correspondence between the registers name and the
   /// new naming
-  static inline std::map<std::tuple<std::string, MVDataType::VWidth>,
-                         std::string>
-      MapRegToVReg;
+  // static inline std::map<std::tuple<std::string, MVDataType::VWidth>,
+  //                        std::string>
+  //     MapRegToVReg;
+  using VectorSlot = std::tuple<std::string, int>;
+  static inline std::map<std::string, VectorSlot> MapRegToVReg;
+  static inline std::map<std::string, int> MapRegSize;
+
+  struct IntDefault {
+    int i = -1;
+    IntDefault() {}
+    IntDefault(int i) : i(i){};
+    operator int() const { return i; }
+  };
+
+  static inline std::map<std::string, IntDefault> LiveIn;
+  static inline std::map<std::string, IntDefault> LiveOut;
+
+  // static inline std::map<std::string, VectorSlots> MapRegToVectorSlot;
+  // static inline std::map<std::string, std::string> MapVectorSlotToReg;
+
   /// Keeping track of the loads in the program
   static inline std::list<std::tuple<std::vector<int>, std::string>> MapLoads;
   /// Keeping track of the stores in the program
@@ -90,6 +109,8 @@ public:
   /// Clearing all the mappings
   static void clear() {
     VectorIR::MapRegToVReg.clear();
+    // VectorIR::MapRegToVectorSlot.clear();
+    // VectorIR::MapVectorSlotToReg.clear();
     VectorIR::MapLoads.clear();
     VectorIR::MapStores.clear();
     VectorIR::VID = 0;
@@ -103,14 +124,16 @@ public:
   struct VOperand {
     /// Name identifying the vector operand
     std::string Name;
-    /// Total size of vector
-    unsigned int VSize;
+    unsigned int VectorLength = 4;
     /// Number non null Nodes
+    unsigned int VSize;
+    /// Total size of vector
     unsigned int Size = 4;
     /// Array of variable size (Size elements actually) initialized when
     /// creating the object
-    // Node **UOP = nullptr;
     std::vector<Node *> UOP;
+    /// This is for partial vectors
+    std::vector<std::tuple<std::string, int>> MapRegister;
     /// Data type
     MVDataType::VDataType DType = MVDataType::VDataType::DOUBLE;
     /// Width of this operand
@@ -139,6 +162,11 @@ public:
     bool IsPartial = false;
     /// Values are in the same vector
     bool SameVector = true;
+    /// Operands could be in different registers
+    bool RequiresRegisterPacking = false;
+    /// This is useful for packing elements which are on different registers,
+    /// or that need to be shuffled within the same register, extracted, etc.
+    std::vector<VectorSlot> RegIdx;
     /// If the memory addresses cross cache line sizes
     bool OutOfCacheLine = false;
     /// The vector operand is a temporal result if it has already been assigned
@@ -226,6 +254,8 @@ public:
       this->OutOfCacheLine = V.OutOfCacheLine;
       this->IsTmpResult = V.IsTmpResult;
       this->IsLoad = V.IsLoad;
+      this->RequiresRegisterPacking = V.RequiresRegisterPacking;
+      this->RegIdx = V.RegIdx;
       this->MemOp = V.MemOp;
       this->IsStore = V.IsStore;
       this->Order = V.Order;
@@ -236,7 +266,7 @@ public:
     std::string toString();
 
     /// Basic constructor
-    VOperand(int VL, Node::NodeListType &V, bool Res);
+    VOperand(int VL, Node::NodeListType &V, bool Res = false);
 
     /// Empty constructor
     VOperand();

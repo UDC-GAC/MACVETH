@@ -161,8 +161,17 @@ bool equalValues(int VL, std::vector<Node *> N) {
 
 // ---------------------------------------------
 bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
-  if (!V.IsLoad) {
+  MACVETH_DEBUG("SIMDBackEnd",
+                "V = " + V.Name + "; load = " + std::to_string(V.IsLoad) +
+                    "; partial = " + std::to_string(V.IsPartial) +
+                    "; regpack = " + std::to_string(V.RequiresRegisterPacking));
+  if ((!V.IsLoad) && (!V.RequiresRegisterPacking) && (!V.IsPartial)) {
     return false;
+  }
+
+  if ((V.RequiresRegisterPacking) || ((!V.IsLoad) && (V.IsPartial))) {
+    IL->splice(IL->end(), vregisterpacking(V));
+    return true;
   }
 
   SIMDInstListType TIL;
@@ -287,6 +296,8 @@ SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP &V) {
     break;
   case VectorIR::VType::SEQ:
     return vseq(V);
+  case VectorIR::VType::SCATTER:
+    return vscatterop(V);
   case VectorIR::VType::INDUCTION:
     MVErr("Induction not supported yet!!!");
   };
