@@ -68,10 +68,10 @@ SIMDBackEnd::SIMDInst AVX2BackEnd::genMultAccOp(SIMDBackEnd::SIMDInst Mul,
                                                 SIMDBackEnd::SIMDInst Acc) {
   SIMDBackEnd::SIMDInst Fuse;
 
-  auto Res = Acc.Result;
+  auto Res = Acc.getResultValue();
   auto Width = getMapWidth(Mul.W);
   auto DataType = getMapType(Mul.DT);
-  auto Op = (Acc.SType == SIMDType::VADD) ? "fmadd" : "fmsub";
+  auto Op = (Acc.isAddition()) ? "fmadd" : "fmsub";
   MVStrVector Args;
 
   // Format is: (a * b) + c
@@ -134,8 +134,7 @@ AVX2BackEnd::fuseAddSubMult(SIMDBackEnd::SIMDInstListType I) {
 
     // Check if we have any add/sub adding the result of a previous
     // multiplication
-    if ((Inst.SType == SIMDBackEnd::SIMDType::VADD) ||
-        (Inst.SType == SIMDBackEnd::SIMDType::VSUB)) {
+    if ((Inst.isAddition()) || (Inst.SType == SIMDBackEnd::SIMDType::VSUB)) {
       for (auto P : PotentialFuse) {
         if (std::find(Inst.Args.begin(), Inst.Args.end(), P.Result) !=
             Inst.Args.end()) {
@@ -727,8 +726,11 @@ bool AVX2BackEnd::hasRawDependencies(SIMDBackEnd::SIMDInstListType L,
 bool AVX2BackEnd::reductionIsContiguous(SIMDBackEnd::SIMDInstListType L,
                                         SIMDBackEnd::SIMDInst I) {
   auto Last = I.VOPResult.Order;
-  auto LastAccm = I.Result;
+  auto LastAccm = I.getResultValue();
   auto RAW = getCDAG().getRAWs();
+
+  MACVETH_DEBUG("AVX2Backend", "reductionIsContiguous: i.result = " + LastAccm +
+                                   "; size L = " + std::to_string(L.size()));
   for (auto Ins : L) {
     MACVETH_DEBUG("AVX2Backend",
                   "ins.result = " + Ins.Result + "; last = " + LastAccm);
@@ -758,11 +760,12 @@ AVX2BackEnd::fuseReductions(SIMDBackEnd::SIMDInstListType TIL) {
     if (I.isReduction()) {
       auto S = I.VOPResult.VSize;
       auto L = LRedux[S];
+      MACVETH_DEBUG("AVX2BackEnd", "Size = " + std::to_string(S));
       if (reductionIsContiguous(L, I)) {
         SIMDBackEnd::SIMDInstListType Aux;
         // FIXME: isn't a better way of doing this????
         for (auto R : L) {
-          if (R.Result != I.Result) {
+          if (R.getResultValue() != I.getResultValue()) {
             Aux.push_back(R);
           }
         }
@@ -1406,19 +1409,19 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
                                           : MVDataType::VDataType::UNDEF128;
     std::string Cast =
         getRegisterType(V.getResult().DType, V.getResult().Width);
-    Args.push_back("(" + Cast + "*)" + getOpName(V.R, true, true));
+    Args.push_back("(" + Cast + "*)" + getOpName(V.getResult(), true, true));
     if (NeedsMask) {
       Args.push_back(getMask(V.getResult().Mask, V.getResult().Size,
                              V.getResult().getWidth()));
     }
-    Args.push_back(getOpName(V.R, false, false));
+    Args.push_back(getOpName(V.getResult(), false, false));
   } else {
-    Args.push_back(getOpName(V.R, true, true));
+    Args.push_back(getOpName(V.getResult(), true, true));
     if (NeedsMask) {
       Args.push_back(getMask(V.getResult().Mask, V.getResult().Size,
                              V.getResult().getWidth()));
     }
-    Args.push_back(getOpName(V.R, false, false));
+    Args.push_back(getOpName(V.getResult(), false, false));
     if (V.getResult().EqualVal) {
       if (V.getResult().DType == MVDataType::VDataType::DOUBLE) {
         V.R.DType = MVDataType::VDataType::SDOUBLE;
@@ -1444,7 +1447,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
-  genSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VSTORE, MVSL, &IL);
+  genSIMDInst(V.getResult(), Op, PrefS, SuffS, Args, SIMDType::VSTORE, MVSL,
+              &IL);
 
   return IL;
 }
@@ -1648,7 +1652,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     auto VFirstHalve =
         getSubVOperand(VOP, NameFirstHalve, 4, Half, MVDataType::VWidth::W128,
                        MVDataType::VDataType::FLOAT, 0);
-    V.R = VFirstHalve;
+    V.setResult(VFirstHalve);
     bool FirstHalve = vscatter4elements(V, MVDataType::VWidth::W128, &IL);
 
     // FIXME:
@@ -1660,27 +1664,27 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     auto VSecondHalve =
         getSubVOperand(VOP, NameSecondHalve, 4, Half, MVDataType::VWidth::W128,
                        MVDataType::VDataType::FLOAT, Half);
-    V.R = VSecondHalve;
+    V.setResult(VSecondHalve);
     bool SecondHalve = vscatter4elements(V, MVDataType::VWidth::W128, &IL);
     if (!FirstHalve && !SecondHalve) {
-      V.R = FullReg;
+      V.setResult(FullReg);
       if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
           (MVOptions::ScatterInstruction)) {
         return vscatterAVX512(V);
       }
       return singleElementScatter(V);
     }
-    V.R = FullReg;
+    V.setResult(FullReg);
     if (FirstHalve && !SecondHalve) {
       // auto VSecondHalve =
       //     getSubVOperand(VOP, VOP.getName(), 4, Half,
       //     MVDataType::VWidth::W128,
       //                    MVDataType::VDataType::FLOAT, Half);
-      // V.R = VSecondHalve;
+      // V.setResult(VSecondHalve;
       // IL.splice(IL.end(), singleElementScatter(V));
       if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
           (MVOptions::ScatterInstruction)) {
-        V.R = VSecondHalve;
+        V.setResult(VSecondHalve);
         IL.splice(IL.end(), vscatterAVX512(V));
       } else {
         for (size_t N = 4; N < 8; ++N) {
@@ -1694,7 +1698,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     if (!FirstHalve && SecondHalve) {
       if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
           (MVOptions::ScatterInstruction)) {
-        V.R = VFirstHalve;
+        V.setResult(VFirstHalve);
         IL.splice(IL.end(), vscatterAVX512(V));
       } else {
         for (size_t N = 0; N < 4; ++N) {
@@ -1733,13 +1737,13 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vadd(VectorIR::VectorOP V) {
   // TODO: check
   // List of parameters
   MVStrVector Args;
-  Args.push_back(V.OpA.getName());
-  Args.push_back(V.OpB.getName());
+  Args.push_back(V.getOpA().getName());
+  Args.push_back(V.getOpB().getName());
 
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
-  genSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VADD, MVSL, &IL);
+  genSIMDInst(V.getResult(), Op, PrefS, SuffS, Args, SIMDType::VADD, MVSL, &IL);
 
   return IL;
 }
@@ -1760,13 +1764,13 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vmul(VectorIR::VectorOP V) {
 
   // List of parameters
   MVStrVector Args;
-  Args.push_back(V.OpA.getName());
-  Args.push_back(V.OpB.getName());
+  Args.push_back(V.getOpA().getName());
+  Args.push_back(V.getOpB().getName());
 
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
-  genSIMDInst(V.R, Op, "", SuffS, Args, SIMDType::VMUL, MVSL, &IL);
+  genSIMDInst(V.getResult(), Op, "", SuffS, Args, SIMDType::VMUL, MVSL, &IL);
 
   return IL;
 }
@@ -1784,13 +1788,13 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vsub(VectorIR::VectorOP V) {
   // TODO: check
   // List of parameters
   MVStrVector Args;
-  Args.push_back(V.OpA.getName());
-  Args.push_back(V.OpB.getName());
+  Args.push_back(V.getOpA().getName());
+  Args.push_back(V.getOpB().getName());
 
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
-  genSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VSUB, MVSL, &IL);
+  genSIMDInst(V.getResult(), Op, PrefS, SuffS, Args, SIMDType::VSUB, MVSL, &IL);
 
   return IL;
 }
@@ -1808,13 +1812,13 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vdiv(VectorIR::VectorOP V) {
   // TODO: check
   // List of parameters
   MVStrVector Args;
-  Args.push_back(V.OpA.getName());
-  Args.push_back(V.OpB.getName());
+  Args.push_back(V.getOpA().getName());
+  Args.push_back(V.getOpB().getName());
 
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
-  genSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VDIV, MVSL, &IL);
+  genSIMDInst(V.getResult(), Op, PrefS, SuffS, Args, SIMDType::VDIV, MVSL, &IL);
 
   return IL;
 }
@@ -1832,13 +1836,13 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vmod(VectorIR::VectorOP V) {
   // TODO: check
   // List of parameters
   MVStrVector Args;
-  Args.push_back(V.OpA.getName());
-  Args.push_back(V.OpB.getName());
+  Args.push_back(V.getOpA().getName());
+  Args.push_back(V.getOpB().getName());
 
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
-  genSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VMOD, MVSL, &IL);
+  genSIMDInst(V.getResult(), Op, PrefS, SuffS, Args, SIMDType::VMOD, MVSL, &IL);
 
   return IL;
 }
@@ -1856,15 +1860,16 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vfunc(VectorIR::VectorOP V) {
   // TODO: check
   // List of parameters
   MVStrVector Args;
-  Args.push_back(V.OpA.getName());
-  if (V.OpB.getName() != "") {
-    Args.push_back(V.OpB.getName());
+  Args.push_back(V.getOpA().getName());
+  if (V.getOpB().getName() != "") {
+    Args.push_back(V.getOpB().getName());
   }
 
   MVSourceLocation MVSL(MVSourceLocation::Position::INORDER, V.Order, V.Offset);
 
   // Adding SIMD inst to the list
-  genSIMDInst(V.R, Op, PrefS, SuffS, Args, SIMDType::VFUNC, MVSL, &IL);
+  genSIMDInst(V.getResult(), Op, PrefS, SuffS, Args, SIMDType::VFUNC, MVSL,
+              &IL);
 
   return IL;
 }
@@ -1923,14 +1928,15 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
     SIMDBackEnd::addRegToDeclareInitVal(RegType, RegAccm, InitValues);
   }
 
+  // FIXME: If there anything to accumulate yet?
   // Some needed values
-  auto TmpReduxVar = (V.getResult().getName() == V.OpB.getName())
-                         ? V.OpA.getName()
-                         : V.OpB.getName();
+  auto TmpReduxVar = (V.getResult().getName() == V.getOpB().getName())
+                         ? V.getOpA().getName()
+                         : V.getOpB().getName();
   auto VCopy = V;
-  VCopy.OpA.getName() = TmpReduxVar;
-  VCopy.getResult().getName() = RegAccm;
-  VCopy.OpB.getName() = RegAccm;
+  VCopy.getResult().setName(RegAccm);
+  VCopy.getOpA().setName(TmpReduxVar);
+  VCopy.getOpB().setName(RegAccm);
 
   // Get type of binary operation, reduction is not the same if
   // addition/substraction than multiplication or division
@@ -1958,13 +1964,15 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
   IL.splice(IL.end(), TIL);
 
   // FIXME: Need to fix this
-  std::string ReduxVar = (V.getResult().getName() == V.OpA.getName())
-                             ? V.OpA.getRegName(0, 0)
-                             : V.OpB.getRegName(0, 0);
+  std::string ReduxVar = V.getResult().UOP[0]->getRegisterValue();
+  // std::string ReduxVar = (V.getResult().getName() == V.getOpA()getName())
+  //                            ? V.getOpA()getRegName(0, 0)
+  //                            : V.getOpB().getRegName(0, 0);
 
+  MACVETH_DEBUG("AVX2Backend", "ReduxVar = " + ReduxVar);
   MACVETH_DEBUG("AVX2Backend", "Redux V.R = " + V.getResult().toString());
-  MACVETH_DEBUG("AVX2Backend", "Redux V.OpA = " + V.OpA.toString());
-  MACVETH_DEBUG("AVX2Backend", "Redux V.OpB = " + V.OpB.toString());
+  MACVETH_DEBUG("AVX2Backend", "Redux V.OpA = " + V.getOpA().toString());
+  MACVETH_DEBUG("AVX2Backend", "Redux V.OpB = " + V.getOpB().toString());
 
   /// This is a 'hack': when a reduction is found, instead of generate all
   /// the instructions needed for it, wait until the peephole optimization
@@ -1973,8 +1981,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
   MVSourceLocation MVSL(MVSourceLocation::Position::POSORDER, V.Order,
                         V.Offset);
 
-  genSIMDInst(V.R, "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC, MVSL, &IL,
-              ReduxVar, "", {}, V.getMVOp());
+  genSIMDInst(V.getResult(), "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC,
+              MVSL, &IL, ReduxVar, "", {}, V.getMVOp());
   return IL;
 }
 

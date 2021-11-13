@@ -143,6 +143,8 @@ public:
     const unsigned int getCost() { return Cost; }
     const bool isTemplate() { return Template; }
 
+    std::string getResultValue() { return Result; }
+
     /// Render instruction as a string
     std::string render();
 
@@ -154,6 +156,8 @@ public:
 
     /// Check if the vectorial type of the operation is a reduction
     bool isReduction() { return SType == SIMDType::VREDUC; }
+
+    bool isAddition() { return SType == SIMDType::VADD; }
 
     /// Comparison operator
     bool operator==(const SIMDInst &S) const {

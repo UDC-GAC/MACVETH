@@ -180,7 +180,7 @@ void MVRewriter::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
           // FIXME:
           // Rewrite.InsertTextAfter(S->getClangStmt()->getBeginLoc(),
           Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                             "\n" + SI.render() + ";");
+                             SI.render() + ";\n");
           return;
         }
       }

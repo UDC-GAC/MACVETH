@@ -38,6 +38,8 @@ namespace macveth {
 /// generate intrinsics and perform the optimizations.
 class VectorIR {
 public:
+  using VectorSlot = std::tuple<std::string, int>;
+
   /// Types of vector operations we distinguish according their scheduling
   enum VType {
     /// No dependencies between operations, so it can be used a unique vector
@@ -65,26 +67,13 @@ public:
     } else if (Bits > 128) {
       return MVDataType::VWidth::W256;
     }
-    //} else if (Bits >= 64) {
     return MVDataType::VWidth::W128;
-    // } else if (Bits > 32) {
-    //   return MVDataType::VWidth::W64;
-    // } else if (Bits > 16) {
-    //   return MVDataType::VWidth::W32;
-    // } else if (Bits > 8) {
-    //   return MVDataType::VWidth::W16;
-    // }
-    // return MVDataType::VWidth::W8;
   }
 
   /// Unique identifier for the operand
   static inline unsigned int VID = 0;
   /// Keeping track of the correspondence between the registers name and the
   /// new naming
-  // static inline std::map<std::tuple<std::string, MVDataType::VWidth>,
-  //                        std::string>
-  //     MapRegToVReg;
-  using VectorSlot = std::tuple<std::string, int>;
   static inline std::map<std::string, VectorSlot> MapRegToVReg;
   static inline std::map<std::string, int> MapRegSize;
 
@@ -97,9 +86,6 @@ public:
 
   static inline std::map<std::string, IntDefault> LiveIn;
   static inline std::map<std::string, IntDefault> LiveOut;
-
-  // static inline std::map<std::string, VectorSlots> MapRegToVectorSlot;
-  // static inline std::map<std::string, std::string> MapVectorSlotToReg;
 
   /// Keeping track of the loads in the program
   static inline std::list<std::tuple<std::vector<int>, std::string>> MapLoads;
@@ -123,8 +109,7 @@ public:
   /// original Node
   struct VOperand {
     /// Name identifying the vector operand
-    std::string Name;
-    unsigned int VectorLength = 4;
+    mutable std::string Name;
     /// Number non null Nodes
     unsigned int VSize;
     /// Total size of vector
@@ -199,10 +184,13 @@ public:
     bool isFloat() { return DType == MVDataType::VDataType::FLOAT; }
 
     /// Return name of VOperand
-    std::string getName() { return Name; }
+    std::string &getName() { return Name; }
 
     /// Return name of the VOperand (const)
-    std::string getName() const { return Name; }
+    std::string &getName() const { return Name; }
+
+    void setName(const std::string &Name) { this->Name = Name; }
+    void setName(const std::string &Name) const { this->Name = Name; }
 
     /// Returns if operands have been already loaded from memory
     bool checkIfAlreadyLoaded(Node *PrimaryNode);
@@ -306,9 +294,13 @@ public:
     BinaryOperator::Opcode getBinOp();
     /// Get the MVOp
     MVOp getMVOp();
-    /// Get the result operand
-    VOperand getResult() { return R; }
-    VOperand getResult() const { return R; }
+
+    void setResult(const VectorIR::VOperand &R) { this->R = R; }
+
+    VOperand &getResult() { return R; }
+    VOperand &getOpA() { return OpA; }
+    VOperand &getOpB() { return OpB; }
+
     /// Constructor from the CDAG
     VectorOP(int VL, Node::NodeListType &VOps, Node::NodeListType &VLoadA,
              Node::NodeListType &VLoadB);
