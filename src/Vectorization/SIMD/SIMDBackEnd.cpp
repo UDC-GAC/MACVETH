@@ -223,9 +223,18 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
 // ---------------------------------------------
 void SIMDBackEnd::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
   SIMDInstListType TIL;
+
+  // Special case:
+  if (V.getResult().IsStore) {
+    if ((!V.getResult().Contiguous) && (V.getOpB().RequiresRegisterPacking)) {
+      TI->splice(TI->end(), singleElementScatterOp(V));
+      return;
+    }
+  }
+
   // Arranging the operands: maybe they need load, set, bcast...
-  getSIMDVOperand(V.OpA, TI);
-  getSIMDVOperand(V.OpB, TI);
+  getSIMDVOperand(V.getOpA(), TI);
+  getSIMDVOperand(V.getOpB(), TI);
 
   if (V.isBinOp()) {
     /// We can filter it by
@@ -302,7 +311,7 @@ SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP &V) {
   case VectorIR::VType::SEQ:
     return vseq(V);
   case VectorIR::VType::SCATTER:
-    return vscatterop(V);
+    return singleElementScatterOp(V);
   case VectorIR::VType::INDUCTION:
     MVErr("Induction not supported yet!!!");
   };

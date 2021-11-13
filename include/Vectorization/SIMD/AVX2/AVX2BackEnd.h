@@ -73,7 +73,8 @@ public:
 
   /// Store values in memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
-  virtual SIMDInstListType vscatterop(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType
+  singleElementScatterOp(VectorIR::VectorOP V) override;
 
   SIMDInstListType singleElementScatter(VectorIR::VectorOP VOP);
 

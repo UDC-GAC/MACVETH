@@ -203,7 +203,7 @@ public:
   virtual SIMDInstListType vstore(VectorIR::VectorOP V) = 0;
   /// Generate store instructions to memory using an index
   virtual SIMDInstListType vscatter(VectorIR::VectorOP V) = 0;
-  virtual SIMDInstListType vscatterop(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType singleElementScatterOp(VectorIR::VectorOP V) = 0;
 
   // Binary operations
 

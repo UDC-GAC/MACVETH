@@ -312,13 +312,15 @@ MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList,
   // Divide-and-conquer approach: get reductions first, then deal with the rest.
   Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
 
-  MACVETH_DEBUG("MVCostModel", "General case");
+  MACVETH_DEBUG("MVCostModel", "=== GENERAL CASE ===");
   VList.splice(VList.end(), greedyOpsConsumer(NL, Backend));
-  MACVETH_DEBUG("MVCostModel", "Reductions case");
+  MACVETH_DEBUG("MVCostModel", "=== END GENERAL CASE ===");
+  MACVETH_DEBUG("MVCostModel", "=== REDUCTIONS CASE ===");
   std::sort(NRedux.begin(), NRedux.end(), [](const Node *N0, const Node *N1) {
     return N0->getSchedInfo().NodeID < N1->getSchedInfo().NodeID;
   });
   VList.splice(VList.end(), greedyOpsConsumer(NRedux, Backend));
+  MACVETH_DEBUG("MVCostModel", "=== END REDUCTIONS CASE ===");
 
   // Order Vector Operations by TAC ID
   VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {

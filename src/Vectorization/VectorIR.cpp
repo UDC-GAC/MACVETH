@@ -73,9 +73,6 @@ bool isAtomic(int VL, const Node::NodeListType &VOps,
 bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node::NodeListType &V,
                                                MVDataType::VWidth Width) {
   for (int n = 0; n < VL; ++n) {
-    // if (MapRegToVReg.find(std::make_tuple(V[n]->getRegisterValue(), Width))
-    // ==
-    //     MapRegToVReg.end()) {
     if (MapRegToVReg.find(V[n]->getRegisterValue()) == MapRegToVReg.end()) {
       return false;
     }
@@ -84,10 +81,26 @@ bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node::NodeListType &V,
 }
 
 // ---------------------------------------------
+std::string getStrTypeOp(VectorIR::VType T) {
+  switch (T) {
+  case VectorIR::VType::SEQ:
+    return "SEQ";
+  case VectorIR::VType::INDUCTION:
+    return "INDUCTION";
+  case VectorIR::VType::MAP:
+    return "MAP";
+  case VectorIR::VType::REDUCE:
+    return "REDUCE";
+  case VectorIR::VType::SCATTER:
+    return "SCATTER_OP";
+  }
+  return "undef";
+}
+
+// ---------------------------------------------
 std::string VectorIR::VOperand::toString() {
-  std::string Str;
-  Str = Name + "[" + (IsTmpResult ? "TempResult, " : "") +
-        (IsLoad ? "LoadOp, " : "") + (IsStore ? "StoreOp, " : "");
+  std::string Str = Name + "[" + (IsTmpResult ? "TempResult, " : "") +
+                    (IsLoad ? "LoadOp, " : "") + (IsStore ? "StoreOp, " : "");
   if (this->Size < 1) {
     return Str + "]";
   }
@@ -96,22 +109,25 @@ std::string VectorIR::VOperand::toString() {
     Str += ", " + (UOP[i]->getRegisterValue());
   }
   Str += "]";
-  Str += " (" + std::to_string(this->Order) +
-         (this->Offset == -1 ? ")" : std::to_string(this->Offset) + ")");
+  Str += " (ord " + std::to_string(this->Order) +
+         (this->Offset == -1 ? ")"
+                             : ", off " + std::to_string(this->Offset) + ")");
   return Str;
 }
 
 // ---------------------------------------------
 std::string VectorIR::VectorOP::toString() {
+  std::string Str = "[" + getStrTypeOp(this->VT) + "] ";
   if (this->VT == VectorIR::VType::SEQ) {
-    return "Scalar: (" + std::to_string(this->Order) +
+    return Str + " (" + std::to_string(this->Order) +
            (this->Offset == -1 ? ")"
                                : ", " + std::to_string(this->Offset) + ")");
   }
   auto B = (IsUnary) ? "" : "," + OpB.toString();
-  auto Str = R.toString() + " = " + VN + "(" + OpA.toString() + B + ")";
-  Str += " (" + std::to_string(this->Order);
-  Str += this->Offset == -1 ? ")" : ", " + std::to_string(this->Offset) + ")";
+  Str += R.toString() + " = " + VN + "(" + OpA.toString() + B + ")";
+  Str += " (ord " + std::to_string(this->Order);
+  Str +=
+      this->Offset == -1 ? ")" : ", off " + std::to_string(this->Offset) + ")";
   return Str;
 }
 
@@ -303,6 +319,11 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     if (this->SameVector) {
       this->IsPartial = (MapRegSize[*RegistersUsed.begin()] == (int)this->Size);
     }
+    // MACVETH_DEBUG("VOperand",
+    //               "SameVector = " + std::to_string(this->SameVector) +
+    //                   "; IsPartial = " + std::to_string(this->IsPartial) +
+    //                   "; RequiresRegisterPacking = " +
+    //                   std::to_string(RequiresRegisterPacking));
   }
 
   // Get name of this operand, otherwise create a custom name
@@ -368,6 +389,11 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     }
   }
   this->LowBits = (this->VSize == 2) && (this->Size == 4);
+  MACVETH_DEBUG("VOperand", "Name = " + this->Name +
+                                "; VSize = " + std::to_string(this->VSize) +
+                                "; Size = " + std::to_string(Size) +
+                                "; RequiresRegPacking = " +
+                                std::to_string(this->RequiresRegisterPacking));
 };
 
 // ---------------------------------------------
@@ -491,4 +517,6 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
   // Data type: vector operation will have the same data type as the original
   // result
   this->DT = this->R.DType;
+
+  MACVETH_DEBUG("VectorIR", "VectorOP => " + this->toString());
 }
