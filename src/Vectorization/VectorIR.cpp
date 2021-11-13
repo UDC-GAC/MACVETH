@@ -292,32 +292,20 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
       LiveOut[Reg] = std::max(this->Order, (int)LiveOut[Reg]);
       // Check if index of the register is the same
       this->RequiresRegisterPacking |= (n != std::get<1>(NewRegIdx));
-      // MACVETH_DEBUG("VOperand",
-      //               std::get<0>(NewRegIdx) + "; order " +
-      //                   std::to_string(this->Order) +
-      //                   "; n = " + std::to_string(n) +
-      //                   "; RegIdx = " +
-      //                   std::to_string(std::get<1>(NewRegIdx)) +
-      //                   "; RequiresRegisterPacking = " +
-      //                   std::to_string(this->RequiresRegisterPacking));
     }
     assert(RegistersUsed.size() >= 1 &&
            "We should have used at least one register");
+
+    // Another condition to determine if register is partial or not: check
+    // vector width of original register and this new vector:
     this->SameVector = (RegistersUsed.size() == 1);
     this->IsPartial = !this->SameVector;
     if (this->SameVector) {
       this->IsPartial = (MapRegSize[*RegistersUsed.begin()] == (int)this->Size);
     }
-    // Another condition to determine if register is partial or not: check
-    // vector width of original register and this new vector:
   }
 
   // Get name of this operand, otherwise create a custom name
-  // this->Name = VecAssigned
-  //                  ? MapRegToVReg[std::make_tuple(
-  //                        PrimaryNode->getRegisterValue(), this->getWidth())]
-  //                  : genNewVOpName();
-
   this->Name = (VecAssigned && !this->RequiresRegisterPacking)
                    ? std::get<0>(MapRegToVReg[PrimaryNode->getRegisterValue()])
                    : genNewVOpName();
@@ -341,13 +329,12 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
 
   // Checking if operands are all memory
   bool IsMemOp = true;
+  this->MemOp = AlreadyStored;
 
   // Tracking the operands
   for (int n = 0; n < VL; ++n) {
-    IsMemOp = (IsMemOp) && (V[n]->needsMemLoad());
+    IsMemOp &= (V[n]->needsMemLoad());
     if (!VecAssigned) {
-      // MapRegToVReg[std::make_tuple(V[n]->getRegisterValue(),
-      //                              this->getWidth())] = this->Name;
       MapRegToVReg[V[n]->getRegisterValue()] = std::make_tuple(this->Name, n);
     }
     LiveIn[this->Name] = this->Order;
@@ -357,7 +344,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
                                           V[n - 1]->getRegisterValue());
     }
   }
-  this->MemOp = (IsMemOp || AlreadyStored);
+  this->MemOp |= (IsMemOp);
 
   // Get data mask
   this->Mask = getMask(this->VSize, this->Size, V);
@@ -374,13 +361,8 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
         if (VL > 1) {
           for (int i = 1; i < VL; ++i) {
             T &= ((Idx[i] - 1) == Idx[i - 1]);
-            // MACVETH_DEBUG("VOperand",
-            //               "Idx[i]-1 = " + std::to_string((Idx[i] - 1)) +
-            //                   "; Idx[i-1] = " + std::to_string((Idx[i -
-            //                   1])));
           }
         }
-        // MACVETH_DEBUG("VOperand", "Contiguous = " + std::to_string(T));
         this->Contiguous = T;
       }
     }

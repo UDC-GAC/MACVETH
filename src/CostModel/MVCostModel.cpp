@@ -309,19 +309,16 @@ MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList,
   // Working with a copy
   Node::NodeListType NL(NList);
 
-  // Detecting reductions
+  // Divide-and-conquer approach: get reductions first, then deal with the rest.
   Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  if (NRedux.size() == 0) {
-    MACVETH_DEBUG("MVCostModel", "No reductions detected");
-  }
 
   MACVETH_DEBUG("MVCostModel", "General case");
   VList.splice(VList.end(), greedyOpsConsumer(NL, Backend));
   MACVETH_DEBUG("MVCostModel", "Reductions case");
+  std::sort(NRedux.begin(), NRedux.end(), [](const Node *N0, const Node *N1) {
+    return N0->getSchedInfo().NodeID < N1->getSchedInfo().NodeID;
+  });
   VList.splice(VList.end(), greedyOpsConsumer(NRedux, Backend));
-
-  // PlcmntAlgo::markReductions(&NList);
-  // VList.splice(VList.end(), greedyOpsConsumer(NList, Backend));
 
   // Order Vector Operations by TAC ID
   VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {
@@ -346,6 +343,13 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
 
   // Set placement according to the desired algorithm
   auto NL = PlcmntAlgo::sortGraph(G.getNodeListOps());
+
+  // Debugging
+  if (MVOptions::Debug) {
+    for (auto N : NL) {
+      MACVETH_DEBUG("MVCostModel", N->toString());
+    }
+  }
 
   // Setting CDAG
   Backend->setCDAG(G);

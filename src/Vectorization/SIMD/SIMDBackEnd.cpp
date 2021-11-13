@@ -162,7 +162,7 @@ bool equalValues(int VL, std::vector<Node *> N) {
 // ---------------------------------------------
 bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
   MACVETH_DEBUG("SIMDBackEnd",
-                "V = " + V.Name + "; load = " + std::to_string(V.IsLoad) +
+                "V = " + V.getName() + "; load = " + std::to_string(V.IsLoad) +
                     "; partial = " + std::to_string(V.IsPartial) +
                     "; regpack = " + std::to_string(V.RequiresRegisterPacking));
   if ((!V.IsLoad) && (!V.RequiresRegisterPacking) && (!V.IsPartial)) {
@@ -194,7 +194,8 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
 
   auto NullIndex = false;
   MACVETH_DEBUG("SIMDBackEnd",
-                "V = " + V.Name + "; EqualVal = " + std::to_string(EqualVal) +
+                "V = " + V.getName() +
+                    "; EqualVal = " + std::to_string(EqualVal) +
                     "; ContMem = " + std::to_string(ContMem) +
                     "; ScatterMem = " + std::to_string(ScatterMem) +
                     "; SameVec = " + std::to_string(V.SameVector) +
@@ -254,8 +255,8 @@ void SIMDBackEnd::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
   }
 
   // If there is a store
-  if (V.R.IsStore) {
-    if (V.R.Contiguous) {
+  if (V.getResult().IsStore) {
+    if (V.getResult().Contiguous) {
       TIL.splice(TIL.end(), vstore(V));
     } else {
       TIL.splice(TIL.end(), vscatter(V));
@@ -269,12 +270,16 @@ void SIMDBackEnd::reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
   SIMDInstListType TIL;
 
   // Retrieve operands
-  if (V.R.Name == V.OpA.Name) {
+  if (V.getResult().getName() == V.OpA.getName()) {
     getSIMDVOperand(V.OpB, TI);
   }
-  if (V.R.Name == V.OpB.Name) {
+  if (V.getResult().getName() == V.OpB.getName()) {
     getSIMDVOperand(V.OpA, TI);
   }
+
+  MACVETH_DEBUG("SIMDBackend", "reduction: R = " + V.getResult().getName() +
+                                   "; A = " + V.OpA.getName() +
+                                   "; B = " + V.OpB.getName());
 
   // Let the magic happens
   TIL = vreduce(V);
@@ -303,7 +308,7 @@ SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP &V) {
   };
 
   auto RegType = getRegisterType(V.DT, V.VW);
-  addRegToDeclare(RegType, V.R.getName());
+  addRegToDeclare(RegType, V.getResult().getName());
   addRegToDeclare(RegType, V.OpA.getName());
   addRegToDeclare(RegType, V.OpB.getName());
 

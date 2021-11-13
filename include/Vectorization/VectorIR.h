@@ -214,7 +214,7 @@ public:
     std::string genNewVOpName() { return VOP_PREFIX + std::to_string(VID++); }
 
     /// Return register name
-    std::string getRegName(int Position, int Offset) const {
+    std::string getRegName(int Position = 0, int Offset = 0) const {
       if (Offset != 0) {
         auto Operand = this->UOP[Position]->getMVExpr();
         if (Operand != nullptr) {
@@ -234,7 +234,7 @@ public:
 
     /// Copy constructor
     VOperand(const VOperand &V) {
-      this->Name = V.Name;
+      this->Name = V.getName();
       this->BaseArray = V.BaseArray;
       this->VSize = V.VSize;
       this->Size = V.Size;

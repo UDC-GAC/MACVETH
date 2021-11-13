@@ -247,6 +247,7 @@ public:
   NodeListType getInputs() { return this->I; }
   /// Get info regarding its scheduling
   SchedInfo getSchedInfo() { return this->SI; }
+  SchedInfo getSchedInfo() const { return this->SI; }
   /// Get TAC order
   int getTacID() { return this->SI.TacID; }
   /// Get unrolling factor
