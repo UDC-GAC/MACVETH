@@ -763,6 +763,7 @@ AVX2BackEnd::fuseReductions(SIMDBackEnd::SIMDInstListType TIL) {
       MACVETH_DEBUG("AVX2BackEnd", "Size = " + std::to_string(S));
       if (reductionIsContiguous(L, I)) {
         SIMDBackEnd::SIMDInstListType Aux;
+        MACVETH_DEBUG("AVX2BackEnd", "reduction is contiguous");
         // FIXME: isn't a better way of doing this????
         for (auto R : L) {
           if (R.getResultValue() != I.getResultValue()) {
@@ -771,6 +772,7 @@ AVX2BackEnd::fuseReductions(SIMDBackEnd::SIMDInstListType TIL) {
         }
         LRedux[S] = Aux;
       } else if (hasRawDependencies(L, I)) {
+        MACVETH_DEBUG("AVX2BackEnd", "has dependencies");
         ReplaceFusedRedux[L.back()] = fuseReductionsList(L);
         auto it = L.end();
         SkipList.splice(SkipList.end(), L, L.begin(), --it);
@@ -1435,7 +1437,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
   }
 
   if (!NeedsMask) {
-    if (V.getResult().VSize == 2) {
+    if ((V.getResult().Size == 2) || (V.getResult().VSize == 2)) {
       SuffS = (V.getResult().LowBits) ? "l" : SuffS;
       SuffS = (V.getResult().HighBits) ? "h" : SuffS;
       if (V.getResult().isFloat()) {

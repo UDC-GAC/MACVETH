@@ -148,7 +148,8 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       // Computing the cost model of the CDAG created
       SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
 
-      if (SInfo.isThereAnyVectorization()) {
+      // if (SInfo.isThereAnyVectorization()) {
+      if (1) {
         // Rewrite loops
         DimsDeclFunc.splice(DimsDeclFunc.end(),
                             MVR.rewriteLoops(SL, DimsDeclFunc));
