@@ -7,6 +7,7 @@
  *
  * Web address: http://polybench.sourceforge.net
  */
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -37,7 +38,7 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
-static void print_value(double S) {
+static void print_value(DATA_TYPE S) {
   fprintf(stderr, DATA_PRINTF_MODIFIER, S);
   fprintf(stderr, "\n");
 }

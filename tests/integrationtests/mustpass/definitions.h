@@ -52,7 +52,7 @@
 /* Default data type */
 #if !defined(DATA_TYPE_IS_INT) && !defined(DATA_TYPE_IS_FLOAT) &&              \
     !defined(DATA_TYPE_IS_DOUBLE)
-#define DATA_TYPE_IS_DOUBLE
+#define DATA_TYPE_IS_FLOAT
 #endif
 
 #ifdef DATA_TYPE_IS_INT
@@ -62,7 +62,7 @@
 
 #ifdef DATA_TYPE_IS_FLOAT
 #define DATA_TYPE float
-#define DATA_PRINTF_MODIFIER "%.0f "
+#define DATA_PRINTF_MODIFIER "%.1f "
 #define SCALAR_VAL(x) x##f
 #define SQRT_FUN(x) sqrtf(x)
 #define EXP_FUN(x) expf(x)

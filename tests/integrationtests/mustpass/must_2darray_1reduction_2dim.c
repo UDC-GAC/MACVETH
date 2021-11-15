@@ -7,6 +7,9 @@
  *
  * Web address: http://polybench.sourceforge.net
  */
+
+#define DATA_TYPE_IS_FLOAT
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +18,7 @@
 /* Include polybench common header. */
 #include <polybench.h>
 
-#define DATA_TYPE_IS_DOUBLE
+#define DATA_TYPE_IS_FLOAT
 
 /* Include benchmark-specific header. */
 /* Default data type is double, default size is N=1024. */
@@ -39,7 +42,7 @@ static void init_2darray(int n, DATA_TYPE POLYBENCH_2D(C, N, N, n, n)) {
 
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
-static void print_value(double S) {
+static void print_value(DATA_TYPE S) {
   fprintf(stderr, DATA_PRINTF_MODIFIER, S);
   fprintf(stderr, "\n");
 }
@@ -58,7 +61,7 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-static void kernel_template(int n, double *S,
+static void kernel_template(int n, DATA_TYPE *S,
                             DATA_TYPE POLYBENCH_1D(redux, N, n),
                             DATA_TYPE POLYBENCH_2D(A, N, N, n, n)) {
   DATA_TYPE tmp = (*S);

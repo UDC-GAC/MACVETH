@@ -20,11 +20,11 @@ endmacro()
 # endforeach()
 
 # "mustpass" tests: those which can not ever fail
-# file(GLOB TEST_LIST mustpass/must_*.c)
-# foreach(TEST_PATH IN LISTS TEST_LIST)
-#     get_filename_component(TEST_NAME ${TEST_PATH} NAME)
-#     add_integration_test_macveth(mustpass/ ${TEST_NAME} mustpass)
-# endforeach()
+file(GLOB TEST_LIST mustpass/must_*.c)
+foreach(TEST_PATH IN LISTS TEST_LIST)
+    get_filename_component(TEST_NAME ${TEST_PATH} NAME)
+    add_integration_test_macveth(mustpass/ ${TEST_NAME} mustpass)
+endforeach()
 
 file(GLOB TEST_LIST randompacking/randompacking_*.c)
 foreach(TEST_PATH IN LISTS TEST_LIST)
