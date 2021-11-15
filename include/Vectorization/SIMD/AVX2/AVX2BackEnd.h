@@ -159,6 +159,17 @@ public:
       MVSourceLocation::Position Pos = MVSourceLocation::Position::POSORDER);
 
   SIMDBackEnd::SIMDInstListType
+  reduceOneRegister(VectorIR::VOperand V, std::string OpName,
+                    MVSourceLocation::Position Pos);
+
+  SIMDBackEnd::SIMDInstListType reduceMultipleValuesInRegisterSymmetric(
+      VectorIR::VOperand V, std::string OpName, MVSourceLocation::Position Pos);
+
+  SIMDBackEnd::SIMDInstListType
+  reduceMultipleValuesInRegister(VectorIR::VOperand V, std::string OpName,
+                                 MVSourceLocation::Position Pos);
+
+  SIMDBackEnd::SIMDInstListType
   fuseReductionsList(SIMDBackEnd::SIMDInstListType TIL);
 
   /// Check whether an instruction has RAW dependencies within a list of
@@ -172,6 +183,8 @@ public:
 
   /// Fusing reductions: peephole optimization
   SIMDBackEnd::SIMDInstListType fuseReductions(SIMDBackEnd::SIMDInstListType I);
+  SIMDBackEnd::SIMDInstListType
+  noFuseReductions(SIMDBackEnd::SIMDInstListType I);
 
   /// Peephole optimization for fusing reductions
   SIMDBackEnd::SIMDInst genMultAccOp(SIMDBackEnd::SIMDInst Mul,

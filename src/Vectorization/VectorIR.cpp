@@ -319,11 +319,6 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     if (this->SameVector) {
       this->IsPartial = (MapRegSize[*RegistersUsed.begin()] == (int)this->Size);
     }
-    // MACVETH_DEBUG("VOperand",
-    //               "SameVector = " + std::to_string(this->SameVector) +
-    //                   "; IsPartial = " + std::to_string(this->IsPartial) +
-    //                   "; RequiresRegisterPacking = " +
-    //                   std::to_string(RequiresRegisterPacking));
   }
 
   // Get name of this operand, otherwise create a custom name

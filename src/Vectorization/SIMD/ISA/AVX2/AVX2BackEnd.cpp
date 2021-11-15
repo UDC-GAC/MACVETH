@@ -45,6 +45,27 @@ std::map<std::string, std::string> OpEq = {
 };
 
 // ---------------------------------------------
+VectorIR::VOperand getSubVOperand(const VectorIR::VOperand &V, std::string Name,
+                                  int VSize, int Size, MVDataType::VWidth Width,
+                                  MVDataType::VDataType DType, int Offset) {
+  VectorIR::VOperand NewVOp = V;
+  NewVOp.Name = Name;
+  NewVOp.Size = Size;
+  NewVOp.VSize = VSize;
+  NewVOp.Width = Width;
+  NewVOp.DType = DType;
+  NewVOp.IsPartial = (Size != VSize);
+  NewVOp.LowBits = (Offset % 4 == 0);
+  NewVOp.HighBits = !NewVOp.LowBits;
+  NewVOp.VSize = (NewVOp.Size > 4) ? 8 : 4;
+  for (int Idx = 0; Idx < Size; ++Idx) {
+    NewVOp.UOP[Idx] = V.UOP[Idx + Offset];
+    NewVOp.Idx[Idx] = V.Idx[Idx + Offset];
+  }
+  return NewVOp;
+}
+
+// ---------------------------------------------
 SIMDBackEnd::SIMDInst createSIMDInst(std::string Op, std::string Res,
                                      std::string Width, std::string DataType,
                                      std::string PrefS, std::string SuffS,
@@ -96,46 +117,45 @@ SIMDBackEnd::SIMDInst AVX2BackEnd::genMultAccOp(SIMDBackEnd::SIMDInst Mul,
 SIMDBackEnd::SIMDInstListType
 AVX2BackEnd::fuseAddSubMult(SIMDBackEnd::SIMDInstListType I) {
   SIMDBackEnd::SIMDInstListType IL;
-  SIMDBackEnd::SIMDInstListType PotentialFuse;
+  std::map<MVDataType::VWidth, SIMDBackEnd::SIMDInstListType> PotentialFuse;
   SIMDBackEnd::SIMDInstListType SkipList;
   std::map<SIMDBackEnd::SIMDInst, SIMDBackEnd::SIMDInst> Fuses;
-
   // Search replacements
   for (auto Inst : I) {
     // If we find a multiply operation it may be a FMADD
     if ((Inst.SType == SIMDBackEnd::SIMDType::VMUL) &&
         ((Inst.DT == MVDataType::VDataType::FLOAT) ||
          (Inst.DT == MVDataType::VDataType::DOUBLE))) {
-      PotentialFuse.push_back(Inst);
+      PotentialFuse[Inst.W].push_back(Inst);
       continue;
     }
     // If after the multiplication, there is a store, then this is not a
-    // potential fuse anymore. Or liveness issues
+    // potential fuse anymore.
     if (Inst.SType == SIMDBackEnd::SIMDType::VSTORE) {
       SIMDBackEnd::SIMDInstListType AuxL;
-      for (auto P : PotentialFuse) {
+      for (auto P : PotentialFuse[Inst.W]) {
         if (Inst.Result != P.Result) {
           AuxL.push_back(P);
         }
       }
-      PotentialFuse = AuxL;
+      PotentialFuse[Inst.W] = AuxL;
       continue;
     }
 
     // Check liveness
     SIMDBackEnd::SIMDInstListType AuxL;
-    for (auto P : PotentialFuse) {
+    for (auto P : PotentialFuse[Inst.W]) {
       auto Live = VectorIR::LiveOut[P.Result];
       if (Live <= (int)Inst.MVSL.getOrder()) {
         AuxL.push_back(P);
       }
     }
-    PotentialFuse = AuxL;
+    PotentialFuse[Inst.W] = AuxL;
 
     // Check if we have any add/sub adding the result of a previous
     // multiplication
     if ((Inst.isAddition()) || (Inst.SType == SIMDBackEnd::SIMDType::VSUB)) {
-      for (auto P : PotentialFuse) {
+      for (auto P : PotentialFuse[Inst.W]) {
         if (std::find(Inst.Args.begin(), Inst.Args.end(), P.Result) !=
             Inst.Args.end()) {
           auto NewFuse = AVX2BackEnd::genMultAccOp(P, Inst);
@@ -170,27 +190,288 @@ std::string AVX2BackEnd::declareAuxArray(MVDataType::VDataType DT) {
                             getMaxWidth() / MVDataType::VDataTypeWidthBits[DT]);
 }
 
+using ReductionsMap = std::map<std::string, std::vector<int>>;
+
 // ---------------------------------------------
-int getNumberOfReductions(VectorIR::VOperand V) {
-  int NReductions = 1;
-  if (V.Idx.size() == 0) {
-    std::string PrevVal = V.UOP[0]->getRegisterValue();
-    for (int T = 1; T < (int)V.VSize; ++T) {
-      if (PrevVal != V.UOP[T]->getRegisterValue()) {
-        PrevVal = V.UOP[T]->getRegisterValue();
-        NReductions++;
+ReductionsMap getReductionsMapFromVector(VectorIR::VOperand V) {
+  ReductionsMap Map;
+  // if (V.Idx.size() == 0) {
+  std::string PrevVal = V.UOP[0]->getRegisterValue();
+  Map[PrevVal].push_back(0);
+  MACVETH_DEBUG("AVX2Backend", "getReductionsMapFromVector. VSize = " +
+                                   std::to_string(V.VSize) +
+                                   "; Size = " + std::to_string(V.Size));
+  for (int T = 1; T < (int)V.VSize; ++T) {
+    std::string Val = V.UOP[T]->getRegisterValue();
+    Map[Val].push_back(T);
+    MACVETH_DEBUG("AVX2Backend", "getReductionsMapFromVector = " + Val +
+                                     "; idx = " + std::to_string(T));
+  }
+  return Map;
+}
+
+// ---------------------------------------------
+SIMDBackEnd::SIMDInstListType
+AVX2BackEnd::reduceOneRegister(VectorIR::VOperand V, std::string OpName,
+                               MVSourceLocation::Position Pos) {
+  MACVETH_DEBUG("AVX2Backend", "reduceOneRegister");
+  auto Type = V.DType;
+  auto AccmReg = getAccmReg(V.getName());
+  auto RegType = getRegisterType(Type, MVDataType::VWidth::W128);
+  auto NElems = V.VSize;
+  std::string LoRes = "__mv_lo128";
+  std::string HiRes = "__mv_hi128";
+  MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  SIMDBackEnd::SIMDInstListType IL;
+  // if (Type == MVDataType::VDataType::DOUBLE) {
+  //   // If 4 elements
+  //   if (NElems > 2) {
+  //     // __m128d lo = _mm256_castpd256_pd128(v); zero latency
+  //     genSIMDInst(LoRes, "castpd", "256", "pd128", MVDataType::VWidth::W256,
+  //                 Type, {AccmReg}, SIMDType::VOPT, MVSL, &IL);
+  //     // __m128d hi = _mm256_extractf128_pd(v,0x1);
+  //     genSIMDInst(HiRes, "extract", "", "f128", MVDataType::VWidth::W256,
+  //     Type,
+  //                 {AccmReg, "0x1"}, SIMDType::VOPT, MVSL, &IL);
+  //     // lo = op(lo,hi);
+  //     genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
+  //                 {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
+  //   } else {
+  //     LoRes = AccmReg;
+  //   }
+  //   // When only 2 elements
+  //   // hi = _mm_shuffle_pd(lo,lo,0x1);
+  //   genSIMDInst(HiRes, "shuffle", "", "", MVDataType::VWidth::W128, Type,
+  //               {LoRes, LoRes, "0x1"}, SIMDType::VPERM, MVSL, &IL);
+  //   // val = _mm_cvtsd_f64(op(lo,hi));
+  //   genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
+  //               {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
+  // } else
+  if (Type == MVDataType::VDataType::FLOAT) {
+    // 8 elements
+    if (NElems > 4) {
+      // __m128 lo = cast()
+      genSIMDInst(LoRes, "castps", "256", "ps128", MVDataType::VWidth::W256,
+                  Type, {AccmReg}, SIMDType::VOPT, MVSL, &IL);
+      // __m128 lo = cast(v)
+      genSIMDInst(HiRes, "extract", "", "f128", MVDataType::VWidth::W256, Type,
+                  {AccmReg, "0x1"}, SIMDType::VOPT, MVSL, &IL);
+
+      // lo = op(lo, hi);
+      genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
+                  {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
+    } else {
+      LoRes = AccmReg;
+    }
+    if (NElems > 2) {
+      // 4 elements
+      // hi = movehl(lo);
+      genSIMDInst(HiRes, "move", "", "hl", MVDataType::VWidth::W128, Type,
+                  {LoRes, LoRes}, SIMDType::VOPT, MVSL, &IL);
+      // lo = op(lo, hi);
+      genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
+                  {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
+    }
+    // 2 elements
+    // hi = shuffle(lo, lo, mask);
+    genSIMDInst(HiRes, "shuffle", "", "", MVDataType::VWidth::W128, Type,
+                {LoRes, LoRes, "0b00000001"}, SIMDType::VPERM, MVSL, &IL);
+    // lo = op(lo,hi);
+    genSIMDInst("__mv_lo128", OpName, "", "", MVDataType::VWidth::W128, Type,
+                {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
+
+  } else {
+    // FIXME: should we implement this for integer arithmetic?
+    MVErr("Not implemented this approach yet for other types than float");
+  }
+  return IL;
+}
+
+// ---------------------------------------------
+SIMDBackEnd::SIMDInstListType
+AVX2BackEnd::reduceMultipleValuesInRegisterSymmetric(
+    VectorIR::VOperand V, std::string OpName, MVSourceLocation::Position Pos) {
+  MACVETH_DEBUG("AVX2Backend", "reduceMultipleValuesInRegisterSymmetric");
+  SIMDBackEnd::SIMDInstListType IL;
+  auto Type = V.DType;
+  auto AccmReg = getAccmReg(V.getName());
+  auto NElems = V.VSize;
+  auto RegType = getRegisterType(Type, MVDataType::VWidth::W256);
+  std::string LoRes = "__mv_lo256";
+  std::string HiRes = "__mv_hi256";
+  SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
+  SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
+  MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  if (Type == MVDataType::VDataType::FLOAT) {
+    // 8 elements
+    if (NElems > 4) {
+      auto TmpReg0 = "__tmp0_256";
+      auto TmpReg1 = "__tmp1_256";
+      auto TmpReg2 = "__tmp2_256";
+      SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
+      SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
+      SIMDBackEnd::addRegToDeclare(RegType, TmpReg2, {0});
+      genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W256, Type,
+                  {AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
+      genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
+                  {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
+      genSIMDInst(TmpReg2, "shuffle", "", "", MVDataType::VWidth::W256, Type,
+                  {TmpReg1, TmpReg1, "0x01"}, SIMDType::VPERM, MVSL, &IL);
+      genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W256, Type,
+                  {TmpReg1, TmpReg2}, SIMDType::VADD, MVSL, &IL);
+    } else if (NElems > 2) {
+      RegType = getRegisterType(Type, MVDataType::VWidth::W128);
+      auto TmpReg0 = "__tmp0_128";
+      auto TmpReg1 = "__tmp1_128";
+      LoRes = "__mv_lo128";
+      SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
+      SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
+      std::string PermuteMask = "0b0000110001";
+      genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W128, Type,
+                  {AccmReg, PermuteMask}, SIMDType::VPERM, MVSL, &IL);
+      genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W128, Type,
+                  {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
+    }
+  }
+  // else {
+  //   if (NElems > 2) {
+  //     auto TmpReg0 = "__tmp0_256";
+  //     auto TmpReg1 = "__tmp1_256";
+  //     LoRes = "__tmp1_256";
+  //     SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
+  //     SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
+  //     genSIMDInst(TmpReg0, "permute", "", "2f128", MVDataType::VWidth::W256,
+  //                 Type, {AccmReg, AccmReg, "0b10000001"}, SIMDType::VPERM,
+  //                 MVSL, &IL);
+  //     genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
+  //                 {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
+  //   }
+  // }
+  return IL;
+}
+
+// ---------------------------------------------
+bool getSymmetry(ReductionsMap ReduxMap) {
+  if (ReduxMap.size() == 1) {
+    return true;
+  }
+  int Size = -1;
+  for (auto K : ReduxMap) {
+    auto RVector = K.second;
+    // Check if elements to reduce are contiguous or not
+    for (int i = 1; i < (int)RVector.size(); ++i) {
+      if (RVector[i] - 1 != RVector[i - 1]) {
+        MACVETH_DEBUG("AVX2Backend", "getSymmetry = false");
+        return false;
       }
     }
-    return NReductions;
-  }
-  int PrevVal = V.Idx[0];
-  for (int T = 1; T < (int)V.VSize; ++T) {
-    if (PrevVal != V.Idx[T]) {
-      PrevVal = V.Idx[T];
-      NReductions++;
+    if (Size == -1) {
+      Size = RVector.size();
+    }
+    if ((Size != (int)RVector.size())) {
+      MACVETH_DEBUG("AVX2Backend", "getSymmetry = false");
+      return false;
     }
   }
-  return NReductions;
+  MACVETH_DEBUG("AVX2Backend", "getSymmetry = false");
+  return true;
+}
+
+// ---------------------------------------------
+SIMDBackEnd::SIMDInstListType AVX2BackEnd::reduceMultipleValuesInRegister(
+    VectorIR::VOperand V, std::string OpName, MVSourceLocation::Position Pos) {
+  MACVETH_DEBUG("AVX2Backend", "reduceMultipleValuesInRegister");
+  SIMDBackEnd::SIMDInstListType IL;
+  auto AccmReg = getAccmReg(V.getName());
+  auto NElems = V.VSize;
+  MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  ReductionsMap ReduxMap;
+  int NReductions = 0;
+  bool Symmetric = true;
+  bool SkipRedux = false;
+  int Stride = 2;
+  if (NElems > 4) {
+    // Divide and conquer
+    auto NameFirstHalve = "_mm256_castps256_ps128(" + AccmReg + ")";
+    auto RegFirstHalve = getNextAccmRegister(NameFirstHalve);
+    SIMDBackEnd::addRegToDeclareInitVal("__m128", RegFirstHalve, {});
+    genSIMDInst(RegFirstHalve, "castps", "256", "ps128",
+                MVDataType::VWidth::W256, MVDataType::VDataType::FLOAT,
+                {AccmReg}, SIMDType::VOPT, MVSL, &IL);
+    auto VFirstHalve =
+        getSubVOperand(V, NameFirstHalve, 4, 4, MVDataType::VWidth::W128,
+                       MVDataType::VDataType::FLOAT, 0);
+    ReduxMap = getReductionsMapFromVector(VFirstHalve);
+    NReductions = ReduxMap.size();
+    Symmetric = getSymmetry(ReduxMap);
+    if (NReductions == 1) {
+      IL.splice(IL.end(), reduceOneRegister(VFirstHalve, OpName, Pos));
+    } else {
+      if (Symmetric) {
+        IL.splice(IL.end(), reduceMultipleValuesInRegisterSymmetric(
+                                VFirstHalve, OpName, Pos));
+      } else {
+        IL.splice(IL.end(),
+                  reduceMultipleValuesInRegister(VFirstHalve, OpName, Pos));
+        SkipRedux = true;
+      }
+    }
+
+    if (!SkipRedux) {
+      Stride = (NReductions > 1) ? 2 : 4;
+      for (unsigned R = 0; R < 4; R += Stride) {
+        addNonSIMDInst(V.StoreValues[R],
+                       V.StoreValues[R] + OpName + "__mv_lo128[" +
+                           std::to_string(R) + "]",
+                       SIMDType::VOPT, MVSL, &IL);
+      }
+    }
+
+    SkipRedux = false;
+    auto NameSecondHalve = getNextAccmRegister("__tmp_extract_128");
+    auto RegSecondHalve = getNextAccmRegister(NameSecondHalve);
+    SIMDBackEnd::addRegToDeclareInitVal("__m128", RegSecondHalve, {});
+    genSIMDInst(RegSecondHalve, "extract", "", "f128", MVDataType::VWidth::W256,
+                MVDataType::VDataType::FLOAT, {AccmReg, "0x1"}, SIMDType::VOPT,
+                MVSL, &IL);
+    auto VSecondHalve = getSubVOperand(V, NameSecondHalve, NElems - 4, 4,
+                                       MVDataType::VWidth::W128,
+                                       MVDataType::VDataType::FLOAT, 4);
+    ReduxMap = getReductionsMapFromVector(VSecondHalve);
+    NReductions = ReduxMap.size();
+    Symmetric = getSymmetry(ReduxMap);
+    if (NReductions == 1) {
+      IL.splice(IL.end(), reduceOneRegister(VSecondHalve, OpName, Pos));
+    } else {
+      if (Symmetric) {
+        IL.splice(IL.end(), reduceMultipleValuesInRegisterSymmetric(
+                                VSecondHalve, OpName, Pos));
+      } else {
+        IL.splice(IL.end(),
+                  reduceMultipleValuesInRegister(VSecondHalve, OpName, Pos));
+        SkipRedux = true;
+      }
+    }
+    if (!SkipRedux) {
+      Stride = (NReductions > 1) ? 2 : 4;
+      for (unsigned R = 0; R < 4; R += Stride) {
+        addNonSIMDInst(V.StoreValues[R + 4],
+                       V.StoreValues[R + 4] + OpName + "__mv_lo128[" +
+                           std::to_string(R) + "]",
+                       SIMDType::VOPT, MVSL, &IL);
+      }
+    }
+
+  } else {
+    // FIXME:
+    for (size_t N = 0; N < V.VSize; ++N) {
+      addNonSIMDInst(V.UOP[N]->getRegisterValue(),
+                     V.UOP[N]->getRegisterValue() + OpName + AccmReg + "[" +
+                         std::to_string(N) + "]",
+                     SIMDType::VOPT, MVSL, &IL);
+    }
+  }
+  return IL;
 }
 
 // ---------------------------------------------
@@ -198,141 +479,47 @@ SIMDBackEnd::SIMDInstListType
 AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
                                              MVSourceLocation::Position Pos) {
   std::vector<SIMDBackEnd::SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
-  // int NElems = VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT];
-  auto V = VIL[0].VOPResult;
+  MACVETH_DEBUG("AVX2Backend", "horizontalSingleVectorReduction");
+  auto ReduxIns = VIL[0];
+  auto V = ReduxIns.VOPResult;
   auto NElems = V.VSize;
-  int NReductions = getNumberOfReductions(V);
+  ReductionsMap ReduxMap = getReductionsMapFromVector(V);
+  MACVETH_DEBUG("AVX2Backend",
+                "horizontalSingleVectorReduction. ReduxMap.size() = " +
+                    std::to_string(ReduxMap.size()));
+  int NReductions = ReduxMap.size();
+  bool Symmetric = getSymmetry(ReduxMap);
 
+  MACVETH_DEBUG("AVX2Backend",
+                "horizontalSingleVectorReduction. Symmetry = " +
+                    std::to_string(Symmetric) +
+                    "; NReductions = " + std::to_string(NReductions));
   // Horizontal operations
   SIMDBackEnd::SIMDInstListType IL;
-  auto OpRedux = VIL[0].MVOP;
-  auto OpName = VIL[0].MVOP.toString();
-  auto Type = VIL[0].DT;
-  auto OP = VIL[0].MVOP.toString();
+  auto OpRedux = ReduxIns.MVOP;
+  auto OP = ReduxIns.MVOP.toString();
   auto AccmReg = getAccmReg(V.getName());
   MVSourceLocation MVSL(Pos, V.Order, V.Offset);
   std::string LoRes = "__mv_lo128";
   std::string HiRes = "__mv_hi128";
+  SIMDBackEnd::addRegToDeclare("__m128", LoRes, {0});
+  SIMDBackEnd::addRegToDeclare("__m128", HiRes, {0});
   if (NReductions == 1) {
-    auto RegType = getRegisterType(Type, MVDataType::VWidth::W128);
-    SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
-    SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
-    if (Type == MVDataType::VDataType::DOUBLE) {
-      // If 4 elements
-      if (NElems > 2) {
-        // __m128d lo = _mm256_castpd256_pd128(v); zero latency
-        genSIMDInst(LoRes, "castpd", "256", "pd128", MVDataType::VWidth::W256,
-                    Type, {AccmReg}, SIMDType::VOPT, MVSL, &IL);
-        // __m128d hi = _mm256_extractf128_pd(v,0x1);
-        genSIMDInst(HiRes, "extract", "", "f128", MVDataType::VWidth::W256,
-                    Type, {AccmReg, "0x1"}, SIMDType::VOPT, MVSL, &IL);
-        // lo = op(lo,hi);
-        genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
-                    {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
-      } else {
-        LoRes = AccmReg;
-      }
-      // When only 2 elements
-      // hi = _mm_shuffle_pd(lo,lo,0x1);
-      genSIMDInst(HiRes, "shuffle", "", "", MVDataType::VWidth::W128, Type,
-                  {LoRes, LoRes, "0x1"}, SIMDType::VPERM, MVSL, &IL);
-      // val = _mm_cvtsd_f64(op(lo,hi));
-      genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
-                  {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
-    } else if (Type == MVDataType::VDataType::FLOAT) {
-      // 8 elements
-      if (NElems > 4) {
-        // __m128 lo = cast()
-        genSIMDInst(LoRes, "castps", "256", "ps128", MVDataType::VWidth::W256,
-                    Type, {AccmReg}, SIMDType::VOPT, MVSL, &IL);
-        // __m128 lo = cast(v)
-        genSIMDInst(HiRes, "extract", "", "f128", MVDataType::VWidth::W256,
-                    Type, {AccmReg, "0x1"}, SIMDType::VOPT, MVSL, &IL);
-
-        // lo = op(lo, hi);
-        genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
-                    {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
-      } else {
-        LoRes = AccmReg;
-      }
-      if (NElems > 2) {
-        // 4 elements
-        // hi = movehl(lo);
-        genSIMDInst(HiRes, "move", "", "hl", MVDataType::VWidth::W128, Type,
-                    {LoRes, LoRes}, SIMDType::VOPT, MVSL, &IL);
-        // lo = op(lo, hi);
-        genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
-                    {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
-      }
-      // 2 elements
-      // hi = shuffle(lo, lo, mask);
-      genSIMDInst(HiRes, "shuffle", "", "", MVDataType::VWidth::W128, Type,
-                  {LoRes, LoRes, "0b00000001"}, SIMDType::VPERM, MVSL, &IL);
-      // lo = op(lo,hi);
-      genSIMDInst(LoRes, OpName, "", "", MVDataType::VWidth::W128, Type,
-                  {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
-
-    } else {
-      // FIXME: should we implement this for integer arithmetic?
-      MVErr("Not implemented this approach yet for other types than float or "
-            "doubles");
-    }
+    IL = reduceOneRegister(V, OP, Pos);
   } else {
-    LoRes = "__mv_lo256";
-    HiRes = "__mv_hi256";
-    auto RegType = getRegisterType(Type, MVDataType::VWidth::W256);
-    SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
-    SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
-    if (Type == MVDataType::VDataType::FLOAT) {
-      // 8 elements
-      if (NElems > 4) {
-        auto TmpReg0 = "__tmp0_256";
-        auto TmpReg1 = "__tmp1_256";
-        auto TmpReg2 = "__tmp2_256";
-        SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
-        SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
-        SIMDBackEnd::addRegToDeclare(RegType, TmpReg2, {0});
-        genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W256, Type,
-                    {AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
-        genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
-                    {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
-        genSIMDInst(TmpReg2, "shuffle", "", "", MVDataType::VWidth::W256, Type,
-                    {TmpReg1, TmpReg1, "0x01"}, SIMDType::VPERM, MVSL, &IL);
-        genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W256, Type,
-                    {TmpReg1, TmpReg2}, SIMDType::VADD, MVSL, &IL);
-      } else if (NElems > 2) {
-        RegType = getRegisterType(Type, MVDataType::VWidth::W128);
-        auto TmpReg0 = "__tmp0_128";
-        auto TmpReg1 = "__tmp1_128";
-        LoRes = "__tmp1_128";
-        SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
-        SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
-        genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W128, Type,
-                    {AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
-        genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W128, Type,
-                    {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
-      }
+    if (Symmetric) {
+      LoRes = "__mv_lo256";
+      IL = reduceMultipleValuesInRegisterSymmetric(V, OP, Pos);
     } else {
-      if (NElems > 2) {
-        auto TmpReg0 = "__tmp0_256";
-        auto TmpReg1 = "__tmp1_256";
-        LoRes = "__tmp1_256";
-        SIMDBackEnd::addRegToDeclare(RegType, TmpReg0, {0});
-        SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
-        genSIMDInst(TmpReg0, "permute", "", "2f128", MVDataType::VWidth::W256,
-                    Type, {AccmReg, AccmReg, "0b10000001"}, SIMDType::VPERM,
-                    MVSL, &IL);
-        genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
-                    {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
-      }
+      IL = reduceMultipleValuesInRegister(V, OP, Pos);
     }
   }
-
   // Perfect cases:
   // * [A,A,B,B,C,C,D,D]
   // * [A,A,A,A,C,C,C,C]
   // * [A,A,A,A,A,A,A,A]
-  if ((NReductions == 4) || (NReductions == 2) || (NReductions == 1)) {
+  if ((Symmetric && ((NReductions == 4) || (NReductions == 2))) ||
+      (NReductions == 1)) {
     int Stride = 1 + ((NElems - 1) / NReductions);
     unsigned UB = NElems;
     if (NElems < 4) {
@@ -839,10 +1026,54 @@ AVX2BackEnd::fuseReductions(SIMDBackEnd::SIMDInstListType TIL) {
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
+AVX2BackEnd::noFuseReductions(SIMDBackEnd::SIMDInstListType TIL) {
+  SIMDBackEnd::SIMDInstListType IL;
+  SIMDBackEnd::SIMDInstListType SkipList;
+  // List of reduction candidates to be fused
+  std::map<int, SIMDBackEnd::SIMDInstListType> LRedux;
+  std::map<SIMDBackEnd::SIMDInst, SIMDBackEnd::SIMDInstListType>
+      ReplaceFusedRedux;
+  MACVETH_DEBUG("AVX2BackEnd", "=== FUSE REDUCTIONS ===");
+  int S = 0;
+  for (auto I : TIL) {
+    if (I.isReduction()) {
+      LRedux[S++].push_back(I);
+    }
+  }
+
+  // Compute the rest
+  for (auto &L : LRedux) {
+    if ((L.second.size() == 0)) {
+      continue;
+    }
+    MACVETH_DEBUG("AVX2BackEnd", "no fusion");
+    ReplaceFusedRedux[L.second.back()] = fuseReductionsList(L.second);
+    auto it = L.second.end();
+    SkipList.splice(SkipList.end(), L.second, L.second.begin(), --it);
+  }
+
+  // Reorder SIMDInstructions yet
+  for (auto I : TIL) {
+    if (std::find(SkipList.begin(), SkipList.end(), I) != SkipList.end()) {
+      continue;
+    }
+    if (ReplaceFusedRedux.count(I)) {
+      IL.splice(IL.end(), ReplaceFusedRedux.at(I));
+      continue;
+    }
+    IL.push_back(I);
+  }
+  MACVETH_DEBUG("AVX2BackEnd", "=== END FUSE REDUCTIONS ===");
+  return IL;
+}
+
+// ---------------------------------------------
+SIMDBackEnd::SIMDInstListType
 AVX2BackEnd::peepholeOptimizations(SIMDBackEnd::SIMDInstListType I) {
   SIMDBackEnd::SIMDInstListType IL(I);
   // Fuse reductions if any and fuse them
-  IL = fuseReductions(IL);
+  // IL = fuseReductions(IL);
+  IL = noFuseReductions(IL);
 
   // Fuse operations: find potential and applicable FMADD/FMSUB, if not
   // disabled
@@ -1193,27 +1424,6 @@ std::vector<std::tuple<int, int>> getContiguityRanges(VectorIR::VOperand V) {
   }
   Ranges.push_back(std::make_tuple(V.Size - ActualStride, V.Size - 1));
   return Ranges;
-}
-
-// ---------------------------------------------
-VectorIR::VOperand getSubVOperand(const VectorIR::VOperand &V, std::string Name,
-                                  int VSize, int Size, MVDataType::VWidth Width,
-                                  MVDataType::VDataType DType, int Offset) {
-  VectorIR::VOperand NewVOp = V;
-  NewVOp.getName() = Name;
-  NewVOp.Size = Size;
-  NewVOp.VSize = VSize;
-  NewVOp.Width = Width;
-  NewVOp.DType = DType;
-  NewVOp.IsPartial = (Size != VSize);
-  NewVOp.LowBits = (Offset % 4 == 0);
-  NewVOp.HighBits = !NewVOp.LowBits;
-  NewVOp.VSize = (NewVOp.Size > 4) ? 8 : 4;
-  for (int Idx = 0; Idx < Size; ++Idx) {
-    NewVOp.UOP[Idx] = V.UOP[Idx + Offset];
-    NewVOp.Idx[Idx] = V.Idx[Idx + Offset];
-  }
-  return NewVOp;
 }
 
 // ---------------------------------------------
@@ -1704,12 +1914,6 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorIR::VectorOP V) {
     }
     V.setResult(FullReg);
     if (FirstHalve && !SecondHalve) {
-      // auto VSecondHalve =
-      //     getSubVOperand(VOP, VOP.getName(), 4, Half,
-      //     MVDataType::VWidth::W128,
-      //                    MVDataType::VDataType::FLOAT, Half);
-      // V.setResult(VSecondHalve;
-      // IL.splice(IL.end(), singleElementScatter(V));
       if ((MVOptions::ISA == MVCPUInfo::MVISA::AVX512) ||
           (MVOptions::ScatterInstruction)) {
         V.setResult(VSecondHalve);
@@ -1958,9 +2162,13 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
 
   // FIXME: If there anything to accumulate yet?
   // Some needed values
-  auto TmpReduxVar = (V.getResult().getName() == V.getOpB().getName())
-                         ? V.getOpA().getName()
-                         : V.getOpB().getName();
+  auto TmpReg = (V.getResult().getName() == V.getOpB().getName()) ? V.getOpA()
+                                                                  : V.getOpB();
+  std::string TmpReduxVar = TmpReg.getName();
+  if (TmpReg.RequiresRegisterPacking) {
+    IL.splice(IL.end(), vregisterpacking(TmpReg));
+  }
+
   auto VCopy = V;
   VCopy.getResult().setName(RegAccm);
   VCopy.getOpA().setName(TmpReduxVar);

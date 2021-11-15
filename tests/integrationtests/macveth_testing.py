@@ -64,7 +64,12 @@ cc = get_gcc_binary()
 # mv_poly_flags = "
 # --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/utilities'
 # --misa=avx2 "
-mv_poly_flags = ["--misa=avx2", "--march=cascadelake", "--no-format"]
+mv_poly_flags = [
+    "--misa=avx2",
+    "--march=cascadelake",
+    "--no-format",
+    "--simd-cost-model=unlimited",
+]
 mv_poly_flags_end = ["--", f"-I{cwd}/utilities"]
 
 

@@ -279,12 +279,8 @@ void SIMDBackEnd::reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
   SIMDInstListType TIL;
 
   // Retrieve operands
-  if (V.getResult().getName() == V.OpA.getName()) {
-    getSIMDVOperand(V.OpB, TI);
-  }
-  if (V.getResult().getName() == V.OpB.getName()) {
-    getSIMDVOperand(V.OpA, TI);
-  }
+  getSIMDVOperand(V.OpA, TI);
+  getSIMDVOperand(V.OpB, TI);
 
   MACVETH_DEBUG("SIMDBackend", "reduction: R = " + V.getResult().getName() +
                                    "; A = " + V.OpA.getName() +
