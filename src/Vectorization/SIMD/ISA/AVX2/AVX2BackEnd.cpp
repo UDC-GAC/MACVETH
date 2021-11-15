@@ -213,7 +213,7 @@ ReductionsMap getReductionsMapFromVector(VectorIR::VOperand V) {
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
 AVX2BackEnd::reduceOneRegister(VectorIR::VOperand V, std::string OpName,
-                               MVSourceLocation::Position Pos) {
+                               MVSourceLocation MVSL) {
   MACVETH_DEBUG("AVX2Backend", "reduceOneRegister");
   auto Type = V.DType;
   auto AccmReg = getAccmReg(V.getName());
@@ -221,7 +221,7 @@ AVX2BackEnd::reduceOneRegister(VectorIR::VOperand V, std::string OpName,
   auto NElems = V.VSize;
   std::string LoRes = "__mv_lo128";
   std::string HiRes = "__mv_hi128";
-  MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  // MVSourceLocation MVSL(Pos, V.Order, V.Offset);
   SIMDBackEnd::SIMDInstListType IL;
   // if (Type == MVDataType::VDataType::DOUBLE) {
   //   // If 4 elements
@@ -289,8 +289,9 @@ AVX2BackEnd::reduceOneRegister(VectorIR::VOperand V, std::string OpName,
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
-AVX2BackEnd::reduceMultipleValuesInRegisterSymmetric(
-    VectorIR::VOperand V, std::string OpName, MVSourceLocation::Position Pos) {
+AVX2BackEnd::reduceMultipleValuesInRegisterSymmetric(VectorIR::VOperand V,
+                                                     std::string OpName,
+                                                     MVSourceLocation MVSL) {
   MACVETH_DEBUG("AVX2Backend", "reduceMultipleValuesInRegisterSymmetric");
   SIMDBackEnd::SIMDInstListType IL;
   auto Type = V.DType;
@@ -301,7 +302,7 @@ AVX2BackEnd::reduceMultipleValuesInRegisterSymmetric(
   std::string HiRes = "__mv_hi256";
   SIMDBackEnd::addRegToDeclare(RegType, LoRes, {0});
   SIMDBackEnd::addRegToDeclare(RegType, HiRes, {0});
-  MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  // MVSourceLocation MVSL(Pos, V.Order, V.Offset);
   if (Type == MVDataType::VDataType::FLOAT) {
     // 8 elements
     if (NElems > 4) {
@@ -379,12 +380,12 @@ bool getSymmetry(ReductionsMap ReduxMap) {
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::reduceMultipleValuesInRegister(
-    VectorIR::VOperand V, std::string OpName, MVSourceLocation::Position Pos) {
+    VectorIR::VOperand V, std::string OpName, MVSourceLocation MVSL) {
   MACVETH_DEBUG("AVX2Backend", "reduceMultipleValuesInRegister");
   SIMDBackEnd::SIMDInstListType IL;
   auto AccmReg = getAccmReg(V.getName());
   auto NElems = V.VSize;
-  MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  // MVSourceLocation MVSL(Pos, V.Order, V.Offset);
   ReductionsMap ReduxMap;
   int NReductions = 0;
   bool Symmetric = true;
@@ -405,14 +406,14 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::reduceMultipleValuesInRegister(
     NReductions = ReduxMap.size();
     Symmetric = getSymmetry(ReduxMap);
     if (NReductions == 1) {
-      IL.splice(IL.end(), reduceOneRegister(VFirstHalve, OpName, Pos));
+      IL.splice(IL.end(), reduceOneRegister(VFirstHalve, OpName, MVSL));
     } else {
       if (Symmetric) {
         IL.splice(IL.end(), reduceMultipleValuesInRegisterSymmetric(
-                                VFirstHalve, OpName, Pos));
+                                VFirstHalve, OpName, MVSL));
       } else {
         IL.splice(IL.end(),
-                  reduceMultipleValuesInRegister(VFirstHalve, OpName, Pos));
+                  reduceMultipleValuesInRegister(VFirstHalve, OpName, MVSL));
         SkipRedux = true;
       }
     }
@@ -441,14 +442,14 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::reduceMultipleValuesInRegister(
     NReductions = ReduxMap.size();
     Symmetric = getSymmetry(ReduxMap);
     if (NReductions == 1) {
-      IL.splice(IL.end(), reduceOneRegister(VSecondHalve, OpName, Pos));
+      IL.splice(IL.end(), reduceOneRegister(VSecondHalve, OpName, MVSL));
     } else {
       if (Symmetric) {
         IL.splice(IL.end(), reduceMultipleValuesInRegisterSymmetric(
-                                VSecondHalve, OpName, Pos));
+                                VSecondHalve, OpName, MVSL));
       } else {
         IL.splice(IL.end(),
-                  reduceMultipleValuesInRegister(VSecondHalve, OpName, Pos));
+                  reduceMultipleValuesInRegister(VSecondHalve, OpName, MVSL));
         SkipRedux = true;
       }
     }
@@ -499,19 +500,20 @@ AVX2BackEnd::horizontalSingleVectorReduction(SIMDBackEnd::SIMDInstListType TIL,
   auto OpRedux = ReduxIns.MVOP;
   auto OP = ReduxIns.MVOP.toString();
   auto AccmReg = getAccmReg(V.getName());
-  MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  // MVSourceLocation MVSL(Pos, V.Order, V.Offset);
+  MVSourceLocation MVSL = VIL[0].MVSL;
   std::string LoRes = "__mv_lo128";
   std::string HiRes = "__mv_hi128";
   SIMDBackEnd::addRegToDeclare("__m128", LoRes, {0});
   SIMDBackEnd::addRegToDeclare("__m128", HiRes, {0});
   if (NReductions == 1) {
-    IL = reduceOneRegister(V, OP, Pos);
+    IL = reduceOneRegister(V, OP, MVSL);
   } else {
     if (Symmetric) {
       LoRes = "__mv_lo256";
-      IL = reduceMultipleValuesInRegisterSymmetric(V, OP, Pos);
+      IL = reduceMultipleValuesInRegisterSymmetric(V, OP, MVSL);
     } else {
-      IL = reduceMultipleValuesInRegister(V, OP, Pos);
+      IL = reduceMultipleValuesInRegister(V, OP, MVSL);
     }
   }
   // Perfect cases:
@@ -1046,7 +1048,6 @@ AVX2BackEnd::noFuseReductions(SIMDBackEnd::SIMDInstListType TIL) {
     if ((L.second.size() == 0)) {
       continue;
     }
-    MACVETH_DEBUG("AVX2BackEnd", "no fusion");
     ReplaceFusedRedux[L.second.back()] = fuseReductionsList(L.second);
     auto it = L.second.end();
     SkipList.splice(SkipList.end(), L.second, L.second.begin(), --it);
@@ -1565,6 +1566,7 @@ AVX2BackEnd::vregisterpacking(VectorIR::VOperand V) {
   // List of parameters
   std::vector<std::string> Args;
   unsigned i = 0;
+  assert(V.RegIdx.size() == V.VSize && "Random packing invalid");
   for (; i < V.VSize; ++i) {
     auto T = V.RegIdx[i];
     std::string NewIdx =
@@ -1615,6 +1617,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vset(VectorIR::VOperand V) {
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType AVX2BackEnd::vstore(VectorIR::VectorOP V) {
   SIMDBackEnd::SIMDInstListType IL;
+  MACVETH_DEBUG("AVX2BackEnd", V.getResult().toString());
   std::string SuffS = (V.getResult().IsPartial) ? "" : "u";
   auto NeedsMask = (V.getResult().IsPartial) &&
                    (!V.getResult().LowBits && !V.getResult().HighBits);
@@ -2165,9 +2168,9 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
   auto TmpReg = (V.getResult().getName() == V.getOpB().getName()) ? V.getOpA()
                                                                   : V.getOpB();
   std::string TmpReduxVar = TmpReg.getName();
-  if (TmpReg.RequiresRegisterPacking) {
-    IL.splice(IL.end(), vregisterpacking(TmpReg));
-  }
+  // if (TmpReg.RequiresRegisterPacking) {
+  //   IL.splice(IL.end(), vregisterpacking(TmpReg));
+  // }
 
   auto VCopy = V;
   VCopy.getResult().setName(RegAccm);
@@ -2199,11 +2202,8 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
   }
   IL.splice(IL.end(), TIL);
 
-  // FIXME: Need to fix this
+  // Need to fix this
   std::string ReduxVar = V.getResult().UOP[0]->getRegisterValue();
-  // std::string ReduxVar = (V.getResult().getName() == V.getOpA()getName())
-  //                            ? V.getOpA()getRegName(0, 0)
-  //                            : V.getOpB().getRegName(0, 0);
 
   MACVETH_DEBUG("AVX2Backend", "ReduxVar = " + ReduxVar);
   MACVETH_DEBUG("AVX2Backend", "Redux V.R = " + V.getResult().toString());
@@ -2214,8 +2214,13 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorIR::VectorOP V) {
   /// the instructions needed for it, wait until the peephole optimization
   /// says if there are any other reductions that can be packed and fused
   /// together. P.S. creating hacks make me a hacker? lol
-  MVSourceLocation MVSL(MVSourceLocation::Position::POSORDER, V.Order,
-                        V.Offset);
+  // FIXME: get the latest order of all
+  unsigned Order = V.Order;
+  auto Offset = V.Offset;
+  for (auto I : IL) {
+    Order = std::max(Order, I.MVSL.getOrder());
+  }
+  MVSourceLocation MVSL(MVSourceLocation::Position::POSORDER, Order, Offset);
 
   genSIMDInst(V.getResult(), "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC,
               MVSL, &IL, ReduxVar, "", {}, V.getMVOp());

@@ -158,16 +158,16 @@ public:
       SIMDBackEnd::SIMDInstListType TIL,
       MVSourceLocation::Position Pos = MVSourceLocation::Position::POSORDER);
 
-  SIMDBackEnd::SIMDInstListType
-  reduceOneRegister(VectorIR::VOperand V, std::string OpName,
-                    MVSourceLocation::Position Pos);
+  SIMDBackEnd::SIMDInstListType reduceOneRegister(VectorIR::VOperand V,
+                                                  std::string OpName,
+                                                  MVSourceLocation MVSL);
 
   SIMDBackEnd::SIMDInstListType reduceMultipleValuesInRegisterSymmetric(
-      VectorIR::VOperand V, std::string OpName, MVSourceLocation::Position Pos);
+      VectorIR::VOperand V, std::string OpName, MVSourceLocation MVSL);
 
   SIMDBackEnd::SIMDInstListType
   reduceMultipleValuesInRegister(VectorIR::VOperand V, std::string OpName,
-                                 MVSourceLocation::Position Pos);
+                                 MVSourceLocation MVSL);
 
   SIMDBackEnd::SIMDInstListType
   fuseReductionsList(SIMDBackEnd::SIMDInstListType TIL);

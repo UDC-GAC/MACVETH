@@ -169,7 +169,8 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
     return false;
   }
 
-  if ((V.RequiresRegisterPacking) || ((!V.IsLoad) && (V.IsPartial))) {
+  if ((V.RequiresRegisterPacking) ||
+      ((!V.MemOp) && (V.IsPartial) && (V.SameVector))) {
     IL->splice(IL->end(), vregisterpacking(V));
     return true;
   }
@@ -279,7 +280,7 @@ void SIMDBackEnd::reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
   SIMDInstListType TIL;
 
   // Retrieve operands
-  getSIMDVOperand(V.OpA, TI);
+  // getSIMDVOperand(V.OpA, TI);
   getSIMDVOperand(V.OpB, TI);
 
   MACVETH_DEBUG("SIMDBackend", "reduction: R = " + V.getResult().getName() +

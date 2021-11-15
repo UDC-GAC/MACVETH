@@ -37,7 +37,6 @@ MVRewriter::rewriteLoops(std::list<StmtWrapper *> SList,
       continue;
     }
     auto Loop = SWrap->getLoopInfo();
-    MACVETH_DEBUG("MVConsumers", "Rewriting loop = " + Loop.Dim);
 
     // Remove loop if already unrolled and so
     if (Loop.FullyUnrolled) {
@@ -145,6 +144,9 @@ bool MVRewriter::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
   for (auto S : SL) {
     if (S->isLoop()) {
       if (renderSIMDInstAfterPlace(SI, S->getListStmt())) {
+        MACVETH_DEBUG("MVRewrite",
+                      "LOOP ORDER = " +
+                          std::to_string(SI.getMVSourceLocation().getOrder()));
         Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
                                      SI.render() + ";\n");
       }
@@ -154,8 +156,16 @@ bool MVRewriter::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
           if (S->isInLoop()) {
             return true;
           }
-          Rewrite.InsertText(S->getClangStmt()->getEndLoc().getLocWithOffset(2),
-                             "\n" + SI.render() + ";", true, false);
+          MACVETH_DEBUG(
+              "MVRewrite",
+              "ORDER = " + std::to_string(SI.getMVSourceLocation().getOrder()));
+
+          Rewrite.InsertTextAfter(
+              S->getClangStmt()->getEndLoc().getLocWithOffset(2),
+              "\n" + SI.render() + ";");
+          // Rewrite.InsertTextAfterToken(
+          //     S->getClangStmt()->getEndLoc().getLocWithOffset(2),
+          //    SI.render() + ";\n");
           return false;
         }
       }

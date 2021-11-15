@@ -133,7 +133,8 @@ InstCostInfo MVCostModel::computeVectorOPCost(VectorIR::VectorOP V,
                       "); cost = " +
                       InstCostInfo(CostTable::getIntrinRow(Ins.FuncName),
                                    InstType::SIMDOp)
-                          .toString());
+                          .toString() +
+                      "; Order = " + std::to_string(Ins.MVSL.getOrder()));
   }
   return C;
 }

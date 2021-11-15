@@ -76,6 +76,7 @@ public:
   /// new naming
   static inline std::map<std::string, VectorSlot> MapRegToVReg;
   static inline std::map<std::string, int> MapRegSize;
+  static inline std::vector<std::string> SequentialResults;
 
   struct IntDefault {
     int i = -1;

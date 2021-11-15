@@ -112,6 +112,10 @@ std::string VectorIR::VOperand::toString() {
   Str += " (ord " + std::to_string(this->Order) +
          (this->Offset == -1 ? ")"
                              : ", off " + std::to_string(this->Offset) + ")");
+  Str += "; Partial = " + std::to_string(IsPartial);
+  Str += "; ReqRegPack = " + std::to_string(RequiresRegisterPacking);
+  Str += "; SameVec = " + std::to_string(SameVector);
+  Str += "; V/Size = " + std::to_string(VSize) + "/" + std::to_string(Size);
   return Str;
 }
 
@@ -253,6 +257,10 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Init list of unit operands
   this->Order = V[0]->getTacID();
   this->Offset = V[0]->getUnrollFactor();
+  // for (int i = 1; i < VL; ++i) {
+  //   this->Order = std::max(this->Order, V[i]->getTacID());
+  //   this->Offset = std::max(this->Offset, V[i]->getUnrollFactor());
+  // }
   // Check if array
   if ((V[0]->getMVExpr() != nullptr) &&
       (dyn_cast<MVExprArray>(V[0]->getMVExpr()))) {
@@ -306,6 +314,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
       auto Reg = std::get<0>(NewRegIdx);
       RegistersUsed.insert(Reg);
       LiveOut[Reg] = std::max(this->Order, (int)LiveOut[Reg]);
+      this->Order = std::max(this->Order, (int)LiveIn[Reg]);
       // Check if index of the register is the same
       this->RequiresRegisterPacking |= (n != std::get<1>(NewRegIdx));
     }
@@ -317,14 +326,15 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     this->SameVector = (RegistersUsed.size() == 1);
     this->IsPartial = !this->SameVector;
     if (this->SameVector) {
-      this->IsPartial = (MapRegSize[*RegistersUsed.begin()] == (int)this->Size);
+      this->IsPartial = (MapRegSize[*RegistersUsed.begin()] != (int)this->Size);
     }
   }
 
   // Get name of this operand, otherwise create a custom name
-  this->Name = (VecAssigned && !this->RequiresRegisterPacking)
-                   ? std::get<0>(MapRegToVReg[PrimaryNode->getRegisterValue()])
-                   : genNewVOpName();
+  this->Name =
+      (VecAssigned && !this->RequiresRegisterPacking && !this->IsPartial)
+          ? std::get<0>(MapRegToVReg[PrimaryNode->getRegisterValue()])
+          : genNewVOpName();
 
   auto AlreadyLoaded = checkIfAlreadyLoaded(PrimaryNode);
   auto AlreadyStored = checkIfAlreadyStored(this->UOP);
@@ -463,6 +473,10 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
   this->Offset = VOps[0]->getUnrollFactor();
+  // for (int i = 1; i < VL; ++i) {
+  //   this->Order = std::max(this->Order, VOps[i]->getTacID());
+  //   this->Offset = std::max(this->Offset, VOps[i]->getUnrollFactor());
+  // }
   // By design, if the operand is an assignment, is because the operation is
   // unary, therefore: R = R OP B
   if (VOps[0]->getOutputInfo().MVOP.isAssignment()) {
@@ -483,11 +497,14 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
   // If this operation is sequential, then we do not care about its vector
   // form, as it will be synthesized in its original form
   if ((this->VT == VectorIR::VType::SEQ) && (!HasTempRegisters)) {
+    MACVETH_DEBUG("VectorOP", "This is a sequential operation");
+    SequentialResults.push_back(VOps[0]->getRegisterValue());
     return;
   }
 
   // Creating vector operands
   this->OpA = VOperand(VL, VLoadA, false);
+
   // Vector operations could be unary, e.g. log(x)
   if (!this->IsUnary) {
     this->OpB = VOperand(VL, VLoadB, false);
@@ -495,6 +512,13 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
 
   // Result operand
   this->R = VOperand(VL, VOps, true);
+
+  if (this->VT == VectorIR::VType::REDUCE) {
+    // Compute again the order of this OP:
+    this->Order = std::max(this->Order, this->R.Order);
+    this->Order = std::max(this->Order, this->OpA.Order);
+    this->Order = std::max(this->Order, this->OpB.Order);
+  }
 
   // Assuming that inputs and outputs have the same type
   this->OpA.DType = this->R.DType;
