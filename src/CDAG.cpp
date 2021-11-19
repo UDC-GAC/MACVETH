@@ -89,25 +89,16 @@ Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
     N->setNodeType(Node::NODE_STORE);
     N->setTacID(T.getTacID());
     auto WarNode = findWARDataRace(N, this->NLOps);
-    // auto RawNode = findRAWDataRace(N, this->NLOps);
     if (WarNode != nullptr) {
       MACVETH_DEBUG("CDAG/NODE", "WAR found = " + WarNode->getRegisterValue() +
                                      "; " + WarNode->getSchedInfoStr());
       N->setFreeSchedInfo(WarNode->getSchedInfo().FreeSched + 1);
     }
-    // if (RawNode != nullptr) {
-    //   MACVETH_DEBUG("CDAG/NODE", "RAW found = " + RawNode->getRegisterValue()
-    //   +
-    //                                  "; " + RawNode->getSchedInfoStr());
-    //   N->setFreeSchedInfo(RawNode->getSchedInfo().FreeSched + 1);
-    // }
     return nullptr;
   }
 no_output:
   auto NewNode = new Node(T, L);
-  // auto WarNode = findWARDataRace(NewNode, this->NLOps);
   auto RawNode = findRAWDataRace(NewNode, this->NLOps);
-
   PlcmntAlgo::computeFreeSchedule(NewNode);
   NewNode->setFreeSchedInfo(
       std::max(NewNode->getSchedInfo().FreeSched,
@@ -124,16 +115,14 @@ CDAG CDAG::createCDAGfromTAC(const TacListType &TL) {
   CDAG G;
   // Restarting numbering of nodes
   Node::restart();
-  for (TAC T : TL) {
-    // TACs are of the form a = b op c, so if we create a Node for each TAC
-    // we are basically creating NODE_OP Nodes. This way, when we connect
-    // this new node to the rest of the CDAG, we are basically looking for
-    // connections between the inputs and outputs. Actually we are looking
-    // for outputs of of already connected Nodes that match the input of this
-    // new NODE_OP. Looking for inputs
-    // Node *PrevNode = G->insertTac(T, G->getNodeListOps());
-    G.insertTac(T, G.getNodeListOps());
-  }
+  // TACs are of the form a = b op c, so if we create a Node for each TAC
+  // we are basically creating NODE_OP Nodes. This way, when we connect
+  // this new node to the rest of the CDAG, we are basically looking for
+  // connections between the inputs and outputs. Actually we are looking
+  // for outputs of of already connected Nodes that match the input of this
+  // new NODE_OP. Looking for inputs
+  std::for_each(TL.begin(), TL.end(),
+                [TL, &G](auto T) { G.insertTac(T, G.getNodeListOps()); });
 
   if (MVOptions::Debug) {
     for (auto R : G.MapRAW) {

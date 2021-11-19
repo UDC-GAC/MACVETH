@@ -175,7 +175,7 @@ public:
 
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions, given a VectorOP
-  SIMDInst addNonSIMDInst(VectorIR::VectorOP OP, SIMDType SType,
+  SIMDInst addNonSIMDInst(VectorIR::VectorOP &OP, SIMDType SType,
                           MVSourceLocation MVSL, SIMDInstListType *IL);
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions specifying explicitly the LHS
@@ -304,14 +304,15 @@ public:
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
-  std::list<std::string> renderSIMDasString(SIMDInstListType S);
+  std::list<std::string> renderSIMDasString(SIMDInstListType &S);
 
   /// Auxiliary function to retrieve properly the operands
   std::string getOpName(const VectorIR::VOperand &V, bool Ptr, bool RegVal,
                         int Position = 0, int Offset = 0);
 
   /// Insert the SIMDInst in the list given an VOperand
-  bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL);
+  bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL,
+                       bool Reduction = false);
 
   std::string genGenericFunc(std::string F, std::vector<std::string> L);
 
@@ -321,16 +322,11 @@ public:
 
   /// Basically calls its other overloaded function iterating over the input
   /// list of VectorOP
-  SIMDInstListType getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList);
+  SIMDInstListType
+  getSIMDfromVectorOP(const std::list<VectorIR::VectorOP> &VList);
 
   /// Get list of initializations
   SIMDInstListType getInitReg() { return InitReg; }
-
-  /// Setting CDAG
-  void setCDAG(const CDAG &C) { this->C = C; }
-
-  /// Getting CDAG
-  CDAG getCDAG() { return C; }
 
   SIMDBackEnd(){};
 
@@ -350,13 +346,10 @@ private:
   const RandomPackingTable &RPTable = RandomPackingTable();
 
   /// Auxiliary function to dispatch the VectorOP operation
-  void mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
+  void mapOperation(VectorIR::VectorOP &V, SIMDInstListType *TI);
 
   /// Auxiliary function to dispatch the VectorOP operation
-  void reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI);
-
-  /// CDAG information
-  CDAG C;
+  void reduceOperation(VectorIR::VectorOP &V, SIMDInstListType *TI);
 
 protected:
   /// Add register to declare
@@ -384,10 +377,12 @@ protected:
   /// AccmReg numbering for auxiliary operations such as reduce
   inline static int AccmReg = 0;
 
+  using MapRegT = std::map<std::string, int>;
+
   /// Map of the operands mapped to the accumulator
-  inline static std::map<std::string, int> AccmToReg;
+  inline static MapRegT AccmToReg;
   /// Map of the operands mapped to the accumulator which are dirty
-  inline static std::map<std::string, int> AccmDirty;
+  inline static MapRegT AccmDirty;
 
   /// Get the next available accumulator register
   static std::string getNextAccmRegister(const std::string &V) {
@@ -407,7 +402,7 @@ protected:
   /// Get the current accumulator register
   static std::string getAccmReg(const std::string &V) {
     if (AccmToReg.count(V) == 0) {
-      return "";
+      return V;
     }
     return VEC_PREFIX + std::to_string(AccmToReg.at(V));
   }
@@ -416,7 +411,7 @@ protected:
   inline static int AuxRegId = 0;
 
   /// Map of auxiliar registers
-  inline static std::map<std::string, int> AuxReg;
+  inline static MapRegT AuxReg;
 
   /// Get the name of the auxiliar register for a operand and increment
   static std::string getNextAuxRegister(const std::string &V) {

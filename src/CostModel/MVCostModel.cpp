@@ -160,7 +160,7 @@ SIMDInfo MVCostModel::generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S) {
 
 //---------------------------------------------
 std::list<VectorIR::VectorOP>
-MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *Backend) {
+MVCostModel::greedyOpsConsumer(Node::NodeListType &NL) {
   std::list<VectorIR::VectorOP> VList;
   auto CopyNL = NL;
   Node::NodeListType VLoadA;
@@ -170,56 +170,15 @@ MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *Backend) {
   VLoadB.reserve(8);
   VOps.reserve(8);
   int Cursor = 0;
-  // std::set<int> SetTAC;
-  // std::set<int> SetFS;
 repeat:
   bool IsUnary = false;
   // Consume nodes
-  int VL = 4;
+  int VL = 8;
   // This is where magic should happen
   while (!CopyNL.empty()) {
     auto NextNode = CopyNL.front();
-    // SetTAC.insert(NextNode->getTacID());
-    // SetFS.insert(NextNode->getSchedInfo().FreeSched);
-
-    // FIXME:
-    // if ((SetTAC.size() > 1) && (SetFS.size() > 1) &&
-    //     (!NextNode->belongsToAReduction())) {
-    //   MVSkip("Skipping region... Not handable!!!", GotoEndScop);
-    // }
-
-    // if ((SetTAC.size() == 1) && (SetFS.size() == 1) &&
-    //     ((Cursor > 0) && (NextNode->belongsToAReduction()) &&
-    //      (!VOps[Cursor - 1]->belongsToAReduction()))) {
-    //   MVSkip("Skipping region... PARTIAL REDUCTION? DUNNO", GotoEndScop);
-    // }
-
-    // if ((Cursor > 0) &&
-    //     ((NextNode->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
-    //      (NextNode->belongsToAReduction() !=
-    //       VOps[Cursor - 1]->belongsToAReduction()))) {
-    //   break;
-    // }
-
-    // Corner case...
-    // if ((NextNode->getSchedInfo().UnrollFactor % 4) != (Cursor % 4)) {
-    //   break;
-    // }
-
     // Consume the first one
     VOps[Cursor] = NextNode;
-
-    // Get vector length
-    VL = Backend->getMaxVectorSize(VOps[Cursor]->getDataType());
-    // NOTE: how do you solve this? I mean, for reductions, for instance,
-    // you will have different Plcmnts, something like: 1,2,3,4; but this
-    // algorithm should be able to select them. So maybe when selecting
-    // operations you should only look at the type of operations, but not at
-    // the Plcmnt or schedule.
-    // 06/03/2020: I think this is solved by tackling reductions as a non
-    // standard case and, then, detecting them before going onto the general
-    // case.
-    // 06/25/2020: not sure if reductions should be handled that way...
     if ((Cursor > 0) &&
         (VOps[Cursor]->getValue() != VOps[Cursor - 1]->getValue())) {
       MACVETH_DEBUG("MVCostModel", "Full OPS of same type and placement = " +
@@ -267,24 +226,20 @@ repeat:
   if (Cursor != 0) {
     // Compute the vector cost
     auto NewVectInst = VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB);
-    auto CostVect = computeVectorOPCost(NewVectInst, Backend);
-    auto CostNodes = computeCostForNodeOpsList(Cursor, VOps);
-    CostNodes += computeCostForNodeOperandsList(Cursor, VLoadA);
-    if (!IsUnary) {
-      CostNodes += computeCostForNodeOperandsList(Cursor, VLoadB);
-    }
-    if ((MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
-      VList.push_back(NewVectInst);
-      // for (auto Op : VOps) {
-      //   if (Op->isStoreNodeOp()) {
-      //     Op->setAlreadyStored();
-      //   }
-      // }
-    } else {
-      // FIXME: undo vectorized version or directly emit sequential code for
-      // rest of the tree
-      MVWarn("Region not vectorized");
-    }
+    VList.push_back(NewVectInst);
+    // auto CostVect = computeVectorOPCost(NewVectInst, Backend);
+    // auto CostNodes = computeCostForNodeOpsList(Cursor, VOps);
+    // CostNodes += computeCostForNodeOperandsList(Cursor, VLoadA);
+    // if (!IsUnary) {
+    //   CostNodes += computeCostForNodeOperandsList(Cursor, VLoadB);
+    // }
+    // if ((MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
+    //   VList.push_back(NewVectInst);
+    // } else {
+    //   // FIXME: undo vectorized version or directly emit sequential code for
+    //   // rest of the tree
+    //   MVWarn("Region not vectorized");
+    // }
   }
 
   // Repeat process if list not empty
@@ -293,34 +248,49 @@ repeat:
     for (int i = 0; i < VL; ++i) {
       VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
     }
-    // SetFS.clear();
-    // SetTAC.clear();
     goto repeat;
   }
   return VList;
 }
 
 //---------------------------------------------
+// std::list<VectorIR::VectorOP>
+// MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList) {
+//   std::list<VectorIR::VectorOP> VList;
+//   int WindowSize = 512;
+//   Node::NodeListType UnvisitedNodes;
+//   while (true) {
+//     int PackingSize = 8;
+
+//     while (PackingSize > 1) {
+//     }
+//   }
+
+//   return VList;
+// }
+
+//---------------------------------------------
 std::list<VectorIR::VectorOP>
-MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList,
-                                 SIMDBackEnd *Backend) {
+MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList) {
   // Returning list
   std::list<VectorIR::VectorOP> VList;
   MACVETH_DEBUG("MVCostModel", "Detecting reductions");
   // Working with a copy
   Node::NodeListType NL(NList);
 
-  // Divide-and-conquer approach: get reductions first, then deal with the rest.
+  // Divide-and-conquer approach: get reductions first, then deal with the rest
   Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
 
   MACVETH_DEBUG("MVCostModel", "=== GENERAL CASE ===");
-  VList.splice(VList.end(), greedyOpsConsumer(NL, Backend));
+  VList.splice(VList.end(), greedyOpsConsumer(NL));
   MACVETH_DEBUG("MVCostModel", "=== END GENERAL CASE ===");
+
   MACVETH_DEBUG("MVCostModel", "=== REDUCTIONS CASE ===");
   std::sort(NRedux.begin(), NRedux.end(), [](const Node *N0, const Node *N1) {
     return N0->getSchedInfo().NodeID < N1->getSchedInfo().NodeID;
+    // return N0->getMVExpr() < N1->getMVExpr();
   });
-  VList.splice(VList.end(), greedyOpsConsumer(NRedux, Backend));
+  VList.splice(VList.end(), greedyOpsConsumer(NRedux));
   MACVETH_DEBUG("MVCostModel", "=== END REDUCTIONS CASE ===");
 
   // Order Vector Operations by TAC ID
@@ -337,45 +307,16 @@ SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
 
   // Get all the TAC from all the Stmts
   TacListType TL;
-  for (auto SWrap : SL) {
+  std::for_each(SL.begin(), SL.end(), [&TL](auto SWrap) {
     TL.splice(TL.end(), SWrap->getTacList());
-  }
-
+  });
   // Creating the CDAG
   auto G = CDAG::createCDAGfromTAC(TL);
-
   // Set placement according to the desired algorithm
   auto NL = PlcmntAlgo::sortGraph(G.getNodeListOps());
-
-  // Debugging
-  if (MVOptions::Debug) {
-    for (auto N : NL) {
-      MACVETH_DEBUG("MVCostModel", N->toString());
-    }
-  }
-
-  // Setting CDAG
-  Backend->setCDAG(G);
-
   // Execute greedy algorithm
-  auto VList = getVectorOpFromCDAG(NL, Backend);
-
-  // Debugging
-  // if (MVOptions::Debug) {
-  //   for (auto N : NL) {
-  //     MACVETH_DEBUG("MVCostModel", N->toString());
-  //   }
-  //   for (auto V : VList) {
-  //     MACVETH_DEBUG("VectorIR", V.toString());
-  //   }
-  // }
-
-  // FIXME: SIMD cost model used backend to generate intrinsics so registers are
-  // polluted, need to clean them
-  // Backend->clearMappings();
-
+  auto VList = getVectorOpFromCDAG(NL);
   // Generate the SIMD list
   auto SIMD = Backend->getSIMDfromVectorOP(VList);
-
   return MVCostModel::generateSIMDInfoReport(SIMD);
 }

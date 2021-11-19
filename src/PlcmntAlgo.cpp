@@ -35,7 +35,7 @@ int computeMaxDepth(Node *N) {
     return 0;
   } else {
     int Max = N->getSchedInfo().FreeSched;
-    for (Node *T : N->getInputs()) {
+    for (auto *T : N->getInputs()) {
       Max = std::max(Max, 1 + computeMaxDepth(T));
     }
     return Max;
@@ -48,10 +48,9 @@ void PlcmntAlgo::computeFreeSchedule(Node *N) {
 }
 
 // ---------------------------------------------
-void PlcmntAlgo::computeFreeSchedule(Node::NodeListType NL) {
-  for (Node *N : NL) {
-    N->setFreeSchedInfo(computeMaxDepth(N));
-  }
+void PlcmntAlgo::computeFreeSchedule(Node::NodeListType &NL) {
+  std::for_each(NL.begin(), NL.end(),
+                [&NL](auto *N) { N->setFreeSchedInfo(computeMaxDepth(N)); });
 }
 
 // ---------------------------------------------
@@ -152,11 +151,18 @@ Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
   } else {
     return topSort(NL);
   }
+  // Debugging
+  if (MVOptions::Debug) {
+    for (auto N : NL) {
+      MACVETH_DEBUG("MVCostModel", N->toString());
+    }
+  }
+
   return NL;
 }
 
 // ---------------------------------------------
-void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType NL) {
+void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType &NL) {
   std::ifstream CF(Utils::getExePath() + MVOptions::InCDAGFile,
                    std::ios_base::in);
   assert(!CF.fail() && "File does not exist for PlcmntAlgo!");

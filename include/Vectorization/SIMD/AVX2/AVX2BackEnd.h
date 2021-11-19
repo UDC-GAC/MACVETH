@@ -172,19 +172,25 @@ public:
   SIMDBackEnd::SIMDInstListType
   fuseReductionsList(SIMDBackEnd::SIMDInstListType TIL);
 
-  /// Check whether an instruction has RAW dependencies within a list of
-  /// instructions
-  bool hasRawDependencies(SIMDBackEnd::SIMDInstListType L,
-                          SIMDBackEnd::SIMDInst I);
+  // /// Check whether an instruction has RAW dependencies within a list of
+  // /// instructions
+  // bool hasRawDependencies(SIMDBackEnd::SIMDInstListType L,
+  //                         SIMDBackEnd::SIMDInst I);
 
-  /// A reduction is contiguous if there are not any other
-  bool reductionIsContiguous(SIMDBackEnd::SIMDInstListType L,
-                             SIMDBackEnd::SIMDInst I);
+  // /// A reduction is contiguous if there are not any other
+  // bool reductionIsContiguous(SIMDBackEnd::SIMDInstListType L,
+  //                            SIMDBackEnd::SIMDInst I);
 
   /// Fusing reductions: peephole optimization
   SIMDBackEnd::SIMDInstListType fuseReductions(SIMDBackEnd::SIMDInstListType I);
   SIMDBackEnd::SIMDInstListType
-  noFuseReductions(SIMDBackEnd::SIMDInstListType I);
+  groupReductions(SIMDBackEnd::SIMDInstListType I);
+
+  void
+  mergeReductions(std::map<int, SIMDBackEnd::SIMDInstListType> &LRedux,
+                  std::map<SIMDBackEnd::SIMDInst, SIMDBackEnd::SIMDInstListType>
+                      &ReplaceFusedRedux,
+                  SIMDBackEnd::SIMDInstListType &SkipList);
 
   /// Peephole optimization for fusing reductions
   SIMDBackEnd::SIMDInst genMultAccOp(SIMDBackEnd::SIMDInst Mul,
@@ -242,6 +248,8 @@ public:
   };
 
 private:
+  std::map<std::string, std::string> MapReduxVarToAccm;
+
   /// Constructor
   AVX2BackEnd() : SIMDBackEnd() {
     SIMDBackEnd::populateTable(MVCPUInfo::MVISA::AVX2);

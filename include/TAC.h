@@ -84,15 +84,15 @@ public:
       : A(A), B(B), C(C), MVOP(MVOP), TacID(TacID), TScop(TAC::TacScop) {}
 
   /// Get first (result) operand of the TAC expression
-  MVExpr *getA() { return this->A; };
+  MVExpr *getA() const { return this->A; };
   /// Set first (result) operand of the TAC expression
   void setA(MVExpr *const A) { this->A = A; };
   /// Get second operand of the TAC expression
-  MVExpr *getB() { return this->B; };
+  MVExpr *getB() const { return this->B; };
   /// Set second operand of the TAC expression
   void setB(MVExpr *const B) { this->B = B; };
   /// Get third operand of the TAC expression
-  MVExpr *getC() { return this->C; };
+  MVExpr *getC() const { return this->C; };
   /// Set third operand of the TAC expression
   void setC(MVExpr *const C) { this->C = C; };
   /// Set TacID value
@@ -108,10 +108,10 @@ public:
   /// Set loop name
   void setLoopName(std::string LoopName) { this->LoopName = LoopName; }
   /// Get loop name
-  std::string getLoopName() { return this->LoopName; }
+  std::string getLoopName() const { return this->LoopName; }
 
   /// Get macveth operation type
-  MVOp getMVOP() { return this->MVOP; };
+  MVOp getMVOP() const { return this->MVOP; };
 
   /// To string method
   std::string toString() {

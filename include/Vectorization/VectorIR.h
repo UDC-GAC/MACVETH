@@ -75,6 +75,7 @@ public:
   /// Keeping track of the correspondence between the registers name and the
   /// new naming
   static inline std::map<std::string, VectorSlot> MapRegToVReg;
+  static inline std::map<std::string, int> SlotsUsed;
   static inline std::map<std::string, int> MapRegSize;
   static inline std::vector<std::string> SequentialResults;
 

@@ -201,6 +201,8 @@ public:
   /// Operators
   virtual int operator-(const MVExpr &MVE) { return -1; }
 
+  virtual bool operator<(const MVExpr &MVE) { return false; }
+
 private:
   /// MVExpr kind
   MVExprKind MK;

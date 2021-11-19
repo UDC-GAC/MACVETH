@@ -144,9 +144,9 @@ bool MVRewriter::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
   for (auto S : SL) {
     if (S->isLoop()) {
       if (renderSIMDInstAfterPlace(SI, S->getListStmt())) {
-        MACVETH_DEBUG("MVRewrite",
-                      "LOOP ORDER = " +
-                          std::to_string(SI.getMVSourceLocation().getOrder()));
+        // MACVETH_DEBUG("MVRewrite",
+        //               "LOOP ORDER = " +
+        //                   std::to_string(SI.getMVSourceLocation().getOrder()));
         Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
                                      SI.render() + ";\n");
       }
@@ -156,9 +156,10 @@ bool MVRewriter::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
           if (S->isInLoop()) {
             return true;
           }
-          MACVETH_DEBUG(
-              "MVRewrite",
-              "ORDER = " + std::to_string(SI.getMVSourceLocation().getOrder()));
+          // MACVETH_DEBUG(
+          //     "MVRewrite",
+          //     "ORDER = " +
+          //     std::to_string(SI.getMVSourceLocation().getOrder()));
 
           Rewrite.InsertTextAfter(
               S->getClangStmt()->getEndLoc().getLocWithOffset(2),
@@ -187,8 +188,6 @@ void MVRewriter::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
     } else {
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
-          // FIXME:
-          // Rewrite.InsertTextAfter(S->getClangStmt()->getBeginLoc(),
           Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                              SI.render() + ";\n");
           return;
@@ -218,7 +217,7 @@ void MVRewriter::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
   }
 
   // If instruction does not have content, then do nothing
-  if (SI.isReduction() || SI.render() == "") {
+  if (SI.isReduction() || SI.render().empty()) {
     return;
   }
 

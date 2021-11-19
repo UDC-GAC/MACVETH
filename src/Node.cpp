@@ -76,7 +76,7 @@ void Node::connectInput(Node *N) { this->I.push_back(N); }
 bool Node::hasInputs() { return !(this->I.size() == 0); }
 
 // ---------------------------------------------
-Node *Node::findOutputNode(std::string NodeName, NodeListType L) {
+Node *Node::findOutputNode(const std::string &NodeName, NodeListType L) {
   NodeListType CL(L);
   std::reverse(std::begin(CL), std::end(CL));
   for (auto NL : CL) {

@@ -51,7 +51,7 @@ public:
     clang::BinaryOperator::Opcode OP;
 
     /// Check if index is terminal or not (has real Val)
-    bool isTerminal() {
+    bool isTerminal() const {
       return ((Val != "") && (LHS == nullptr) && (RHS == nullptr));
     }
 
@@ -474,6 +474,18 @@ public:
     } else {
       return -1;
     }
+  }
+
+  bool operator<(const MVExprArray &MVE) {
+    auto S0 = this->Idx.size();
+    auto S1 = MVE.Idx.size();
+    if ((S0 != S1) || (!this->Idx[S0 - 1].isTerminal()) ||
+        (!MVE.Idx[S1 - 1].isTerminal())) {
+      return false;
+    }
+    int Idx0 = std::atoi(this->Idx[S0 - 1].Val.c_str());
+    int Idx1 = std::atoi(MVE.Idx[S0 - 1].Val.c_str());
+    return Idx0 < Idx1;
   }
 
   /// In order to be able to use RTTI

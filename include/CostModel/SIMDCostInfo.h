@@ -130,7 +130,7 @@ struct SIMDInfo {
 
   /// Generate cost report
   void generateCostReport() {
-    if (MVOptions::SIMDReportFile == "") {
+    if (MVOptions::SIMDReportFile.empty()) {
       return;
     }
     std::ofstream F;

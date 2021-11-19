@@ -257,10 +257,10 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Init list of unit operands
   this->Order = V[0]->getTacID();
   this->Offset = V[0]->getUnrollFactor();
-  // for (int i = 1; i < VL; ++i) {
-  //   this->Order = std::max(this->Order, V[i]->getTacID());
-  //   this->Offset = std::max(this->Offset, V[i]->getUnrollFactor());
-  // }
+  for (int i = 1; i < VL; ++i) {
+    this->Order = std::max(this->Order, V[i]->getTacID());
+    this->Offset = std::max(this->Offset, V[i]->getUnrollFactor());
+  }
   // Check if array
   if ((V[0]->getMVExpr() != nullptr) &&
       (dyn_cast<MVExprArray>(V[0]->getMVExpr()))) {
@@ -284,7 +284,6 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Computing data width
   this->Width = getWidthFromVDataType(this->VSize, this->DType);
   this->Size = this->Width / MVDataType::VDataTypeWidthBits[this->DType];
-
   for (unsigned int i = 0; i < VSize; ++i) {
     this->UOP.push_back(V[i]);
   }
@@ -326,7 +325,13 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     this->SameVector = (RegistersUsed.size() == 1);
     this->IsPartial = !this->SameVector;
     if (this->SameVector) {
-      this->IsPartial = (MapRegSize[*RegistersUsed.begin()] != (int)this->Size);
+      std::string RegName = *RegistersUsed.begin();
+      if (!this->IsStore) {
+        this->IsPartial = SlotsUsed[RegName] != VL;
+      }
+      if (this->RequiresRegisterPacking) {
+        this->IsPartial = (MapRegSize[RegName] != (int)this->Size);
+      }
     }
   }
 
@@ -363,6 +368,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     if (!VecAssigned) {
       MapRegToVReg[V[n]->getRegisterValue()] = std::make_tuple(this->Name, n);
     }
+    SlotsUsed[this->Name] = VL;
     LiveIn[this->Name] = this->Order;
     MapRegSize[this->Name] = VL;
     if (n > 0) {
@@ -473,10 +479,10 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
   this->Offset = VOps[0]->getUnrollFactor();
-  // for (int i = 1; i < VL; ++i) {
-  //   this->Order = std::max(this->Order, VOps[i]->getTacID());
-  //   this->Offset = std::max(this->Offset, VOps[i]->getUnrollFactor());
-  // }
+  for (int i = 1; i < VL; ++i) {
+    this->Order = std::max(this->Order, VOps[i]->getTacID());
+    this->Offset = std::max(this->Offset, VOps[i]->getUnrollFactor());
+  }
   // By design, if the operand is an assignment, is because the operation is
   // unary, therefore: R = R OP B
   if (VOps[0]->getOutputInfo().MVOP.isAssignment()) {
@@ -492,11 +498,9 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
     this->IsUnary = true;
   }
 
-  bool HasTempRegisters = false;
-
   // If this operation is sequential, then we do not care about its vector
   // form, as it will be synthesized in its original form
-  if ((this->VT == VectorIR::VType::SEQ) && (!HasTempRegisters)) {
+  if ((this->VT == VectorIR::VType::SEQ)) {
     MACVETH_DEBUG("VectorOP", "This is a sequential operation");
     SequentialResults.push_back(VOps[0]->getRegisterValue());
     return;
@@ -513,12 +517,12 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
   // Result operand
   this->R = VOperand(VL, VOps, true);
 
-  if (this->VT == VectorIR::VType::REDUCE) {
-    // Compute again the order of this OP:
-    this->Order = std::max(this->Order, this->R.Order);
-    this->Order = std::max(this->Order, this->OpA.Order);
-    this->Order = std::max(this->Order, this->OpB.Order);
-  }
+  // if (this->VT == VectorIR::VType::REDUCE) {
+  //  Compute again the order of this OP:
+  this->Order = std::max(this->Order, this->R.Order);
+  this->Order = std::max(this->Order, this->OpA.Order);
+  this->Order = std::max(this->Order, this->OpB.Order);
+  //}
 
   // Assuming that inputs and outputs have the same type
   this->OpA.DType = this->R.DType;

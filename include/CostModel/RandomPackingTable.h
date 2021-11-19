@@ -62,7 +62,7 @@ public:
     if (F.is_open()) {
       std::string L, W;
       while (getline(F, L)) {
-        if ((L.rfind("#", 0) == 0) || (L == "")) {
+        if ((L.rfind("#", 0) == 0) || (L.empty())) {
           // Check if line is a comment
           continue;
         }

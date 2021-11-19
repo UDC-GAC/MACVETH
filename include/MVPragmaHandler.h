@@ -138,12 +138,13 @@ struct ScopHandler {
   void addStart(SourceManager &SM, SourceLocation Start,
                 ScopLoc::PragmaArgs PA) {
     auto *Loc = new ScopLoc();
-    MACVETH_DEBUG("MVPragmaHandler", "addStart");
     Loc->FID = SM.getFileID(Start);
     Loc->PA = PA;
     Loc->Scop = Start;
     int Line = SM.getExpansionLineNumber(Start);
     Loc->StartLine = Line;
+    MACVETH_DEBUG("MVPragmaHandler",
+                  "start pragma in line = " + std::to_string(Line));
     Loc->Start = SM.getFileOffset(translateLineCol(SM, Loc->FID, Line, 1));
     if (List.size() == 0 || List[List.size() - 1]->End != 0) {
       List.push_back(Loc);
@@ -158,7 +159,6 @@ struct ScopHandler {
   /// is already set, then ignore the spurious #pragma endmacveth.
   /// "end" points to the location of the endmacveth pragma.
   void addEnd(SourceManager &SM, SourceLocation End) {
-    MACVETH_DEBUG("MVPragmaHandler", "addEnd");
     if (List.size() == 0 || List[List.size() - 1]->End != 0)
       return;
     List[List.size() - 1]->EndScop = End;
@@ -166,6 +166,8 @@ struct ScopHandler {
     End = translateLineCol(SM, SM.getFileID(End), Line + 1, 1);
     List[List.size() - 1]->End = SM.getFileOffset(End);
     List[List.size() - 1]->EndLine = Line;
+    MACVETH_DEBUG("MVPragmaHandler",
+                  "end pragma in line = " + std::to_string(Line));
   }
 };
 

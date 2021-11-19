@@ -181,6 +181,10 @@ static llvm::cl::opt<bool> DisableFMA(
                    "architecture supports them"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
+static llvm::cl::opt<bool> DisableFuseReductions(
+    "nofuse", llvm::cl::desc("Disable the fusion of reductions"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
 // Debug flag
 static llvm::cl::opt<bool> Debug("debug-mv",
                                  llvm::cl::desc("Print debug information"),
@@ -255,8 +259,8 @@ int main(int argc, const char **argv) {
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
   // MVOptions
-  MVOptions::OutFile =
-      OutputFile.getValue() == "" ? "macveth_output.c" : OutputFile.getValue();
+  MVOptions::OutFile = OutputFile.getValue().empty() ? "macveth_output.c"
+                                                     : OutputFile.getValue();
   MVOptions::InCDAGFile = CDAGInFile.getValue();
   MVOptions::OutDebugFile = DebugFile.getValue();
   MVOptions::ISA = ISA.getValue();
@@ -269,6 +273,7 @@ int main(int argc, const char **argv) {
   MVOptions::Headers = !NoHeaders.getValue();
   MVOptions::SIMDCostModel = SIMDCostModel.getValue();
   MVOptions::IntrinsicsSVML = !NoSVML.getValue();
+  MVOptions::FuseReductions = !DisableFuseReductions.getValue();
   MVOptions::TargetFunc = TargetFunc.getValue();
   MVOptions::Style = Style.getValue();
   MVOptions::FallbackStyle = FallbackStyle.getValue();

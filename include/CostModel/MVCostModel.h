@@ -69,11 +69,11 @@ public:
 
   /// Get the vector operations from the CDAG
   static std::list<VectorIR::VectorOP>
-  getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *Backend);
+  getVectorOpFromCDAG(Node::NodeListType &NList);
 
   /// Greedy algorithm for consuming nodes in the CDAG
-  static std::list<VectorIR::VectorOP> greedyOpsConsumer(Node::NodeListType &NL,
-                                                         SIMDBackEnd *Backend);
+  static std::list<VectorIR::VectorOP>
+  greedyOpsConsumer(Node::NodeListType &NL);
 };
 
 } // namespace macveth

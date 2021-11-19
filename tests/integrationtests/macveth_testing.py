@@ -1,5 +1,18 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+# Copyright 2021 Marcos Horro
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Some path declarations
 import os
@@ -7,6 +20,7 @@ import sys
 import filecmp
 import re
 import subprocess
+import shutil
 
 # Some path declaration
 cwd = os.getcwd()
@@ -18,11 +32,31 @@ if cwd != env_pwd:
 build_path = "../../build/"
 macveth_bin = f"{build_path}macveth"
 macveth_path = "macveth_dir/"
-fail_path = "failed_tests/"
-pass_path = "passed_tests/"
-tmp_path = f"tmpfiles/"
-test_report = "test_report.txt"
-log_file = "macveth_compiler.log"
+results_path = "results/"
+fail_path = f"{results_path}failed_tests/"
+pass_path = f"{results_path}passed_tests/"
+tmp_path = f"{results_path}tmpfiles/"
+test_report = f"{results_path}test_report.txt"
+log_file = f"{results_path}macveth_compiler.log"
+
+if not os.path.exists(results_path):
+    os.mkdir(results_path)
+
+# if os.path.isdir(fail_path):
+#     shutil.rmtree(fail_path)
+
+# if os.path.isdir(pass_path):
+#     shutil.rmtree(pass_path)
+
+# if os.path.isdir(tmp_path):
+#     shutil.rmtree(tmp_path)
+
+if not os.path.isdir(pass_path):
+    os.mkdir(pass_path)
+if not os.path.isdir(fail_path):
+    os.mkdir(fail_path)
+if not os.path.isdir(tmp_path):
+    os.mkdir(tmp_path)
 
 # File extensions
 file_t = ".c"
@@ -56,14 +90,7 @@ def get_gcc_binary():
     return cc
 
 
-import sys
-
 cc = get_gcc_binary()
-# Clang tool takes as the relative path from where the CMake does. I hate this
-# behavior; will have a look at this sometime someday
-# mv_poly_flags = "
-# --extra-arg-before='-I/home/markoshorro/workspace/MACVETH/tests/utilities'
-# --misa=avx2 "
 mv_poly_flags = [
     "--misa=avx2",
     "--march=cascadelake",
@@ -119,7 +146,8 @@ def test_output(exp_out, comp_out, code=False):
     # must be exactly the same. Maybe we should be less aggressive when it comes
     # to compare code
     # @return True if same values, False otherwise
-    assert os.stat(exp_out).st_size != 0
+    if os.stat(exp_out).st_size == 0:
+        print("ERROR: no output from original file. Check if segmentation fault.")
     if code:
         with open(exp_out) as f1, open(comp_out) as f2:
             s1 = ""
@@ -141,13 +169,10 @@ def execute_test(path_suite, test, compiler_flags=["-mavx2", "-mfma"]):
         test (str): Name of the test without the extension
     """
 
-    if not os.path.isdir("tmpfiles/"):
-        os.mkdir("tmpfiles")
+    macveth_t = f"{tmp_path}{path_suite.replace('/', '')}_{test}{comp_suffix}"
+    org_t = f"{path_suite}{test}{file_t}"
 
-    macveth_t = tmp_path + path_suite.replace("/", "") + "_" + test + comp_suffix
-    org_t = path_suite + test + file_t
-
-    print("{:<80}".format("execution test of " + org_t + "..."), end="")
+    print("{:<80}".format(f"execution test of {org_t}..."), end="")
     try:
         # Compile with macveth the test
         compile_test_with_macveth(org_t, macveth_t, mv_poly_flags)
@@ -169,18 +194,15 @@ def execute_test(path_suite, test, compiler_flags=["-mavx2", "-mfma"]):
         sys.exit(1)
 
     if test_output(tmp_org_out, tmp_mv_out):
-        if not os.path.isdir(pass_path):
-            os.mkdir(pass_path)
         os.system(f"mv {macveth_t} {pass_path}")
         print("OK")
     else:
-        print("ERROR in test")
-        if not os.path.isdir(fail_path):
-            os.mkdir(fail_path)
         os.system(f"mv {macveth_t} {fail_path}")
         os.system(f"cp {org_t} {fail_path}")
         os.system(f"mv {tmp_mv_out} {tmp_org_out} {fail_path}")
+        print(f"ERROR in test '{org_t}'")
         sys.exit(1)
+    sys.exit(0)
 
 
 # Parse arguments

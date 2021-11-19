@@ -98,7 +98,7 @@ public:
   };
 
   /// Set the output information of the given a TAC
-  OutputInfo setOutputInfo(TAC T) {
+  OutputInfo setOutputInfo(const TAC &T) {
     OutputInfo O;
     O.E = T.getA();
     O.Type = (T.getMVOP().isAssignment()) ? MEM_STORE : TEMP_STORE;
@@ -128,10 +128,12 @@ public:
     this->SI.Scop[0] = T.getScop();
   }
 
+  /// Empty constructor
   Node() {}
 
+  /// A node is emtpy if it is not initialized, basically.
   bool isEmptyNode() {
-    return (MV == nullptr) && (T == UNDEF) && (Value == "");
+    return (MV == nullptr) && (T == UNDEF) && (Value.empty());
   }
 
   /// When creating a Node from a TempExpr, the connections will be created by
@@ -171,7 +173,7 @@ public:
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
   /// CDAG, so each TAC corresponds to a = b op c
-  Node(TAC T, NodeListType L) {
+  Node(const TAC &T, NodeListType L) {
     this->T = NODE_OP;
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
@@ -214,7 +216,7 @@ public:
   }
 
   /// Get MVExpr
-  MVExpr *getMVExpr() { return this->MV; }
+  MVExpr *getMVExpr() const { return this->MV; }
 
   /// Schedule info is needed for the algorithms to perform permutations in
   /// nodes
@@ -227,7 +229,7 @@ public:
   void setPlcmnt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
 
   /// Check if Node N is already in node list L
-  static Node *findOutputNode(std::string NodeName, NodeListType L);
+  static Node *findOutputNode(const std::string &NodeName, NodeListType L);
 
   /// Connect a Node as input
   void connectInput(Node *N);

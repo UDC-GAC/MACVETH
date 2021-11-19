@@ -184,6 +184,8 @@ struct MVOptions {
   static inline bool IntrinsicsSVML = true;
   /// Target function
   static inline std::string TargetFunc = "";
+  /// Fuse reductions
+  static inline bool FuseReductions = false;
 
   static MVCPUInfo::MVISA getMVISA() {
     MVCPUInfo CInfo;
