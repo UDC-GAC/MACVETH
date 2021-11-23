@@ -1818,7 +1818,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vscatter(VectorOP V) {
         V.setResult(VSecondHalve);
         IL.splice(IL.end(), vscatterAVX512(V));
       } else {
-        for (size_t N = 4; N < 8; ++N) {
+        for (size_t N = 4; N < V.getResult().VSize; ++N) {
           std::string Idx = "[" + std::to_string(N) + "]";
           addNonSIMDInst(V.getResult().UOP[N]->getRegisterValue(),
                          V.getResult().getName() + Idx, SIMDType::VOPT, MVSL,
@@ -2036,7 +2036,7 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorOP V) {
     V.VW = VOpCast.getWidth();
     V.R.Width = VOpCast.getWidth();
     V.R.Size = VOpCast.Size;
-    for (int i = V.R.VSize; i < VOpCast.Size; ++i) {
+    for (unsigned i = V.R.VSize; i < VOpCast.Size; ++i) {
       V.R.UOP.push_back(VOpCast.UOP[i]);
     }
     V.R.VSize = VOpCast.VSize;

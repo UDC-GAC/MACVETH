@@ -228,6 +228,8 @@ VectorOPListT MVCostModel::greedyOpsConsumer(NodeVectorT &NL) {
 
 //---------------------------------------------
 using MapReductions = std::map<std::string, NodeVectorT>;
+
+//---------------------------------------------
 MapReductions mapReductions(const NodeVectorT &Reductions) {
   MapReductions Map;
   std::for_each(Reductions.begin(), Reductions.end(), [&Map](auto Node) {
@@ -291,7 +293,13 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
   // Compute orphan nodes
   NodeVectorT OrphanNodes;
   for (auto Pair : MapReductions) {
-    auto List = Pair.second;
+    auto &List = Pair.second;
+    while (List.size() >= 4) {
+      int PS = std::min((int)List.size(), 8);
+      NodeVectorT NewRedux(&List[0], &List[PS]);
+      VList.splice(VList.end(), consumeReduction(NewRedux));
+      List.erase(List.begin(), List.begin() + PS);
+    }
     if (List.size() > 0) {
       OrphanNodes.insert(OrphanNodes.end(), List.begin(), List.end());
     }
