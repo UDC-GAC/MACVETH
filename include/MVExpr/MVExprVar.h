@@ -64,7 +64,7 @@ public:
   /// In order to be able to use RTTI
   static bool classof(const MVExpr *S) { return S->getKind() == MVK_Var; }
   /// Map to register the dimensions unrolled
-  static inline std::map<std::string, std::list<std::string>> RegDimUnrolled;
+  static inline std::map<std::string, std::vector<std::string>> RegDimUnrolled;
 };
 
 } // namespace macveth

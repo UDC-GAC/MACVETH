@@ -42,30 +42,27 @@ using DepMap = std::map<int, std::set<int>>;
 class CDAG {
 public:
   /// Given a list of TACs, create its correspondent CDAG
-  static CDAG createCDAGfromTAC(const TacListType &TL);
-
-  /// Compute cost model for a set of Nodes
-  static int computeCostModel(Node::NodeListType NL);
+  static CDAG createCDAGfromTAC(const TacListT &TL);
 
   /// Compute WAR (anti-dependencies) for a given node
-  Node *findWARDataRace(Node *N, Node::NodeListType NL);
+  Node *findWARDataRace(Node *N, NodeVectorT &NL);
 
   /// Compute RAW (data dependencies) for a given node
-  Node *findRAWDataRace(Node *N, Node::NodeListType NL);
+  Node *findRAWDataRace(Node *N, NodeVectorT &NL);
 
   /// Get the node of list registered for this CDAG
-  Node::NodeListType getNodeListOps() { return NLOps; }
+  NodeVectorT getNodeListOps() { return NLOps; }
 
   DepMap getRAWs() { return MapRAW; }
   DepMap getWARs() { return MapWAR; }
 
 private:
   /// Insert TAC abstraction to the CDAG
-  Node *insertTac(TAC T, Node::NodeListType L);
+  Node *insertTac(TAC T, NodeVectorT L);
   /// List of OP nodes
-  Node::NodeListType NLOps;
-  /// List of memory nodes
-  Node::NodeListType NLMem;
+  NodeVectorT NLOps;
+  // /// List of memory nodes
+  // NodeVectorT NLMem;
   /// RAW dependencies
   DepMap MapRAW;
   /// WAR dependencies

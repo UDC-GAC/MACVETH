@@ -90,10 +90,10 @@ std::string replaceTmpTac(std::map<std::string, std::vector<std::string>> T,
 }
 
 // ---------------------------------------------
-std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
-  std::list<std::string> TmpList;
+std::string TAC::renderTacAsStmt(TacListT TL, int Offset) {
+  std::vector<std::string> TmpList;
   std::map<std::string, std::vector<std::string>> TmpResToReplace;
-  TacListType TCopy(TL);
+  TacListT TCopy(TL);
   for (auto T : TCopy) {
     if ((T.getUnrollFactor() != Offset) && (Offset != -1)) {
       continue;
@@ -132,7 +132,7 @@ std::string TAC::renderTacAsStmt(TacListType TL, int Offset) {
 }
 
 // ---------------------------------------------
-void stmtToTACRecursive(const clang::Stmt *ST, TacListType &TacList, int Val) {
+void stmtToTACRecursive(const clang::Stmt *ST, TacListT &TacList, int Val) {
   Expr *S1 = nullptr;
   Expr *S2 = nullptr;
   bool IsTerminalS1 = false;
@@ -261,8 +261,8 @@ void stmtToTACRecursive(const clang::Stmt *ST, TacListType &TacList, int Val) {
 }
 
 // ---------------------------------------------
-TacListType TAC::stmtToTAC(clang::Stmt *const ST) {
-  TacListType TL;
+TacListT TAC::stmtToTAC(clang::Stmt *const ST) {
+  TacListT TL;
 
   auto S = dyn_cast<clang::Expr>(ST);
   if (!S) {
@@ -294,16 +294,22 @@ TAC TAC::unroll(TAC Tac, int UnrollFactor, std::string LoopLevel,
 }
 
 // ---------------------------------------------
-TacListType TAC::unrollTacList(TacListType TacList, int UnrollFactor,
-                               int UpperBound, std::string LoopLevel,
-                               bool FullUnroll) {
-  TacListType NewTacList;
+TacListT TAC::unrollTacList(const TacListT &TacList, int UnrollFactor,
+                            int UpperBound, std::string LoopLevel,
+                            bool FullUnroll) {
+  TacListT NewTacList;
   auto Steps = UpperBound / UnrollFactor;
   for (int S = 0; S < Steps; S++) {
-    for (auto T : TacList) {
-      NewTacList.push_back(
-          TAC::unroll(T, UnrollFactor * S, LoopLevel, FullUnroll));
-    }
+    std::for_each(
+        TacList.begin(), TacList.end(),
+        [&NewTacList, S, UnrollFactor, LoopLevel, FullUnroll](auto T) {
+          NewTacList.push_back(
+              TAC::unroll(T, UnrollFactor * S, LoopLevel, FullUnroll));
+        });
+    // for (auto T : TacList) {
+    //   NewTacList.push_back(
+    //       TAC::unroll(T, UnrollFactor * S, LoopLevel, FullUnroll));
+    // }
   }
   return NewTacList;
 }

@@ -108,7 +108,7 @@ public:
     }
 
     /// VOperand result
-    VectorIR::VOperand VOPResult;
+    VOperand VOPResult;
     /// Unique identifier generator
     static inline unsigned int UID = 0;
     /// Unique identifier
@@ -175,8 +175,8 @@ public:
 
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions, given a VectorOP
-  SIMDInst addNonSIMDInst(VectorIR::VectorOP &OP, SIMDType SType,
-                          MVSourceLocation MVSL, SIMDInstListType *IL);
+  SIMDInst addNonSIMDInst(VectorOP &OP, SIMDType SType, MVSourceLocation MVSL,
+                          SIMDInstListType *IL);
   /// Generate non SIMD instructions, as we may have sequential operations or
   /// other type of not vectorized instructions specifying explicitly the LHS
   /// and the RHS
@@ -188,50 +188,50 @@ public:
   // Operands instructions
 
   /// Generate pack instructions, e.g. load/loadu
-  virtual SIMDInstListType vload(VectorIR::VOperand V) = 0;
+  virtual SIMDInstListType vload(VOperand V) = 0;
   /// Generate broadcast instructions. Broadcasts are used to replicate known
   /// values (i.e. values in registers, not memory addresses)
-  virtual SIMDInstListType vbcast(VectorIR::VOperand V) = 0;
+  virtual SIMDInstListType vbcast(VOperand V) = 0;
   /// Generate gather instructions. Gathers are meant to retrieve data from the
   /// memory using indices
-  virtual SIMDInstListType vpack(VectorIR::VOperand V) = 0;
+  virtual SIMDInstListType vpack(VOperand V) = 0;
   /// Generate set instrucctions. Set is meant for literal values
-  virtual SIMDInstListType vset(VectorIR::VOperand V) = 0;
-  virtual SIMDInstListType vregisterpacking(VectorIR::VOperand V) = 0;
+  virtual SIMDInstListType vset(VOperand V) = 0;
+  virtual SIMDInstListType vregisterpacking(VOperand V) = 0;
 
   /// Generate store instructions to memory
-  virtual SIMDInstListType vstore(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vstore(VectorOP V) = 0;
   /// Generate store instructions to memory using an index
-  virtual SIMDInstListType vscatter(VectorIR::VectorOP V) = 0;
-  virtual SIMDInstListType singleElementScatterOp(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vscatter(VectorOP V) = 0;
+  virtual SIMDInstListType singleElementScatterOp(VectorOP V) = 0;
 
   // Binary operations
 
   /// Generate multiplication operations
-  virtual SIMDInstListType vmul(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vmul(VectorOP V) = 0;
   /// Generate subtraction operations
-  virtual SIMDInstListType vsub(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vsub(VectorOP V) = 0;
   /// Generate addition operations
-  virtual SIMDInstListType vadd(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vadd(VectorOP V) = 0;
   /// Generate division operations
-  virtual SIMDInstListType vdiv(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vdiv(VectorOP V) = 0;
   /// Generate modulo operations
-  virtual SIMDInstListType vmod(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vmod(VectorOP V) = 0;
 
   /// Generate custom functions
-  virtual SIMDInstListType vfunc(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vfunc(VectorOP V) = 0;
 
   // Reduction operations
 
   /// Operations are reduce given a certain condicitons.
-  virtual SIMDInstListType vreduce(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vreduce(VectorOP V) = 0;
 
   // Scalar operations
 
   /// If operation is not binary, pararel or reduce, then we just emit a
   /// sequential operation. Backend will be in charge of performing any
   /// optimizations if needed
-  virtual SIMDInstListType vseq(VectorIR::VectorOP V) = 0;
+  virtual SIMDInstListType vseq(VectorOP V) = 0;
 
   /// Get the type of register according to the VDataType and VWidth. This
   /// method is abstract because each architecture may have different types.
@@ -260,7 +260,7 @@ public:
   virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) = 0;
 
   /// Get initial values of a VectorOP. Must be implemented
-  virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V) = 0;
+  virtual std::vector<std::string> getInitValues(VectorOP V) = 0;
 
   /// Add SIMD instruction
   virtual SIMDInst genSIMDInst(std::string Result, std::string Op,
@@ -272,16 +272,15 @@ public:
                                std::string MVFunc = "", MVStrVector MVArgs = {},
                                MVOp MVOP = MVOp()) = 0;
 
-  virtual SIMDInst genSIMDInst(VectorIR::VOperand V, std::string Op,
-                               std::string PrefS, std::string SuffS,
-                               MVStrVector OPS, SIMDType SType,
-                               MVSourceLocation SL,
+  virtual SIMDInst genSIMDInst(VOperand V, std::string Op, std::string PrefS,
+                               std::string SuffS, MVStrVector OPS,
+                               SIMDType SType, MVSourceLocation SL,
                                SIMDInstListType *IL = nullptr,
                                std::string NameOp = "", std::string MVFunc = "",
                                MVStrVector MVArgs = {}, MVOp MVOP = MVOp()) = 0;
 
   /// Get headers needed (include files)
-  virtual std::list<std::string> getHeadersNeeded() = 0;
+  virtual std::vector<std::string> getHeadersNeeded() = 0;
 
   /// Get maximum vector operands size
   virtual int getMaxVectorSize(std::string Type) {
@@ -304,26 +303,25 @@ public:
 
   /// Render SIMD instructions as a list of strings, where each element
   /// represents a new line
-  std::list<std::string> renderSIMDasString(SIMDInstListType &S);
+  std::vector<std::string> renderSIMDasString(SIMDInstListType &S);
 
   /// Auxiliary function to retrieve properly the operands
-  std::string getOpName(const VectorIR::VOperand &V, bool Ptr, bool RegVal,
+  std::string getOpName(const VOperand &V, bool Ptr, bool RegVal,
                         int Position = 0, int Offset = 0);
 
   /// Insert the SIMDInst in the list given an VOperand
-  bool getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL,
+  bool getSIMDVOperand(VOperand V, SIMDInstListType *IL,
                        bool Reduction = false);
 
   std::string genGenericFunc(std::string F, std::vector<std::string> L);
 
   /// Entry point: this method basically redirects to any of the operations
   /// supported
-  SIMDInstListType getSIMDfromVectorOP(VectorIR::VectorOP &V);
+  SIMDInstListType getSIMDfromVectorOP(VectorOP &V);
 
   /// Basically calls its other overloaded function iterating over the input
   /// list of VectorOP
-  SIMDInstListType
-  getSIMDfromVectorOP(const std::list<VectorIR::VectorOP> &VList);
+  SIMDInstListType getSIMDfromVectorOP(const VectorOPListT &VList);
 
   /// Get list of initializations
   SIMDInstListType getInitReg() { return InitReg; }
@@ -346,10 +344,10 @@ private:
   const RandomPackingTable &RPTable = RandomPackingTable();
 
   /// Auxiliary function to dispatch the VectorOP operation
-  void mapOperation(VectorIR::VectorOP &V, SIMDInstListType *TI);
+  void mapOperation(VectorOP &V, SIMDInstListType *TI);
 
   /// Auxiliary function to dispatch the VectorOP operation
-  void reduceOperation(VectorIR::VectorOP &V, SIMDInstListType *TI);
+  void reduceOperation(VectorOP &V, SIMDInstListType *TI);
 
 protected:
   /// Add register to declare

@@ -40,6 +40,10 @@ using namespace macveth;
 
 namespace macveth {
 
+class StmtWrapper;
+
+using StmtWrapperVectorT = std::vector<StmtWrapper *>;
+
 /// StmtWrapper, as its name suggests, wraps statements, its TAC representation
 /// and the desired intrinsic translation
 class StmtWrapper {
@@ -53,7 +57,7 @@ public:
   struct LoopInfo {
     clang::ForStmt *LoopStmt = nullptr;
     /// List of dimensions declared
-    static inline std::list<std::string> DimDeclared = {};
+    static inline std::vector<std::string> DimDeclared = {};
     /// Location of the loop itself
     clang::SourceLocation BegLoc;
     /// Location after the loop itself
@@ -117,10 +121,10 @@ public:
   };
 
   /// LoopInfo list type
-  using LoopList = std::list<LoopInfo>;
+  using LoopList = std::vector<LoopInfo>;
 
   /// Generate a list of StmtWrapper
-  static std::list<StmtWrapper *> genStmtWraps(CompoundStmt *CS, ScopLoc *Scop);
+  static StmtWrapperVectorT genStmtWraps(CompoundStmt *CS, ScopLoc *Scop);
 
   /// Get all the loops given one
   static LoopInfo getLoop(clang::ForStmt *ForLoop);
@@ -136,7 +140,7 @@ public:
 
   /// Perform unrolling for a given statement given its unroll factor and the
   /// upperbound of the loop
-  TacListType unroll(LoopInfo L);
+  TacListT unroll(LoopInfo L);
 
   /// Unrolls the TAC list in all the possible dimensions
   bool unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop);
@@ -148,7 +152,7 @@ public:
   bool unrollLoopList(std::list<LoopInfo> LI);
 
   /// Get list of statements
-  std::list<StmtWrapper *> getListStmt() { return this->ListStmt; }
+  StmtWrapperVectorT getStmtVector() { return this->ListStmt; }
 
   /// Get LoopInfo structure
   LoopInfo getLoopInfo() { return this->LoopInfoStmt; }
@@ -157,10 +161,10 @@ public:
   Stmt *getClangStmt() { return this->ClangStmt; };
 
   /// Get TAC list
-  TacListType getTacList() { return TacList; };
+  TacListT getTacList() { return TacList; };
 
   /// Set TAC list in the StmtWrapper
-  void setTacList(TacListType TacList) { this->TacList = TacList; };
+  void setTacList(TacListT TacList) { this->TacList = TacList; };
 
   /// StmtWrapper may me a "regular" statement or a for loop. This is useful
   /// for identifying properly regions
@@ -172,7 +176,7 @@ public:
   /// Set the name of the loop surrounding this Stmt
   void setInnerLoopInfo(LoopInfo InnerLoopInfo) {
     this->InnerLoopInfo = InnerLoopInfo;
-    TacListType NewTac;
+    TacListT NewTac;
     for (auto T : this->getTacList()) {
       auto NT = T;
       NT.setLoopName(InnerLoopInfo.getDim());
@@ -194,13 +198,13 @@ public:
 
 private:
   /// Statements hold if loop
-  std::list<StmtWrapper *> ListStmt;
+  StmtWrapperVectorT ListStmt;
   /// Statement if not loop
   Stmt *ClangStmt;
   /// Loop information if needed
   LoopInfo LoopInfoStmt;
   /// TAC list with regard to the Statement S
-  TacListType TacList;
+  TacListT TacList;
   /// Loop within the statement is. This only makes sense if Stmt is not a loop
   LoopInfo InnerLoopInfo;
   /// Has been vectorized or not

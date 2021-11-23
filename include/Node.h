@@ -37,6 +37,11 @@ using namespace macveth;
 
 namespace macveth {
 
+class Node;
+
+using NodeVectorT = std::vector<Node *>;
+using NodeListT = std::list<Node *>;
+
 /// All Nodes belong to a CDAG. Each node or vertex holds information regarding
 /// the type of operation as well as its Edges (or links to another Nodes).
 /// Nodes also hold information regarding the scheduling, i.e. the order on
@@ -51,9 +56,6 @@ public:
 
   /// Restart UUID numbering
   static void restart() { Node::UUID = 0; }
-
-  /// Definition of NodeListType
-  using NodeListType = std::vector<Node *>;
 
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_STORE, NODE_OP, UNDEF };
@@ -173,7 +175,7 @@ public:
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
   /// CDAG, so each TAC corresponds to a = b op c
-  Node(const TAC &T, NodeListType L) {
+  Node(const TAC &T, NodeVectorT L) {
     this->T = NODE_OP;
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
@@ -229,7 +231,7 @@ public:
   void setPlcmnt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
 
   /// Check if Node N is already in node list L
-  static Node *findOutputNode(const std::string &NodeName, NodeListType L);
+  static Node *findOutputNode(const std::string &NodeName, NodeVectorT L);
 
   /// Connect a Node as input
   void connectInput(Node *N);
@@ -246,7 +248,7 @@ public:
   /// Get the number of inputs in this Node
   int getInputNum() { return this->I.size(); }
   /// Get the list of node inputs in this Node
-  NodeListType getInputs() { return this->I; }
+  NodeVectorT getInputs() { return this->I; }
   /// Get info regarding its scheduling
   SchedInfo getSchedInfo() { return this->SI; }
   SchedInfo getSchedInfo() const { return this->SI; }
@@ -381,7 +383,7 @@ private:
   /// Type of node: MEMORY or OPERATION
   NodeType T = UNDEF;
   /// List of input nodes for this node
-  NodeListType I;
+  NodeVectorT I;
   /// Info regarding the output register/node. This field only makes sense if
   /// we are dealing with an operation node
   OutputInfo O;

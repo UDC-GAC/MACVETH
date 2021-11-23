@@ -127,10 +127,10 @@ public:
     /// Number of micro-instructions
     unsigned int NUops = 0;
     /// List of usable ports
-    std::list<int> P;
+    std::vector<int> P;
   };
 
-  using PortList = std::list<Ports>;
+  using PortList = std::vector<Ports>;
 
   /// Structure to define the table of costs for the architectures
   struct Row {

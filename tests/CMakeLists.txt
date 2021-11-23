@@ -4,8 +4,8 @@
 #                                                                              #
 #==============================================================================#
 
-# Include unit test
-add_subdirectory(unittests)
+# TODO: Include unit test
+# add_subdirectory(unittests)
 
 # Include integration test
 add_subdirectory(integrationtests)

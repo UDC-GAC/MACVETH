@@ -48,45 +48,37 @@ void PlcmntAlgo::computeFreeSchedule(Node *N) {
 }
 
 // ---------------------------------------------
-void PlcmntAlgo::computeFreeSchedule(Node::NodeListType &NL) {
+void PlcmntAlgo::computeFreeSchedule(NodeVectorT &NL) {
   std::for_each(NL.begin(), NL.end(),
                 [&NL](auto *N) { N->setFreeSchedInfo(computeMaxDepth(N)); });
 }
 
 // ---------------------------------------------
-Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
-  Node::NodeListType NCopy(*NL);
-  Node::NodeListType LRedux;
-  Node::NodeListType Visited;
-  Node::NodeListType Reduction;
+NodeVectorT PlcmntAlgo::detectReductions(NodeVectorT *NL) {
+  NodeVectorT NCopy(*NL);
+  NodeVectorT LRedux;
+  NodeVectorT Visited;
+  NodeVectorT Reduction;
   auto ReductionFound = false;
-
   std::reverse(std::begin(NCopy), std::end(NCopy));
   NL->clear();
-
-  for (auto R : NCopy) {
+  for (auto TmpNode : NCopy) {
     ReductionFound = false;
-    if (std::find(Visited.begin(), Visited.end(), R) != Visited.end()) {
+    if (std::find(Visited.begin(), Visited.end(), TmpNode) != Visited.end())
       continue;
-    }
-    Visited.push_back(R);
-    Reduction.insert(Reduction.begin(), R);
-    auto S = R->getInputs();
+    Visited.push_back(TmpNode);
+    Reduction.insert(Reduction.begin(), TmpNode);
+    auto Inputs = TmpNode->getInputs();
   loop:
-    for (auto In : S) {
+    for (auto In : Inputs) {
       if (In == nullptr) {
         MACVETH_DEBUG("PlcmntAlgo", "Skipping");
         continue;
       }
 
-      if ((R->getValue() == In->getValue()) &&
-          (R->getSchedInfo().FreeSched > (In->getSchedInfo().FreeSched))) {
-        // &&
-        // ((R->getSchedInfo().TacID == (In->getSchedInfo().TacID)) ||
-        //  R->getSchedInfo().Scop[0] == (In->getSchedInfo().Scop[0]))) {
-        // FIXME: should we consider this or not...
-        // if ((R->getSchedInfo().TacID != In->getSchedInfo().TacID) &&
-        //     (R->getSchedInfo().Scop[0] == In->getSchedInfo().Scop[0])) {
+      if ((TmpNode->getValue() == In->getValue()) &&
+          (TmpNode->getSchedInfo().FreeSched >
+           (In->getSchedInfo().FreeSched))) {
 
         MACVETH_DEBUG("PlcmntAlgo", "Reduction found for " +
                                         In->getRegisterValue() + ", " +
@@ -94,53 +86,36 @@ Node::NodeListType PlcmntAlgo::detectReductions(Node::NodeListType *NL) {
         ReductionFound = true;
         Reduction.push_back(In);
         Visited.push_back(In);
-        for (auto Sin : S) {
-          if (Sin != nullptr) {
-            Sin->setNodeAsReduction();
-          }
+        for (auto NodeIn : Inputs) {
+          if (NodeIn != nullptr)
+            NodeIn->setNodeAsReduction();
         }
-        S = In->getInputs();
-        R->setNodeAsReduction();
+        Inputs = In->getInputs();
+        TmpNode->setNodeAsReduction();
         In->setNodeAsReduction();
-        for (auto Sin : S) {
-          if (Sin != nullptr) {
-            Sin->setNodeAsReduction();
-          }
+        for (auto NodeIn : In->getInputs()) {
+          if (NodeIn != nullptr)
+            NodeIn->setNodeAsReduction();
         }
-        // Now we want to iterate over the
+        // Now we want to iterate over the inputs
         goto loop;
       }
     }
     if (ReductionFound) {
-      for (auto RNode : Reduction) {
-        LRedux.insert(LRedux.begin(), RNode);
-        // LRedux.push_back(RNode);
-      }
+      LRedux.insert(LRedux.end(), Reduction.begin(), Reduction.end());
     } else {
-      NL->push_back(R);
+      if (!TmpNode->belongsToAReduction())
+        NL->push_back(TmpNode);
     }
     Reduction.clear();
   }
   std::reverse(std::begin(*NL), std::end(*NL));
-  // if (LRedux.size() <= 2) {
-  //   for (auto R : LRedux) {
-  //     R->setNodeAsNonReduction();
-  //     for (auto RIn : R->getInputs()) {
-  //       if (RIn != nullptr) {
-  //         RIn->setNodeAsNonReduction();
-  //       }
-  //     }
-  //   }
-  //   NL->insert(NL->end(), LRedux.begin(), LRedux.end());
-  //   (*NL) = sortGraph(*NL);
-  //   // Undo reductions
-  //   LRedux.clear();
-  // }
+  std::reverse(std::begin(LRedux), std::end(LRedux));
   return LRedux;
 }
 
 // ---------------------------------------------
-Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
+NodeVectorT PlcmntAlgo::sortGraph(NodeVectorT NL) {
   computeFreeSchedule(NL);
   if (MVOptions::InCDAGFile != "") {
     setPlcmtFromFile(NL);
@@ -162,7 +137,7 @@ Node::NodeListType PlcmntAlgo::sortGraph(Node::NodeListType NL) {
 }
 
 // ---------------------------------------------
-void PlcmntAlgo::setPlcmtFromFile(Node::NodeListType &NL) {
+void PlcmntAlgo::setPlcmtFromFile(NodeVectorT &NL) {
   std::ifstream CF(Utils::getExePath() + MVOptions::InCDAGFile,
                    std::ios_base::in);
   assert(!CF.fail() && "File does not exist for PlcmntAlgo!");

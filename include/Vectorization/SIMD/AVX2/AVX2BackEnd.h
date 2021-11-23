@@ -42,92 +42,95 @@ public:
   /// Name of the ISA
   static inline std::string NISA = "AVX2";
   /// Name of the headers needed
-  static inline std::list<std::string> Headers = {"<immintrin.h>",
-                                                  "\"macveth_api.h\""};
+  static inline std::vector<std::string> Headers = {"<immintrin.h>",
+                                                    "\"macveth_api.h\""};
 
   /// Get headers
-  virtual std::list<std::string> getHeadersNeeded() override {
+  virtual std::vector<std::string> getHeadersNeeded() override {
     return AVX2BackEnd::Headers;
   }
 
   // Operand operations
 
   /// Pack memory operands
-  virtual SIMDInstListType vload(VectorIR::VOperand V) override;
+  virtual SIMDInstListType vload(VOperand V) override;
 
   /// Broadcast values
-  virtual SIMDInstListType vbcast(VectorIR::VOperand V) override;
+  virtual SIMDInstListType vbcast(VOperand V) override;
 
   /// Gather data from memory
-  virtual SIMDInstListType vpack(VectorIR::VOperand V) override;
+  virtual SIMDInstListType vpack(VOperand V) override;
 
   /// Intel intrinsics gather approach
-  SIMDInstListType vgather(VectorIR::VOperand V);
+  SIMDInstListType vgather(VOperand V);
 
   /// Set values to registers
-  virtual SIMDInstListType vset(VectorIR::VOperand V) override;
-  virtual SIMDInstListType vregisterpacking(VectorIR::VOperand V) override;
+  virtual SIMDInstListType vset(VOperand V) override;
+  virtual SIMDInstListType vregisterpacking(VOperand V) override;
 
   /// Store values in memory
-  virtual SIMDInstListType vstore(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vstore(VectorOP V) override;
 
   /// Store values in memory using an index
-  virtual SIMDInstListType vscatter(VectorIR::VectorOP V) override;
-  virtual SIMDInstListType
-  singleElementScatterOp(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vscatter(VectorOP V) override;
+  virtual SIMDInstListType singleElementScatterOp(VectorOP V) override;
 
-  SIMDInstListType singleElementScatter(VectorIR::VectorOP VOP);
+  SIMDInstListType singleElementScatter(VectorOP VOP);
 
   /// Store values in memory using an index
-  SIMDInstListType vscatterAVX512(VectorIR::VectorOP VOP);
+  SIMDInstListType vscatterAVX512(VectorOP VOP);
 
   /// Scattering of four elements taking into account the contiguity of data
-  bool vscatter4elements(VectorIR::VectorOP V, MVDataType::VWidth Width,
+  bool vscatter4elements(VectorOP V, MVDataType::VWidth Width,
                          SIMDBackEnd::SIMDInstListType *IL);
 
-  void store(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+  void store(VOperand V, MVStrVector Args, MVSourceLocation MVSL,
              SIMDBackEnd::SIMDInstListType *IL);
 
-  void load(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+  void load(VOperand V, MVStrVector Args, MVSourceLocation MVSL,
             SIMDBackEnd::SIMDInstListType *IL);
 
-  void loads(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+  void loads(VOperand V, MVStrVector Args, MVSourceLocation MVSL,
              SIMDBackEnd::SIMDInstListType *IL);
 
-  void moves(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+  void moves(VOperand V, MVStrVector Args, MVSourceLocation MVSL,
              SIMDBackEnd::SIMDInstListType *IL);
 
-  void blend(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+  void blend(VOperand V, MVStrVector Args, MVSourceLocation MVSL,
              SIMDBackEnd::SIMDInstListType *IL);
 
-  void insert(VectorIR::VOperand V, MVStrVector Args, MVSourceLocation MVSL,
+  void insert(VOperand V, MVStrVector Args, MVSourceLocation MVSL,
               SIMDBackEnd::SIMDInstListType *IL);
 
   // Binary operations
 
   /// Multiplication operation
-  virtual SIMDInstListType vmul(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vmul(VectorOP V) override;
 
   /// Substraction operation
-  virtual SIMDInstListType vsub(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vsub(VectorOP V) override;
 
   /// Add operation
-  virtual SIMDInstListType vadd(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vadd(VectorOP V) override;
 
   /// Division operation
-  virtual SIMDInstListType vdiv(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vdiv(VectorOP V) override;
 
   /// Modulo operation
-  virtual SIMDInstListType vmod(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vmod(VectorOP V) override;
 
   /// Generate custom functions
-  virtual SIMDInstListType vfunc(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vfunc(VectorOP V) override;
 
   /// Reduction operations
-  virtual SIMDInstListType vreduce(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vreduce(VectorOP V) override;
+  virtual SIMDInstListType computeAccmReduction(VectorOP V, std::string RegAccm,
+                                                std::string TmpReg,
+                                                std::string PrevVal,
+                                                bool NeedsCast);
 
   /// Scalar operation
-  virtual SIMDInstListType vseq(VectorIR::VectorOP V) override;
+  virtual SIMDInstListType vseq(VectorOP V) override;
 
   /// Perform some peephole optimizations after generating SIMD instructions
   virtual SIMDInstListType peepholeOptimizations(SIMDInstListType I) override;
@@ -136,8 +139,8 @@ public:
   virtual MVStrVector renderSIMDRegister(SIMDInstListType S) override;
 
   /// Trick for inserting two 128-bit registers onto a 256-bit register
-  void insertLowAndHighBits(VectorIR::VOperand V, std::string Hi,
-                            std::string Lo, MVSourceLocation MVSL,
+  void insertLowAndHighBits(VOperand V, std::string Hi, std::string Lo,
+                            MVSourceLocation MVSL,
                             SIMDBackEnd::SIMDInstListType *IL);
 
   /// One of the optimizations included in AVX2
@@ -158,28 +161,19 @@ public:
       SIMDBackEnd::SIMDInstListType TIL,
       MVSourceLocation::Position Pos = MVSourceLocation::Position::POSORDER);
 
-  SIMDBackEnd::SIMDInstListType reduceOneRegister(VectorIR::VOperand V,
-                                                  std::string OpName,
-                                                  MVSourceLocation MVSL);
-
-  SIMDBackEnd::SIMDInstListType reduceMultipleValuesInRegisterSymmetric(
-      VectorIR::VOperand V, std::string OpName, MVSourceLocation MVSL);
+  SIMDBackEnd::SIMDInstListType
+  reduceOneRegister(VOperand V, std::string OpName, MVSourceLocation MVSL);
 
   SIMDBackEnd::SIMDInstListType
-  reduceMultipleValuesInRegister(VectorIR::VOperand V, std::string OpName,
+  reduceMultipleValuesInRegisterSymmetric(VOperand V, std::string OpName,
+                                          MVSourceLocation MVSL);
+
+  SIMDBackEnd::SIMDInstListType
+  reduceMultipleValuesInRegister(VOperand V, std::string OpName,
                                  MVSourceLocation MVSL);
 
   SIMDBackEnd::SIMDInstListType
   fuseReductionsList(SIMDBackEnd::SIMDInstListType TIL);
-
-  // /// Check whether an instruction has RAW dependencies within a list of
-  // /// instructions
-  // bool hasRawDependencies(SIMDBackEnd::SIMDInstListType L,
-  //                         SIMDBackEnd::SIMDInst I);
-
-  // /// A reduction is contiguous if there are not any other
-  // bool reductionIsContiguous(SIMDBackEnd::SIMDInstListType L,
-  //                            SIMDBackEnd::SIMDInst I);
 
   /// Fusing reductions: peephole optimization
   SIMDBackEnd::SIMDInstListType fuseReductions(SIMDBackEnd::SIMDInstListType I);
@@ -234,7 +228,7 @@ public:
                                       MVDataType::VWidth W) override;
 
   /// Get initial values of a VectorOP
-  virtual std::vector<std::string> getInitValues(VectorIR::VectorOP V);
+  virtual std::vector<std::string> getInitValues(VectorOP V);
 
   /// Destructor
   virtual ~AVX2BackEnd(){};
@@ -249,6 +243,7 @@ public:
 
 private:
   std::map<std::string, std::string> MapReduxVarToAccm;
+  std::map<std::string, VOperand> MapReduxVOp;
 
   /// Constructor
   AVX2BackEnd() : SIMDBackEnd() {
@@ -270,9 +265,9 @@ private:
 
   /// Auxiliary function for generating the SIMDInst to the list
   virtual SIMDBackEnd::SIMDInst
-  genSIMDInst(VectorIR::VOperand V, std::string Op, std::string PrefS,
-              std::string SuffS, MVStrVector OPS, SIMDBackEnd::SIMDType SType,
-              MVSourceLocation SL, SIMDBackEnd::SIMDInstListType *IL = nullptr,
+  genSIMDInst(VOperand V, std::string Op, std::string PrefS, std::string SuffS,
+              MVStrVector OPS, SIMDBackEnd::SIMDType SType, MVSourceLocation SL,
+              SIMDBackEnd::SIMDInstListType *IL = nullptr,
               std::string NameOp = "", std::string MVFunc = "",
               MVStrVector MVArgs = {}, MVOp MVOP = MVOp()) override;
 

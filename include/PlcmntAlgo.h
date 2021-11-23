@@ -39,19 +39,19 @@ public:
   static void computeFreeSchedule(Node *N);
 
   /// Calculate free scheduling for a list of nodes (in-order)
-  static void computeFreeSchedule(Node::NodeListType &NL);
+  static void computeFreeSchedule(NodeVectorT &NL);
 
   /// Detect reductions in the list of input nodes
-  static Node::NodeListType detectReductions(Node::NodeListType *NL);
+  static NodeVectorT detectReductions(NodeVectorT *NL);
 
   /// Set the placement from the input file
-  static void setPlcmtFromFile(Node::NodeListType &NL);
+  static void setPlcmtFromFile(NodeVectorT &NL);
 
   /// Perform sorting of the list of nodes given
-  static Node::NodeListType sortGraph(Node::NodeListType NL);
+  static NodeVectorT sortGraph(NodeVectorT NL);
 
   /// Topological sort, very naive implementation
-  static Node::NodeListType topSort(Node::NodeListType &NL) {
+  static NodeVectorT topSort(NodeVectorT &NL) {
     std::sort(NL.begin(), NL.end(),
               [](Node *Lhs, Node *Rhs) { return *Lhs < *Rhs; });
     return NL;

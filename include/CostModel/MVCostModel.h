@@ -30,50 +30,53 @@
 #include "include/MVOptions.h"
 #include "include/StmtWrapper.h"
 #include "include/Vectorization/SIMD/SIMDBackEnd.h"
-#include <map>
 
 using namespace macveth;
 
 namespace macveth {
-
 class MVCostModel {
 public:
   /// Compute cost of a concrete statement
-  static InstCostInfo computeCostForStmtWrapper(StmtWrapper *S);
+  InstCostInfo computeCostForStmtWrapper(StmtWrapper *Stmt);
 
   /// Compute cost of a region or set of statements
-  static InstCostInfo
-  computeCostForStmtWrapperList(std::list<StmtWrapper *> &SL);
+  InstCostInfo computeCostForStmtWrapperList(StmtWrapperVectorT &Stmts);
 
   /// Compute cost of a concrete node
-  static InstCostInfo computeCostForNodeOp(Node *N);
+  InstCostInfo computeCostForNodeOp(Node *N);
 
   /// Compute cost of a region or set of operation nodes
-  static InstCostInfo computeCostForNodeOpsList(int VL,
-                                                const Node::NodeListType &NL);
+  InstCostInfo computeCostForNodeOpsList(int VL, const NodeVectorT &Nodes);
 
   /// Compute cost of set of operand nodes
-  static InstCostInfo
-  computeCostForNodeOperandsList(int VL, const Node::NodeListType &NL);
+  InstCostInfo computeCostForNodeOperandsList(int VL, const NodeVectorT &Nodes);
 
   /// Compute cost of a vector operation generated in the Vector IR
-  static InstCostInfo computeVectorOPCost(VectorIR::VectorOP V,
-                                          SIMDBackEnd *Backend);
+  InstCostInfo computeVectorOPCost(VectorOP VOP);
 
   /// Compute the cost model according to the latency-uops
-  static SIMDInfo computeCostModel(std::list<StmtWrapper *> SL,
-                                   SIMDBackEnd *Backend);
+  SIMDInfo computeCostModel(StmtWrapperVectorT &Stmts);
 
   /// Generate SIMD report, with all costs for different operations
-  static SIMDInfo generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S);
+  SIMDInfo generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType &SIMD);
 
   /// Get the vector operations from the CDAG
-  static std::list<VectorIR::VectorOP>
-  getVectorOpFromCDAG(Node::NodeListType &NList);
+  VectorOPListT getVectorOpFromCDAG(NodeVectorT &Nodes);
 
   /// Greedy algorithm for consuming nodes in the CDAG
-  static std::list<VectorIR::VectorOP>
-  greedyOpsConsumer(Node::NodeListType &NL);
+  VectorOPListT greedyOpsConsumer(NodeVectorT &Nodes);
+  /// Smart algorithm for grouping together reductions
+  VectorOPListT bottomUpConsumer(NodeVectorT &Nodes);
+
+  MVCostModel(SIMDBackEnd *Backend) : Backend(Backend) {
+    MaxVectorLength = Backend->getMaxVectorSize("float");
+  }
+
+private:
+  VectorOPListT consumeReduction(NodeVectorT &Nodes);
+
+  SIMDBackEnd *Backend = nullptr;
+  unsigned long MaxVectorLength = 8;
 };
 
 } // namespace macveth

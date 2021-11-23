@@ -56,7 +56,7 @@ ScopLoc *getScopLoc(StmtWrapper *S) {
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
+void MVFuncVisitor::performUnrolling(StmtWrapperVectorT SL) {
   auto CouldFullyUnroll = false;
   std::list<StmtWrapper::LoopInfo> LI;
   for (auto S : SL) {
@@ -78,16 +78,16 @@ void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::scanScops(FunctionDecl *fd) {
+bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
   auto CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
     MACVETH_DEBUG("MVFuncVisitor", "scanScops: no CompoundStmt");
-    llvm::llvm_unreachable_internal();
+    return false;
   }
 
   int Code = setjmp(GotoStartScop);
   if (Code == MVSkipCode) {
-    return;
+    return true;
   }
 
   std::list<std::string> DimsDeclFunc = {};
@@ -95,13 +95,18 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
   SourceLocation RegDeclLoc;
   auto Scops = ScopHandler::funcGetScops(fd);
+  // Get SIMD back end according to the option chosen
+  auto BackEnd = SIMDBackEndFactory::getBackend(MVOptions::ISA);
+  // Computing the cost model of the CDAG created
+  MVCostModel CostModel = MVCostModel(BackEnd);
   // For each scop in the function
   for (auto Scop : Scops) {
     auto IsFirstScop = (Scop == Scops[0]);
     auto IsLastScop = (Scop == Scops[Scops.size() - 1]);
 
     // Check if ST is within the ROI or not
-    MACVETH_DEBUG("MVConsumer", "scop = " + std::to_string(Scop->StartLine));
+    MACVETH_DEBUG("MVConsumer",
+                  "Parsing scop in line = " + std::to_string(Scop->StartLine));
 
     // Get the info about the loops surrounding this statement
     auto SL = StmtWrapper::genStmtWraps(CS, Scop);
@@ -110,7 +115,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       RegDeclLoc = SL.front()->getClangStmt()->getBeginLoc();
     }
 
-    MACVETH_DEBUG("MVConsumer", "list of stmt wrappers parsed = " +
+    MACVETH_DEBUG("MVConsumer", "List of stmt wrappers parsed = " +
                                     std::to_string(SL.size()));
 
     // Perform unrolling according to the pragmas
@@ -134,9 +139,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       DimsDeclFunc.splice(DimsDeclFunc.end(),
                           MVR.rewriteLoops(SL, DimsDeclFunc));
     } else {
-      // Get SIMD back end according to the option chosen
-      auto SIMDGen = SIMDBackEndFactory::getBackend(MVOptions::ISA);
-
+      // This is the most beautiful code I have ever seen
       int Code = setjmp(GotoEndScop);
       if (Code) {
         if (IsLastScop) {
@@ -145,8 +148,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         continue;
       }
 
-      // Computing the cost model of the CDAG created
-      SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
+      SInfo = CostModel.computeCostModel(SL);
 
       // if (SInfo.isThereAnyVectorization()) {
       // FIXME:
@@ -163,13 +165,13 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
         // Render initializations if needed for special cases such as
         // reductions
-        for (auto InitRedux : SIMDGen->getInitReg()) {
+        for (auto InitRedux : BackEnd->getInitReg()) {
           MVR.renderSIMDInstBeforePlace(InitRedux, SL);
         }
 
         // Add includes if option
         if (MVOptions::Headers) {
-          MVR.addHeaders(SIMDGen->getHeadersNeeded(), Scop->FID);
+          MVR.addHeaders(BackEnd->getHeadersNeeded(), Scop->FID);
           MVOptions::Headers = false;
         }
 
@@ -178,26 +180,26 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         MVInfo("Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
                "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
                "; Scalar cost = " +
-               MVCostModel::computeCostForStmtWrapperList(SL).toString());
+               CostModel.computeCostForStmtWrapperList(SL).toString());
       } else {
         MVWarn(
             "Region not vectorized (SCOP = " + std::to_string(Scop->StartLine) +
             "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
             "; Scalar cost = " +
-            MVCostModel::computeCostForStmtWrapperList(SL).toString());
+            CostModel.computeCostForStmtWrapperList(SL).toString());
       }
 
     last_scop:
       // Render the registers we are going to use, declarations
       if (IsLastScop) {
-        for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+        for (auto InsSIMD : BackEnd->renderSIMDRegister(SInfo.SIMDList)) {
           Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
         }
       }
     }
   }
 
-  return;
+  return true;
 }
 
 // ---------------------------------------------
@@ -205,16 +207,13 @@ bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
   // Continue if empty function or no pramgas
   if ((!F->hasBody()) || (!ScopHandler::funcHasROI(F)))
     return true;
-
-  // MVRewriter.clearAllMappings();
+  // Continue if not target function if specified
   if ((MVOptions::TargetFunc != "") &&
       (F->getNameAsString() != MVOptions::TargetFunc)) {
     MACVETH_DEBUG("MVFuncVisitor", "No target function");
     return true;
   }
-  // If the function has scops to parse, then scan them
-  scanScops(F);
-  return true;
+  return scanScops(F);
 }
 
 // ---------------------------------------------
@@ -223,7 +222,7 @@ MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
   TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
   Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
                  &CI.getASTContext());
-  // Parsing pragmas
+  // Parsing pragmas at preprocessing stage
   auto &PP = CI.getPreprocessor();
   auto Scops = new ScopHandler();
   PP.AddPragmaHandler(new PragmaScopHandler(Scops));

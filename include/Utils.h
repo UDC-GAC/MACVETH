@@ -49,7 +49,7 @@ namespace macveth {
 class Utils {
 public:
   /// Type of string list
-  using StrList = std::list<std::string>;
+  using StrList = std::vector<std::string>;
 
   /// When declaring static members of class, when assigning them you need
   /// to redeclare them or since C++17 you can just put in
@@ -60,7 +60,7 @@ public:
 
   /// Check if list contains an element given
   template <typename T>
-  static bool contains(std::list<T> listOfElements, T element);
+  static bool contains(std::vector<T> listOfElements, T element);
 
   /// Converting clang expressions to strings
   static std::string getStringFromStmt(const Stmt *S);

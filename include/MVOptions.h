@@ -98,7 +98,7 @@ static std::map<std::string, MVCPUInfo::MVArch> MVStrArch = {
     {"cascadelake", MVCPUInfo::MVArch::IntelDef}};
 
 /// Mapping between the ISA and supported architectures
-static std::map<MVCPUInfo::MVISA, std::list<MVCPUInfo::MVArch>>
+static std::map<MVCPUInfo::MVISA, std::vector<MVCPUInfo::MVArch>>
     SupportedISAArch = {
         {MVCPUInfo::MVISA::SSE,
          {MVCPUInfo::MVArch::nehalem, MVCPUInfo::MVArch::westmere,

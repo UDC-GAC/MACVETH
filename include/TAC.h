@@ -43,7 +43,7 @@ namespace macveth {
 class TAC;
 
 /// List of TACs
-using TacListType = std::list<TAC>;
+using TacListT = std::list<TAC>;
 
 /// Class TAC: three-address-code. This abstraction is a way of representing the
 /// Single-Statement Assignment (SSA).
@@ -109,7 +109,6 @@ public:
   void setLoopName(std::string LoopName) { this->LoopName = LoopName; }
   /// Get loop name
   std::string getLoopName() const { return this->LoopName; }
-
   /// Get macveth operation type
   MVOp getMVOP() const { return this->MVOP; };
 
@@ -128,15 +127,15 @@ public:
 
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs
-  static TacListType stmtToTAC(clang::Stmt *const ST);
+  static TacListT stmtToTAC(clang::Stmt *const ST);
 
   /// Print/render TAC as regular statements
-  static std::string renderTacAsStmt(TacListType TL, int Offset);
+  static std::string renderTacAsStmt(TacListT TL, int Offset);
 
   /// Unrolls TacList given onto a new list
-  static TacListType unrollTacList(TacListType Tac, int UnrollFactor,
-                                   int UpperBound, std::string LoopLevel,
-                                   bool FullUnroll = false);
+  static TacListT unrollTacList(const TacListT &TacList, int UnrollFactor,
+                                int UpperBound, std::string LoopLevel,
+                                bool FullUnroll = false);
 
   /// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and
   /// the S value which holds the iteration of the unrolling basically

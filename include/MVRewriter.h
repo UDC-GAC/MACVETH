@@ -39,27 +39,26 @@ class MVRewriter {
 public:
   explicit MVRewriter(Rewriter &R) : Rewrite(R) {}
 
-  std::list<std::string> rewriteLoops(std::list<StmtWrapper *> SList,
+  std::list<std::string> rewriteLoops(StmtWrapperVectorT SList,
                                       std::list<std::string> DimAlreadyDecl);
   /// Comment those stmts which are replaced
-  void commentReplacedStmts(std::list<StmtWrapper *> SList);
+  void commentReplacedStmts(StmtWrapperVectorT SList);
   //// Add includes to files if needed
-  void addHeaders(std::list<std::string> S, FileID FID);
+  void addHeaders(std::vector<std::string> S, FileID FID);
   /// Rewrite TAC as regular statements
-  void renderTACInPlace(std::list<StmtWrapper *> SL, long TacID, int Offset);
+  void renderTACInPlace(StmtWrapperVectorT SL, long TacID, int Offset);
   /// Render SIMD instructions where they should be (regular map operations)
-  void renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
-                             std::list<StmtWrapper *> SL);
+  void renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI, StmtWrapperVectorT SL);
   /// Render SIMD after a statement (for reductions, for instance)
   bool renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
-                                std::list<StmtWrapper *> SL);
+                                StmtWrapperVectorT SL);
 
   /// Render SIMD where the original scalar code is
-  void renderSIMDInOrder(SIMDBackEnd::SIMDInst SI, std::list<StmtWrapper *> SL);
+  void renderSIMDInOrder(SIMDBackEnd::SIMDInst SI, StmtWrapperVectorT SL);
 
   /// Render SIMD before a statement (for initializing reductions, for instance)
   bool renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
-                                 std::list<StmtWrapper *> SL);
+                                 StmtWrapperVectorT SL);
 
 private:
   Rewriter &Rewrite;

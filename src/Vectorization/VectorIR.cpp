@@ -30,7 +30,7 @@
 #include <algorithm>
 
 // ---------------------------------------------
-bool opsAreSequential(int VL, const Node::NodeListType &VOps) {
+bool opsAreSequential(int VL, const NodeVectorT &VOps) {
   bool Sequential = true;
   for (int i = 1; i < VL; ++i) {
     auto PrevOpInfo = VOps[i - 1]->getSchedInfo();
@@ -46,8 +46,8 @@ bool opsAreSequential(int VL, const Node::NodeListType &VOps) {
 }
 
 // ---------------------------------------------
-bool rawDependencies(int VL, const Node::NodeListType &VOps,
-                     const Node::NodeListType &VLoad) {
+bool rawDependencies(int VL, const NodeVectorT &VOps,
+                     const NodeVectorT &VLoad) {
   for (int i = 0; i < VL - 1; ++i) {
     if (VOps[i]->getOutputInfoName() == VLoad[i + 1]->getRegisterValue()) {
       return true;
@@ -58,8 +58,7 @@ bool rawDependencies(int VL, const Node::NodeListType &VOps,
 }
 
 // ---------------------------------------------
-bool isAtomic(int VL, const Node::NodeListType &VOps,
-              const Node::NodeListType &VLoad) {
+bool isAtomic(int VL, const NodeVectorT &VOps, const NodeVectorT &VLoad) {
   for (int i = 0; i < VL; ++i) {
     if (VOps[i]->getSchedInfo().FreeSched <=
         VLoad[i]->getSchedInfo().FreeSched) {
@@ -70,10 +69,11 @@ bool isAtomic(int VL, const Node::NodeListType &VOps,
 }
 
 // ---------------------------------------------
-bool VectorIR::VOperand::checkIfVectorAssigned(int VL, Node::NodeListType &V,
-                                               MVDataType::VWidth Width) {
+bool VOperand::checkIfVectorAssigned(int VL, NodeVectorT &V,
+                                     MVDataType::VWidth Width) {
   for (int n = 0; n < VL; ++n) {
-    if (MapRegToVReg.find(V[n]->getRegisterValue()) == MapRegToVReg.end()) {
+    if (VectorIR::MapRegToVReg.find(V[n]->getRegisterValue()) ==
+        VectorIR::MapRegToVReg.end()) {
       return false;
     }
   }
@@ -98,7 +98,7 @@ std::string getStrTypeOp(VectorIR::VType T) {
 }
 
 // ---------------------------------------------
-std::string VectorIR::VOperand::toString() {
+std::string VOperand::toString() {
   std::string Str = Name + "[" + (IsTmpResult ? "TempResult, " : "") +
                     (IsLoad ? "LoadOp, " : "") + (IsStore ? "StoreOp, " : "");
   if (this->Size < 1) {
@@ -120,7 +120,7 @@ std::string VectorIR::VOperand::toString() {
 }
 
 // ---------------------------------------------
-std::string VectorIR::VectorOP::toString() {
+std::string VectorOP::toString() {
   std::string Str = "[" + getStrTypeOp(this->VT) + "] ";
   if (this->VT == VectorIR::VType::SEQ) {
     return Str + " (" + std::to_string(this->Order) +
@@ -136,20 +136,18 @@ std::string VectorIR::VectorOP::toString() {
 }
 
 // ---------------------------------------------
-bool VectorIR::VectorOP::isBinOp() {
-  return R.UOP[0]->getOutputInfo().IsBinaryOp;
-}
+bool VectorOP::isBinOp() { return R.UOP[0]->getOutputInfo().IsBinaryOp; }
 
 // ---------------------------------------------
-BinaryOperator::Opcode VectorIR::VectorOP::getBinOp() {
+BinaryOperator::Opcode VectorOP::getBinOp() {
   return R.UOP[0]->getOutputInfo().MVOP.ClangOP;
 }
 
 // ---------------------------------------------
-MVOp VectorIR::VectorOP::getMVOp() { return R.UOP[0]->getOutputInfo().MVOP; }
+MVOp VectorOP::getMVOp() { return R.UOP[0]->getOutputInfo().MVOP; }
 
 // ---------------------------------------------
-bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
+bool areInSameVector(int VL, NodeVectorT &V, bool Store) {
   auto E = (V[0]->getOutputInfo().E) && (Store) ? V[0]->getOutputInfo().E
                                                 : V[0]->getMVExpr();
   if (!E) {
@@ -179,7 +177,7 @@ bool areInSameVector(int VL, Node::NodeListType &V, bool Store) {
 }
 
 // ---------------------------------------------
-std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
+std::vector<long> getMemIdx(int VL, NodeVectorT &V, unsigned int Mask,
                             bool Store) {
   std::vector<long> Idx(VL);
   Idx[0] = 0;
@@ -214,7 +212,7 @@ std::vector<long> getMemIdx(int VL, Node::NodeListType &V, unsigned int Mask,
 }
 
 // ---------------------------------------------
-unsigned int getMask(int VL, int VS, Node::NodeListType &V) {
+unsigned int getMask(int VL, int VS, NodeVectorT &V) {
   unsigned int Mask = 0x00;
   for (int n = 0; n < VS; ++n) {
     if ((V[n] != nullptr) && (n < VL)) {
@@ -225,8 +223,8 @@ unsigned int getMask(int VL, int VS, Node::NodeListType &V) {
 }
 
 // ---------------------------------------------
-bool VectorIR::VOperand::checkIfAlreadyLoaded(Node *PrimaryNode) {
-  for (auto T : MapLoads) {
+bool VOperand::checkIfAlreadyLoaded(Node *PrimaryNode) {
+  for (auto T : VectorIR::MapLoads) {
     if (std::get<1>(T) == this->getName()) {
       if (std::get<0>(T)[0] == PrimaryNode->getScop()[0]) {
         return true;
@@ -237,11 +235,11 @@ bool VectorIR::VOperand::checkIfAlreadyLoaded(Node *PrimaryNode) {
 }
 
 // ---------------------------------------------
-bool VectorIR::VOperand::checkIfAlreadyStored(Node::NodeListType &V) {
+bool VOperand::checkIfAlreadyStored(NodeVectorT &V) {
   for (int i = 0; i < (int)V.size(); ++i) {
     auto Reg = V[i]->getRegisterValue();
-    if (MapStores.find(Reg) != MapStores.end()) {
-      if (MapStores[Reg]) {
+    if (VectorIR::MapStores.find(Reg) != VectorIR::MapStores.end()) {
+      if (VectorIR::MapStores[Reg]) {
         return true;
       }
     }
@@ -250,10 +248,10 @@ bool VectorIR::VOperand::checkIfAlreadyStored(Node::NodeListType &V) {
 }
 
 // ---------------------------------------------
-VectorIR::VOperand::VOperand(){/* empty constructor */};
+VOperand::VOperand(){/* empty constructor */};
 
 // ---------------------------------------------
-VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
+VOperand::VOperand(int VL, NodeVectorT &V, bool Res) {
   // Init list of unit operands
   this->Order = V[0]->getTacID();
   this->Offset = V[0]->getUnrollFactor();
@@ -282,7 +280,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   }
 
   // Computing data width
-  this->Width = getWidthFromVDataType(this->VSize, this->DType);
+  this->Width = VectorIR::getWidthFromVDataType(this->VSize, this->DType);
   this->Size = this->Width / MVDataType::VDataTypeWidthBits[this->DType];
   for (unsigned int i = 0; i < VSize; ++i) {
     this->UOP.push_back(V[i]);
@@ -294,7 +292,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     this->IsStore = true;
     for (int T = 0; T < VL; ++T) {
       this->StoreValues.push_back(V[T]->getRegisterValue());
-      MapStores[V[T]->getRegisterValue()] = 1;
+      VectorIR::MapStores[V[T]->getRegisterValue()] = 1;
     }
   }
 
@@ -308,14 +306,19 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   if (VecAssigned) {
     std::set<std::string> RegistersUsed;
     for (int n = 0; n < VL; ++n) {
-      auto NewRegIdx = MapRegToVReg[V[n]->getRegisterValue()];
+      auto NewRegIdx = VectorIR::MapRegToVReg[V[n]->getRegisterValue()];
       this->RegIdx.push_back(NewRegIdx);
       auto Reg = std::get<0>(NewRegIdx);
       RegistersUsed.insert(Reg);
-      LiveOut[Reg] = std::max(this->Order, (int)LiveOut[Reg]);
-      this->Order = std::max(this->Order, (int)LiveIn[Reg]);
+      VectorIR::LiveOut[Reg] =
+          std::max(this->Order, (int)VectorIR::LiveOut[Reg]);
+      this->Order = std::max(this->Order, (int)VectorIR::LiveIn[Reg]);
       // Check if index of the register is the same
       this->RequiresRegisterPacking |= (n != std::get<1>(NewRegIdx));
+      MACVETH_DEBUG("VectorIR",
+                    "n = " + std::to_string(n) + "; NewRegIdx = " +
+                        std::to_string(std::get<1>(NewRegIdx)) + "; CMP = " +
+                        std::to_string((n != std::get<1>(NewRegIdx))));
     }
     assert(RegistersUsed.size() >= 1 &&
            "We should have used at least one register");
@@ -327,10 +330,11 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
     if (this->SameVector) {
       std::string RegName = *RegistersUsed.begin();
       if (!this->IsStore) {
-        this->IsPartial = SlotsUsed[RegName] != VL;
+        this->IsPartial = (VectorIR::SlotsUsed[RegName] != VL);
       }
+      this->IsPartial |= ((VL > 2) && (VL != (int)this->Size));
       if (this->RequiresRegisterPacking) {
-        this->IsPartial = (MapRegSize[RegName] != (int)this->Size);
+        this->IsPartial = (VectorIR::MapRegSize[RegName] != (int)this->Size);
       }
     }
   }
@@ -338,7 +342,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // Get name of this operand, otherwise create a custom name
   this->Name =
       (VecAssigned && !this->RequiresRegisterPacking && !this->IsPartial)
-          ? std::get<0>(MapRegToVReg[PrimaryNode->getRegisterValue()])
+          ? std::get<0>(VectorIR::MapRegToVReg[PrimaryNode->getRegisterValue()])
           : genNewVOpName();
 
   auto AlreadyLoaded = checkIfAlreadyLoaded(PrimaryNode);
@@ -351,7 +355,7 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   // So, if it has not been assigned yet, then we added to the list of loads
   // (or register that we are going to pack somehow). It can also be a store.
   if (!AlreadyLoaded) {
-    MapLoads.push_back(
+    VectorIR::MapLoads.push_back(
         std::make_tuple(PrimaryNode->getScop(), this->getName()));
   }
 
@@ -366,11 +370,12 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
   for (int n = 0; n < VL; ++n) {
     IsMemOp &= (V[n]->needsMemLoad());
     if (!VecAssigned) {
-      MapRegToVReg[V[n]->getRegisterValue()] = std::make_tuple(this->Name, n);
+      VectorIR::MapRegToVReg[V[n]->getRegisterValue()] =
+          std::make_tuple(this->Name, n);
     }
-    SlotsUsed[this->Name] = VL;
-    LiveIn[this->Name] = this->Order;
-    MapRegSize[this->Name] = VL;
+    VectorIR::SlotsUsed[this->Name] = VL;
+    VectorIR::LiveIn[this->Name] = this->Order;
+    VectorIR::MapRegSize[this->Name] = VL;
     if (n > 0) {
       this->EqualVal = this->EqualVal && (V[n]->getRegisterValue() ==
                                           V[n - 1]->getRegisterValue());
@@ -408,9 +413,9 @@ VectorIR::VOperand::VOperand(int VL, Node::NodeListType &V, bool Res) {
 };
 
 // ---------------------------------------------
-VectorIR::VType getVectorOpType(int VL, const Node::NodeListType &VOps,
-                                const Node::NodeListType &VLoadA,
-                                const Node::NodeListType &VLoadB) {
+VectorIR::VType getVectorOpType(int VL, const NodeVectorT &VOps,
+                                const NodeVectorT &VLoadA,
+                                const NodeVectorT &VLoadB) {
   // Premises of our algorithm
   // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
@@ -442,8 +447,8 @@ VectorIR::VType getVectorOpType(int VL, const Node::NodeListType &VOps,
 }
 
 // ---------------------------------------------
-VectorIR::VType getVectorOpType(int VL, const Node::NodeListType &VOps,
-                                const Node::NodeListType &VLoadA) {
+VectorIR::VType getVectorOpType(int VL, const NodeVectorT &VOps,
+                                const NodeVectorT &VLoadA) {
   // Premises of our algorithm
   // 1.- Check whether operations are sequential
   bool Seq = opsAreSequential(VL, VOps);
@@ -472,9 +477,8 @@ VectorIR::VType getVectorOpType(int VL, const Node::NodeListType &VOps,
 }
 
 // ---------------------------------------------
-VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
-                             Node::NodeListType &VLoadA,
-                             Node::NodeListType &VLoadB) {
+VectorOP::VectorOP(int VL, NodeVectorT &VOps, NodeVectorT &VLoadA,
+                   NodeVectorT &VLoadB) {
   // The assumption is that as all operations are the same, then all the
   // operations have the same TAC order
   this->Order = VOps[0]->getTacID();
@@ -502,7 +506,7 @@ VectorIR::VectorOP::VectorOP(int VL, Node::NodeListType &VOps,
   // form, as it will be synthesized in its original form
   if ((this->VT == VectorIR::VType::SEQ)) {
     MACVETH_DEBUG("VectorOP", "This is a sequential operation");
-    SequentialResults.push_back(VOps[0]->getRegisterValue());
+    VectorIR::SequentialResults.push_back(VOps[0]->getRegisterValue());
     return;
   }
 

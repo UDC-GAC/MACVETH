@@ -56,7 +56,7 @@ struct ScopLoc {
   unsigned EndLine = 0;
   unsigned Start = 0;
   unsigned End = 0;
-  std::list<std::string> DimVisited = {};
+  std::vector<std::string> DimVisited = {};
   bool ScopHasBeenScanned = false;
 
   struct PragmaArgs {

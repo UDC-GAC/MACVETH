@@ -60,7 +60,7 @@ std::string Utils::getExePath() {
 
 //-------------------------------------------------------------
 template <typename T>
-bool Utils::contains(std::list<T> ListOfElements, T Element) {
+bool Utils::contains(std::vector<T> ListOfElements, T Element) {
   return std::find(ListOfElements.begin(), ListOfElements.end(), Element) !=
          ListOfElements.end();
 }

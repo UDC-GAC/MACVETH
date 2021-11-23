@@ -36,9 +36,8 @@ using namespace clang;
 using namespace macveth;
 
 // ---------------------------------------------
-std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
-                                                   ScopLoc *Scop) {
-  std::list<StmtWrapper *> SList;
+StmtWrapperVectorT StmtWrapper::genStmtWraps(CompoundStmt *CS, ScopLoc *Scop) {
+  StmtWrapperVectorT SList;
 
   /// Get loop information
   ScopHandler::visitScop(*Scop);
@@ -62,7 +61,9 @@ std::list<StmtWrapper *> StmtWrapper::genStmtWraps(CompoundStmt *CS,
       if (FL) {
         auto B = dyn_cast<CompoundStmt>(FL->getBody());
         if (B) {
-          SList.splice(SList.end(), StmtWrapper::genStmtWraps(B, Scop));
+          auto NewVector = StmtWrapper::genStmtWraps(B, Scop);
+          // SList.splice(SList.end(), );
+          SList.insert(SList.end(), NewVector.begin(), NewVector.end());
         } else {
           auto B = dyn_cast<Stmt>(FL->getBody());
           if (B) {
@@ -275,18 +276,17 @@ StmtWrapper::LoopInfo::getDimDeclarations(std::list<std::string> DimsDeclared) {
 
 // ---------------------------------------------
 std::string StmtWrapper::LoopInfo::getEpilogs(StmtWrapper *SWrap) {
-  std::string Epilog = "";
   if (SWrap->isLeftOver()) {
-    return Epilog;
+    return "";
   }
-  std::list<StmtWrapper *> SVec = SWrap->ListStmt;
   LoopInfo Loop = SWrap->getLoopInfo();
   // We have to assume that the loop variable has not been altered
   auto EpiInit = Loop.Dim + " = " + Loop.Dim;
   auto EpiCond = Loop.Dim + " < " + Loop.StrUpperBound;
   auto EpiInc = Loop.Dim + " += " + std::to_string(Loop.Step);
-  Epilog += "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";
-  for (auto S : SVec) {
+  std::string Epilog =
+      "\nfor (" + EpiInit + "; " + EpiCond + "; " + EpiInc + ") {";
+  for (auto S : SWrap->getStmtVector()) {
     Epilog += "\n" + Utils::getStringFromStmt(S->getClangStmt()) + ";";
   }
   Epilog += "\n}";
@@ -382,7 +382,7 @@ bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
 }
 
 // ---------------------------------------------
-TacListType StmtWrapper::unroll(LoopInfo L) {
+TacListT StmtWrapper::unroll(LoopInfo L) {
   MACVETH_DEBUG("StmtWrapper",
                 "unrolling Dim " + L.Dim + "; Stmt = " +
                     Utils::getStringFromStmt(this->getClangStmt()) +

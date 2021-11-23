@@ -28,7 +28,7 @@
 
 // ---------------------------------------------
 std::list<std::string>
-MVRewriter::rewriteLoops(std::list<StmtWrapper *> SList,
+MVRewriter::rewriteLoops(StmtWrapperVectorT SList,
                          std::list<std::string> DimAlreadyDecl) {
   std::list<std::string> DimsDeclared = {};
   for (auto SWrap : SList) {
@@ -46,7 +46,7 @@ MVRewriter::rewriteLoops(std::list<StmtWrapper *> SList,
           clang::CharSourceRange::getCharRange(clang::SourceRange(Begin, End));
       Rewrite.RemoveText(SR);
       Rewrite.RemoveText(Loop.LoopStmt->getEndLoc());
-      rewriteLoops(SWrap->getListStmt(), DimAlreadyDecl);
+      rewriteLoops(SWrap->getStmtVector(), DimAlreadyDecl);
       continue;
     }
 
@@ -90,7 +90,7 @@ MVRewriter::rewriteLoops(std::list<StmtWrapper *> SList,
       Rewrite.InsertTextAfterToken(Loop.EndLoc, Epilog + "\n");
     }
     if (!Loop.FullyUnrolled)
-      rewriteLoops(SWrap->getListStmt(), DimAlreadyDecl);
+      rewriteLoops(SWrap->getStmtVector(), DimAlreadyDecl);
   }
   // Declare variables
   SourceLocation Loc = SList.front()->getClangStmt()->getBeginLoc();
@@ -101,10 +101,10 @@ MVRewriter::rewriteLoops(std::list<StmtWrapper *> SList,
 }
 
 // ---------------------------------------------
-void MVRewriter::commentReplacedStmts(std::list<StmtWrapper *> SList) {
+void MVRewriter::commentReplacedStmts(StmtWrapperVectorT SList) {
   for (auto S : SList) {
     if (S->isLoop()) {
-      commentReplacedStmts(S->getListStmt());
+      commentReplacedStmts(S->getStmtVector());
       continue;
     }
     Rewrite.RemoveText(
@@ -115,10 +115,10 @@ void MVRewriter::commentReplacedStmts(std::list<StmtWrapper *> SList) {
 
 // ---------------------------------------------
 bool MVRewriter::renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
-                                           std::list<StmtWrapper *> SL) {
+                                           StmtWrapperVectorT SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      if (renderSIMDInstBeforePlace(SI, S->getListStmt())) {
+      if (renderSIMDInstBeforePlace(SI, S->getStmtVector())) {
         Rewrite.InsertTextBefore(S->getClangStmt()->getBeginLoc(),
                                  SI.render() + ";\n");
       }
@@ -140,10 +140,10 @@ bool MVRewriter::renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
 
 // ---------------------------------------------
 bool MVRewriter::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
-                                          std::list<StmtWrapper *> SL) {
+                                          StmtWrapperVectorT SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      if (renderSIMDInstAfterPlace(SI, S->getListStmt())) {
+      if (renderSIMDInstAfterPlace(SI, S->getStmtVector())) {
         // MACVETH_DEBUG("MVRewrite",
         //               "LOOP ORDER = " +
         //                   std::to_string(SI.getMVSourceLocation().getOrder()));
@@ -177,14 +177,10 @@ bool MVRewriter::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
 
 // ---------------------------------------------
 void MVRewriter::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
-                                   std::list<StmtWrapper *> SL) {
+                                   StmtWrapperVectorT SL) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      // if (S->getLoopInfo().FullyUnrolled) {
-      //   renderSIMDInstAfterPlace(SI, S->getListStmt());
-      // } else {
-      renderSIMDInstInPlace(SI, S->getListStmt());
-      //}
+      renderSIMDInstInPlace(SI, S->getStmtVector());
     } else {
       for (auto T : S->getTacList()) {
         if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
@@ -199,7 +195,7 @@ void MVRewriter::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
 
 // ---------------------------------------------
 void MVRewriter::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
-                                       std::list<StmtWrapper *> SL) {
+                                       StmtWrapperVectorT SL) {
   // Scalar case: is this needed?
   if (SI.isSequential() && SI.getMVSourceLocation().isInOrder()) {
     for (auto S : SL) {
@@ -239,11 +235,11 @@ void MVRewriter::renderSIMDInstInPlace(SIMDBackEnd::SIMDInst SI,
 }
 
 // ---------------------------------------------
-void MVRewriter::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID,
+void MVRewriter::renderTACInPlace(StmtWrapperVectorT SL, long TacID,
                                   int Offset) {
   for (auto S : SL) {
     if (S->isLoop()) {
-      renderTACInPlace(S->getListStmt(), TacID, Offset);
+      renderTACInPlace(S->getStmtVector(), TacID, Offset);
       continue;
     }
     if (((TacID == S->getTacList().back().getTacID()) &&
@@ -258,7 +254,7 @@ void MVRewriter::renderTACInPlace(std::list<StmtWrapper *> SL, long TacID,
 }
 
 // ---------------------------------------------
-void MVRewriter::addHeaders(std::list<std::string> S, FileID FID) {
+void MVRewriter::addHeaders(std::vector<std::string> S, FileID FID) {
   auto SM = Utils::getSourceMgr();
   if (S.size() > 0) {
     Rewrite.InsertText(SM->translateLineCol(FID, 1, 1),

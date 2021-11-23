@@ -70,8 +70,8 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
 }
 
 // ---------------------------------------------
-std::string SIMDBackEnd::getOpName(const VectorIR::VOperand &V, bool Ptr,
-                                   bool RegVal, int Position, int Offset) {
+std::string SIMDBackEnd::getOpName(const VOperand &V, bool Ptr, bool RegVal,
+                                   int Position, int Offset) {
   if ((Ptr) && (V.IsStore || V.IsLoad))
     return "&" + V.getRegName(Position, Offset);
   if (RegVal)
@@ -81,7 +81,7 @@ std::string SIMDBackEnd::getOpName(const VectorIR::VOperand &V, bool Ptr,
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInst
-SIMDBackEnd::addNonSIMDInst(VectorIR::VectorOP &OP, SIMDBackEnd::SIMDType SType,
+SIMDBackEnd::addNonSIMDInst(VectorOP &OP, SIMDBackEnd::SIMDType SType,
                             MVSourceLocation MVSL,
                             SIMDBackEnd::SIMDInstListType *IL) {
   auto Lhs = OP.getResult().getName();
@@ -126,8 +126,8 @@ std::string SIMDBackEnd::SIMDInst::render() {
 }
 
 // ---------------------------------------------
-std::list<std::string> SIMDBackEnd::renderSIMDasString(SIMDInstListType &S) {
-  std::list<std::string> L;
+std::vector<std::string> SIMDBackEnd::renderSIMDasString(SIMDInstListType &S) {
+  std::vector<std::string> L;
   std::for_each(S.begin(), S.end(),
                 [&L](auto I) { L.push_back(I.render() + ";\t"); });
   return L;
@@ -144,7 +144,7 @@ bool equalValues(int VL, std::vector<Node *> N) {
 }
 
 // ---------------------------------------------
-bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL,
+bool SIMDBackEnd::getSIMDVOperand(VOperand V, SIMDInstListType *IL,
                                   bool Reduction) {
   MACVETH_DEBUG("SIMDBackEnd",
                 "V = " + V.getName() + "; load = " + std::to_string(V.IsLoad) +
@@ -208,7 +208,7 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL,
 }
 
 // ---------------------------------------------
-void SIMDBackEnd::mapOperation(VectorIR::VectorOP &V, SIMDInstListType *TI) {
+void SIMDBackEnd::mapOperation(VectorOP &V, SIMDInstListType *TI) {
   SIMDInstListType TIL;
 
   // Special case:
@@ -261,7 +261,7 @@ void SIMDBackEnd::mapOperation(VectorIR::VectorOP &V, SIMDInstListType *TI) {
 }
 
 // ---------------------------------------------
-void SIMDBackEnd::reduceOperation(VectorIR::VectorOP &V, SIMDInstListType *TI) {
+void SIMDBackEnd::reduceOperation(VectorOP &V, SIMDInstListType *TI) {
   MACVETH_DEBUG("SIMDBackend", "reduction: R = " + V.getResult().getName() +
                                    "; A = " + V.getOpA().getName() +
                                    "; B = " + V.getOpB().getName());
@@ -270,8 +270,7 @@ void SIMDBackEnd::reduceOperation(VectorIR::VectorOP &V, SIMDInstListType *TI) {
 }
 
 // ---------------------------------------------
-SIMDBackEnd::SIMDInstListType
-SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP &V) {
+SIMDBackEnd::SIMDInstListType SIMDBackEnd::getSIMDfromVectorOP(VectorOP &V) {
   SIMDInstListType IL;
 
   // Arranging the operation
@@ -300,7 +299,7 @@ SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP &V) {
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
-SIMDBackEnd::getSIMDfromVectorOP(const std::list<VectorIR::VectorOP> &VList) {
+SIMDBackEnd::getSIMDfromVectorOP(const VectorOPListT &VList) {
   SIMDInstListType IL;
 
   // Get list of SIMD instructions

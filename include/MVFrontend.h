@@ -51,9 +51,9 @@ public:
 private:
   /// Check scop options regarding unrolling and apply them to the statements
   /// within
-  void performUnrolling(std::list<StmtWrapper *> SL);
+  void performUnrolling(StmtWrapperVectorT SL);
   /// Main function in charge of scanning scops on each function with scops
-  void scanScops(FunctionDecl *fd);
+  bool scanScops(FunctionDecl *fd);
   /// Context
   ASTContext *Context;
   /// For rewriting code in the output program

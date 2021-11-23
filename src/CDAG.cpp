@@ -36,7 +36,7 @@
 using namespace macveth;
 
 // ---------------------------------------------
-Node *CDAG::findWARDataRace(Node *N, Node::NodeListType NL) {
+Node *CDAG::findWARDataRace(Node *N, NodeVectorT &NL) {
   Node *WarNode = nullptr;
   for (auto Op : NL) {
     for (auto In : Op->getInputs()) {
@@ -53,7 +53,7 @@ Node *CDAG::findWARDataRace(Node *N, Node::NodeListType NL) {
 }
 
 // ---------------------------------------------
-Node *CDAG::findRAWDataRace(Node *N, Node::NodeListType NL) {
+Node *CDAG::findRAWDataRace(Node *N, NodeVectorT &NL) {
   Node *RawNode = nullptr;
   for (auto Op : NL) {
     if (!Op->isStoreNodeOp()) {
@@ -74,7 +74,7 @@ Node *CDAG::findRAWDataRace(Node *N, Node::NodeListType NL) {
 }
 
 // ---------------------------------------------
-Node *CDAG::insertTac(TAC T, Node::NodeListType L) {
+Node *CDAG::insertTac(TAC T, NodeVectorT L) {
   // Special cases are those Nodes which hold an assignment after the
   // operation
   if (T.getMVOP().isAssignment()) {
@@ -110,7 +110,7 @@ no_output:
 }
 
 // ---------------------------------------------
-CDAG CDAG::createCDAGfromTAC(const TacListType &TL) {
+CDAG CDAG::createCDAGfromTAC(const TacListT &TL) {
   // Literally create a new CDAG
   CDAG G;
   // Restarting numbering of nodes
