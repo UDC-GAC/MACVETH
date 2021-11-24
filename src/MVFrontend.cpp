@@ -346,6 +346,9 @@ static bool formatMACVETH(StringRef FileName) {
   return false;
 }
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 // ---------------------------------------------
 void MVFrontendAction::EndSourceFileAction() {
   auto &SM = TheRewriter.getSourceMgr();
@@ -356,9 +359,7 @@ void MVFrontendAction::EndSourceFileAction() {
 #else
   llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
 #endif
-  // According to [1] it is not safe to do .write(). Nonetheless, I have not
-  // found any other way to save a RewriterBuffer onto another file.
-  // [1] (as of 16th November 2020)
+  // It is not safe to do .write() inplace:
   // https://clang.llvm.org/doxygen/classclang_1_1RewriteBuffer.html#a0b72d3db59db1731c63217c291929ced
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
   outFile.close();
