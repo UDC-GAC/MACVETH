@@ -134,9 +134,9 @@ std::vector<std::string> SIMDBackEnd::renderSIMDasString(SIMDInstListType &S) {
 }
 
 // ---------------------------------------------
-bool equalValues(int VL, std::vector<Node *> N) {
+bool equalValues(int VL, NodeVectorT N) {
   for (int n = 1; n < VL; ++n) {
-    if (N[0]->getValue() != N[n]->getValue()) {
+    if (N[0]->getRegisterValue() != N[n]->getRegisterValue()) {
       return false;
     }
   }
@@ -156,6 +156,7 @@ bool SIMDBackEnd::getSIMDVOperand(VOperand V, SIMDInstListType *IL,
   }
 
   if ((V.RequiresRegisterPacking) ||
+      //((!V.MemOp) && (!V.IsLoad) && (V.IsPartial) && (V.SameVector))) {
       ((!V.MemOp) && (V.IsPartial) && (V.SameVector))) {
     IL->splice(IL->end(), vregisterpacking(V));
     return true;
@@ -174,7 +175,7 @@ bool SIMDBackEnd::getSIMDVOperand(VOperand V, SIMDInstListType *IL,
   //
   // We will say it is a set if we have to explicitly set the values of the
   // vector operand
-  auto EqualVal = equalValues(V.VSize, V.UOP);
+  auto EqualVal = equalValues(V.VectorLength, V.UOP);
   auto ContMem = V.MemOp && (V.Contiguous);
   auto ScatterMem = V.MemOp && !ContMem;
   auto ExpVal = !V.MemOp;
@@ -212,12 +213,13 @@ void SIMDBackEnd::mapOperation(VectorOP &V, SIMDInstListType *TI) {
   SIMDInstListType TIL;
 
   // Special case:
-  if (V.getResult().IsStore) {
-    if ((!V.getResult().Contiguous) && (V.getOpB().RequiresRegisterPacking)) {
-      TI->splice(TI->end(), singleElementScatterOp(V));
-      return;
-    }
-  }
+  // if (V.getResult().IsStore) {
+  //   if ((!V.getResult().Contiguous) && (V.getOpB().RequiresRegisterPacking))
+  //   {
+  //     TI->splice(TI->end(), singleElementScatterOp(V));
+  //     return;
+  //   }
+  // }
 
   // Arranging the operands: maybe they need load, set, bcast...
   getSIMDVOperand(V.getOpA(), TI);
@@ -263,9 +265,8 @@ void SIMDBackEnd::mapOperation(VectorOP &V, SIMDInstListType *TI) {
 // ---------------------------------------------
 void SIMDBackEnd::reduceOperation(VectorOP &V, SIMDInstListType *TI) {
   MACVETH_DEBUG("SIMDBackend", "reduction: R = " + V.getResult().getName() +
-                                   "; A = " + V.getOpA().getName() +
-                                   "; B = " + V.getOpB().getName());
-  getSIMDVOperand(V.getOpB(), TI);
+                                   "; B = " + V.getOpA().getName());
+  getSIMDVOperand(V.getOpA(), TI);
   TI->splice(TI->end(), vreduce(V));
 }
 
@@ -292,7 +293,8 @@ SIMDBackEnd::SIMDInstListType SIMDBackEnd::getSIMDfromVectorOP(VectorOP &V) {
   auto RegType = getRegisterType(V.DT, V.VW);
   addRegToDeclare(RegType, V.getResult().getName());
   addRegToDeclare(RegType, V.getOpA().getName());
-  addRegToDeclare(RegType, V.getOpB().getName());
+  if (!V.IsUnary)
+    addRegToDeclare(RegType, V.getOpB().getName());
 
   return IL;
 }

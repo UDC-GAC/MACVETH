@@ -40,7 +40,6 @@ namespace macveth {
 class Node;
 
 using NodeVectorT = std::vector<Node *>;
-using NodeListT = std::list<Node *>;
 
 /// All Nodes belong to a CDAG. Each node or vertex holds information regarding
 /// the type of operation as well as its Edges (or links to another Nodes).
@@ -218,7 +217,12 @@ public:
   }
 
   /// Get MVExpr
-  MVExpr *getMVExpr() const { return this->MV; }
+  MVExpr *getMVExpr() const {
+    if ((this->MV == nullptr) && (this->isStoreNodeOp())) {
+      return this->getOutputInfo().E;
+    }
+    return this->MV;
+  }
 
   /// Schedule info is needed for the algorithms to perform permutations in
   /// nodes
@@ -240,7 +244,7 @@ public:
   std::vector<int> getScop() { return this->SI.Scop; }
 
   /// Get the output information
-  OutputInfo getOutputInfo() { return this->O; }
+  OutputInfo getOutputInfo() const { return this->O; }
   /// Get the output information
   std::string getOutputInfoName() { return this->O.E->toString(); }
   /// Get the output information
@@ -275,7 +279,7 @@ public:
   }
 
   /// Check if Node type is NODE_STORE
-  bool isStoreNodeOp() { return (this->T == NODE_STORE); }
+  bool isStoreNodeOp() const { return (this->T == NODE_STORE); }
 
   /// Get the node type
   NodeType getNodeType() { return this->T; }

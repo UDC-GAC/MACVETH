@@ -258,6 +258,11 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
   VectorOPListT VList;
   auto MapReductions = mapReductions(Nodes);
   unsigned long PackingSize = MaxVectorLength;
+  MACVETH_DEBUG("MVCostModel", "=== BOTTOM UP CONSUMER ===");
+  for (auto M : MapReductions) {
+    MACVETH_DEBUG("MVCostModel",
+                  M.first + " = " + std::to_string(M.second.size()));
+  }
   NodeVectorT NewPacking;
   while (PackingSize > 1) {
     for (auto &Pair : MapReductions) {

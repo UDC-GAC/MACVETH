@@ -176,9 +176,10 @@ public:
   fuseReductionsList(SIMDBackEnd::SIMDInstListType TIL);
 
   /// Fusing reductions: peephole optimization
-  SIMDBackEnd::SIMDInstListType fuseReductions(SIMDBackEnd::SIMDInstListType I);
   SIMDBackEnd::SIMDInstListType
-  groupReductions(SIMDBackEnd::SIMDInstListType I);
+  fuseReductions(const SIMDBackEnd::SIMDInstListType I);
+  SIMDBackEnd::SIMDInstListType
+  groupReductions(const SIMDBackEnd::SIMDInstListType I);
 
   void
   mergeReductions(std::map<int, SIMDBackEnd::SIMDInstListType> &LRedux,

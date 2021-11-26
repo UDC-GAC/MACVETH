@@ -89,4 +89,5 @@ static void print_1darray(int n, DATA_TYPE POLYBENCH_1D(C, N, n)) {
 static void kernel(DATA_TYPE POLYBENCH_1D(A, N, n),
                    DATA_TYPE POLYBENCH_1D(x, N, n),
                    DATA_TYPE POLYBENCH_1D(y, N, n)) {
+  register int i0, i1, i2, i3, i4, i5, i6;
 #pragma macveth unroll i0 full

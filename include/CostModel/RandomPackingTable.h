@@ -56,6 +56,9 @@ public:
     dir = dir.substr(0, dir.find_last_of("\\/"));
     std::string RPModel = dir + "/RandomPackingModel.csv";
     std::ifstream F(RPModel);
+    MACVETH_DEBUG("RandomPackingTable", RPModel);
+    MACVETH_DEBUG("RandomPackingTable", __FILE__);
+
     assert(!F.fail() && "File does not exist for Random Packing Table!");
     auto Arch = Utils::toLowercase(MVArchStr[MVOptions::Arch]);
     auto ISA = Utils::toLowercase(MVISAStr[MVOptions::ISA]);

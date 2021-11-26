@@ -100,8 +100,6 @@ public:
   /// Clearing all the mappings
   static void clear() {
     VectorIR::MapRegToVReg.clear();
-    // VectorIR::MapRegToVectorSlot.clear();
-    // VectorIR::MapVectorSlotToReg.clear();
     VectorIR::MapLoads.clear();
     VectorIR::MapStores.clear();
   }
@@ -116,7 +114,7 @@ struct VOperand {
   /// Name identifying the vector operand
   mutable std::string Name;
   /// Number non null Nodes
-  unsigned int VSize;
+  unsigned int VectorLength;
   /// Total size of vector
   unsigned int Size = 4;
   /// Array of variable size (Size elements actually) initialized when
@@ -142,12 +140,8 @@ struct VOperand {
   bool LowBits = false;
   /// UOPS are all the same
   bool EqualVal = true;
-  /// Memory addres is unaligned
-  bool Unaligned = false;
   /// Memory is contiguous
   bool Contiguous = true;
-  /// For instance: [x,x+1,y,y+1] where x+2 != y
-  bool ContiguousHalves = false;
   /// Is partial (mask is not all 1)
   bool IsPartial = false;
   /// Values are in the same vector
@@ -193,7 +187,7 @@ struct VOperand {
   /// Return name of VOperand
   std::string &getName() { return Name; }
 
-  /// Return name of the VOperand (const)
+  /// Return name of the VOperand (const operator)
   std::string &getName() const { return Name; }
 
   void setName(const std::string &Name) { this->Name = Name; }
@@ -224,16 +218,11 @@ struct VOperand {
     return this->UOP[Position]->getRegisterValue();
   }
 
-  /// Get loop where the result is computed
-  std::string getOperandLoop() {
-    return (UOP[0] != nullptr) ? UOP[0]->getLoopName() : "";
-  }
-
   /// Copy constructor
   VOperand(const VOperand &V) {
     this->Name = V.getName();
     this->BaseArray = V.BaseArray;
-    this->VSize = V.VSize;
+    this->VectorLength = V.VectorLength;
     this->Size = V.Size;
     this->UOP = V.UOP;
     this->StoreValues = V.StoreValues;
@@ -242,7 +231,6 @@ struct VOperand {
     this->Idx = V.Idx;
     this->Mask = V.Mask;
     this->EqualVal = V.EqualVal;
-    this->Unaligned = V.Unaligned;
     this->Contiguous = V.Contiguous;
     this->IsPartial = V.IsPartial;
     this->HighBits = V.HighBits;
@@ -263,7 +251,7 @@ struct VOperand {
   std::string toString();
 
   /// Basic constructor
-  VOperand(int VL, NodeVectorT &V, bool Res = false);
+  VOperand(int VL, NodeVectorT &V, bool Res = false, int Order = -1);
 
   /// Empty constructor
   VOperand();
@@ -311,7 +299,8 @@ struct VectorOP {
   VOperand &getOpB() { return OpB; }
 
   /// Constructor from the CDAG
-  VectorOP(int VL, NodeVectorT &VOps, NodeVectorT &VLoadA, NodeVectorT &VLoadB);
+  VectorOP(int VL, NodeVectorT &VOps, NodeVectorT &VLoadA, NodeVectorT &VLoadB,
+           bool Reduction = false);
   /// Check if operation is sequential or not
   bool isSequential() { return VT == VectorIR::VType::SEQ; }
   /// Check if operation is sequential or not
