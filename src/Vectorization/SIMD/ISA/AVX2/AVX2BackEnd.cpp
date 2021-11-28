@@ -56,26 +56,6 @@ bool isUniqueReduxOnList(NodeVectorT NL) {
 }
 
 // ---------------------------------------------
-// VOperand getSubVOperand(const VOperand &V, std::string Name, int VSize,
-//                         int Size, MVDataType::VWidth Width,
-//                         MVDataType::VDataType DType, int Offset) {
-//   VOperand NewVOp = V;
-//   NewVOp.Name = Name;
-//   NewVOp.Size = Size;
-//   NewVOp.VectorLength = VSize;
-//   NewVOp.Width = Width;
-//   NewVOp.DType = DType;
-//   NewVOp.IsPartial = (Size != VSize);
-//   NewVOp.LowBits = (Offset % 4 == 0);
-//   NewVOp.HighBits = !NewVOp.LowBits;
-//   NewVOp.VectorLength = (NewVOp.Size > 4) ? 8 : 4;
-//   for (int Idx = 0; Idx < Size; ++Idx) {
-//     NewVOp.UOP[Idx] = V.UOP[Idx + Offset];
-//     NewVOp.Idx[Idx] = V.Idx[Idx + Offset];
-//   }
-//   return NewVOp;
-// }
-// ---------------------------------------------
 VOperand getSubVOperand(VOperand NewVOp, std::string Name, int VSize, int Size,
                         MVDataType::VWidth Width, MVDataType::VDataType DType,
                         int Offset) {
@@ -87,7 +67,7 @@ VOperand getSubVOperand(VOperand NewVOp, std::string Name, int VSize, int Size,
   NewVOp.IsPartial = (Size != VSize);
   NewVOp.LowBits = (Offset % 4 == 0);
   NewVOp.HighBits = !NewVOp.LowBits;
-  NewVOp.VectorLength = (NewVOp.Size > 4) ? 8 : 4;
+  // NewVOp.VectorLength = (NewVOp.Size > 4) ? 8 : 4;
   for (int Idx = 0; Idx < Size; ++Idx) {
     NewVOp.UOP[Idx] = NewVOp.UOP[Idx + Offset];
     NewVOp.Idx[Idx] = NewVOp.Idx[Idx + Offset];
@@ -382,8 +362,7 @@ bool getSymmetry(ReductionsMap ReduxMap) {
     return true;
   }
   int Size = -1;
-  for (auto K : ReduxMap) {
-    auto RVector = K.second;
+  for (auto &[K, RVector] : ReduxMap) {
     // Check if elements to reduce are contiguous or not
     for (int i = 1; i < (int)RVector.size(); ++i) {
       if (RVector[i] - 1 != RVector[i - 1]) {
@@ -717,9 +696,8 @@ std::string AVX2BackEnd::extractArgument(std::string A, SIMDBackEnd::SIMDInst I,
 MVStrVector AVX2BackEnd::renderSIMDRegister(SIMDInstListType S) {
   MVStrVector L;
   // Render register declarations
-  for (auto It : RegDeclared) {
-    auto TypeRegDecl = It.first + " ";
-    auto VAuxRegs = It.second;
+  for (auto &[Type, VAuxRegs] : RegDeclared) {
+    auto TypeRegDecl = Type + " ";
     if (std::get<0>(VAuxRegs[0]) != "") {
       TypeRegDecl += std::get<0>(VAuxRegs[0]);
     }
@@ -916,10 +894,10 @@ void AVX2BackEnd::mergeReductions(
     std::map<SIMDBackEnd::SIMDInst, SIMDBackEnd::SIMDInstListType>
         &ReplaceFusedRedux,
     SIMDBackEnd::SIMDInstListType &SkipList) {
-  for (auto &L : LRedux) {
-    int MaxRedux = (int)L.first / 2; // this should be 4 or 8
+  for (auto &[LSize, List] : LRedux) {
+    int MaxRedux = (int)LSize / 2; // this should be 4 or 8
     MACVETH_DEBUG("AVX2BackEnd", "MaxRedux = " + std::to_string(MaxRedux));
-    std::vector<SIMDInst> Reductions(L.second.begin(), L.second.end());
+    std::vector<SIMDInst> Reductions(List.begin(), List.end());
     for (size_t N = 0; N < Reductions.size(); N += MaxRedux) {
       int End = std::min((N + MaxRedux - 1), (Reductions.size() - 1));
       SIMDBackEnd::SIMDInstListType NewList;
@@ -947,7 +925,7 @@ void AVX2BackEnd::mergeReductions(
             fuseReductionsList({Reductions[End]});
       }
     }
-    LRedux[L.first].clear();
+    LRedux[LSize].clear();
   }
 }
 
@@ -976,15 +954,14 @@ AVX2BackEnd::fuseReductions(const SIMDBackEnd::SIMDInstListType TIL) {
   }
 
   // Compute the rest
-  for (auto &L : LRedux) {
-    if (L.second.size() == 0)
+  for (auto &[LSize, List] : LRedux) {
+    if (List.size() == 0)
       continue;
     MACVETH_DEBUG("AVX2BackEnd", "No fusion of reductions for " +
-                                     L.second.back().getResultValue());
-    std::for_each(L.second.begin(), L.second.end(),
-                  [&ReplaceFusedRedux, this](auto I) {
-                    ReplaceFusedRedux[I] = fuseReductionsList({I});
-                  });
+                                     List.back().getResultValue());
+    std::for_each(List.begin(), List.end(), [&ReplaceFusedRedux, this](auto I) {
+      ReplaceFusedRedux[I] = fuseReductionsList({I});
+    });
   }
 
   // Reorder SIMDInstructions yet
@@ -1008,6 +985,7 @@ AVX2BackEnd::groupReductions(const SIMDBackEnd::SIMDInstListType TIL) {
   SIMDBackEnd::SIMDInstListType SkipList;
   SIMDBackEnd::SIMDInstListType MultiReduction;
   std::map<std::string, SIMDBackEnd::SIMDInstListType> ContiguousRedux;
+  std::vector<std::string> OrderContRedux;
   std::map<SIMDBackEnd::SIMDInst, SIMDBackEnd::SIMDInstListType>
       ReplaceAlreadyComputed;
 
@@ -1017,6 +995,9 @@ AVX2BackEnd::groupReductions(const SIMDBackEnd::SIMDInstListType TIL) {
       auto Res = I.getResultValue();
       if (isUniqueReduxOnList(I.VOPResult.UOP)) {
         ContiguousRedux[Res].push_back(I);
+        if (std::find(OrderContRedux.begin(), OrderContRedux.end(), Res) ==
+            OrderContRedux.end())
+          OrderContRedux.push_back(Res);
       } else {
         MultiReduction.push_back(I);
       }
@@ -1032,10 +1013,16 @@ AVX2BackEnd::groupReductions(const SIMDBackEnd::SIMDInstListType TIL) {
   }
 
   // Compute the rest
-  for (auto &L : ContiguousRedux) {
-    MACVETH_DEBUG("AVX2Backend", "Grouping  = " + L.first);
-    auto it = L.second.end();
-    SkipList.splice(SkipList.end(), L.second, L.second.begin(), --it);
+  // for (auto &[Key, List] : ContiguousRedux) {
+  //   MACVETH_DEBUG("AVX2Backend", "Grouping  = " + Key);
+  //   auto it = List.end();
+  //   SkipList.splice(SkipList.end(), List, List.begin(), --it);
+  // }
+  for (const auto &Key : OrderContRedux) {
+    MACVETH_DEBUG("AVX2Backend", "Grouping  = " + Key);
+    auto List = ContiguousRedux[Key];
+    auto it = List.end();
+    SkipList.splice(SkipList.end(), List, List.begin(), --it);
   }
 
   // Reorder SIMDInstructions yet
@@ -2120,10 +2107,12 @@ SIMDBackEnd::SIMDInstListType AVX2BackEnd::vreduce(VectorOP V) {
   /// together. P.S. creating hacks make me a hacker?
   unsigned Order = V.Order;
   auto Offset = V.Offset;
-  for (auto I : IL) {
+  auto Pos = MVSourceLocation::Position::INORDER;
+  for (auto &I : IL)
     Order = std::max(Order, I.MVSL.getOrder());
-  }
-  MVSourceLocation MVSL(MVSourceLocation::Position::POSORDER, Order, Offset);
+  if (V.R.isOnLoop())
+    Pos = MVSourceLocation::Position::POSORDER;
+  MVSourceLocation MVSL(Pos, Order, Offset);
 
   genSIMDInst(V.getResult(), "VREDUX", "", "", {RegAccm}, SIMDType::VREDUC,
               MVSL, &IL, ReduxVar, "", {}, V.getMVOp());

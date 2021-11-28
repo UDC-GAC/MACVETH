@@ -125,16 +125,16 @@ CDAG CDAG::createCDAGfromTAC(const TacListT &TL) {
                 [TL, &G](auto T) { G.insertTac(T, G.getNodeListOps()); });
 
   if (MVOptions::Debug) {
-    for (auto R : G.MapRAW) {
-      MACVETH_DEBUG("CDAG", "RAW for TAC = " + std::to_string(R.first));
-      for (auto RAW : R.second) {
+    for (const auto &[Tac, List] : G.MapRAW) {
+      MACVETH_DEBUG("CDAG", "RAW for TAC = " + std::to_string(Tac));
+      for (const auto &RAW : List) {
         MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
       }
     }
 
-    for (auto R : G.MapWAR) {
-      MACVETH_DEBUG("CDAG", "WAR for TAC = " + std::to_string(R.first));
-      for (auto RAW : R.second) {
+    for (const auto &[Tac, List] : G.MapWAR) {
+      MACVETH_DEBUG("CDAG", "WAR for TAC = " + std::to_string(Tac));
+      for (const auto &RAW : List) {
         MACVETH_DEBUG("CDAG", "\t TAC = " + std::to_string(RAW));
       }
     }

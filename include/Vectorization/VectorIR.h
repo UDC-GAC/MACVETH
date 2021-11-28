@@ -75,13 +75,6 @@ public:
     return MVDataType::VWidth::W128;
   }
 
-  /// Keeping track of the correspondence between the registers name and the
-  /// new naming
-  static inline std::map<std::string, VectorSlot> MapRegToVReg;
-  static inline std::map<std::string, int> SlotsUsed;
-  static inline std::map<std::string, int> MapRegSize;
-  static inline std::vector<std::string> SequentialResults;
-
   struct IntDefault {
     int i = -1;
     IntDefault() {}
@@ -97,11 +90,21 @@ public:
   /// Keeping track of the stores in the program
   static inline std::map<std::string, int> MapStores;
 
+  /// Keeping track of the correspondence between the registers name and the
+  /// new naming
+  static inline std::map<std::string, VectorSlot> MapRegToVReg;
+  static inline std::map<std::string, int> SlotsUsed;
+  static inline std::map<std::string, int> MapRegSize;
+  static inline std::vector<std::string> SequentialResults;
+  
   /// Clearing all the mappings
   static void clear() {
-    VectorIR::MapRegToVReg.clear();
-    VectorIR::MapLoads.clear();
-    VectorIR::MapStores.clear();
+    MapRegToVReg.clear();
+    MapLoads.clear();
+    MapStores.clear();
+    SlotsUsed.clear();
+    SequentialResults.clear();
+    MapRegToVReg.clear();
   }
 
   /// Prefix for operands
@@ -176,6 +179,8 @@ struct VOperand {
     // Be careful with this
     return DType;
   }
+
+  bool isOnLoop() const { return UOP[0]->isOnLoop(); }
 
   /// Unique identifier for the operand
   static inline unsigned int VID = 0;

@@ -362,8 +362,8 @@ std::string SIMDBackEnd::replacePatterns(const std::string &Pattern,
 
 // ---------------------------------------------
 void SIMDBackEnd::clearMappings() {
-  for (auto &X : RegDeclared) {
-    X.second.clear();
+  for (auto &[Name, X] : RegDeclared) {
+    X.clear();
   }
   RegDeclared.clear();
   AccmToReg.clear();

@@ -186,6 +186,8 @@ struct MVOptions {
   static inline std::string TargetFunc = "";
   /// Fuse reductions
   static inline bool FuseReductions = false;
+  /// Reductions windows size
+  static inline int ReduxWinSize = 16;
 
   static MVCPUInfo::MVISA getMVISA() {
     MVCPUInfo CInfo;

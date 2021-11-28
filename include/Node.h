@@ -224,6 +224,8 @@ public:
     return this->MV;
   }
 
+  bool isOnLoop() const { return this->LoopName != ""; }
+
   /// Schedule info is needed for the algorithms to perform permutations in
   /// nodes
   void setFreeSchedInfo(int FS) { this->SI.FreeSched = FS; }
@@ -364,12 +366,11 @@ public:
   /// For debugging purposes: show information regarding the scheduling of the
   /// node
   std::string getSchedInfoStr() {
-    std::string S =
-        "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
-        "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
-        "; TacID = " + std::to_string(getSchedInfo().TacID) +
-        "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
-        "; Scops = ";
+    std::string S = "NID = " + std::to_string(this->getSchedInfo().NodeID) +
+                    "; FS = " + std::to_string(this->getSchedInfo().FreeSched) +
+                    "; TID = " + std::to_string(getSchedInfo().TacID) +
+                    "; PI = " + std::to_string(getSchedInfo().Plcmnt) +
+                    "; Scp = ";
     for (size_t i = 0; i < getSchedInfo().Scop.size() - 1; ++i) {
       S += std::to_string(getSchedInfo().Scop[i]) + ", ";
     }

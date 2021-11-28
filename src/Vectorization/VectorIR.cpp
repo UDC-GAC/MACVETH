@@ -244,7 +244,7 @@ bool VOperand::checkIfAlreadyStored(NodeVectorT &V) {
   for (int i = 0; i < (int)V.size(); ++i) {
     auto Reg = V[i]->getRegisterValue();
     if (VectorIR::MapStores.find(Reg) != VectorIR::MapStores.end()) {
-      if (VectorIR::MapStores[Reg]) {
+      if (VectorIR::MapStores[Reg] > 0) {
         return true;
       }
     }
@@ -260,7 +260,13 @@ VOperand::VOperand(int VectorLength, NodeVectorT &V, bool Res, int Order) {
   // Init list of unit operands
   this->Order = Order;
   for (int i = 0; i < VectorLength; ++i) {
-    this->Order = std::max(this->Order, V[i]->getTacID());
+    int NewOrder = V[i]->getTacID();
+    if (VectorIR::MapStores.find(V[i]->getRegisterValue()) !=
+        VectorIR::MapStores.end()) {
+      NewOrder =
+          std::max(NewOrder, VectorIR::MapStores[V[i]->getRegisterValue()]);
+    }
+    this->Order = std::max(this->Order, NewOrder);
     this->Offset = std::max(this->Offset, V[i]->getUnrollFactor());
   }
   auto PrimaryNode = V[0];
@@ -291,7 +297,7 @@ VOperand::VOperand(int VectorLength, NodeVectorT &V, bool Res, int Order) {
     this->IsStore = true;
     for (int T = 0; T < VectorLength; ++T) {
       this->StoreValues.push_back(V[T]->getRegisterValue());
-      VectorIR::MapStores[V[T]->getRegisterValue()] = 1;
+      VectorIR::MapStores[V[T]->getRegisterValue()] = this->Order;
       // When storing a value, it is not anymore in the "virtual registers"
       if (VectorIR::MapRegToVReg.find(V[T]->getRegisterValue()) ==
           VectorIR::MapRegToVReg.end()) {

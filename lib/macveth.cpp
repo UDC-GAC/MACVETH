@@ -186,6 +186,12 @@ static llvm::cl::opt<bool> DisableFuseReductions(
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
 // Debug flag
+static llvm::cl::opt<int> ReduxWinSize(
+    "redux-win-size",
+    llvm::cl::desc("Advanced option: size of window of reductions to consider"),
+    llvm::cl::init(16), llvm::cl::cat(MacvethCategory));
+
+// Debug flag
 static llvm::cl::opt<bool> Debug("debug-mv",
                                  llvm::cl::desc("Print debug information"),
                                  llvm::cl::init(false),
@@ -277,6 +283,7 @@ int main(int argc, const char **argv) {
   MVOptions::TargetFunc = TargetFunc.getValue();
   MVOptions::Style = Style.getValue();
   MVOptions::FallbackStyle = FallbackStyle.getValue();
+  MVOptions::ReduxWinSize = ReduxWinSize.getValue();
 
   // Check if there are incompatible options
   MVOptions::validateOptions();

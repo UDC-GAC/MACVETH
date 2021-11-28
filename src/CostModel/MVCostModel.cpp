@@ -228,14 +228,19 @@ VectorOPListT MVCostModel::greedyOpsConsumer(NodeVectorT &NL) {
 
 //---------------------------------------------
 using MapReductions = std::map<std::string, NodeVectorT>;
+using VectorMapReductions = std::vector<std::pair<std::string, NodeVectorT>>;
 
 //---------------------------------------------
-MapReductions mapReductions(const NodeVectorT &Reductions) {
+VectorMapReductions mapReductions(const NodeVectorT &Reductions) {
   MapReductions Map;
   std::for_each(Reductions.begin(), Reductions.end(), [&Map](auto Node) {
     Map[Node->getRegisterValue()].push_back(Node);
   });
-  return Map;
+  VectorMapReductions VMap{std::make_move_iterator(Map.begin()),
+                           std::make_move_iterator(Map.end())};
+  std::sort(VMap.begin(), VMap.end(),
+            [](auto P0, auto P1) { return P0.second[0] < P1.second[0]; });
+  return VMap;
 }
 
 //---------------------------------------------
@@ -256,61 +261,81 @@ VectorOPListT MVCostModel::consumeReduction(NodeVectorT &Nodes) {
 //---------------------------------------------
 VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
   VectorOPListT VList;
-  auto MapReductions = mapReductions(Nodes);
-  unsigned long PackingSize = MaxVectorLength;
+  auto FullMapReductions = mapReductions(Nodes);
   MACVETH_DEBUG("MVCostModel", "=== BOTTOM UP CONSUMER ===");
-  for (auto M : MapReductions) {
-    MACVETH_DEBUG("MVCostModel",
-                  M.first + " = " + std::to_string(M.second.size()));
+  int WindowsSize = MVOptions::ReduxWinSize;
+  if (WindowsSize <= 0) {
+    WindowsSize = FullMapReductions.size();
   }
-  NodeVectorT NewPacking;
-  while (PackingSize > 1) {
-    for (auto &Pair : MapReductions) {
-      auto Key = Pair.first;
-      auto &List = Pair.second;
-      MACVETH_DEBUG("MVCostModel",
-                    "PackingSize = " + std::to_string(PackingSize) +
-                        "; Key = " + Key +
-                        "; Size = " + std::to_string(List.size()));
-      while ((List.size() >= PackingSize) &&
-             (NewPacking.size() < MaxVectorLength)) {
-        MACVETH_DEBUG(
-            "MVCostModel",
-            "PackingSize = " + std::to_string(PackingSize) + "; Key = " + Key +
-                "; Size = " + std::to_string(List.size()) +
-                "; NewPacking = " + std::to_string(NewPacking.size()));
-        NodeVectorT NewRedux(&List[0], &List[PackingSize]);
-        NewPacking.insert(NewPacking.end(), NewRedux.begin(), NewRedux.end());
-        List.erase(List.begin(), List.begin() + PackingSize);
+  while (FullMapReductions.size() > 0) {
+    unsigned long PackingSize = MaxVectorLength;
+    MACVETH_DEBUG(
+        "MVCostModel",
+        "===  Window size = " + std::to_string(WindowsSize) +
+            "; FullMap = " + std::to_string(FullMapReductions.size()));
+    int End = std::min((int)FullMapReductions.size(), WindowsSize);
+    VectorMapReductions MapReductions(&FullMapReductions[0],
+                                      &FullMapReductions[End]);
+    FullMapReductions.erase(FullMapReductions.begin(),
+                            FullMapReductions.begin() + End);
+    for (const auto &[Key, List] : MapReductions) {
+      MACVETH_DEBUG("MVCostModel", Key + " = " + std::to_string(List.size()));
+    }
+    NodeVectorT NewPacking;
+    while (PackingSize > 1) {
+      for (auto &[Key, List] : MapReductions) {
+        MACVETH_DEBUG("MVCostModel",
+                      "PackingSize = " + std::to_string(PackingSize) +
+                          "; Key = " + Key +
+                          "; Size = " + std::to_string(List.size()));
+        while ((List.size() >= PackingSize) &&
+               (NewPacking.size() < MaxVectorLength)) {
+          MACVETH_DEBUG(
+              "MVCostModel",
+              "PackingSize = " + std::to_string(PackingSize) +
+                  "; Key = " + Key + "; Size = " + std::to_string(List.size()) +
+                  "; NewPacking = " + std::to_string(NewPacking.size()));
+          NodeVectorT NewRedux(&List[0], &List[PackingSize]);
+          NewPacking.insert(NewPacking.end(), NewRedux.begin(), NewRedux.end());
+          List.erase(List.begin(), List.begin() + PackingSize);
+        }
+        if (NewPacking.size() == MaxVectorLength) {
+          MACVETH_DEBUG("MVCostModel", "MaxVectorLength = consuming reduction");
+          std::sort(NewPacking.begin(), NewPacking.end(),
+                    [](Node *P0, Node *P1) { return *P0 < *P1; });
+          VList.splice(VList.end(), consumeReduction(NewPacking));
+          NewPacking.clear();
+        }
       }
-      if (NewPacking.size() == MaxVectorLength) {
-        MACVETH_DEBUG("MVCostModel", "MaxVectorLength = consuming reduction");
-        VList.splice(VList.end(), consumeReduction(NewPacking));
-        NewPacking.clear();
+      PackingSize /= 2;
+    }
+    if (NewPacking.size() > 0) {
+      MACVETH_DEBUG("MVCostModel", "Consuming leftover reduction");
+      std::sort(NewPacking.begin(), NewPacking.end(),
+                [](Node *P0, Node *P1) { return *P0 < *P1; });
+      VList.splice(VList.end(), consumeReduction(NewPacking));
+    }
+    // Compute orphan nodes
+    NodeVectorT OrphanNodes;
+    for (auto &[LSize, List] : MapReductions) {
+      while (List.size() >= 4) {
+        int PS = std::min((int)List.size(), 8);
+        NodeVectorT NewRedux(&List[0], &List[PS]);
+        std::sort(NewRedux.begin(), NewRedux.end(),
+                  [](Node *P0, Node *P1) { return *P0 < *P1; });
+        VList.splice(VList.end(), consumeReduction(NewRedux));
+        List.erase(List.begin(), List.begin() + PS);
+      }
+      if (List.size() > 0) {
+        OrphanNodes.insert(OrphanNodes.end(), List.begin(), List.end());
       }
     }
-    PackingSize /= 2;
-  }
-  if (NewPacking.size() > 0) {
-    MACVETH_DEBUG("MVCostModel", "Consuming leftover reduction");
-    VList.splice(VList.end(), consumeReduction(NewPacking));
-  }
-  // Compute orphan nodes
-  NodeVectorT OrphanNodes;
-  for (auto Pair : MapReductions) {
-    auto &List = Pair.second;
-    while (List.size() >= 4) {
-      int PS = std::min((int)List.size(), 8);
-      NodeVectorT NewRedux(&List[0], &List[PS]);
-      VList.splice(VList.end(), consumeReduction(NewRedux));
-      List.erase(List.begin(), List.begin() + PS);
-    }
-    if (List.size() > 0) {
-      OrphanNodes.insert(OrphanNodes.end(), List.begin(), List.end());
+    if (OrphanNodes.size() > 0) {
+      std::sort(OrphanNodes.begin(), OrphanNodes.end(),
+                [](Node *P0, Node *P1) { return *P0 < *P1; });
+      VList.splice(VList.end(), consumeReduction(OrphanNodes));
     }
   }
-  if (OrphanNodes.size() > 0)
-    VList.splice(VList.end(), consumeReduction(OrphanNodes));
   return VList;
 }
 
