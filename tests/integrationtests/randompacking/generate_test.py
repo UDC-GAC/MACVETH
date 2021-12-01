@@ -27,8 +27,9 @@ for i in range(2, 9):
         output_file += f"n{i}_"
         values = [0] * i
         contiguity = list(map(lambda x: int(x), list(f"{c:0{i-1}b}"))) if i > 1 else []
+        rev_contiguity = contiguity[::-1]
         for v in range(1, len(contiguity) + 1):
-            offset = 1 if contiguity[v - 1] == 1 else 10
+            offset = 1 if rev_contiguity[v - 1] == 1 else 2
             values[v] = values[v - 1] + offset
 
         output_file += "_".join(list(map(lambda x: str(x), contiguity)))

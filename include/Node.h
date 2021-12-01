@@ -54,7 +54,7 @@ public:
   static inline int UUID = 0;
 
   /// Restart UUID numbering
-  static void restart() { Node::UUID = 0; }
+  static void clear() { Node::UUID = 0; }
 
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_STORE, NODE_OP, UNDEF };

@@ -261,13 +261,16 @@ VOperand::VOperand(int VectorLength, NodeVectorT &V, bool Res, int Order) {
   this->Order = Order;
   for (int i = 0; i < VectorLength; ++i) {
     int NewOrder = V[i]->getTacID();
+    int LoadOffset = Res ? 0 : 1;
+    this->Offset = std::max(this->Offset, V[i]->getUnrollFactor());
     if (VectorIR::MapStores.find(V[i]->getRegisterValue()) !=
         VectorIR::MapStores.end()) {
-      NewOrder =
-          std::max(NewOrder, VectorIR::MapStores[V[i]->getRegisterValue()]);
+      NewOrder = std::max(
+          NewOrder, VectorIR::MapStores[V[i]->getRegisterValue()] + LoadOffset);
+      this->Offset++;
+      this->AfterWrite = true;
     }
     this->Order = std::max(this->Order, NewOrder);
-    this->Offset = std::max(this->Offset, V[i]->getUnrollFactor());
   }
   auto PrimaryNode = V[0];
   // Check if array
@@ -349,7 +352,8 @@ VOperand::VOperand(int VectorLength, NodeVectorT &V, bool Res, int Order) {
 
   // Get name of this operand, otherwise create a custom name
   this->Name =
-      (VecAssigned && !this->RequiresRegisterPacking && !this->IsPartial)
+      (VecAssigned && !this->RequiresRegisterPacking &&
+       (!this->IsPartial || this->SameVector))
           ? std::get<0>(VectorIR::MapRegToVReg[PrimaryNode->getRegisterValue()])
           : genNewVOpName();
 
@@ -376,7 +380,7 @@ VOperand::VOperand(int VectorLength, NodeVectorT &V, bool Res, int Order) {
   // Tracking the operands
   for (int n = 0; n < VectorLength; ++n) {
     IsMemOp &= (V[n]->needsMemLoad());
-    if ((!VecAssigned) && (!this->IsStore))
+    if ((!VecAssigned) && (!this->IsStore) && Res)
       VectorIR::MapRegToVReg[V[n]->getRegisterValue()] =
           std::make_tuple(this->Name, n);
 
@@ -538,7 +542,8 @@ VectorOP::VectorOP(int VL, NodeVectorT &VOps, NodeVectorT &VLoadA,
   // form, as it will be synthesized in its original form
   if (this->isSequential()) {
     MACVETH_DEBUG("VectorOP", "This is a sequential operation");
-    VectorIR::SequentialResults.push_back(VOps[0]->getRegisterValue());
+    // for (int i = 0; i < VL; ++i)
+    //   VectorIR::SequentialResults.push_back(VOps[i]->getRegisterValue());
     return;
   }
 

@@ -358,29 +358,32 @@ protected:
   static void addRegToDeclareInitVal(std::string Type, std::string Name,
                                      std::vector<std::string> InitVal);
 
+  static inline std::map<std::string, std::string> MapReduxVarToAccm;
+  static inline std::map<std::string, VOperand> MapReduxVOp;
+
   /// List of registers declared
-  inline static RegistersMapT RegDeclared;
+  static inline RegistersMapT RegDeclared;
 
   /// List of SIMD instructions which represent the initialization of some
   /// registers
-  inline static SIMDInstListType InitReg;
+  static inline SIMDInstListType InitReg;
 
   /// Prefix of the auxiliary regsiters
-  inline static const std::string AUX_PREFIX = "__mv_aux";
+  static inline const std::string AUX_PREFIX = "__mv_aux";
   /// Prefix of the auxiliary arrays
-  inline static const std::string ARR_PREFIX = "__mv_arr";
+  static inline const std::string ARR_PREFIX = "__mv_arr";
   /// Prefix of the
-  inline static const std::string VEC_PREFIX = "__mv_accm";
+  static inline const std::string VEC_PREFIX = "__mv_accm";
 
   /// AccmReg numbering for auxiliary operations such as reduce
-  inline static int AccmReg = 0;
+  static inline int AccmReg = 0;
 
   using MapRegT = std::map<std::string, int>;
 
   /// Map of the operands mapped to the accumulator
-  inline static MapRegT AccmToReg;
+  static inline MapRegT AccmToReg;
   /// Map of the operands mapped to the accumulator which are dirty
-  inline static MapRegT AccmDirty;
+  static inline MapRegT AccmDirty;
 
   /// Get the next available accumulator register
   static std::string getNextAccmRegister(const std::string &V) {
@@ -406,10 +409,10 @@ protected:
   }
 
   /// Auxiliar register unique ID
-  inline static int AuxRegId = 0;
+  static inline int AuxRegId = 0;
 
   /// Map of auxiliar registers
-  inline static MapRegT AuxReg;
+  static inline MapRegT AuxReg;
 
   /// Get the name of the auxiliar register for a operand and increment
   static std::string getNextAuxRegister(const std::string &V) {
@@ -433,12 +436,27 @@ protected:
   }
 
   /// Auxiliary array numbering for auxiliary operations such as reduce
-  inline static int AuxArrayReg = 0;
+  static inline int AuxArrayReg = 0;
   static std::string getNextArrRegister(const std::string &Type,
                                         const int &Size) {
     auto Name = ARR_PREFIX + std::to_string(AuxArrayReg++);
     addRegToDeclare(Type, Name + "[" + std::to_string(Size) + "]");
     return Name;
+  }
+
+public:
+  static void clear() {
+    AuxReg.clear();
+    AuxRegId = 0;
+    AuxArrayReg = 0;
+    AccmToReg.clear();
+    AccmDirty.clear();
+    AccmReg = 0;
+    InitReg.clear();
+    RegDeclared.clear();
+    MapReduxVarToAccm.clear();
+    MapReduxVOp.clear();
+    SIMDInst::UID = 0;
   }
 };
 

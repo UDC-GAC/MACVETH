@@ -54,9 +54,9 @@ class TAC {
 
 public:
   /// Unique ID of each TAC
-  inline static int TacUUID = 0;
+  static inline int TacUUID = 0;
   /// Unique ID of each region of each part of the #pragma
-  inline static long TacScop = 0;
+  static inline long TacScop = 0;
   /// For generating TACs
   static inline long RegVal = 0;
 

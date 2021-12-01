@@ -54,9 +54,9 @@ public:
   /// When declaring static members of class, when assigning them you need
   /// to redeclare them or since C++17 you can just put in
 
-  inline static clang::SourceManager *SourceMgr;
-  inline static clang::LangOptions *LangOpts;
-  inline static clang::ASTContext *Ctx;
+  static inline clang::SourceManager *SourceMgr;
+  static inline clang::LangOptions *LangOpts;
+  static inline clang::ASTContext *Ctx;
 
   /// Check if list contains an element given
   template <typename T>

@@ -50,13 +50,16 @@ if __name__ == "__main__":
     if len(sys.argv) == 4:
         keep = bool(int(sys.argv[3]))
     for file in glob.glob("*.mrt"):
-        if not check_naming(file):
+        if file.split("_")[0] in ["float","double"]:
+            new_name = f"{arch}_{isa}_{file}"
+        elif not check_naming(file):
             # then if has form rvp_<data>_<n>elems_<n>nnz_<cont>_<version>.mrt
             datatype = file.split("_")[1]
             nelems = file.split("_")[3][0]
             ending = file.split("nnz_")[-1]
             new_name = f"{arch}_{isa}_{datatype}_n{nelems}_{ending}"
-            if keep:
-                os.system(f"cp {file} {new_name}")
-            else:
-                os.system(f"mv {file} {new_name}")
+        if keep:
+            os.system(f"cp {file} {new_name}")
+        else:
+            os.system(f"mv {file} {new_name}")
+

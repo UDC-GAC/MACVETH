@@ -63,9 +63,9 @@ static void kernel_template(int n, float *S, DATA_TYPE POLYBENCH_1D(x, N, n)) {
   float tmp = (*S);
 #pragma macveth
   tmp += x[0];
-  tmp += x[10];
-  tmp += x[20];
-  tmp += x[21];
+  tmp += x[1];
+  tmp += x[3];
+  tmp += x[5];
 #pragma endmacveth
 (*S) = tmp;
 }

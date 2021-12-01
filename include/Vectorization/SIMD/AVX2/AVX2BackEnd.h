@@ -243,9 +243,6 @@ public:
   };
 
 private:
-  std::map<std::string, std::string> MapReduxVarToAccm;
-  std::map<std::string, VOperand> MapReduxVOp;
-
   /// Constructor
   AVX2BackEnd() : SIMDBackEnd() {
     SIMDBackEnd::populateTable(MVCPUInfo::MVISA::AVX2);

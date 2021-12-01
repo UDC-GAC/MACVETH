@@ -114,7 +114,7 @@ CDAG CDAG::createCDAGfromTAC(const TacListT &TL) {
   // Literally create a new CDAG
   CDAG G;
   // Restarting numbering of nodes
-  Node::restart();
+  Node::clear();
   // TACs are of the form a = b op c, so if we create a Node for each TAC
   // we are basically creating NODE_OP Nodes. This way, when we connect
   // this new node to the rest of the CDAG, we are basically looking for

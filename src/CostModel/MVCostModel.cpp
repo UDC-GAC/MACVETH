@@ -238,8 +238,10 @@ VectorMapReductions mapReductions(const NodeVectorT &Reductions) {
   });
   VectorMapReductions VMap{std::make_move_iterator(Map.begin()),
                            std::make_move_iterator(Map.end())};
-  std::sort(VMap.begin(), VMap.end(),
-            [](auto P0, auto P1) { return P0.second[0] < P1.second[0]; });
+  std::sort(VMap.begin(), VMap.end(), [](auto P0, auto P1) {
+    return P0.second[0]->getSchedInfo().NodeID <
+           P1.second[0]->getSchedInfo().NodeID;
+  });
   return VMap;
 }
 
@@ -282,27 +284,26 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
       MACVETH_DEBUG("MVCostModel", Key + " = " + std::to_string(List.size()));
     }
     NodeVectorT NewPacking;
-    while (PackingSize > 1) {
+    while (PackingSize >= (unsigned)MVOptions::MinReduxSize) {
       for (auto &[Key, List] : MapReductions) {
         MACVETH_DEBUG("MVCostModel",
-                      "PackingSize = " + std::to_string(PackingSize) +
-                          "; Key = " + Key +
+                      "Key = " + Key +
+                          "; PackingSize = " + std::to_string(PackingSize) +
                           "; Size = " + std::to_string(List.size()));
         while ((List.size() >= PackingSize) &&
                (NewPacking.size() < MaxVectorLength)) {
-          MACVETH_DEBUG(
-              "MVCostModel",
-              "PackingSize = " + std::to_string(PackingSize) +
-                  "; Key = " + Key + "; Size = " + std::to_string(List.size()) +
-                  "; NewPacking = " + std::to_string(NewPacking.size()));
           NodeVectorT NewRedux(&List[0], &List[PackingSize]);
           NewPacking.insert(NewPacking.end(), NewRedux.begin(), NewRedux.end());
           List.erase(List.begin(), List.begin() + PackingSize);
+          MACVETH_DEBUG(
+              "MVCostModel",
+              "Consuming Key = " + Key +
+                  "; PackingSize = " + std::to_string(PackingSize) +
+                  "; Size = " + std::to_string(List.size()) +
+                  "; NewPacking = " + std::to_string(NewPacking.size()));
         }
         if (NewPacking.size() == MaxVectorLength) {
           MACVETH_DEBUG("MVCostModel", "MaxVectorLength = consuming reduction");
-          std::sort(NewPacking.begin(), NewPacking.end(),
-                    [](Node *P0, Node *P1) { return *P0 < *P1; });
           VList.splice(VList.end(), consumeReduction(NewPacking));
           NewPacking.clear();
         }
@@ -311,29 +312,30 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
     }
     if (NewPacking.size() > 0) {
       MACVETH_DEBUG("MVCostModel", "Consuming leftover reduction");
-      std::sort(NewPacking.begin(), NewPacking.end(),
-                [](Node *P0, Node *P1) { return *P0 < *P1; });
       VList.splice(VList.end(), consumeReduction(NewPacking));
     }
     // Compute orphan nodes
     NodeVectorT OrphanNodes;
     for (auto &[LSize, List] : MapReductions) {
-      while (List.size() >= 4) {
-        int PS = std::min((int)List.size(), 8);
+      while (List.size() >= (unsigned)MVOptions::MinReduxSize) {
+        int PS = std::min(List.size(), MaxVectorLength);
         NodeVectorT NewRedux(&List[0], &List[PS]);
         std::sort(NewRedux.begin(), NewRedux.end(),
                   [](Node *P0, Node *P1) { return *P0 < *P1; });
         VList.splice(VList.end(), consumeReduction(NewRedux));
         List.erase(List.begin(), List.begin() + PS);
       }
-      if (List.size() > 0) {
+      if (List.size() > 0)
         OrphanNodes.insert(OrphanNodes.end(), List.begin(), List.end());
-      }
     }
     if (OrphanNodes.size() > 0) {
       std::sort(OrphanNodes.begin(), OrphanNodes.end(),
                 [](Node *P0, Node *P1) { return *P0 < *P1; });
-      VList.splice(VList.end(), consumeReduction(OrphanNodes));
+      /// FIXME: do it sequentially
+      for (auto Orphan : OrphanNodes) {
+        NodeVectorT OrphanList = {Orphan};
+        VList.splice(VList.end(), consumeReduction(OrphanList));
+      }
     }
   }
   return VList;

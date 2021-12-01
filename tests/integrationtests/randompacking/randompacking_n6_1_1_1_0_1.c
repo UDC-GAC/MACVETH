@@ -64,10 +64,10 @@ static void kernel_template(int n, float *S, DATA_TYPE POLYBENCH_1D(x, N, n)) {
 #pragma macveth
   tmp += x[0];
   tmp += x[1];
-  tmp += x[2];
   tmp += x[3];
-  tmp += x[13];
-  tmp += x[14];
+  tmp += x[4];
+  tmp += x[5];
+  tmp += x[6];
 #pragma endmacveth
 (*S) = tmp;
 }

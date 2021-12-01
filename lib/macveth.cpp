@@ -185,11 +185,16 @@ static llvm::cl::opt<bool> DisableFuseReductions(
     "nofuse", llvm::cl::desc("Disable the fusion of reductions"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
-// Debug flag
 static llvm::cl::opt<int> ReduxWinSize(
     "redux-win-size",
     llvm::cl::desc("Advanced option: size of window of reductions to consider"),
     llvm::cl::init(16), llvm::cl::cat(MacvethCategory));
+
+static llvm::cl::opt<int> MinReduxSize(
+    "min-redux-size",
+    llvm::cl::desc(
+        "Advanced option: minimum number of reductions to pack together"),
+    llvm::cl::init(2), llvm::cl::cat(MacvethCategory));
 
 // Debug flag
 static llvm::cl::opt<bool> Debug("debug-mv",
@@ -284,7 +289,7 @@ int main(int argc, const char **argv) {
   MVOptions::Style = Style.getValue();
   MVOptions::FallbackStyle = FallbackStyle.getValue();
   MVOptions::ReduxWinSize = ReduxWinSize.getValue();
-
+  MVOptions::MinReduxSize = MinReduxSize.getValue();
   // Check if there are incompatible options
   MVOptions::validateOptions();
 

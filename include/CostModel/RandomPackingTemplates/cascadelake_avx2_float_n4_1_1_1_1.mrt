@@ -1,1 +1,1 @@
-#output:REG# = _mm_loadu_ps(&#0:0:MEM#)
+#output:REG# = _mm_maskload_ps(&#0:0:MEM#,_mm_set_epi32(-1,-1,-1,-1))

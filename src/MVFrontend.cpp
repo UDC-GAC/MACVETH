@@ -78,6 +78,15 @@ void MVFuncVisitor::performUnrolling(StmtWrapperVectorT SL) {
 }
 
 // ---------------------------------------------
+void clearStructures() {
+  VectorIR::clear();
+  VOperand::VID = 0;
+  SIMDBackEnd::clear();
+  TAC::clear();
+  Node::clear();
+}
+
+// ---------------------------------------------
 bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
   auto CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
@@ -92,6 +101,8 @@ bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
   std::list<std::string> DimsDeclFunc = {};
   SIMDBackEnd::RegistersMapT RegistersDeclared;
+
+  clearStructures();
 
   SourceLocation RegDeclLoc;
   auto Scops = ScopHandler::funcGetScops(fd);

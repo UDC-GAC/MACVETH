@@ -158,7 +158,7 @@ bool SIMDBackEnd::getSIMDVOperand(VOperand V, SIMDInstListType *IL,
   if ((V.RequiresRegisterPacking) ||
       //((!V.MemOp) && (!V.IsLoad) && (V.IsPartial) && (V.SameVector))) {
       ((!V.MemOp) && (V.IsPartial) && (V.SameVector))) {
-    IL->splice(IL->end(), vregisterpacking(V));
+    // IL->splice(IL->end(), vregisterpacking(V));
     return true;
   }
 
@@ -211,15 +211,6 @@ bool SIMDBackEnd::getSIMDVOperand(VOperand V, SIMDInstListType *IL,
 // ---------------------------------------------
 void SIMDBackEnd::mapOperation(VectorOP &V, SIMDInstListType *TI) {
   SIMDInstListType TIL;
-
-  // Special case:
-  // if (V.getResult().IsStore) {
-  //   if ((!V.getResult().Contiguous) && (V.getOpB().RequiresRegisterPacking))
-  //   {
-  //     TI->splice(TI->end(), singleElementScatterOp(V));
-  //     return;
-  //   }
-  // }
 
   // Arranging the operands: maybe they need load, set, bcast...
   getSIMDVOperand(V.getOpA(), TI);

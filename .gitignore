@@ -1,3 +1,5 @@
+legacy/
+
 # testing executable macveth
 macveth
 *_comp.c

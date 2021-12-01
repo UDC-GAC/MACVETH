@@ -188,6 +188,8 @@ struct MVOptions {
   static inline bool FuseReductions = false;
   /// Reductions windows size
   static inline int ReduxWinSize = 16;
+  /// Minimum number of reductions that can be packed together
+  static inline int MinReduxSize = 2;
 
   static MVCPUInfo::MVISA getMVISA() {
     MVCPUInfo CInfo;

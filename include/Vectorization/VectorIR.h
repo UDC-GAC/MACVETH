@@ -36,6 +36,7 @@ namespace macveth {
 
 class VectorIR;
 struct VectorOP;
+struct VOperand;
 
 using VectorOPVectorT = std::vector<VectorOP>;
 using VectorOPListT = std::list<VectorOP>;
@@ -96,15 +97,17 @@ public:
   static inline std::map<std::string, int> SlotsUsed;
   static inline std::map<std::string, int> MapRegSize;
   static inline std::vector<std::string> SequentialResults;
-  
+
   /// Clearing all the mappings
   static void clear() {
-    MapRegToVReg.clear();
+    LiveIn.clear();
+    LiveOut.clear();
     MapLoads.clear();
     MapStores.clear();
-    SlotsUsed.clear();
-    SequentialResults.clear();
     MapRegToVReg.clear();
+    SlotsUsed.clear();
+    MapRegSize.clear();
+    SequentialResults.clear();
   }
 
   /// Prefix for operands
@@ -114,6 +117,8 @@ public:
 /// Vector operand basically is a wrap of VL (vector length) operands in the
 /// original Node
 struct VOperand {
+  /// Unique identifier for the operand
+  static inline unsigned int VID = 0;
   /// Name identifying the vector operand
   mutable std::string Name;
   /// Number non null Nodes
@@ -123,8 +128,6 @@ struct VOperand {
   /// Array of variable size (Size elements actually) initialized when
   /// creating the object
   NodeVectorT UOP;
-  /// This is for partial vectors
-  std::vector<std::tuple<std::string, int>> MapRegister;
   /// Data type
   MVDataType::VDataType DType = MVDataType::VDataType::DOUBLE;
   /// Width of this operand
@@ -151,6 +154,9 @@ struct VOperand {
   bool SameVector = true;
   /// Operands could be in different registers
   bool RequiresRegisterPacking = false;
+  /// This is true when the VOperand is loaded after a store on any of its
+  /// positions
+  bool AfterWrite = false;
   /// This is useful for packing elements which are on different registers,
   /// or that need to be shuffled within the same register, extracted, etc.
   std::vector<VectorSlot> RegIdx;
@@ -181,9 +187,6 @@ struct VOperand {
   }
 
   bool isOnLoop() const { return UOP[0]->isOnLoop(); }
-
-  /// Unique identifier for the operand
-  static inline unsigned int VID = 0;
 
   bool isDouble() { return DType == MVDataType::VDataType::DOUBLE; }
 
