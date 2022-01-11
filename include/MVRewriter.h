@@ -56,6 +56,8 @@ public:
   /// Render SIMD where the original scalar code is
   void renderSIMDInOrder(SIMDBackEnd::SIMDInst SI, StmtWrapperVectorT SL);
 
+  void renderSIMDLeftOvers(SIMDBackEnd::SIMDInst SI, StmtWrapper *S);
+
   /// Render SIMD before a statement (for initializing reductions, for instance)
   bool renderSIMDInstBeforePlace(SIMDBackEnd::SIMDInst SI,
                                  StmtWrapperVectorT SL);

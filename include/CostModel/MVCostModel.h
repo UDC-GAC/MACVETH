@@ -68,12 +68,14 @@ public:
   /// Smart algorithm for grouping together reductions
   VectorOPListT bottomUpConsumer(NodeVectorT &Nodes);
 
+  VectorOPListT searchMapNodes(NodeVectorT &Nodes);
+
   MVCostModel(SIMDBackEnd *Backend) : Backend(Backend) {
     MaxVectorLength = Backend->getMaxVectorSize("float");
   }
 
 private:
-  VectorOPListT consumeReduction(NodeVectorT &Nodes);
+  VectorOPListT consumeNodes(NodeVectorT &Nodes);
 
   SIMDBackEnd *Backend = nullptr;
   unsigned long MaxVectorLength = 8;

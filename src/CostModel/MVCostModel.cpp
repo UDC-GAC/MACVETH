@@ -246,7 +246,59 @@ VectorMapReductions mapReductions(const NodeVectorT &Reductions) {
 }
 
 //---------------------------------------------
-VectorOPListT MVCostModel::consumeReduction(NodeVectorT &Nodes) {
+VectorOPListT MVCostModel::searchMapNodes(NodeVectorT &Nodes) {
+  // Pre-condition:
+  // 1.- All nodes must be terminals, so the output MVExpr is MVExprArray
+  // 2.- MVExprArray are simple, so they can be converted to int
+  VectorOPListT Sequential;
+  std::vector<int> Indices;
+  for (auto N : Nodes) {
+    auto Val = dyn_cast<MVExprArray>(N->getOutputMVExpr());
+    Indices.push_back(std::atoi(Val->getIndex()[0].Val.c_str()));
+  }
+  std::vector<int> AlreadyUsed;
+  for (int i = 0; i < Indices.size(); ++i) {
+    std::vector<int> NewMapping = {i};
+    if ((std::find(AlreadyUsed.begin(), AlreadyUsed.end(), i) !=
+         AlreadyUsed.end()))
+      continue;
+    for (unsigned j = i; j < Indices.size(); ++j) {
+      int Idx1 = Indices[j];
+      int PrevVal = Indices[NewMapping.at(NewMapping.size() - 1)];
+      if ((i == j) || (PrevVal == Idx1) ||
+          (std::find(AlreadyUsed.begin(), AlreadyUsed.end(), j) !=
+           AlreadyUsed.end()))
+        continue;
+      if (PrevVal + 1 == Idx1) {
+        NewMapping.push_back(j);
+      } else {
+        break;
+      }
+    }
+    // Minimum number of elements to pack together... 4 at least
+    if (NewMapping.size() >= 4) {
+      NodeVectorT NewList;
+      for (auto Idx : NewMapping) {
+        NewList.push_back(Nodes.at(Idx));
+        AlreadyUsed.push_back(Idx);
+      }
+      Sequential.splice(Sequential.end(), consumeNodes(NewList));
+    }
+  }
+  int Offset = 0;
+  std::sort(AlreadyUsed.begin(), AlreadyUsed.end(),
+            [](int P0, int P1) { return P0 < P1; });
+  for (auto Idx : AlreadyUsed) {
+    MACVETH_DEBUG("MVCostModel",
+                  "Removing Idx = " + std::to_string(Idx) +
+                      "; (rel val = " + std::to_string(Idx - Offset) + ")");
+    Nodes.erase(Nodes.begin() + Idx - (Offset++));
+  }
+  return Sequential;
+}
+
+//---------------------------------------------
+VectorOPListT MVCostModel::consumeNodes(NodeVectorT &Nodes) {
   VectorOPListT VList;
   NodeVectorT PrevOps;
   for (auto Node : Nodes) {
@@ -304,7 +356,7 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
         }
         if (NewPacking.size() == MaxVectorLength) {
           MACVETH_DEBUG("MVCostModel", "MaxVectorLength = consuming reduction");
-          VList.splice(VList.end(), consumeReduction(NewPacking));
+          VList.splice(VList.end(), consumeNodes(NewPacking));
           NewPacking.clear();
         }
       }
@@ -312,7 +364,7 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
     }
     if (NewPacking.size() > 0) {
       MACVETH_DEBUG("MVCostModel", "Consuming leftover reduction");
-      VList.splice(VList.end(), consumeReduction(NewPacking));
+      VList.splice(VList.end(), consumeNodes(NewPacking));
     }
     // Compute orphan nodes
     NodeVectorT OrphanNodes;
@@ -322,7 +374,7 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
         NodeVectorT NewRedux(&List[0], &List[PS]);
         std::sort(NewRedux.begin(), NewRedux.end(),
                   [](Node *P0, Node *P1) { return *P0 < *P1; });
-        VList.splice(VList.end(), consumeReduction(NewRedux));
+        VList.splice(VList.end(), consumeNodes(NewRedux));
         List.erase(List.begin(), List.begin() + PS);
       }
       if (List.size() > 0)
@@ -331,10 +383,15 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
     if (OrphanNodes.size() > 0) {
       std::sort(OrphanNodes.begin(), OrphanNodes.end(),
                 [](Node *P0, Node *P1) { return *P0 < *P1; });
-      /// FIXME: do it sequentially
+      /// Search contiguous nodes in memory
+      VList.splice(VList.end(), searchMapNodes(OrphanNodes));
+      MACVETH_DEBUG("MVCostModel", "Size orphan nodes = " +
+                                       std::to_string(OrphanNodes.size()));
       for (auto Orphan : OrphanNodes) {
         NodeVectorT OrphanList = {Orphan};
-        VList.splice(VList.end(), consumeReduction(OrphanList));
+        MACVETH_DEBUG("MVCostModel",
+                      "Consuming orphan node = " + Orphan->toStringShort());
+        VList.splice(VList.end(), consumeNodes(OrphanList));
       }
     }
   }

@@ -169,9 +169,15 @@ bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
                             MVR.rewriteLoops(SL, DimsDeclFunc));
         // Comment statements
         MVR.commentReplacedStmts(SL);
+
         // Render
         for (auto InsSIMD : SInfo.SIMDList) {
           MVR.renderSIMDInstInPlace(InsSIMD, SL);
+        }
+
+        // Render left-overs... this is awful
+        for (auto InsSIMD : SInfo.SIMDList) {
+          MVR.renderSIMDLeftOvers(InsSIMD, SL.back());
         }
 
         // Render initializations if needed for special cases such as

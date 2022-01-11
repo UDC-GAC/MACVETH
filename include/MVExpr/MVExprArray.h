@@ -74,6 +74,7 @@ public:
 
     /// Empty constructor
     MVAffineIndex() {}
+    ~MVAffineIndex() {}
 
     /// Create a copy of an MVAffineIndex
     MVAffineIndex(MVAffineIndex *M) {
@@ -299,11 +300,7 @@ public:
       return false;
     }
 
-    // This is awful, but should do the job. Recursive functions as a way of
-    // life lol xd.
-    // PS 1: Author of this code should be in jail... oh, wait.
-    // PS 2: How taught me how to program? He/she/it did it wrong
-    // PS 3 (some months later): kill me please
+    // FIXME: wtf
     int operator-(const MVAffineIndex &M) {
       if (!this->isTerminal()) {
         if (M.OP != this->OP) {

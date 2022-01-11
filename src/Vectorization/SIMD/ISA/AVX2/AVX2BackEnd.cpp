@@ -174,12 +174,6 @@ AVX2BackEnd::fuseAddSubMult(SIMDBackEnd::SIMDInstListType I) {
     SIMDBackEnd::SIMDInstListType AuxL;
     for (auto P : PotentialFuse[Inst.W]) {
       auto Live = VectorIR::LiveOut[P.Result];
-      // MACVETH_DEBUG("AVX2Backend", "Result = " + P.Result +
-      //                                  "; OutLive = " + std::to_string(Live)
-      //                                  +
-      //                                  "; Inst.MVSL.getOrder() = " +
-      //                                  std::to_string(Inst.MVSL.getOrder()) +
-      //                                  "; render = " + Inst.render());
       if (Live <= (int)Inst.MVSL.getOrder()) {
         AuxL.push_back(P);
       }
@@ -192,8 +186,6 @@ AVX2BackEnd::fuseAddSubMult(SIMDBackEnd::SIMDInstListType I) {
       bool AlreadyFused = false;
       for (auto P : PotentialFuse[Inst.W]) {
         if (Inst.Args[0] == P.Result) {
-          // MACVETH_DEBUG("AVX2Backend", "InstArgs[0] = " + Inst.Args[0] +
-          //                                  "; Result = " + P.Result);
           auto NewFuse = AVX2BackEnd::genMultAccOp(P, Inst);
           // We will like to skip this function later
           SkipList.push_back(P);
@@ -213,8 +205,6 @@ AVX2BackEnd::fuseAddSubMult(SIMDBackEnd::SIMDInstListType I) {
       if (!AlreadyFused) {
         for (auto P : PotentialFuse[Inst.W]) {
           if (Inst.Args[1] == P.Result) {
-            // MACVETH_DEBUG("AVX2Backend", "InstArgs[1] = " + Inst.Args[1] +
-            //                                  "; Result = " + P.Result);
             auto NewFuse = AVX2BackEnd::genMultAccOp(P, Inst);
             // We will like to skip this function later
             SkipList.push_back(P);
@@ -326,20 +316,20 @@ AVX2BackEnd::reduceMultipleValuesInRegisterSymmetric(VOperand V,
     SIMDBackEnd::addRegToDeclare(RegType, TmpReg2, {0});
     if (NReductions < 4) {
       genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W256, Type,
-                  {AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
+                  {AccmReg, "0b00001110"}, SIMDType::VOPT, MVSL, &IL);
       genSIMDInst(TmpReg1, "add", "", "", MVDataType::VWidth::W256, Type,
-                  {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
+                  {AccmReg, TmpReg0}, SIMDType::VOPT, MVSL, &IL);
 
       genSIMDInst(TmpReg2, "shuffle", "", "", MVDataType::VWidth::W256, Type,
-                  {TmpReg1, TmpReg1, "0x01"}, SIMDType::VPERM, MVSL, &IL);
+                  {TmpReg1, TmpReg1, "0x01"}, SIMDType::VOPT, MVSL, &IL);
       genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W256, Type,
-                  {TmpReg1, TmpReg2}, SIMDType::VADD, MVSL, &IL);
+                  {TmpReg1, TmpReg2}, SIMDType::VOPT, MVSL, &IL);
     } else {
       genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W256, Type,
                   //{AccmReg, "0b00001110"}, SIMDType::VPERM, MVSL, &IL);
-                  {AccmReg, "0b00110001"}, SIMDType::VPERM, MVSL, &IL);
+                  {AccmReg, "0b00110001"}, SIMDType::VOPT, MVSL, &IL);
       genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W256, Type,
-                  {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
+                  {AccmReg, TmpReg0}, SIMDType::VOPT, MVSL, &IL);
     }
   } else if (V.VectorLength > 2) {
     RegType = getRegisterType(Type, MVDataType::VWidth::W128);
@@ -350,9 +340,9 @@ AVX2BackEnd::reduceMultipleValuesInRegisterSymmetric(VOperand V,
     SIMDBackEnd::addRegToDeclare(RegType, TmpReg1, {0});
     std::string PermuteMask = "0b0000110001";
     genSIMDInst(TmpReg0, "permute", "", "", MVDataType::VWidth::W128, Type,
-                {AccmReg, PermuteMask}, SIMDType::VPERM, MVSL, &IL);
+                {AccmReg, PermuteMask}, SIMDType::VOPT, MVSL, &IL);
     genSIMDInst(LoRes, "add", "", "", MVDataType::VWidth::W128, Type,
-                {AccmReg, TmpReg0}, SIMDType::VADD, MVSL, &IL);
+                {AccmReg, TmpReg0}, SIMDType::VOPT, MVSL, &IL);
   }
 
   return IL;
@@ -616,7 +606,7 @@ AVX2BackEnd::horizontalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
     // 2 elements
     // hi = shuffle(lo, lo, mask);
     genSIMDInst(HiRes, "shuffle", "", "", MVDataType::VWidth::W128, Type,
-                {LoRes, LoRes, "0b00110001"}, SIMDType::VPERM, MVSL, &IL);
+                {LoRes, LoRes, "0b00110001"}, SIMDType::VOPT, MVSL, &IL);
     // lo = op(lo,hi);
     genSIMDInst("__mv_lo128", OpName, "", "", MVDataType::VWidth::W128, Type,
                 {LoRes, HiRes}, SIMDType::VOPT, MVSL, &IL);
@@ -666,11 +656,9 @@ std::string AVX2BackEnd::shuffleArguments(std::string A1, std::string A2,
   } else if (I.DT == MVDataType::VDataType::FLOAT) {
     Mask = (Pos == 0) ? "0x44" : "0xee";
   }
-
   if (Width == MVDataType::VWidth::W128) {
     Mask = (Pos == 0) ? "0b10001000" : "0b11011101";
   }
-
   return genGenericFunc(
       replacePatterns("shuffle", getMapWidth(Width), getMapType(I.DT), "", ""),
       {A1, A2, Mask});
@@ -733,7 +721,6 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
   // operations
   SIMDBackEnd::SIMDInstListType IL;
   std::vector<SIMDInst> VIL{std::begin(TIL), std::end(TIL)};
-
   auto NElems = (size_t)(VIL[0].W / MVDataType::VDataTypeWidthBits[VIL[0].DT]);
   auto OpRedux = VIL[0].MVOP;
   // auto OpReduxType = OpRedux.getType();
@@ -748,7 +735,6 @@ AVX2BackEnd::generalReductionFusion(SIMDBackEnd::SIMDInstListType TIL,
     VAccm.push_back(VIL[t].Args.front());
     VRedux.push_back(VIL[t].Result);
   }
-
   auto OP = OpRedux.toString();
   auto Loc = VIL[NumRedux - 1].VOPResult.Order;
   auto Off = VIL[NumRedux - 1].VOPResult.Offset;

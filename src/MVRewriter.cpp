@@ -144,9 +144,6 @@ bool MVRewriter::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
   for (auto S : SL) {
     if (S->isLoop()) {
       if (renderSIMDInstAfterPlace(SI, S->getStmtVector())) {
-        // MACVETH_DEBUG("MVRewrite",
-        //               "LOOP ORDER = " +
-        //                   std::to_string(SI.getMVSourceLocation().getOrder()));
         Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
                                      SI.render() + ";\n");
       }
@@ -156,17 +153,9 @@ bool MVRewriter::renderSIMDInstAfterPlace(SIMDBackEnd::SIMDInst SI,
           if (S->isInLoop()) {
             return true;
           }
-          // MACVETH_DEBUG(
-          //     "MVRewrite",
-          //     "ORDER = " +
-          //     std::to_string(SI.getMVSourceLocation().getOrder()));
-
           Rewrite.InsertTextAfter(
               S->getClangStmt()->getEndLoc().getLocWithOffset(2),
               "\n" + SI.render() + ";");
-          // Rewrite.InsertTextAfterToken(
-          //     S->getClangStmt()->getEndLoc().getLocWithOffset(2),
-          //    SI.render() + ";\n");
           return false;
         }
       }
@@ -182,8 +171,9 @@ void MVRewriter::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
     if (S->isLoop()) {
       renderSIMDInstInPlace(SI, S->getStmtVector());
     } else {
+      auto Order = SI.getMVSourceLocation().getOrder();
       for (auto T : S->getTacList()) {
-        if (SI.getMVSourceLocation().getOrder() == (unsigned int)T.getTacID()) {
+        if (Order == (unsigned int)T.getTacID()) {
           Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
                              SI.render() + ";\n");
           return;
@@ -191,6 +181,13 @@ void MVRewriter::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
       }
     }
   }
+}
+
+// ---------------------------------------------
+void MVRewriter::renderSIMDLeftOvers(SIMDBackEnd::SIMDInst SI, StmtWrapper *S) {
+  auto Order = SI.getMVSourceLocation().getOrder();
+  if (Order > (unsigned)S->getTacList().back().getTacID())
+    Rewrite.InsertText(S->getClangStmt()->getEndLoc(), SI.render() + ";\n");
 }
 
 // ---------------------------------------------
@@ -242,13 +239,15 @@ void MVRewriter::renderTACInPlace(StmtWrapperVectorT SL, long TacID,
       renderTACInPlace(S->getStmtVector(), TacID, Offset);
       continue;
     }
-    if (((TacID == S->getTacList().back().getTacID()) &&
-         (Offset == S->getTacList().back().getUnrollFactor())) ||
-        (TacID == -1)) {
+    // FIXME:
+    // if (((TacID == S->getTacList().back().getTacID()) &&
+    //      (Offset == S->getTacList().back().getUnrollFactor())) ||
+    //     (TacID == -1)) {
+    if (((TacID == S->getTacList().back().getTacID())) || (TacID == -1)) {
       S->setNotVectorized();
-      Rewrite.InsertText(S->getClangStmt()->getBeginLoc(),
-                         TAC::renderTacAsStmt(S->getTacList(), Offset), true,
-                         true);
+      auto TacStr = TAC::renderTacAsStmt(S->getTacList(), Offset);
+      MACVETH_DEBUG("MVRewriter", TacStr);
+      Rewrite.InsertText(S->getClangStmt()->getBeginLoc(), TacStr, true, true);
     }
   }
 }
@@ -272,11 +271,7 @@ void MVRewriter::addHeaders(std::vector<std::string> S, FileID FID) {
 
 // ---------------------------------------------
 void clearAllMappings() {
-  // Be clean lol
-  // TAC
   TAC::clear();
-  // VectorIR
   VectorIR::clear();
-  // SIMDBackEnd
   SIMDBackEnd::clearMappings();
 }

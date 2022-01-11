@@ -243,12 +243,16 @@ bool VOperand::checkIfAlreadyLoaded(Node *PrimaryNode) {
 bool VOperand::checkIfAlreadyStored(NodeVectorT &V) {
   for (int i = 0; i < (int)V.size(); ++i) {
     auto Reg = V[i]->getRegisterValue();
+    MACVETH_DEBUG("VOperand", "already stored reg = " + Reg);
     if (VectorIR::MapStores.find(Reg) != VectorIR::MapStores.end()) {
+      MACVETH_DEBUG("VOperand", "already stored reg = " + Reg + " found!");
       if (VectorIR::MapStores[Reg] > 0) {
+        MACVETH_DEBUG("VOperand", "already stored true");
         return true;
       }
     }
   }
+  MACVETH_DEBUG("VOperand", "already stored = false");
   return false;
 }
 
@@ -374,12 +378,15 @@ VOperand::VOperand(int VectorLength, NodeVectorT &V, bool Res, int Order) {
   this->IsLoad = !AlreadyLoaded && !this->IsStore;
 
   // Checking if operands are all memory
-  bool IsMemOp = true;
   this->MemOp = AlreadyStored;
 
   // Tracking the operands
+  bool IsMemOp = false;
   for (int n = 0; n < VectorLength; ++n) {
-    IsMemOp &= (V[n]->needsMemLoad());
+    MACVETH_DEBUG("VectorIR", V[n]->getRegisterValue() + "; needsMemLoad = " +
+                                  std::to_string(V[n]->needsMemLoad()));
+    // FIXME: all operands should be required to be from memory, not only one...
+    IsMemOp |= (V[n]->needsMemLoad());
     if ((!VecAssigned) && (!this->IsStore) && Res)
       VectorIR::MapRegToVReg[V[n]->getRegisterValue()] =
           std::make_tuple(this->Name, n);
@@ -394,6 +401,7 @@ VOperand::VOperand(int VectorLength, NodeVectorT &V, bool Res, int Order) {
     }
   }
   this->MemOp |= (IsMemOp);
+  MACVETH_DEBUG("VectorIR", "MemOp = " + std::to_string(this->MemOp));
 
   // Get data mask
   this->Mask = getMask(this->VectorLength, this->Size, V);
