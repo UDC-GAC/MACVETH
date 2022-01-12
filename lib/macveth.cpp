@@ -185,6 +185,11 @@ static llvm::cl::opt<bool> DisableFuseReductions(
     "nofuse", llvm::cl::desc("Disable the fusion of reductions"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
 
+static llvm::cl::opt<bool> DisableVectOrphanRedux(
+    "novec-orphan-redux",
+    llvm::cl::desc("Disable the vectorization of orphan reductions"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
 static llvm::cl::opt<int> ReduxWinSize(
     "redux-win-size",
     llvm::cl::desc("Advanced option: size of window of reductions to consider"),
@@ -290,6 +295,7 @@ int main(int argc, const char **argv) {
   MVOptions::FallbackStyle = FallbackStyle.getValue();
   MVOptions::ReduxWinSize = ReduxWinSize.getValue();
   MVOptions::MinReduxSize = MinReduxSize.getValue();
+  MVOptions::DisableVectOrphanRedux = DisableVectOrphanRedux.getValue();
   // Check if there are incompatible options
   MVOptions::validateOptions();
 

@@ -16,9 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        #gcc: [10, 11]
-        gcc: [10]
-        llvm: [13]
+        gcc: [11]
+        llvm: [12, 13]
         os: [ubuntu-20.04]
         build_type: ["Debug", "Release"]
 

@@ -384,9 +384,8 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
       std::sort(OrphanNodes.begin(), OrphanNodes.end(),
                 [](Node *P0, Node *P1) { return *P0 < *P1; });
       /// Search contiguous nodes in memory
-      VList.splice(VList.end(), searchMapNodes(OrphanNodes));
-      MACVETH_DEBUG("MVCostModel", "Size orphan nodes = " +
-                                       std::to_string(OrphanNodes.size()));
+      if (!MVOptions::DisableVectOrphanRedux)
+        VList.splice(VList.end(), searchMapNodes(OrphanNodes));
       for (auto Orphan : OrphanNodes) {
         NodeVectorT OrphanList = {Orphan};
         MACVETH_DEBUG("MVCostModel",

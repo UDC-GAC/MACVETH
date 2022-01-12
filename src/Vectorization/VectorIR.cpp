@@ -480,7 +480,8 @@ VectorIR::VType getVectorOpType(int VL, const NodeVectorT &VOps,
   if ((Seq || Reduction || ReduxPatterns) && ((RAW_A) || (RAW_B)) && Atomic_A &&
       Atomic_B) {
     return VectorIR::VType::REDUCE;
-  } else if ((!Seq) && (!RAW_A) && (!RAW_B) && Atomic_A && Atomic_B) {
+  } else if ((!Seq || ReduxPatterns) && (!RAW_A) && (!RAW_B) && Atomic_A &&
+             Atomic_B) {
     return VectorIR::VType::MAP;
   }
   return VectorIR::VType::SEQ;

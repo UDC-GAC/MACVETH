@@ -186,6 +186,8 @@ struct MVOptions {
   static inline std::string TargetFunc = "";
   /// Fuse reductions
   static inline bool FuseReductions = false;
+  /// Disable the vectorization of orphan reductions
+  static inline bool DisableVectOrphanRedux = false;
   /// Reductions windows size
   static inline int ReduxWinSize = 16;
   /// Minimum number of reductions that can be packed together

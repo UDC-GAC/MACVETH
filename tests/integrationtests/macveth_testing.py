@@ -96,6 +96,7 @@ mv_poly_flags = [
     "--march=cascadelake",
     "--no-format",
     "--simd-cost-model=unlimited",
+    "--novec-orphan-redux",
 ]
 mv_poly_flags_end = ["--", f"-I{cwd}/utilities"]
 
@@ -132,6 +133,7 @@ def run_test(test, output):
 def compile_test_with_macveth(org_file, out_file, args=[]):
     # Compiling the tests
     args = [*args, f"{org_file}", f"-o={offset_path_mv}/{out_file}", *mv_poly_flags_end]
+    print(" ".join([f"./{macveth_bin}", *args]))
     tmp = subprocess.run(
         [f"./{macveth_bin}", *args], shell=False, stderr=subprocess.PIPE
     ).stderr
