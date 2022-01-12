@@ -187,7 +187,8 @@ void MVRewriter::renderSIMDInOrder(SIMDBackEnd::SIMDInst SI,
 void MVRewriter::renderSIMDLeftOvers(SIMDBackEnd::SIMDInst SI, StmtWrapper *S) {
   auto Order = SI.getMVSourceLocation().getOrder();
   if (Order > (unsigned)S->getTacList().back().getTacID())
-    Rewrite.InsertText(S->getClangStmt()->getEndLoc(), SI.render() + ";\n");
+    Rewrite.InsertTextAfterToken(S->getClangStmt()->getEndLoc(),
+                                 SI.render() + ";\n");
 }
 
 // ---------------------------------------------
