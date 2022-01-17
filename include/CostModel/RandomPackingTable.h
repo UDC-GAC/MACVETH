@@ -76,7 +76,7 @@ public:
         }
         auto Signature = Tok[IDX_sig];
         auto DataType = Tok[IDX_datatype];
-        int Cost = std::atoi(Tok[IDX_cost].c_str());
+        float Cost = std::atof(Tok[IDX_cost].c_str());
         int Version = std::atoi(Tok[IDX_version].c_str());
         RandomPackingTable::Table.insert(std::make_pair(
             DataType + "_n" + Signature,

@@ -16,7 +16,7 @@ import sys
 import glob
 import os
 
-archs = ["cascadelake", "skylake", "zen", "zen2", "zen3", "broadwell", "haswell"]
+archs = ["cascadelake", "skylake", "znver1", "znver2", "znver3", "broadwell", "haswell"]
 isas = ["avx2", "avx", "sse", "avx512f"]
 data_type = ["float", "double"]
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 4:
         keep = bool(int(sys.argv[3]))
     for file in glob.glob("*.mrt"):
-        if file.split("_")[0] in ["float","double"]:
+        if file.split("_")[0] in ["float", "double"]:
             new_name = f"{arch}_{isa}_{file}"
         elif not check_naming(file):
             # then if has form rvp_<data>_<n>elems_<n>nnz_<cont>_<version>.mrt

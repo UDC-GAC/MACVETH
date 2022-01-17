@@ -257,8 +257,8 @@ VectorOPListT MVCostModel::searchMapNodes(NodeVectorT &Nodes) {
     Indices.push_back(std::atoi(Val->getIndex()[0].Val.c_str()));
   }
   std::vector<int> AlreadyUsed;
-  for (int i = 0; i < Indices.size(); ++i) {
-    std::vector<int> NewMapping = {i};
+  for (unsigned i = 0; i < Indices.size(); ++i) {
+    std::vector<unsigned int> NewMapping = {i};
     if ((std::find(AlreadyUsed.begin(), AlreadyUsed.end(), i) !=
          AlreadyUsed.end()))
       continue;

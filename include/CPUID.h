@@ -116,9 +116,11 @@ public:
     /// 10th-gen Intel Cascade Lake (2019) architecture: AVX512
     icelake,
     /// AMD zen architecture: AVX2
-    zen,
+    znver1,
     /// AMD zen2 architecture: AVX2
-    zen2,
+    znver2,
+    /// AMD zen3 architecture: AVX2
+    znver3,
     /// AMD default
     AMDDef,
     /// Intel Default

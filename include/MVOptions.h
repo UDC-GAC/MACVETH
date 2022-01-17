@@ -74,9 +74,10 @@ static std::map<MVCPUInfo::MVArch, std::string> MVArchStr = {
     {MVCPUInfo::MVArch::coffeelake, "coffeelake"},
     {MVCPUInfo::MVArch::cascadelake, "cascadelake"},
     {MVCPUInfo::MVArch::icelake, "icelake"},
-    {MVCPUInfo::MVArch::zen, "zen"},
-    {MVCPUInfo::MVArch::zen2, "zen2"},
-    {MVCPUInfo::MVArch::AMDDef, "zen"},
+    {MVCPUInfo::MVArch::znver1, "znver1"},
+    {MVCPUInfo::MVArch::znver2, "znver2"},
+    {MVCPUInfo::MVArch::znver3, "znver3"},
+    {MVCPUInfo::MVArch::AMDDef, "znver1"},
     {MVCPUInfo::MVArch::IntelDef, "cascadelake"}};
 
 static std::map<std::string, MVCPUInfo::MVArch> MVStrArch = {
@@ -92,9 +93,10 @@ static std::map<std::string, MVCPUInfo::MVArch> MVStrArch = {
     {"coffeelake", MVCPUInfo::MVArch::coffeelake},
     {"cascadelake", MVCPUInfo::MVArch::cascadelake},
     {"icelake", MVCPUInfo::MVArch::icelake},
-    {"zen", MVCPUInfo::MVArch::zen},
-    {"zen2", MVCPUInfo::MVArch::zen2},
-    {"zen", MVCPUInfo::MVArch::AMDDef},
+    {"znver1", MVCPUInfo::MVArch::znver1},
+    {"znver2", MVCPUInfo::MVArch::znver2},
+    {"znver3", MVCPUInfo::MVArch::znver3},
+    {"znver1", MVCPUInfo::MVArch::AMDDef},
     {"cascadelake", MVCPUInfo::MVArch::IntelDef}};
 
 /// Mapping between the ISA and supported architectures
@@ -106,24 +108,24 @@ static std::map<MVCPUInfo::MVISA, std::vector<MVCPUInfo::MVArch>>
           MVCPUInfo::MVArch::haswell, MVCPUInfo::MVArch::broadwell,
           MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::kabylake,
           MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
-          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::zen,
-          MVCPUInfo::MVArch::zen2, MVCPUInfo::MVArch::AMDDef,
-          MVCPUInfo::MVArch::IntelDef}},
+          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::znver1,
+          MVCPUInfo::MVArch::znver2, MVCPUInfo::MVArch::znver3,
+          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef}},
         {MVCPUInfo::MVISA::AVX,
          {MVCPUInfo::MVArch::sandybridge, MVCPUInfo::MVArch::ivybridge,
           MVCPUInfo::MVArch::haswell, MVCPUInfo::MVArch::broadwell,
           MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::kabylake,
           MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
-          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::zen,
-          MVCPUInfo::MVArch::zen2, MVCPUInfo::MVArch::AMDDef,
-          MVCPUInfo::MVArch::IntelDef}},
+          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::znver1,
+          MVCPUInfo::MVArch::znver2, MVCPUInfo::MVArch::znver3,
+          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef}},
         {MVCPUInfo::MVISA::AVX2,
          {MVCPUInfo::MVArch::haswell, MVCPUInfo::MVArch::broadwell,
           MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::kabylake,
           MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
-          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::zen,
-          MVCPUInfo::MVArch::zen2, MVCPUInfo::MVArch::AMDDef,
-          MVCPUInfo::MVArch::IntelDef}},
+          MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::znver1,
+          MVCPUInfo::MVArch::znver2, MVCPUInfo::MVArch::znver3,
+          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef}},
         {MVCPUInfo::MVISA::AVX512,
          {MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::cascadelake,
           MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::AMDDef,
@@ -232,8 +234,9 @@ struct MVOptions {
     }
     if (MVOptions::Arch == MVCPUInfo::MVArch::NATIVE) {
       auto HostArch = std::string(llvm::sys::getHostCPUName());
-      assert((MVStrArch.find(HostArch) != MVStrArch.end()) &&
-             "Architecture not supported: try skylake, broadwell, zen, etc.");
+      assert(
+          (MVStrArch.find(HostArch) != MVStrArch.end()) &&
+          "Architecture not supported: try skylake, broadwell, znver1, etc.");
       MVOptions::Arch = MVStrArch[HostArch];
     }
     checkIfArchISACompatible();

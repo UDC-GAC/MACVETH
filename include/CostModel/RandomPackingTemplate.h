@@ -82,7 +82,7 @@ using TemplateListT = std::vector<std::string>;
 
 class RandomPackingTemplate {
 public:
-  RandomPackingTemplate(const std::string &Signature, int Cost,
+  RandomPackingTemplate(const std::string &Signature, float Cost,
                         const std::string &DataType = "float", int Version = 0)
       : Signature(Signature), Cost(Cost), DataType(DataType), Version(Version) {
     this->ID = RandomPackingTemplate::_UID++;
@@ -113,7 +113,7 @@ private:
   static inline unsigned long long _UID = 0;
   unsigned long long ID = 0;
   std::string Signature = "";
-  unsigned long long Cost = 0;
+  float Cost = 0;
   std::string DataType = "";
   unsigned int Version = 0;
   std::string TemplatePath = "";
