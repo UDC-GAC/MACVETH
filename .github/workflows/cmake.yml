@@ -37,7 +37,7 @@ jobs:
           sudo apt update && sudo apt install cmake -y
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh ${{ matrix.llvm }}
+          sudo ./llvm.sh ${{ matrix.llvm }} all
       - name: Install all Clang dependencies
         run: |
           sudo apt update && sudo apt install clang-tools-${{ matrix.llvm }} libclang-${{ matrix.llvm }}-dev
