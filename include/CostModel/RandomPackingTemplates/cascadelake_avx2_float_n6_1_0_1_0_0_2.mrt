@@ -1,0 +1,6 @@
+#r0:REG# = _mm_maskload_ps(&#0:0:MEM#,_mm_set_epi32(0,0,-1,-1))
+_mv_insert_mem_ps(#r1:REG#,#r0:REG#,#1:0:MEM#,0x0000005c)
+_mv_insert_mem_ps(#r2:REG#,#r1:REG#,#2:0:MEM#,0x00000028)
+_mv_insert_mem_ps(#r3:REG#,#r2:REG#,#3:0:MEM#,0x00000070)
+#r4:REG# = _mm_loadl_pi(_mm_set_ps(0,0,0,0),&#4:0:MEM#)
+#output:REG# = _mm256_set_m128(#r4:REG#,#r3:REG#)

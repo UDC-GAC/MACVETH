@@ -125,9 +125,6 @@ public:
 
   /// Set type as a string
   void setTypeStr(std::string TypeStr) {
-    // This is a fucking hack: treat const as if they are not const...
-    // Thus, typing is easier. Do we really need to know if a variable is
-    // constant or not? I think we do not.
     auto LastNotNullptrToken = TypeStr;
     char *dup = strdup(TypeStr.c_str());
     auto Tok = strtok(dup, " ");
@@ -136,7 +133,6 @@ public:
       Tok = strtok(nullptr, " ");
     }
     this->TypeStr = LastNotNullptrToken;
-    // At least be clean
     free(dup);
   }
 
@@ -201,6 +197,8 @@ public:
   /// Operators
   virtual int operator-(const MVExpr &MVE) { return -1; }
 
+  virtual bool operator<(const MVExpr &MVE) { return false; }
+
 private:
   /// MVExpr kind
   MVExprKind MK;
@@ -217,7 +215,7 @@ private:
   /// Need to be loaded from mem
   bool NeedsMemLoad = true;
   /// Dimensions of the expressions
-  std::list<std::string> Dims;
+  std::vector<std::string> Dims;
 };
 
 } // namespace macveth

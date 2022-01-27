@@ -31,6 +31,7 @@
 #include "include/Utils.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Type.h"
+#include <algorithm>
 #include <regex>
 #include <sstream>
 #include <unistd.h>
@@ -44,67 +45,48 @@ using namespace macveth;
 
 // ---------------------------------------------
 void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
-  auto PathISA = "/ISA/" + MVISAStr[ISA] + "/" + MVArchStr[MVOptions::Arch];
   std::string dir(__FILE__);
   dir = dir.substr(0, dir.find_last_of("\\/"));
-  PathISA = dir + PathISA;
-  auto Arch = MVArchStr[MVOptions::Arch];
+  auto PathISA =
+      dir + "/ISA/" + MVISAStr[ISA] + "/" + MVArchStr[MVOptions::Arch] + ".mvi";
   std::ifstream F(PathISA);
-  std::string L, W;
-  MACVETH_DEBUG("SIMDBackEnd", PathISA + " path");
+  assert(!F.fail() && "File does not exist for SIMDBackend");
   if (F.is_open()) {
+    std::string L, W;
     while (getline(F, L)) {
-      if ((L.rfind("#", 0) == 0) || (L == "")) {
+      if ((L.rfind("#", 0) == 0) || (L.empty())) {
         // Check if line is a comment
         continue;
       }
-
       //   0 ,    1     , 2 ,    3    , 4 ,  5  , 6 , 7, 8  , 9
       // MVOP,intrinsics,ASM,XED_iform,ISA,CPUID,lat,th,uops,ports
-
-      std::stringstream TMP(L);
-      std::vector<std::string> Args;
-      while (getline(TMP, W, '|')) {
-        Args.push_back(W);
-      }
-
+      std::vector<std::string> Args = Split<'|'>::split(L);
       CostTable::addRow(Args[0], Args[1], Args[2], Args[3], Args[6], Args[7],
                         Args[8], Args[9]);
     }
     F.close();
-  } else {
-    MACVETH_DEBUG("SIMDBackEnd",
-                  "This should never happen: PATH for costs file not found");
-    llvm::llvm_unreachable_internal();
+    return;
   }
 }
 
 // ---------------------------------------------
-std::string SIMDBackEnd::getOpName(VectorIR::VOperand V, bool Ptr, bool RegVal,
+std::string SIMDBackEnd::getOpName(const VOperand &V, bool Ptr, bool RegVal,
                                    int Position, int Offset) {
-  if ((Ptr) && (V.IsStore || V.IsLoad)) {
+  if ((Ptr) && (V.IsStore || V.IsLoad))
     return "&" + V.getRegName(Position, Offset);
-  }
-  if (RegVal) {
+  if (RegVal)
     return V.getRegName(Position, Offset);
-  }
-  return V.Name;
+  return V.getName();
 }
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInst
-SIMDBackEnd::addNonSIMDInst(VectorIR::VectorOP OP, SIMDBackEnd::SIMDType SType,
+SIMDBackEnd::addNonSIMDInst(VectorOP &OP, SIMDBackEnd::SIMDType SType,
                             MVSourceLocation MVSL,
                             SIMDBackEnd::SIMDInstListType *IL) {
-  // Generate SIMD inst
-  std::string Rhs;
-  auto Lhs = OP.R.getName();
-
-  SIMDBackEnd::SIMDInst I(Lhs, Rhs, MVSL);
-  // Retrieving cost of function
+  auto Lhs = OP.getResult().getName();
+  SIMDBackEnd::SIMDInst I(Lhs, "", MVSL);
   I.SType = SType;
-
-  // Adding instruction to the list
   IL->push_back(I);
   return I;
 }
@@ -115,19 +97,18 @@ SIMDBackEnd::addNonSIMDInst(std::string Lhs, std::string Rhs,
                             SIMDBackEnd::SIMDType SType, MVSourceLocation MVSL,
                             SIMDBackEnd::SIMDInstListType *IL) {
   SIMDBackEnd::SIMDInst I(Lhs, Rhs, MVSL);
-
-  // Retrieving cost of function
   I.SType = SType;
-
-  // Adding instruction to the list
   IL->push_back(I);
   return I;
 }
 
 // ---------------------------------------------
 std::string SIMDBackEnd::SIMDInst::render() {
-  std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
-  std::string FullFunc = ((Result == "") || (SType == SIMDType::VSTORE) ||
+  const std::string FN = (MVOptions::MacroCode) ? MVFuncName : FuncName;
+  if ((SType == SIMDType::VTEMPLATE)) {
+    return FN;
+  }
+  std::string FullFunc = ((Result.empty()) || (SType == SIMDType::VSTORE) ||
                           (SType == SIMDType::VSCATTER))
                              ? FN
                              : Result + " = " + FN;
@@ -145,21 +126,17 @@ std::string SIMDBackEnd::SIMDInst::render() {
 }
 
 // ---------------------------------------------
-std::list<std::string> SIMDBackEnd::renderSIMDasString(SIMDInstListType S) {
-  std::list<std::string> L;
-  // Render instructions
-  for (auto I : S) {
-    auto Inst = I.render() + ";\t";
-    L.push_back(Inst);
-  }
+std::vector<std::string> SIMDBackEnd::renderSIMDasString(SIMDInstListType &S) {
+  std::vector<std::string> L;
+  std::for_each(S.begin(), S.end(),
+                [&L](auto I) { L.push_back(I.render() + ";\t"); });
   return L;
 }
 
 // ---------------------------------------------
-// bool equalValues(int VL, Node **N) {
-bool equalValues(int VL, std::vector<Node *> N) {
+bool equalValues(int VL, NodeVectorT N) {
   for (int n = 1; n < VL; ++n) {
-    if (N[0]->getValue() != N[n]->getValue()) {
+    if (N[0]->getRegisterValue() != N[n]->getRegisterValue()) {
       return false;
     }
   }
@@ -167,9 +144,22 @@ bool equalValues(int VL, std::vector<Node *> N) {
 }
 
 // ---------------------------------------------
-bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
-  if (!V.IsLoad) {
+bool SIMDBackEnd::getSIMDVOperand(VOperand V, SIMDInstListType *IL,
+                                  bool Reduction) {
+  MACVETH_DEBUG("SIMDBackEnd",
+                "V = " + V.getName() + "; load = " + std::to_string(V.IsLoad) +
+                    "; partial = " + std::to_string(V.IsPartial) +
+                    "; regpack = " + std::to_string(V.RequiresRegisterPacking));
+  if (((!V.IsLoad) && (!V.RequiresRegisterPacking) && (!V.IsPartial)) ||
+      ((!V.MemOp) && (V.IsPartial) && (V.SameVector) && (Reduction))) {
     return false;
+  }
+
+  if ((V.RequiresRegisterPacking) ||
+      //((!V.MemOp) && (!V.IsLoad) && (V.IsPartial) && (V.SameVector))) {
+      ((!V.MemOp) && (V.IsPartial) && (V.SameVector))) {
+    // IL->splice(IL->end(), vregisterpacking(V));
+    return true;
   }
 
   SIMDInstListType TIL;
@@ -185,25 +175,15 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
   //
   // We will say it is a set if we have to explicitly set the values of the
   // vector operand
-  auto EqualVal = equalValues(V.VSize, V.UOP);
+  auto EqualVal = equalValues(V.VectorLength, V.UOP);
   auto ContMem = V.MemOp && (V.Contiguous);
   auto ScatterMem = V.MemOp && !ContMem;
   auto ExpVal = !V.MemOp;
 
   auto NullIndex = false;
-  // FIXME:
-  // if (V.Idx.size() > 0) {
-  //   auto I0 = V.Idx[0];
-  //   for (size_t i = 1; i < V.VSize; ++i) {
-  //     if (V.Idx[i] == I0) {
-  //       NullIndex = true;
-  //       break;
-  //     }
-  //   }
-  // }
-
   MACVETH_DEBUG("SIMDBackEnd",
-                "V = " + V.Name + "; EqualVal = " + std::to_string(EqualVal) +
+                "V = " + V.getName() +
+                    "; EqualVal = " + std::to_string(EqualVal) +
                     "; ContMem = " + std::to_string(ContMem) +
                     "; ScatterMem = " + std::to_string(ScatterMem) +
                     "; SameVec = " + std::to_string(V.SameVector) +
@@ -229,11 +209,12 @@ bool SIMDBackEnd::getSIMDVOperand(VectorIR::VOperand V, SIMDInstListType *IL) {
 }
 
 // ---------------------------------------------
-void SIMDBackEnd::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
+void SIMDBackEnd::mapOperation(VectorOP &V, SIMDInstListType *TI) {
   SIMDInstListType TIL;
+
   // Arranging the operands: maybe they need load, set, bcast...
-  getSIMDVOperand(V.OpA, TI);
-  getSIMDVOperand(V.OpB, TI);
+  getSIMDVOperand(V.getOpA(), TI);
+  getSIMDVOperand(V.getOpB(), TI);
 
   if (V.isBinOp()) {
     /// We can filter it by
@@ -257,14 +238,13 @@ void SIMDBackEnd::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
       TIL = vseq(V);
     }
   } else {
-    // TODO decide what todo when we have the custom operations
     MACVETH_DEBUG("SIMDBackEnd", "it is not a binary operation");
     TIL = vfunc(V);
   }
 
   // If there is a store
-  if (V.R.IsStore) {
-    if (V.R.Contiguous) {
+  if (V.getResult().IsStore) {
+    if (V.getResult().Contiguous) {
       TIL.splice(TIL.end(), vstore(V));
     } else {
       TIL.splice(TIL.end(), vscatter(V));
@@ -274,25 +254,15 @@ void SIMDBackEnd::mapOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
 }
 
 // ---------------------------------------------
-void SIMDBackEnd::reduceOperation(VectorIR::VectorOP V, SIMDInstListType *TI) {
-  SIMDInstListType TIL;
-
-  // Retrieve operands
-  if (V.R.Name == V.OpA.Name) {
-    getSIMDVOperand(V.OpB, TI);
-  }
-  if (V.R.Name == V.OpB.Name) {
-    getSIMDVOperand(V.OpA, TI);
-  }
-
-  // Let the magic happens
-  TIL = vreduce(V);
-  TI->splice(TI->end(), TIL);
+void SIMDBackEnd::reduceOperation(VectorOP &V, SIMDInstListType *TI) {
+  MACVETH_DEBUG("SIMDBackend", "reduction: R = " + V.getResult().getName() +
+                                   "; B = " + V.getOpA().getName());
+  getSIMDVOperand(V.getOpA(), TI);
+  TI->splice(TI->end(), vreduce(V));
 }
 
 // ---------------------------------------------
-SIMDBackEnd::SIMDInstListType
-SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP V) {
+SIMDBackEnd::SIMDInstListType SIMDBackEnd::getSIMDfromVectorOP(VectorOP &V) {
   SIMDInstListType IL;
 
   // Arranging the operation
@@ -305,33 +275,34 @@ SIMDBackEnd::getSIMDfromVectorOP(VectorIR::VectorOP V) {
     break;
   case VectorIR::VType::SEQ:
     return vseq(V);
+  case VectorIR::VType::SCATTER:
+    return singleElementScatterOp(V);
   case VectorIR::VType::INDUCTION:
     MVErr("Induction not supported yet!!!");
   };
 
   auto RegType = getRegisterType(V.DT, V.VW);
-  addRegToDeclare(RegType, V.R.getName());
-  addRegToDeclare(RegType, V.OpA.getName());
-  addRegToDeclare(RegType, V.OpB.getName());
+  addRegToDeclare(RegType, V.getResult().getName());
+  addRegToDeclare(RegType, V.getOpA().getName());
+  if (!V.IsUnary)
+    addRegToDeclare(RegType, V.getOpB().getName());
 
   return IL;
 }
 
 // ---------------------------------------------
 SIMDBackEnd::SIMDInstListType
-SIMDBackEnd::getSIMDfromVectorOP(std::list<VectorIR::VectorOP> VList) {
+SIMDBackEnd::getSIMDfromVectorOP(const VectorOPListT &VList) {
   SIMDInstListType IL;
 
   // Get list of SIMD instructions
-  for (VectorIR::VectorOP V : VList) {
+  std::for_each(VList.begin(), VList.end(), [&IL, this](auto V) {
     IL.splice(IL.end(), getSIMDfromVectorOP(V));
-  }
+  });
 
   // Then optimizations can be done, for instance, combine operatios such as
   // addition + multiplication. It will depend on the architecture/ISA.
-  IL = peepholeOptimizations(IL);
-
-  return IL;
+  return peepholeOptimizations(IL);
 }
 
 // ---------------------------------------------
@@ -342,8 +313,7 @@ void SIMDBackEnd::addRegToDeclare(std::string Type, std::string Name,
       return;
     }
   }
-  std::vector<std::string> L;
-  L.push_back(std::to_string(InitVal));
+  std::vector<std::string> L{std::to_string(InitVal)};
   RegDeclared[Type].push_back(std::make_tuple(Name, L));
 }
 
@@ -373,16 +343,18 @@ std::string SIMDBackEnd::genGenericFunc(std::string F,
 }
 
 // ---------------------------------------------
-std::string SIMDBackEnd::replacePatterns(std::string Pattern, std::string W,
-                                         std::string D, std::string P,
-                                         std::string S) {
-  return "_mm" + W + "_" + P + Pattern + S + "_" + D;
+std::string SIMDBackEnd::replacePatterns(const std::string &Pattern,
+                                         const std::string &Width,
+                                         const std::string &DataSuffix,
+                                         const std::string &Prefix,
+                                         const std::string &Suffix) {
+  return "_mm" + Width + "_" + Prefix + Pattern + Suffix + "_" + DataSuffix;
 }
 
 // ---------------------------------------------
 void SIMDBackEnd::clearMappings() {
-  for (auto &X : RegDeclared) {
-    X.second.clear();
+  for (auto &[Name, X] : RegDeclared) {
+    X.clear();
   }
   RegDeclared.clear();
   AccmToReg.clear();

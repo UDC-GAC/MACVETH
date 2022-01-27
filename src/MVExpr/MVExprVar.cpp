@@ -21,7 +21,7 @@
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Noël Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #include "include/MVExpr/MVExprVar.h"
 #include <string>
@@ -66,13 +66,12 @@ bool MVExprVar::hasBeenUnrolled(std::string Reg, std::string Dim) {
 
 //------------------------------------------------
 MVExpr *MVExprVar::unrollExpr(int UF, std::string LL, bool SubstituteVal) {
+  MVExprVar *NewExpr = new MVExprVar(this);
   if (this->getTempInfo() == MVExpr::MVExprInfo::TMP_RES) {
-    MVExprVar *NewExpr = new MVExprVar(this);
     NewExpr->setExprStr(NewExpr->getExprStr() + LL + std::to_string(UF));
     return NewExpr;
   } else if (this->getExprStr() == LL) {
     // Special case, when unrolling loop variable
-    MVExprVar *NewExpr = new MVExprVar(this);
     NewExpr->setExprStr("(" + (NewExpr->getExprStr()) + " + " +
                         std::to_string(UF) + ")");
     NewExpr->setDoNotLoadFromMem();

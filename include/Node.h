@@ -37,6 +37,10 @@ using namespace macveth;
 
 namespace macveth {
 
+class Node;
+
+using NodeVectorT = std::vector<Node *>;
+
 /// All Nodes belong to a CDAG. Each node or vertex holds information regarding
 /// the type of operation as well as its Edges (or links to another Nodes).
 /// Nodes also hold information regarding the scheduling, i.e. the order on
@@ -50,10 +54,7 @@ public:
   static inline int UUID = 0;
 
   /// Restart UUID numbering
-  static void restart() { Node::UUID = 0; }
-
-  /// Definition of NodeListType
-  using NodeListType = std::vector<Node *>;
+  static void clear() { Node::UUID = 0; }
 
   /// Available types of nodes
   enum NodeType { NODE_MEM, NODE_STORE, NODE_OP, UNDEF };
@@ -94,10 +95,11 @@ public:
     /// An output node may be an operation and, therefore, may be a binary
     /// operation
     bool IsBinaryOp = false;
+    bool alreadyStored = false;
   };
 
   /// Set the output information of the given a TAC
-  OutputInfo setOutputInfo(TAC T) {
+  OutputInfo setOutputInfo(const TAC &T) {
     OutputInfo O;
     O.E = T.getA();
     O.Type = (T.getMVOP().isAssignment()) ? MEM_STORE : TEMP_STORE;
@@ -108,7 +110,9 @@ public:
 
   void setNodeAsReduction() { this->SI.IsReduction = true; }
   void setNodeAsNonReduction() { this->SI.IsReduction = false; }
-  bool belongsToAReduction() { return this->SI.IsReduction; }
+  void setAlreadyStored() { this->O.alreadyStored = true; }
+  bool isAlreadyStored() { return this->O.alreadyStored; }
+  bool belongsToAReduction() const { return this->SI.IsReduction; }
 
   /// Setting the scheduling info without any other information
   void setSchedInfo() { this->SI.NodeID = Node::UUID++; }
@@ -123,6 +127,14 @@ public:
     this->SI.UnrollFactor = T.getUnrollFactor();
     // FIXME: vector of scops
     this->SI.Scop[0] = T.getScop();
+  }
+
+  /// Empty constructor
+  Node() {}
+
+  /// A node is emtpy if it is not initialized, basically.
+  bool isEmptyNode() {
+    return (MV == nullptr) && (T == UNDEF) && (Value.empty());
   }
 
   /// When creating a Node from a TempExpr, the connections will be created by
@@ -162,7 +174,7 @@ public:
 
   /// This is the unique constructor for nodes, as we will creating Nodes from
   /// CDAG, so each TAC corresponds to a = b op c
-  Node(TAC T, NodeListType L) {
+  Node(const TAC &T, NodeVectorT L) {
     this->T = NODE_OP;
     this->MV = nullptr;
     this->Value = T.getMVOP().toString();
@@ -170,7 +182,8 @@ public:
     setSchedInfo(T);
     this->LoopName = T.getLoopName();
     auto NB = findOutputNode(T.getB()->getExprStr(), L);
-    if (NB == nullptr || this->getScop()[0] != NB->getScop()[0]) {
+    // if (NB == nullptr || this->getScop()[0] != NB->getScop()[0]) {
+    if (NB == nullptr) {
       connectInput(new Node(T.getB()));
     } else {
       connectInput(NB);
@@ -178,7 +191,8 @@ public:
     Node *NC = nullptr;
     if (T.getC() != nullptr) {
       NC = findOutputNode(T.getC()->getExprStr(), L);
-      if (NC == nullptr || this->getScop()[0] != NC->getScop()[0]) {
+      // if (NC == nullptr || this->getScop()[0] != NC->getScop()[0]) {
+      if (NC == nullptr) {
         connectInput(new Node(T.getC()));
       } else {
         connectInput(NC);
@@ -203,7 +217,14 @@ public:
   }
 
   /// Get MVExpr
-  MVExpr *getMVExpr() { return this->MV; }
+  MVExpr *getMVExpr() const {
+    if ((this->MV == nullptr) && (this->isStoreNodeOp())) {
+      return this->getOutputInfo().E;
+    }
+    return this->MV;
+  }
+
+  bool isOnLoop() const { return this->LoopName != ""; }
 
   /// Schedule info is needed for the algorithms to perform permutations in
   /// nodes
@@ -216,7 +237,7 @@ public:
   void setPlcmnt(int Plcmnt) { this->SI.Plcmnt = Plcmnt; }
 
   /// Check if Node N is already in node list L
-  static Node *findOutputNode(std::string NodeName, NodeListType L);
+  static Node *findOutputNode(const std::string &NodeName, NodeVectorT L);
 
   /// Connect a Node as input
   void connectInput(Node *N);
@@ -225,7 +246,7 @@ public:
   std::vector<int> getScop() { return this->SI.Scop; }
 
   /// Get the output information
-  OutputInfo getOutputInfo() { return this->O; }
+  OutputInfo getOutputInfo() const { return this->O; }
   /// Get the output information
   std::string getOutputInfoName() { return this->O.E->toString(); }
   /// Get the output information
@@ -233,9 +254,10 @@ public:
   /// Get the number of inputs in this Node
   int getInputNum() { return this->I.size(); }
   /// Get the list of node inputs in this Node
-  NodeListType getInputs() { return this->I; }
+  NodeVectorT getInputs() { return this->I; }
   /// Get info regarding its scheduling
   SchedInfo getSchedInfo() { return this->SI; }
+  SchedInfo getSchedInfo() const { return this->SI; }
   /// Get TAC order
   int getTacID() { return this->SI.TacID; }
   /// Get unrolling factor
@@ -253,12 +275,13 @@ public:
 
   /// Is OP
   bool needsMemLoad() {
-    return ((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)) &&
-            (this->MV->needsToBeLoaded()));
+    return (((this->T == NODE_MEM) && (!dyn_cast<MVExprLiteral>(this->MV)) &&
+             (this->MV->needsToBeLoaded())) ||
+            isAlreadyStored());
   }
 
   /// Check if Node type is NODE_STORE
-  bool isStoreNodeOp() { return (this->T == NODE_STORE); }
+  bool isStoreNodeOp() const { return (this->T == NODE_STORE); }
 
   /// Get the node type
   NodeType getNodeType() { return this->T; }
@@ -312,6 +335,9 @@ public:
     // } else {
     //   return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
     // }
+
+    // return (this->getSchedInfo().NodeID < N.SI.NodeID);
+
     if (this->getSchedInfo().TacID == N.SI.TacID) {
       if (this->getSchedInfo().UnrollFactor == N.SI.UnrollFactor) {
         if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
@@ -323,13 +349,16 @@ public:
         return (this->getSchedInfo().UnrollFactor < N.SI.UnrollFactor);
       }
     } else {
-      if ((!this->belongsToAReduction()) && (!N.SI.IsReduction)) {
+      if ((!this->belongsToAReduction()) && (!N.belongsToAReduction())) {
         if (this->getSchedInfo().FreeSched == N.SI.FreeSched) {
           return (this->getSchedInfo().NodeID < N.SI.NodeID);
         } else {
           return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
         }
       }
+      // else {
+      //   return (this->getSchedInfo().FreeSched < N.SI.FreeSched);
+      // }
       return (this->getSchedInfo().TacID < N.SI.TacID);
     }
   }
@@ -337,12 +366,11 @@ public:
   /// For debugging purposes: show information regarding the scheduling of the
   /// node
   std::string getSchedInfoStr() {
-    std::string S =
-        "NodeID = " + std::to_string(this->getSchedInfo().NodeID) +
-        "; FreeSched = " + std::to_string(this->getSchedInfo().FreeSched) +
-        "; TacID = " + std::to_string(getSchedInfo().TacID) +
-        "; PlcmntInfo = " + std::to_string(getSchedInfo().Plcmnt) +
-        "; Scops = ";
+    std::string S = "NID = " + std::to_string(this->getSchedInfo().NodeID) +
+                    "; FS = " + std::to_string(this->getSchedInfo().FreeSched) +
+                    "; TID = " + std::to_string(getSchedInfo().TacID) +
+                    "; PI = " + std::to_string(getSchedInfo().Plcmnt) +
+                    "; Scp = ";
     for (size_t i = 0; i < getSchedInfo().Scop.size() - 1; ++i) {
       S += std::to_string(getSchedInfo().Scop[i]) + ", ";
     }
@@ -351,7 +379,7 @@ public:
   }
 
 private:
-  /// Expression holded in the node
+  /// Expression holden in the node
   MVExpr *MV = nullptr;
   /// Each node holds information about scheduling
   SchedInfo SI;
@@ -360,7 +388,7 @@ private:
   /// Type of node: MEMORY or OPERATION
   NodeType T = UNDEF;
   /// List of input nodes for this node
-  NodeListType I;
+  NodeVectorT I;
   /// Info regarding the output register/node. This field only makes sense if
   /// we are dealing with an operation node
   OutputInfo O;

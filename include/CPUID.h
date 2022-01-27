@@ -92,33 +92,35 @@ public:
     NATIVE,
     /// Default or not specified
     DEFAULT,
-    /// 1st-gen Intel Nehalem (2009) architecture (tock): SSE4.2
-    Nehalem,
-    /// 1st-gen (and 2) Intel Westmere (2010) architecture (tick): SSE4.2
-    Westmere,
+    /// 1st-gen Intel nehalem (2009) architecture (tock): SSE4.2
+    nehalem,
+    /// 1st-gen (and 2) Intel westmere (2010) architecture (tick): SSE4.2
+    westmere,
     /// 2nd-gen Intel Sandy Bridge (2011) architecture (tock): AVX
-    SandyBridge,
+    sandybridge,
     /// 3rd-gen Intel Ivy Bridge (2012) architecture (tick): AVX
-    IvyBridge,
-    /// 4th-gen Intel Haswell (2013) architecture (tock): AVX2
-    Haswell,
-    /// 5th-gen Intel Broadwell (2014) architecture (tick): AVX2
-    Broadwell,
-    /// 6th-gen Intel Skylake (2015) architecture (tock): AVX2, AVX512
-    /// (Skylake-SP)
-    Skylake,
+    ivybridge,
+    /// 4th-gen Intel haswell (2013) architecture (tock): AVX2
+    haswell,
+    /// 5th-gen Intel broadwell (2014) architecture (tick): AVX2
+    broadwell,
+    /// 6th-gen Intel skylake (2015) architecture (tock): AVX2, AVX512
+    /// (skylake-SP)
+    skylake,
     /// 7th-gen Intel Kaby Lake (2016) architecture: AVX2
-    KabyLake,
+    kabylake,
     /// 8-9th-gen Intel Coffee Lake (2017) architecture: AVX2
-    CoffeeLake,
+    coffeelake,
     /// 8th-gen (server) Intel Cascade Lake (2019) architecture: AVX512
-    CascadeLake,
+    cascadelake,
     /// 10th-gen Intel Cascade Lake (2019) architecture: AVX512
-    IceLake,
-    /// AMD Zen architecture: AVX2
-    Zen,
-    /// AMD Zen2 architecture: AVX2
-    Zen2,
+    icelake,
+    /// AMD zen architecture: AVX2
+    znver1,
+    /// AMD zen2 architecture: AVX2
+    znver2,
+    /// AMD zen3 architecture: AVX2
+    znver3,
     /// AMD default
     AMDDef,
     /// Intel Default
@@ -291,7 +293,7 @@ private:
   static constexpr uint32_t LVL_CORES = 0x0000FFFF;
 
   /// Name of the architecture, e.g. "broadwell", "skylake", "knights landing"
-  MVArch ArchName = MVArch::Broadwell;
+  MVArch ArchName = MVArch::broadwell;
   /// 12-character string which represent, basically, the manufacturer, e.g.
   /// "AMDisbetter!", "AuthenticAMD", "GenuineIntel", etc.
   std::string VendorId = "";

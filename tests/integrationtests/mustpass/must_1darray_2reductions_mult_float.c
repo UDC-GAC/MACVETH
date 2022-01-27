@@ -31,7 +31,7 @@ static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
 /* DCE code. Must scan the entire live-out data.
    Can be used also to check the correctness of the output. */
 static void print_value(DATA_TYPE S) {
-  fprintf(stderr, DATA_PRINTF_MODIFIER, S);
+  fprintf(stderr, DATA_PRINTF_MODIFIER, floor(S));
   fprintf(stderr, "\n");
 }
 

@@ -51,7 +51,7 @@ public:
     clang::BinaryOperator::Opcode OP;
 
     /// Check if index is terminal or not (has real Val)
-    bool isTerminal() {
+    bool isTerminal() const {
       return ((Val != "") && (LHS == nullptr) && (RHS == nullptr));
     }
 
@@ -74,6 +74,7 @@ public:
 
     /// Empty constructor
     MVAffineIndex() {}
+    ~MVAffineIndex() {}
 
     /// Create a copy of an MVAffineIndex
     MVAffineIndex(MVAffineIndex *M) {
@@ -299,11 +300,7 @@ public:
       return false;
     }
 
-    // This is awful, but should do the job. Recursive functions as a way of
-    // life lol xd.
-    // PS 1: Author of this code should be in jail... oh, wait.
-    // PS 2: How taught me how to program? He/she/it did it wrong
-    // PS 3 (some months later): kill me please
+    // FIXME: wtf
     int operator-(const MVAffineIndex &M) {
       if (!this->isTerminal()) {
         if (M.OP != this->OP) {
@@ -446,10 +443,16 @@ public:
   }
 
   /// FIXME: this is garbage
-  std::string toStringWithOffset(int Offset) {
+  std::string toStringWithOffset(int Offset, int Level = -1) {
     std::string T = this->BaseName;
+    size_t Counter = 0;
     for (auto I : this->Idx) {
-      T += "[" + I.toString() + " + (" + std::to_string(Offset) + ")]";
+      if ((Level == -1) && (Counter == (this->Idx.size() - 1))) {
+        T += "[" + I.toString() + " + (" + std::to_string(Offset) + ")]";
+      } else {
+        T += "[" + I.toString() + "]";
+      }
+      Counter++;
     }
     return T;
   }
@@ -468,6 +471,18 @@ public:
     } else {
       return -1;
     }
+  }
+
+  bool operator<(const MVExprArray &MVE) {
+    auto S0 = this->Idx.size();
+    auto S1 = MVE.Idx.size();
+    if ((S0 != S1) || (!this->Idx[S0 - 1].isTerminal()) ||
+        (!MVE.Idx[S1 - 1].isTerminal())) {
+      return false;
+    }
+    int Idx0 = std::atoi(this->Idx[S0 - 1].Val.c_str());
+    int Idx1 = std::atoi(MVE.Idx[S0 - 1].Val.c_str());
+    return Idx0 < Idx1;
   }
 
   /// In order to be able to use RTTI

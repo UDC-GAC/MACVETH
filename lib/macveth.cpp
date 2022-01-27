@@ -28,8 +28,8 @@
 #include "include/MVOptions.h"
 #include "include/MVPragmaHandler.h"
 #include "include/Utils.h"
-#include "clang/Frontend/FrontendActions.h"
 #include "clang/Format/Format.h"
+#include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
@@ -96,37 +96,39 @@ static llvm::cl::opt<MVCPUInfo::MVISA>
                                     "AVX512 ISA")));
 
 static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
-    "arch", llvm::cl::desc("Target architecture"),
+    "march", llvm::cl::desc("Target architecture"),
     llvm::cl::init(MVCPUInfo::MVArch::NATIVE), llvm::cl::cat(MacvethCategory),
     llvm::cl::values(
         clEnumValN(MVCPUInfo::MVArch::NATIVE, "native",
                    "Detect the architecture"),
-        clEnumValN(MVCPUInfo::MVArch::Nehalem, "nehalem",
-                   "Intel Nehalem (2009) architecture (tock): SSE4.2"),
-        clEnumValN(MVCPUInfo::MVArch::Westmere, "westmere",
-                   "Intel Westmere (2010) architecture (tick): SSE4.2"),
-        clEnumValN(MVCPUInfo::MVArch::SandyBridge, "sandybridge",
-                   "Intel SandyBridge (2011) architecture (tock): AVX"),
-        clEnumValN(MVCPUInfo::MVArch::IvyBridge, "ivybridge",
-                   "Intel IvyBridge (2012) architecture (tick): AVX"),
-        clEnumValN(MVCPUInfo::MVArch::Haswell, "haswell",
-                   "Intel Haswell (2013) architecture (tock): AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::Broadwell, "broadwell",
-                   "Intel Broadwell (2014) architecture (tick): AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::Skylake, "skylake",
-                   "Intel Skylake (2015) architecture (tock): AVX512"),
-        clEnumValN(MVCPUInfo::MVArch::KabyLake, "kabylake",
+        clEnumValN(MVCPUInfo::MVArch::nehalem, "nehalem",
+                   "Intel nehalem (2009) architecture (tock): SSE4.2"),
+        clEnumValN(MVCPUInfo::MVArch::westmere, "westmere",
+                   "Intel westmere (2010) architecture (tick): SSE4.2"),
+        clEnumValN(MVCPUInfo::MVArch::sandybridge, "sandybridge",
+                   "Intel sandybridge (2011) architecture (tock): AVX"),
+        clEnumValN(MVCPUInfo::MVArch::ivybridge, "ivybridge",
+                   "Intel ivybridge (2012) architecture (tick): AVX"),
+        clEnumValN(MVCPUInfo::MVArch::haswell, "haswell",
+                   "Intel haswell (2013) architecture (tock): AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::broadwell, "broadwell",
+                   "Intel broadwell (2014) architecture (tick): AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::skylake, "skylake",
+                   "Intel skylake (2015) architecture (tock): AVX512"),
+        clEnumValN(MVCPUInfo::MVArch::kabylake, "kabylake",
                    "Intel Kaby Lake (2016) architecture (tock): AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::CoffeeLake, "coffeelake",
+        clEnumValN(MVCPUInfo::MVArch::coffeelake, "coffeelake",
                    "Intel Coffee Lake (2017) architecture (tock): AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::CascadeLake, "cascadelake",
+        clEnumValN(MVCPUInfo::MVArch::cascadelake, "cascadelake",
                    "Intel Cascade Lake (2019) architecture (tock): AVX512"),
-        clEnumValN(MVCPUInfo::MVArch::IceLake, "icelake",
+        clEnumValN(MVCPUInfo::MVArch::icelake, "icelake",
                    "Intel Ice Lake (2020) architecture (tick): AVX512"),
-        clEnumValN(MVCPUInfo::MVArch::Zen, "zen",
-                   "AMD Zen (2019) architecture: AVX2"),
-        clEnumValN(MVCPUInfo::MVArch::Zen2, "zen2",
-                   "AMD Zen 2 (2020) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::znver1, "znver1",
+                   "AMD Zen1 (2019) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::znver2, "znver2",
+                   "AMD Zen2 (2020) architecture: AVX2"),
+        clEnumValN(MVCPUInfo::MVArch::znver3, "znver3",
+                   "AMD Zen3 (2020) architecture: AVX2"),
         clEnumValN(MVCPUInfo::MVArch::AMDDef, "amd",
                    "AMD architecture not specified"),
         clEnumValN(MVCPUInfo::MVArch::IntelDef, "intel",
@@ -180,6 +182,26 @@ static llvm::cl::opt<bool> DisableFMA(
     llvm::cl::desc("Explicitly tell to not generate FMA instructions even if "
                    "architecture supports them"),
     llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
+static llvm::cl::opt<bool> DisableFuseReductions(
+    "nofuse", llvm::cl::desc("Disable the fusion of reductions"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
+static llvm::cl::opt<bool> DisableVectOrphanRedux(
+    "novec-orphan-redux",
+    llvm::cl::desc("Disable the vectorization of orphan reductions"),
+    llvm::cl::init(false), llvm::cl::cat(MacvethCategory));
+
+static llvm::cl::opt<int> ReduxWinSize(
+    "redux-win-size",
+    llvm::cl::desc("Advanced option: size of window of reductions to consider"),
+    llvm::cl::init(16), llvm::cl::cat(MacvethCategory));
+
+static llvm::cl::opt<int> MinReduxSize(
+    "min-redux-size",
+    llvm::cl::desc(
+        "Advanced option: minimum number of reductions to pack together"),
+    llvm::cl::init(2), llvm::cl::cat(MacvethCategory));
 
 // Debug flag
 static llvm::cl::opt<bool> Debug("debug-mv",
@@ -240,8 +262,7 @@ int main(int argc, const char **argv) {
 #if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 12)
   auto Result = CommonOptionsParser::create(argc, argv, MacvethCategory);
   if (auto E = Result.takeError()) {
-    std::cout << "Something went wrong when parsing options..."
-              << std::endl;
+    std::cout << "Something went wrong when parsing options..." << std::endl;
     return 0;
   }
   auto Op = std::move(*Result);
@@ -256,8 +277,8 @@ int main(int argc, const char **argv) {
   ClangTool Tool(Op.getCompilations(), Op.getSourcePathList());
 
   // MVOptions
-  MVOptions::OutFile =
-      OutputFile.getValue() == "" ? "macveth_output.c" : OutputFile.getValue();
+  MVOptions::OutFile = OutputFile.getValue().empty() ? "macveth_output.c"
+                                                     : OutputFile.getValue();
   MVOptions::InCDAGFile = CDAGInFile.getValue();
   MVOptions::OutDebugFile = DebugFile.getValue();
   MVOptions::ISA = ISA.getValue();
@@ -270,10 +291,13 @@ int main(int argc, const char **argv) {
   MVOptions::Headers = !NoHeaders.getValue();
   MVOptions::SIMDCostModel = SIMDCostModel.getValue();
   MVOptions::IntrinsicsSVML = !NoSVML.getValue();
+  MVOptions::FuseReductions = !DisableFuseReductions.getValue();
   MVOptions::TargetFunc = TargetFunc.getValue();
   MVOptions::Style = Style.getValue();
   MVOptions::FallbackStyle = FallbackStyle.getValue();
-
+  MVOptions::ReduxWinSize = ReduxWinSize.getValue();
+  MVOptions::MinReduxSize = MinReduxSize.getValue();
+  MVOptions::DisableVectOrphanRedux = DisableVectOrphanRedux.getValue();
   // Check if there are incompatible options
   MVOptions::validateOptions();
 

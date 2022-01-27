@@ -10,6 +10,7 @@ cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 #===============================================================================
 # PROJECT VARIABLES
 #===============================================================================
+
 # Minimum C++ std
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -56,6 +57,7 @@ endif()
 # DOCUMENTATION GENERATION
 # -DGENERATE_DOC:BOOL=TRUE to activate
 #===============================================================================
+
 # Check if Doxygen is installed
 option(GENERATE_DOC "Generate documentation with Doxygen" OFF)
 
@@ -89,6 +91,7 @@ endif()
 # CODE COVERAGE CONFIGURATION
 # -DCODE_COVERAGE:BOOL=TRUE to activate
 #===============================================================================
+
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 if((CMAKE_BUILD_TYPE MATCHES Debug) OR
@@ -106,21 +109,6 @@ if((CMAKE_BUILD_TYPE MATCHES Debug) OR
         target_link_libraries(coverage_config INTERFACE --coverage)
     endif()
 endif()
-
-#===============================================================================
-# TESTING CONFIGURATION
-# -DBUILD_TESTING:BOOL=TRUE to activate
-#===============================================================================
-option(BUILD_TESTING "Build the testing tree" OFF)
-# Only build tests if we are the top-level project
-# Allows this to be used by super projects with `add_subdirectory`
-if ((CMAKE_BUILD_TYPE MATCHES Debug) OR
-    (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)))
-    message(STATUS "Testing enabled")
-    enable_testing()
-    add_subdirectory(tests)
-endif()
-
 
 #===============================================================================
 # LOAD CLANG/LLVM CONFIGURATION
@@ -182,13 +170,15 @@ set(CMAKE_MODULE_PATH
 
 # Import LLVM CMake functions
 include(AddLLVM)
+include(AddClang)
 
 list(APPEND CMAKE_PREFIX_PATH "${LLVM_CMAKE_DIR}")
 list(APPEND CMAKE_PREFIX_PATH "${CLANG_CMAKE_DIR}")
 
 # Set the LLVM and Clang header and library paths
 include_directories(SYSTEM "${LLVM_INCLUDE_DIRS};${CLANG_INCLUDE_DIRS}")
-
+link_directories(SYSTEM "${LLVM_LIBRARY_DIRS}")
+message(STATUS "${LLVM_LIBRARY_DIRS} ${LLVM_INCLUDE_DIRS};${CLANG_INCLUDE_DIRS}")
 # LLVM/Clang is normally built without RTTI. Be consistent with that.
 if(NOT LLVM_ENABLE_RTTI)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
@@ -204,16 +194,36 @@ configure_file(macveth.h.in lib/macveth.h)
 # Add a subdirectory to the build
 add_subdirectory(src)
 
+
+set(LLVM_LINK_COMPONENTS support)
+
 # Define the binary to compile
-add_executable(macveth
+add_clang_executable(macveth
     lib/macveth.cpp
     )
+
+#===============================================================================
+# TESTING CONFIGURATION
+# -DBUILD_TESTING:BOOL=TRUE to activate
+#===============================================================================
+
+option(BUILD_TESTING "Build the testing tree" OFF)
+# Only build tests if we are the top-level project
+# Allows this to be used by super projects with `add_subdirectory`
+if ((CMAKE_BUILD_TYPE MATCHES Debug) OR
+    (BUILD_TESTING AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)))
+    message(STATUS "Testing enabled")
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
 
 #===============================================================================
 # BUILDING TARGET
 #===============================================================================
 
-find_package(Threads REQUIRED)  # Threads library
+# Threads library
+find_package(Threads REQUIRED)
 
 # Configuration file
 configure_file(macveth.h.in lib/macveth.h)
@@ -229,52 +239,81 @@ target_include_directories(macveth PUBLIC
 target_link_libraries(macveth
     PRIVATE
     macveth_lib
-    coverage_config # need for code coverage. Only built if -DCODE_COVERAGE
+    coverage_config
+    )
+
+target_link_libraries(macveth PRIVATE
+    clangTooling
+    clangBasic
+    clangASTMatchers
+    clangAnalysis
+    clangAST
+    clangASTMatchers
+    clangBasic
+    clangDriver
+    clangEdit
+    clangFrontend
+    clangFrontendTool
+    clangLex
+    clangParse
+    clangSema
+    clangRewrite
+    clangRewriteFrontend
+    clangStaticAnalyzerFrontend
+    clangStaticAnalyzerCheckers
+    clangStaticAnalyzerCore
+    clangCrossTU
+    clangIndex
+    clangSerialization
+    clangToolingCore
+    clangToolingInclusions
+    clangTooling
+    clangFormat
     )
 
 # MACVETH Clang libraries dependencies
 # Clang libraries needed
-if(CLANG_LINK_CLANG_DYLIB)
-    message(STATUS "Linking with clang-cpp library")
-    target_link_libraries(macveth PRIVATE clang-cpp)
-else()
-    target_link_libraries(macveth PRIVATE
-        clangTooling
-        clangBasic
-        clangASTMatchers
-        clangAnalysis
-        clangAST
-        clangASTMatchers
-        clangBasic
-        clangDriver
-        clangEdit
-        clangFrontend
-        clangFrontendTool
-        clangLex
-        clangParse
-        clangSema
-        clangRewrite
-        clangRewriteFrontend
-        clangStaticAnalyzerFrontend
-        clangStaticAnalyzerCheckers
-        clangStaticAnalyzerCore
-        clangCrossTU
-        clangIndex
-        clangSerialization
-        clangToolingCore
-        clangToolingInclusions
-        clangTooling
-        clangFormat
-        )
-endif()
+# if(CLANG_LINK_CLANG_DYLIB)
+#     message(STATUS "Linking with clang-cpp library")
+#     target_link_libraries(macveth PRIVATE clang-cpp)
+# else()
+#     target_link_libraries(macveth PRIVATE
+#         clangTooling
+#         clangBasic
+#         clangASTMatchers
+#         clangAnalysis
+#         clangAST
+#         clangASTMatchers
+#         clangBasic
+#         clangDriver
+#         clangEdit
+#         clangFrontend
+#         clangFrontendTool
+#         clangLex
+#         clangParse
+#         clangSema
+#         clangRewrite
+#         clangRewriteFrontend
+#         clangStaticAnalyzerFrontend
+#         clangStaticAnalyzerCheckers
+#         clangStaticAnalyzerCore
+#         clangCrossTU
+#         clangIndex
+#         clangSerialization
+#         clangToolingCore
+#         clangToolingInclusions
+#         clangTooling
+#         clangFormat
+#         )
+# endif()
 
-# LLVM flags needed
-target_link_libraries(macveth
-    PRIVATE
-    LLVM
-    )
+# # LLVM flags needed
+# target_link_libraries(macveth
+#     PRIVATE
+#     LLVM
+#     )
 
-# needed flags
+# Flags needed
 target_link_libraries(macveth
     PUBLIC
     pthread
@@ -286,5 +325,6 @@ target_link_libraries(macveth
 #===============================================================================
 # INSTALLING TARGET
 #===============================================================================
+
 install(TARGETS macveth DESTINATION build)
 

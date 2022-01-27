@@ -92,7 +92,7 @@ struct MVOp {
 
   /// Given a string it returns the type of function based on the MVOpCode it
   /// is defined for this compiler
-  static MVOpCode getTypeFromStr(std::string S) {
+  static MVOpCode getTypeFromStr(const std::string &S) {
     if ((S == "std::max") || (S == "max") || (S == "MAX"))
       return MVOpCode::MAX;
     if ((S == "std::min") || (S == "min") || (S == "MIN"))
@@ -123,7 +123,7 @@ struct MVOp {
   }
 
   /// Return the equivalent string given a MVOpCode
-  std::string getStrFromMVCode(MVOpCode C) {
+  std::string getStrFromMVCode(const MVOpCode &C) const {
     switch (C) {
     case MVOpCode::ADD:
       return "add";
@@ -158,8 +158,8 @@ struct MVOp {
   }
 
   /// Return the equivalent string given a MVOpCode
-  std::string
-  getStrFromBinaryOperatorOpcode(clang::BinaryOperator::Opcode ClangOP) {
+  std::string getStrFromBinaryOperatorOpcode(
+      const clang::BinaryOperator::Opcode &ClangOP) const {
     switch (ClangOP) {
     case clang::BinaryOperator::Opcode::BO_Add:
       return "add";
@@ -176,34 +176,36 @@ struct MVOp {
   }
 
   /// Shortcut to check whether a MVOp is of type BO_Assign
-  bool isAssignment() {
+  bool isAssignment() const {
     return (getType() == MVOpType::CLANG_BINOP) &&
            (this->ClangOP == clang::BinaryOperator::Opcode::BO_Assign);
   }
 
   /// Check whether the operation is binary or not. An operation is binary if
   /// it is placed between two operands, in other case if is a function
-  bool isBinaryOperation() { return (getType() == MVOpType::CLANG_BINOP); }
+  bool isBinaryOperation() const {
+    return (getType() == MVOpType::CLANG_BINOP);
+  }
 
   /// Check whether the operation is an addition or a substraction. This is
   /// useful for reductions
   bool isAddOrSub() {
-    return (this->ClangOP == BinaryOperator::Opcode::BO_Add) ||
-           (this->ClangOP == BinaryOperator::Opcode::BO_Sub);
+    return (ClangOP == BinaryOperator::Opcode::BO_Add) ||
+           (ClangOP == BinaryOperator::Opcode::BO_Sub);
   }
 
   /// Get equivalent MVOP string for searching in the Table Cost
-  std::string getTableMVOPstr(std::string T) {
+  std::string getTableMVOPstr(const std::string &T) const {
     std::string Suffix = "_" + Utils::toUppercase(T);
     if (getType() == MVOpType::CLANG_BINOP) {
-      return Utils::toUppercase(getStrFromBinaryOperatorOpcode(this->ClangOP)) +
+      return Utils::toUppercase(getStrFromBinaryOperatorOpcode(ClangOP)) +
              Suffix;
     }
-    return Utils::toUppercase(getStrFromMVCode(this->MVOpC)) + Suffix;
+    return Utils::toUppercase(getStrFromMVCode(MVOpC)) + Suffix;
   }
 
   /// Get the namespace of the expression
-  std::string getPrefixFromStr(std::string S) {
+  std::string getPrefixFromStr(const std::string &S) const {
     std::string P = "";
     std::string NameSpace = "::";
     auto FoundNameSpace = S.find(NameSpace);
@@ -214,21 +216,21 @@ struct MVOp {
   }
 
   /// Convert MVOp to string
-  std::string toString() {
+  std::string toString() const {
     if (getType() == MVOpType::CLANG_BINOP) {
-      return clang::BinaryOperator::getOpcodeStr(this->ClangOP).str();
+      return clang::BinaryOperator::getOpcodeStr(ClangOP).str();
     }
-    return getStrFromMVCode(this->MVOpC);
+    return getStrFromMVCode(MVOpC);
   }
 
   /// Get the prefix
-  std::string getOpPrefix() { return this->Prefix; }
+  std::string getOpPrefix() const { return Prefix; }
 
   /// Return the type of the operation
-  MVOpType getType() { return T; }
+  MVOpType getType() const { return T; }
 
   /// Constructor given a string: will be a MVFUNC
-  MVOp(std::string S) {
+  MVOp(const std::string &S) {
     this->T = MVOpType::MVFUNC;
     this->MVOpC = getTypeFromStr(S);
     this->Prefix = getPrefixFromStr(S);

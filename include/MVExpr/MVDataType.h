@@ -100,7 +100,7 @@ public:
   };
 
   /// Map data types to their size in bytes
-  inline static std::map<std::string, int> SizeOf = {
+  static inline std::map<std::string, int> SizeOf = {
       {"double", 8},
       {"float", 4},
       {"const unsigned long", 8},

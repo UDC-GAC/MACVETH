@@ -30,7 +30,7 @@
 #include "include/Vectorization/SIMD/SIMDBackEndFactory.h"
 
 // ---------------------------------------------
-InstCostInfo getOperationCost(MVOp Op, std::string T) {
+InstCostInfo getOperationCost(const MVOp &Op, const std::string &T) {
   if (Op.isAssignment()) {
     return InstCostInfo(CostTable::getMVOPRow("ST_" + Utils::toUppercase(T)),
                         InstType::MVOP);
@@ -56,21 +56,17 @@ InstCostInfo MVCostModel::computeCostForNodeOp(Node *N) {
 
 // ---------------------------------------------
 InstCostInfo MVCostModel::computeCostForNodeOpsList(int VL,
-                                                    Node::NodeListType &NL) {
+                                                    const NodeVectorT &NL) {
   InstCostInfo TotalCost;
   for (int i = 0; i < VL; ++i) {
     TotalCost += computeCostForNodeOp(NL[i]);
-    // MACVETH_DEBUG("MVCostModel",
-    //                   "Node = " + NL[i]->toStringShort() +
-    //                       "; cost = " +
-    //                       computeCostForNodeOp(NL[i]).toString());
   }
   return TotalCost;
 }
 
 // ---------------------------------------------
 InstCostInfo
-MVCostModel::computeCostForNodeOperandsList(int VL, Node::NodeListType &NL) {
+MVCostModel::computeCostForNodeOperandsList(int VL, const NodeVectorT &NL) {
   InstCostInfo TotalCost;
   for (int i = 0; i < VL; ++i) {
     auto M = NL[i]->getMVExpr();
@@ -79,9 +75,6 @@ MVCostModel::computeCostForNodeOperandsList(int VL, Node::NodeListType &NL) {
     }
     auto T = M->getTypeStr();
     TotalCost += getOperandCost(M, T);
-    // MACVETH_DEBUG("MVCostModel",
-    //                   "Node = " + NL[i]->toStringShort() +
-    //                       "; cost = " + getOperandCost(M, T).toString());
   }
   return TotalCost;
 }
@@ -90,7 +83,7 @@ MVCostModel::computeCostForNodeOperandsList(int VL, Node::NodeListType &NL) {
 InstCostInfo MVCostModel::computeCostForStmtWrapper(StmtWrapper *S) {
   InstCostInfo Tot;
   if (S->isLoop()) {
-    for (auto S : S->getListStmt()) {
+    for (auto S : S->getStmtVector()) {
       Tot += computeCostForStmtWrapper(S);
     }
   } else {
@@ -108,7 +101,7 @@ InstCostInfo MVCostModel::computeCostForStmtWrapper(StmtWrapper *S) {
 
 // ---------------------------------------------
 InstCostInfo
-MVCostModel::computeCostForStmtWrapperList(std::list<StmtWrapper *> &SL) {
+MVCostModel::computeCostForStmtWrapperList(StmtWrapperVectorT &SL) {
   InstCostInfo TotalCost;
   for (auto S : SL) {
     TotalCost += computeCostForStmtWrapper(S);
@@ -117,249 +110,336 @@ MVCostModel::computeCostForStmtWrapperList(std::list<StmtWrapper *> &SL) {
 }
 
 //---------------------------------------------
-InstCostInfo MVCostModel::computeVectorOPCost(VectorIR::VectorOP V,
-                                              SIMDBackEnd *SG) {
+InstCostInfo MVCostModel::computeVectorOPCost(VectorOP V) {
   InstCostInfo C;
-  auto S = SG->getSIMDfromVectorOP(V);
-  for (auto I : S) {
-    if (I.isSequential()) {
-      C.Latency += 10;
+  auto SIMDList = Backend->getSIMDfromVectorOP(V);
+  for (auto Ins : SIMDList) {
+    if ((Ins.isSequential()) || (Ins.isTemplate())) {
+      C.Latency += Ins.getCost();
       continue;
     }
-    C += InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp);
-    MACVETH_DEBUG(
-        "MVCostModel",
-        "SIMD inst = " + I.FuncName + " ( " + I.render() + "); cost = " +
-            InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp)
-                .toString());
+    C += InstCostInfo(CostTable::getIntrinRow(Ins.FuncName), InstType::SIMDOp);
+    MACVETH_DEBUG("MVCostModel",
+                  "SIMD inst = " + Ins.FuncName + " ( " + Ins.render() +
+                      "); cost = " +
+                      InstCostInfo(CostTable::getIntrinRow(Ins.FuncName),
+                                   InstType::SIMDOp)
+                          .toString() +
+                      "; Order = " + std::to_string(Ins.MVSL.getOrder()));
   }
   return C;
 }
 
 // ---------------------------------------------
-SIMDInfo MVCostModel::generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType S) {
+SIMDInfo
+MVCostModel::generateSIMDInfoReport(SIMDBackEnd::SIMDInstListType &SIMD) {
   std::map<std::string, InstCostInfo> CostOp;
   std::map<std::string, long> NumOp;
-  std::list<std::string> L;
+  std::vector<std::string> L;
   long TotCost = 0;
-  for (auto I : S) {
+  for (auto I : SIMD) {
     CostOp[I.FuncName] =
         InstCostInfo(CostTable::getIntrinRow(I.FuncName), InstType::SIMDOp);
     NumOp[I.FuncName]++;
     TotCost += CostOp[I.FuncName].Latency;
   }
-  SIMDInfo SI(S, CostOp, NumOp, TotCost);
+  SIMDInfo SIMDInst(SIMD, CostOp, NumOp, TotCost);
   if (TotCost > 0) {
-    SI.Vectorize = VectorizationType::PARTIAL;
+    SIMDInst.Vectorize = VectorizationType::PARTIAL;
   }
-  return SI;
+  return SIMDInst;
 }
 
 //---------------------------------------------
-std::list<VectorIR::VectorOP>
-MVCostModel::greedyOpsConsumer(Node::NodeListType &NL, SIMDBackEnd *SG) {
-  std::list<VectorIR::VectorOP> VList;
+VectorOPListT MVCostModel::greedyOpsConsumer(NodeVectorT &NL) {
+  VectorOPListT VList;
   auto CopyNL = NL;
-  Node::NodeListType VLoadA;
-  Node::NodeListType VLoadB;
-  Node::NodeListType VOps;
-  VLoadA.reserve(8);
-  VLoadB.reserve(8);
-  VOps.reserve(8);
   int Cursor = 0;
-  std::set<int> SetTAC;
-  std::set<int> SetFS;
-repeat:
-  bool IsUnary = false;
-  // Consume nodes
-  int VL = 4;
-  // This is where magic should happen
-  while (!CopyNL.empty()) {
-    auto NextNode = CopyNL.front();
-    SetTAC.insert(NextNode->getTacID());
-    SetFS.insert(NextNode->getSchedInfo().FreeSched);
-
-    // FIXME:
-    // if ((SetTAC.size() > 1) && (SetFS.size() > 1) &&
-    //     (!NextNode->belongsToAReduction())) {
-    //   MVSkip("Skipping region... Not handable!!!", GotoEndScop);
-    // }
-
-    // if ((SetTAC.size() == 1) && (SetFS.size() == 1) &&
-    //     ((Cursor > 0) && (NextNode->belongsToAReduction()) &&
-    //      (!VOps[Cursor - 1]->belongsToAReduction()))) {
-    //   MVSkip("Skipping region... PARTIAL REDUCTION? DUNNO", GotoEndScop);
-    // }
-
-    if ((Cursor > 0) &&
-        ((NextNode->getScop()[0] != VOps[Cursor - 1]->getScop()[0]) ||
-         (NextNode->belongsToAReduction() !=
-          VOps[Cursor - 1]->belongsToAReduction()))) {
-      break;
+  NodeVectorT VLoadA(MaxVectorLength);
+  NodeVectorT VLoadB(MaxVectorLength);
+  NodeVectorT VOps(MaxVectorLength);
+  do {
+    // Consume nodes
+    int VL = MaxVectorLength;
+    // This is where magic should happen
+    while (!CopyNL.empty()) {
+      auto NextNode = CopyNL.front();
+      if (Cursor == 0) {
+        VL = Backend->getMaxVectorSize(NextNode->getDataType());
+      }
+      // Consume the first one
+      VOps[Cursor] = NextNode;
+      if ((Cursor > 0) &&
+          (VOps[Cursor]->getValue() != VOps[Cursor - 1]->getValue())) {
+        MACVETH_DEBUG("MVCostModel",
+                      "Full OPS of same type and placement = " +
+                          VOps[Cursor - 1]->getValue() + "; (" +
+                          VOps[Cursor]->getValue() +
+                          "); cursor = " + std::to_string(Cursor));
+        break;
+      }
+      // Remove node from list
+      CopyNL.erase(CopyNL.begin());
+      if (++Cursor == VL) {
+        MACVETH_DEBUG("MVCostModel", "Full vector");
+        break;
+      }
     }
 
-    // Corner case...
-    // if ((NextNode->getSchedInfo().UnrollFactor % 4) != (Cursor % 4)) {
-    //   break;
-    // }
-
-    // Consume the first one
-    VOps[Cursor] = NextNode;
-
-    // Get vector length
-    VL = SG->getMaxVectorSize(VOps[Cursor]->getDataType());
-    // NOTE: how do you solve this? I mean, for reductions, for instance,
-    // you will have different Plcmnts, something like: 1,2,3,4; but this
-    // algorithm should be able to select them. So maybe when selecting
-    // operations you should only look at the type of operations, but not at
-    // the Plcmnt or schedule.
-    // 06/03/2020: I think this is solved by tackling reductions as a non
-    // standard case and, then, detecting them before going onto the general
-    // case.
-    // 06/25/2020: not sure if reductions should be handled that way...
-    if ((Cursor > 0) &&
-        (VOps[Cursor]->getValue() != VOps[Cursor - 1]->getValue())) {
-      MACVETH_DEBUG("MVCostModel", "Full OPS of same type and placement = " +
-                                       VOps[Cursor - 1]->getValue() + "; (" +
-                                       VOps[Cursor]->getValue() +
-                                       "); cursor = " + std::to_string(Cursor));
-      break;
+    // Compute memory operands for the operations fetched above
+    int i = 0;
+    while ((i < Cursor) && (VOps[i] != nullptr)) {
+      auto Aux = VOps[i]->getInputs();
+      VLoadA[i] = Aux[0];
+      if (Aux[1] != nullptr) {
+        VLoadB[i] = Aux[1];
+        Aux.erase(Aux.begin());
+      } else {
+        VLoadB[0] = nullptr;
+      }
+      i++;
     }
-    // Remove node from list
-    CopyNL.erase(CopyNL.begin());
-    if (++Cursor == VL) {
-      MACVETH_DEBUG("MVCostModel", "Full vector");
-      break;
-    }
-  }
 
-  // Compute memory operands for the operations fetched above
-  int i = 0;
-  while ((i < Cursor) && (VOps[i] != nullptr)) {
-    auto Aux = VOps[i]->getInputs();
-    VLoadA[i] = Aux[0];
-    if (Aux[1] != nullptr) {
-      VLoadB[i] = Aux[1];
-      Aux.erase(Aux.begin());
-      IsUnary = false;
-    } else {
-      IsUnary = true;
-      VLoadB[0] = nullptr;
+    // Debugging
+    if (MVOptions::Debug) {
+      for (int n = 0; n < Cursor; ++n) {
+        MACVETH_DEBUG("MVCostModel", VOps[n]->getRegisterValue() + " = " +
+                                         VLoadA[n]->getRegisterValue() + " " +
+                                         VOps[n]->getValue() + " " +
+                                         VLoadB[n]->getRegisterValue() + "; " +
+                                         VOps[n]->getSchedInfoStr());
+      }
     }
-    i++;
-  }
 
-  // Debugging
-  for (int n = 0; n < Cursor; ++n) {
-    auto B = IsUnary ? "" : VLoadB[n]->getRegisterValue() + "; ";
-    MACVETH_DEBUG("MVCostModel", VOps[n]->getRegisterValue() + " = " +
-                                     VLoadA[n]->getRegisterValue() + " " +
-                                     VOps[n]->getValue() + " " + B +
-                                     VOps[n]->getSchedInfoStr());
-  }
-
-  // FIXME: to implement cost model here
-  if (Cursor != 0) {
-    // Compute the vector cost
-    auto NewVectInst = VectorIR::VectorOP(Cursor, VOps, VLoadA, VLoadB);
-    auto CostVect = computeVectorOPCost(NewVectInst, SG);
-    auto CostNodes = computeCostForNodeOpsList(Cursor, VOps);
-    CostNodes += computeCostForNodeOperandsList(Cursor, VLoadA);
-    if (!IsUnary) {
-      CostNodes += computeCostForNodeOperandsList(Cursor, VLoadB);
+    // Generate new vector instruction
+    if (Cursor != 0) {
+      VList.push_back(VectorOP(Cursor, VOps, VLoadA, VLoadB));
     }
-    // FIXME:
-    auto DoVectorize = true;
-    if ((DoVectorize) ||
-        (MVOptions::SIMDCostModel == MVSIMDCostModel::UNLIMITED)) {
-      VList.push_back(NewVectInst);
-    } else {
-      // FIXME: undo vectorized version or directly emit sequential code for
-      // rest of the tree
-      MVWarn("Region not vectorized");
-    }
-  }
 
-  // Repeat process if list not empty
-  if (!CopyNL.empty()) {
+    // Repeat process if list not empty
     Cursor = 0;
     for (int i = 0; i < VL; ++i) {
       VOps[i] = VLoadA[i] = VLoadB[i] = nullptr;
     }
-    SetFS.clear();
-    SetTAC.clear();
-    goto repeat;
+  } while (!CopyNL.empty());
+
+  return VList;
+}
+
+//---------------------------------------------
+using MapReductions = std::map<std::string, NodeVectorT>;
+using VectorMapReductions = std::vector<std::pair<std::string, NodeVectorT>>;
+
+//---------------------------------------------
+VectorMapReductions mapReductions(const NodeVectorT &Reductions) {
+  MapReductions Map;
+  std::for_each(Reductions.begin(), Reductions.end(), [&Map](auto Node) {
+    Map[Node->getRegisterValue()].push_back(Node);
+  });
+  VectorMapReductions VMap{std::make_move_iterator(Map.begin()),
+                           std::make_move_iterator(Map.end())};
+  std::sort(VMap.begin(), VMap.end(), [](auto P0, auto P1) {
+    return P0.second[0]->getSchedInfo().NodeID <
+           P1.second[0]->getSchedInfo().NodeID;
+  });
+  return VMap;
+}
+
+//---------------------------------------------
+VectorOPListT MVCostModel::searchMapNodes(NodeVectorT &Nodes) {
+  // Pre-condition:
+  // 1.- All nodes must be terminals, so the output MVExpr is MVExprArray
+  // 2.- MVExprArray are simple, so they can be converted to int
+  VectorOPListT Sequential;
+  std::vector<int> Indices;
+  for (auto N : Nodes) {
+    auto Val = dyn_cast<MVExprArray>(N->getOutputMVExpr());
+    Indices.push_back(std::atoi(Val->getIndex()[0].Val.c_str()));
+  }
+  std::vector<int> AlreadyUsed;
+  for (unsigned i = 0; i < Indices.size(); ++i) {
+    std::vector<unsigned int> NewMapping = {i};
+    if ((std::find(AlreadyUsed.begin(), AlreadyUsed.end(), i) !=
+         AlreadyUsed.end()))
+      continue;
+    for (unsigned j = i; j < Indices.size(); ++j) {
+      int Idx1 = Indices[j];
+      int PrevVal = Indices[NewMapping.at(NewMapping.size() - 1)];
+      if ((i == j) || (PrevVal == Idx1) ||
+          (std::find(AlreadyUsed.begin(), AlreadyUsed.end(), j) !=
+           AlreadyUsed.end()))
+        continue;
+      if (PrevVal + 1 == Idx1) {
+        NewMapping.push_back(j);
+      } else {
+        break;
+      }
+    }
+    // Minimum number of elements to pack together... 4 at least
+    if (NewMapping.size() >= 4) {
+      NodeVectorT NewList;
+      for (auto Idx : NewMapping) {
+        NewList.push_back(Nodes.at(Idx));
+        AlreadyUsed.push_back(Idx);
+      }
+      Sequential.splice(Sequential.end(), consumeNodes(NewList));
+    }
+  }
+  int Offset = 0;
+  std::sort(AlreadyUsed.begin(), AlreadyUsed.end(),
+            [](int P0, int P1) { return P0 < P1; });
+  for (auto Idx : AlreadyUsed) {
+    MACVETH_DEBUG("MVCostModel",
+                  "Removing Idx = " + std::to_string(Idx) +
+                      "; (rel val = " + std::to_string(Idx - Offset) + ")");
+    Nodes.erase(Nodes.begin() + Idx - (Offset++));
+  }
+  return Sequential;
+}
+
+//---------------------------------------------
+VectorOPListT MVCostModel::consumeNodes(NodeVectorT &Nodes) {
+  VectorOPListT VList;
+  NodeVectorT PrevOps;
+  for (auto Node : Nodes) {
+    for (auto NodeIn : Node->getInputs()) {
+      if (NodeIn->getNodeType() == Node::NodeType::NODE_OP) {
+        PrevOps.push_back(NodeIn);
+      }
+    }
+  }
+  PrevOps.insert(PrevOps.end(), Nodes.begin(), Nodes.end());
+  return greedyOpsConsumer(PrevOps);
+}
+
+//---------------------------------------------
+VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
+  VectorOPListT VList;
+  auto FullMapReductions = mapReductions(Nodes);
+  MACVETH_DEBUG("MVCostModel", "=== BOTTOM UP CONSUMER ===");
+  int WindowsSize = MVOptions::ReduxWinSize;
+  if (WindowsSize <= 0) {
+    WindowsSize = FullMapReductions.size();
+  }
+  while (FullMapReductions.size() > 0) {
+    unsigned long PackingSize = MaxVectorLength;
+    MACVETH_DEBUG(
+        "MVCostModel",
+        "===  Window size = " + std::to_string(WindowsSize) +
+            "; FullMap = " + std::to_string(FullMapReductions.size()));
+    int End = std::min((int)FullMapReductions.size(), WindowsSize);
+    VectorMapReductions MapReductions(&FullMapReductions[0],
+                                      &FullMapReductions[End]);
+    FullMapReductions.erase(FullMapReductions.begin(),
+                            FullMapReductions.begin() + End);
+    for (const auto &[Key, List] : MapReductions) {
+      MACVETH_DEBUG("MVCostModel", Key + " = " + std::to_string(List.size()));
+    }
+    NodeVectorT NewPacking;
+    while (PackingSize >= (unsigned)MVOptions::MinReduxSize) {
+      for (auto &[Key, List] : MapReductions) {
+        MACVETH_DEBUG("MVCostModel",
+                      "Key = " + Key +
+                          "; PackingSize = " + std::to_string(PackingSize) +
+                          "; Size = " + std::to_string(List.size()));
+        while ((List.size() >= PackingSize) &&
+               (NewPacking.size() < MaxVectorLength)) {
+          NodeVectorT NewRedux(&List[0], &List[PackingSize]);
+          NewPacking.insert(NewPacking.end(), NewRedux.begin(), NewRedux.end());
+          List.erase(List.begin(), List.begin() + PackingSize);
+          MACVETH_DEBUG(
+              "MVCostModel",
+              "Consuming Key = " + Key +
+                  "; PackingSize = " + std::to_string(PackingSize) +
+                  "; Size = " + std::to_string(List.size()) +
+                  "; NewPacking = " + std::to_string(NewPacking.size()));
+        }
+        if (NewPacking.size() == MaxVectorLength) {
+          MACVETH_DEBUG("MVCostModel", "MaxVectorLength = consuming reduction");
+          VList.splice(VList.end(), consumeNodes(NewPacking));
+          NewPacking.clear();
+        }
+      }
+      PackingSize /= 2;
+    }
+    if (NewPacking.size() > 0) {
+      MACVETH_DEBUG("MVCostModel", "Consuming leftover reduction");
+      VList.splice(VList.end(), consumeNodes(NewPacking));
+    }
+    // Compute orphan nodes
+    NodeVectorT OrphanNodes;
+    for (auto &[LSize, List] : MapReductions) {
+      while (List.size() >= (unsigned)MVOptions::MinReduxSize) {
+        int PS = std::min(List.size(), MaxVectorLength);
+        NodeVectorT NewRedux(&List[0], &List[PS]);
+        std::sort(NewRedux.begin(), NewRedux.end(),
+                  [](Node *P0, Node *P1) { return *P0 < *P1; });
+        VList.splice(VList.end(), consumeNodes(NewRedux));
+        List.erase(List.begin(), List.begin() + PS);
+      }
+      if (List.size() > 0)
+        OrphanNodes.insert(OrphanNodes.end(), List.begin(), List.end());
+    }
+    if (OrphanNodes.size() > 0) {
+      std::sort(OrphanNodes.begin(), OrphanNodes.end(),
+                [](Node *P0, Node *P1) { return *P0 < *P1; });
+      /// Search contiguous nodes in memory
+      if (!MVOptions::DisableVectOrphanRedux)
+        VList.splice(VList.end(), searchMapNodes(OrphanNodes));
+      for (auto Orphan : OrphanNodes) {
+        NodeVectorT OrphanList = {Orphan};
+        MACVETH_DEBUG("MVCostModel",
+                      "Consuming orphan node = " + Orphan->toStringShort());
+        VList.splice(VList.end(), consumeNodes(OrphanList));
+      }
+    }
   }
   return VList;
 }
 
 //---------------------------------------------
-std::list<VectorIR::VectorOP>
-MVCostModel::getVectorOpFromCDAG(Node::NodeListType &NList, SIMDBackEnd *SG) {
+VectorOPListT MVCostModel::getVectorOpFromCDAG(NodeVectorT &NList) {
   // Returning list
-  std::list<VectorIR::VectorOP> VList;
-
-  // Working with a copy
-  Node::NodeListType NL(NList);
-
-  // Detecting reductions
+  VectorOPListT VList;
   MACVETH_DEBUG("MVCostModel", "Detecting reductions");
-  Node::NodeListType NRedux = PlcmntAlgo::detectReductions(&NL);
-  if (NRedux.size() == 0) {
-    MACVETH_DEBUG("MVCostModel", "No reductions detected");
-  }
+  // Working with a copy
+  NodeVectorT NL(NList);
 
-  MACVETH_DEBUG("MVCostModel", "General case");
-  VList.splice(VList.end(), greedyOpsConsumer(NL, SG));
-  MACVETH_DEBUG("MVCostModel", "Reductions case");
-  VList.splice(VList.end(), greedyOpsConsumer(NRedux, SG));
+  // Divide-and-conquer approach: get reductions first, then deal with the rest
+  NodeVectorT NRedux = PlcmntAlgo::detectReductions(&NL);
+
+  MACVETH_DEBUG("MVCostModel", "=== REDUCTIONS CASE ===");
+  std::sort(NRedux.begin(), NRedux.end(), [](const Node *N0, const Node *N1) {
+    return N0->getSchedInfo().NodeID < N1->getSchedInfo().NodeID;
+  });
+  VList.splice(VList.end(), bottomUpConsumer(NRedux));
+  MACVETH_DEBUG("MVCostModel", "=== END REDUCTIONS CASE ===");
+
+  MACVETH_DEBUG("MVCostModel", "=== GENERAL CASE ===");
+  VList.splice(VList.end(), greedyOpsConsumer(NL));
+  MACVETH_DEBUG("MVCostModel", "=== END GENERAL CASE ===");
 
   // Order Vector Operations by TAC ID
-  VList.sort([](VectorIR::VectorOP V1, VectorIR::VectorOP V2) {
-    return V1.Order < V2.Order;
-  });
+  VList.sort([](VectorOP V1, VectorOP V2) { return V1.Order < V2.Order; });
 
   return VList;
 }
 
 // ---------------------------------------------
-SIMDInfo MVCostModel::computeCostModel(std::list<StmtWrapper *> SL,
-                                       SIMDBackEnd *SG) {
+SIMDInfo MVCostModel::computeCostModel(StmtWrapperVectorT &Stmts) {
 
   // Get all the TAC from all the Stmts
-  TacListType TL;
-  for (auto SWrap : SL) {
+  TacListT TL;
+  std::for_each(Stmts.begin(), Stmts.end(), [&TL](auto SWrap) {
     TL.splice(TL.end(), SWrap->getTacList());
-  }
-
+  });
   // Creating the CDAG
-  auto G = CDAG::createCDAGfromTAC(TL);
-
+  auto DAG = CDAG::createCDAGfromTAC(TL);
   // Set placement according to the desired algorithm
-  auto NL = PlcmntAlgo::sortGraph(G->getNodeListOps());
-
-  // Setting CDAG
-  SG->setCDAG(G);
-
+  auto NodeList = PlcmntAlgo::sortGraph(DAG.getNodeListOps());
   // Execute greedy algorithm
-  auto VList = getVectorOpFromCDAG(NL, SG);
-
-  // Debugging
-  if (MVOptions::Debug) {
-    for (auto N : NL) {
-      MACVETH_DEBUG("MVCostModel", N->toString());
-    }
-    for (auto V : VList) {
-      MACVETH_DEBUG("VectorIR", V.toString());
-    }
-  }
-
-  // FIXME: SIMD cost model used backend to generate intrinsics so registers are
-  // polluted, need to clean them
-  // SG->clearMappings();
-
+  auto VectorList = getVectorOpFromCDAG(NodeList);
   // Generate the SIMD list
-  auto SIMD = SG->getSIMDfromVectorOP(VList);
-
-  return MVCostModel::generateSIMDInfoReport(SIMD);
+  auto SIMD = Backend->getSIMDfromVectorOP(VectorList);
+  return generateSIMDInfoReport(SIMD);
 }

@@ -1,0 +1,2 @@
+#r0:REG# = _mm_maskload_ps(&#0:0:MEM#,_mm_set_epi32(-1,-1,-1,-1))
+_mv_insert_mem_ps(#output:REG#,#r0:REG#,#3:0:MEM#,0x00000070)

@@ -1,0 +1,3 @@
+#r0:REG# = _mm_loadu_ps(&#0:0:MEM#)
+#r1:REG# = _mm_loadu_ps(&#4:0:MEM#)
+#output:REG# = _mm256_set_m128(#r1:REG#,#r0:REG#)

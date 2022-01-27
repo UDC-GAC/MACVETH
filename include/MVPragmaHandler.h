@@ -40,10 +40,8 @@ namespace macveth {
 
 using PragmaTupleDim = std::vector<std::tuple<std::string, int>>;
 
-/// The Location of the Scop, as delimited by macveth and endmacveth
+/// The Location of the Scop, as delimited by "macveth" and "endmacveth"
 /// pragmas by the user.
-/// "macveth" and "endmacveth" are the source locations of the macveth and
-/// endmacveth pragmas.
 /// "StartLine" is the Line number of the Start position.
 struct ScopLoc {
   ScopLoc() : End(0) {}
@@ -58,7 +56,7 @@ struct ScopLoc {
   unsigned EndLine = 0;
   unsigned Start = 0;
   unsigned End = 0;
-  std::list<std::string> DimVisited = {};
+  std::vector<std::string> DimVisited = {};
   bool ScopHasBeenScanned = false;
 
   struct PragmaArgs {
@@ -80,17 +78,19 @@ struct ScopLoc {
   PragmaArgs PA;
 };
 
+using ScopVector = std::vector<ScopLoc *>;
+
 /// List of pairs of #pragma macveth and #pragma endmacveth source locations
 struct ScopHandler {
-  static inline std::vector<ScopLoc *> List;
+  static inline ScopVector List;
 
   /// Empty constructor
   ScopHandler(){};
 
   /// Return a SourceLocation for Line "Line", column "col" of file "FID".
   static SourceLocation translateLineCol(SourceManager &SM, FileID FID,
-                                         unsigned Line, unsigned col) {
-    return SM.translateLineCol(FID, Line, col);
+                                         unsigned Line, unsigned Col) {
+    return SM.translateLineCol(FID, Line, Col);
   }
 
   /// Update scop to visited
@@ -104,11 +104,11 @@ struct ScopHandler {
   }
 
   /// Get ROI of a concrete function
-  static std::vector<ScopLoc *> funcGetScops(FunctionDecl *fd) {
+  static ScopVector funcGetScops(FunctionDecl *fd) {
     SourceManager &SM = fd->getParentASTContext().getSourceManager();
     unsigned int StartFD = SM.getExpansionLineNumber(fd->getBeginLoc());
     unsigned int EndFD = SM.getExpansionLineNumber(fd->getEndLoc());
-    std::vector<ScopLoc *> SList;
+    ScopVector SList;
     for (auto SL : List) {
       auto FunctionFileID = SM.getFileID(fd->getLocation());
       if (SL->FID != FunctionFileID) {
@@ -137,13 +137,14 @@ struct ScopHandler {
   /// "Start" points to the location of the macveth pragma.
   void addStart(SourceManager &SM, SourceLocation Start,
                 ScopLoc::PragmaArgs PA) {
-    ScopLoc *Loc = new ScopLoc();
-    MACVETH_DEBUG("MVPragmaHandler", "addStart");
+    auto *Loc = new ScopLoc();
     Loc->FID = SM.getFileID(Start);
     Loc->PA = PA;
     Loc->Scop = Start;
     int Line = SM.getExpansionLineNumber(Start);
     Loc->StartLine = Line;
+    MACVETH_DEBUG("MVPragmaHandler",
+                  "start pragma in line = " + std::to_string(Line));
     Loc->Start = SM.getFileOffset(translateLineCol(SM, Loc->FID, Line, 1));
     if (List.size() == 0 || List[List.size() - 1]->End != 0) {
       List.push_back(Loc);
@@ -165,6 +166,8 @@ struct ScopHandler {
     End = translateLineCol(SM, SM.getFileID(End), Line + 1, 1);
     List[List.size() - 1]->End = SM.getFileOffset(End);
     List[List.size() - 1]->EndLine = Line;
+    MACVETH_DEBUG("MVPragmaHandler",
+                  "end pragma in line = " + std::to_string(Line));
   }
 };
 

@@ -21,7 +21,7 @@
 //     Gabriel Rodríguez <grodriguez@udc.es>
 //
 // Contact:
-//     Louis-Noël Pouchet <pouchet@colostate.edu>
+//     Marcos Horro <marcos.horro@udc.es>
 
 #include "include/MVFrontend.h"
 #include "include/CostModel/MVCostModel.h"
@@ -39,6 +39,8 @@
 #include "clang/Frontend/FrontendActions.h"
 #include "llvm/Support/ErrorHandling.h"
 
+#include <fstream>
+
 jmp_buf GotoStartScop, GotoEndScop;
 
 // ---------------------------------------------
@@ -54,7 +56,7 @@ ScopLoc *getScopLoc(StmtWrapper *S) {
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
+void MVFuncVisitor::performUnrolling(StmtWrapperVectorT SL) {
   auto CouldFullyUnroll = false;
   std::list<StmtWrapper::LoopInfo> LI;
   for (auto S : SL) {
@@ -76,30 +78,46 @@ void MVFuncVisitor::performUnrolling(std::list<StmtWrapper *> SL) {
 }
 
 // ---------------------------------------------
-void MVFuncVisitor::scanScops(FunctionDecl *fd) {
+void clearStructures() {
+  VectorIR::clear();
+  VOperand::VID = 0;
+  SIMDBackEnd::clear();
+  TAC::clear();
+  Node::clear();
+}
+
+// ---------------------------------------------
+bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
   auto CS = dyn_cast<clang::CompoundStmt>(fd->getBody());
   if (!CS) {
     MACVETH_DEBUG("MVFuncVisitor", "scanScops: no CompoundStmt");
-    llvm::llvm_unreachable_internal();
+    return false;
   }
 
   int Code = setjmp(GotoStartScop);
   if (Code == MVSkipCode) {
-    return;
+    return true;
   }
 
   std::list<std::string> DimsDeclFunc = {};
   SIMDBackEnd::RegistersMapT RegistersDeclared;
 
+  clearStructures();
+
   SourceLocation RegDeclLoc;
   auto Scops = ScopHandler::funcGetScops(fd);
+  // Get SIMD back end according to the option chosen
+  auto BackEnd = SIMDBackEndFactory::getBackend(MVOptions::ISA);
+  // Computing the cost model of the CDAG created
+  MVCostModel CostModel = MVCostModel(BackEnd);
   // For each scop in the function
   for (auto Scop : Scops) {
     auto IsFirstScop = (Scop == Scops[0]);
     auto IsLastScop = (Scop == Scops[Scops.size() - 1]);
 
     // Check if ST is within the ROI or not
-    MACVETH_DEBUG("MVConsumer", "scop = " + std::to_string(Scop->StartLine));
+    MACVETH_DEBUG("MVConsumer",
+                  "Parsing scop in line = " + std::to_string(Scop->StartLine));
 
     // Get the info about the loops surrounding this statement
     auto SL = StmtWrapper::genStmtWraps(CS, Scop);
@@ -108,7 +126,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       RegDeclLoc = SL.front()->getClangStmt()->getBeginLoc();
     }
 
-    MACVETH_DEBUG("MVConsumer", "list of stmt wrappers parsed = " +
+    MACVETH_DEBUG("MVConsumer", "List of stmt wrappers parsed = " +
                                     std::to_string(SL.size()));
 
     // Perform unrolling according to the pragmas
@@ -132,9 +150,7 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
       DimsDeclFunc.splice(DimsDeclFunc.end(),
                           MVR.rewriteLoops(SL, DimsDeclFunc));
     } else {
-      // Get SIMD back end according to the option chosen
-      auto SIMDGen = SIMDBackEndFactory::getBackend(MVOptions::ISA);
-
+      // This is the most beautiful code I have ever seen
       int Code = setjmp(GotoEndScop);
       if (Code) {
         if (IsLastScop) {
@@ -143,30 +159,36 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         continue;
       }
 
-      // Computing the cost model of the CDAG created
-      SInfo = MVCostModel::computeCostModel(SL, SIMDGen);
+      SInfo = CostModel.computeCostModel(SL);
 
-      if (SInfo.isThereAnyVectorization()) {
+      // if (SInfo.isThereAnyVectorization()) {
+      // FIXME:
+      if (1) {
+        // Rewrite loops
+        DimsDeclFunc.splice(DimsDeclFunc.end(),
+                            MVR.rewriteLoops(SL, DimsDeclFunc));
         // Comment statements
         MVR.commentReplacedStmts(SL);
+
         // Render
         for (auto InsSIMD : SInfo.SIMDList) {
           MVR.renderSIMDInstInPlace(InsSIMD, SL);
         }
 
+        // Render left-overs... this is awful
+        for (auto InsSIMD : SInfo.SIMDList) {
+          MVR.renderSIMDLeftOvers(InsSIMD, SL.back());
+        }
+
         // Render initializations if needed for special cases such as
         // reductions
-        for (auto InitRedux : SIMDGen->getInitReg()) {
+        for (auto InitRedux : BackEnd->getInitReg()) {
           MVR.renderSIMDInstBeforePlace(InitRedux, SL);
         }
 
-        // Rewrite loops
-        DimsDeclFunc.splice(DimsDeclFunc.end(),
-                            MVR.rewriteLoops(SL, DimsDeclFunc));
-
         // Add includes if option
         if (MVOptions::Headers) {
-          MVR.addHeaders(SIMDGen->getHeadersNeeded(), Scop->FID);
+          MVR.addHeaders(BackEnd->getHeadersNeeded(), Scop->FID);
           MVOptions::Headers = false;
         }
 
@@ -175,52 +197,40 @@ void MVFuncVisitor::scanScops(FunctionDecl *fd) {
         MVInfo("Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
                "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
                "; Scalar cost = " +
-               MVCostModel::computeCostForStmtWrapperList(SL).toString());
+               CostModel.computeCostForStmtWrapperList(SL).toString());
       } else {
         MVWarn(
             "Region not vectorized (SCOP = " + std::to_string(Scop->StartLine) +
             "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
             "; Scalar cost = " +
-            MVCostModel::computeCostForStmtWrapperList(SL).toString());
+            CostModel.computeCostForStmtWrapperList(SL).toString());
       }
 
     last_scop:
       // Render the registers we are going to use, declarations
       if (IsLastScop) {
-        for (auto InsSIMD : SIMDGen->renderSIMDRegister(SInfo.SIMDList)) {
+        for (auto InsSIMD : BackEnd->renderSIMDRegister(SInfo.SIMDList)) {
           Rewrite.InsertTextBefore(RegDeclLoc, InsSIMD + "\n");
         }
       }
     }
   }
 
-  return;
+  return true;
 }
 
 // ---------------------------------------------
 bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
-  // Continue if empty function
-  if (!F->hasBody()) {
+  // Continue if empty function or no pramgas
+  if ((!F->hasBody()) || (!ScopHandler::funcHasROI(F)))
     return true;
-  }
-
-  // Check if pragmas to parse
-  if (!ScopHandler::funcHasROI(F)) {
-    return true;
-  }
-
-  // FIXME: Be clean
-  // MVRewriter.clearAllMappings();
-
+  // Continue if not target function if specified
   if ((MVOptions::TargetFunc != "") &&
       (F->getNameAsString() != MVOptions::TargetFunc)) {
+    MACVETH_DEBUG("MVFuncVisitor", "No target function");
     return true;
   }
-
-  // If the function has scops to parse, then scan them
-  this->scanScops(F);
-
-  return true;
+  return scanScops(F);
 }
 
 // ---------------------------------------------
@@ -229,19 +239,13 @@ MVFrontendAction::CreateASTConsumer(CompilerInstance &CI, StringRef file) {
   TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
   Utils::setOpts(&CI.getSourceManager(), &CI.getLangOpts(),
                  &CI.getASTContext());
-  // Parsing pragmas
+  // Parsing pragmas at preprocessing stage
   auto &PP = CI.getPreprocessor();
   auto Scops = new ScopHandler();
   PP.AddPragmaHandler(new PragmaScopHandler(Scops));
   PP.AddPragmaHandler(new PragmaEndScopHandler(Scops));
 
-  // std::make_unique is C++14, while LLVM 9 is written in C++11, this
-  // is the reason of this custom implementation
-#if defined(LLVM_VERSION_MAJOR) && (LLVM_VERSION_MAJOR > 9)
   return std::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), Scops);
-#else
-  return llvm::make_unique<MVConsumer>(TheRewriter, &CI.getASTContext(), Scops);
-#endif
 }
 
 // ---------------------------------------------
@@ -359,6 +363,9 @@ static bool formatMACVETH(StringRef FileName) {
   return false;
 }
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 // ---------------------------------------------
 void MVFrontendAction::EndSourceFileAction() {
   auto &SM = TheRewriter.getSourceMgr();
@@ -369,13 +376,19 @@ void MVFrontendAction::EndSourceFileAction() {
 #else
   llvm::raw_fd_ostream outFile(OutFileName, ErrorCode, llvm::sys::fs::F_None);
 #endif
-  // According to [1] it is not safe to do .write(). Nonetheless, I have not
-  // found any other way to save a RewriterBuffer onto another file.
-  // [1] (as of 16th November 2020)
+  // It is not safe to do .write() inplace:
   // https://clang.llvm.org/doxygen/classclang_1_1RewriteBuffer.html#a0b72d3db59db1731c63217c291929ced
   TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
   outFile.close();
   if (!MVOptions::NoReformat) {
     formatMACVETH(OutFileName);
   }
+  // Copy macveth_api.h file if not created
+  std::string DstFile =
+      OutFileName.substr(0, OutFileName.find_last_of("\\/")) + "/macveth_api.h";
+  std::string SrcFile(__FILE__);
+  SrcFile = SrcFile.substr(0, SrcFile.find_last_of("\\/")) + "/macveth_api.h";
+  std::ifstream src(SrcFile, std::ios::binary);
+  std::ofstream dst(DstFile, std::ios::binary);
+  dst << src.rdbuf();
 }

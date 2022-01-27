@@ -31,6 +31,9 @@
 #endif
 #include "llvm/ADT/APFloat.h"
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 using namespace macveth;
 
 #ifdef WIN32
@@ -53,14 +56,15 @@ std::string Utils::getExePath() {
   // wants to know the absolute path where it is being executed, regardless
   // where it has been executed or where the executable is located (e.g.
   // /usr/bin/). Thus, PWD provides this absolute location.
-  // FIXME: is PWD POSIX?
+  // is PWD POSIX?
   return getenv("PWD") + std::string("/");
+  // return fs::current_path().string() + std::string("/");
 }
 #endif
 
 //-------------------------------------------------------------
 template <typename T>
-bool Utils::contains(std::list<T> ListOfElements, T Element) {
+bool Utils::contains(std::vector<T> ListOfElements, T Element) {
   return std::find(ListOfElements.begin(), ListOfElements.end(), Element) !=
          ListOfElements.end();
 }

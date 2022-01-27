@@ -39,6 +39,7 @@
 #include "clang/Lex/Lexer.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 using namespace clang;
 using namespace macveth;
@@ -48,18 +49,18 @@ namespace macveth {
 class Utils {
 public:
   /// Type of string list
-  using StrList = std::list<std::string>;
+  using StrList = std::vector<std::string>;
 
   /// When declaring static members of class, when assigning them you need
   /// to redeclare them or since C++17 you can just put in
 
-  inline static clang::SourceManager *SourceMgr;
-  inline static clang::LangOptions *LangOpts;
-  inline static clang::ASTContext *Ctx;
+  static inline clang::SourceManager *SourceMgr;
+  static inline clang::LangOptions *LangOpts;
+  static inline clang::ASTContext *Ctx;
 
   /// Check if list contains an element given
   template <typename T>
-  static bool contains(std::list<T> listOfElements, T element);
+  static bool contains(std::vector<T> listOfElements, T element);
 
   /// Converting clang expressions to strings
   static std::string getStringFromStmt(const Stmt *S);
@@ -77,6 +78,13 @@ public:
   static std::string toUppercase(std::string S) {
     std::transform(S.begin(), S.end(), S.begin(),
                    [](unsigned char C) { return std::toupper(C); });
+    return S;
+  }
+
+  /// String to lowercase
+  static std::string toLowercase(std::string S) {
+    std::transform(S.begin(), S.end(), S.begin(),
+                   [](unsigned char C) { return std::tolower(C); });
     return S;
   }
 
@@ -101,6 +109,33 @@ public:
   /// Get execution path of the binary; not just a getcwd() call
   static std::string getExePath();
 };
+
+/// Split string according to a delimiter D (char)
+inline std::vector<std::string> split(const std::string &S, char D) {
+  std::vector<std::string> Tokens;
+  std::string Token;
+  std::stringstream TokenStream(S);
+  while (std::getline(TokenStream, Token, D)) {
+    Tokens.push_back(Token);
+  }
+  return Tokens;
+}
+
+template <char D> class Split {
+public:
+  static std::vector<std::string> split(const std::string &S);
+};
+
+template <char D>
+std::vector<std::string> Split<D>::split(const std::string &S) {
+  std::vector<std::string> Tokens;
+  std::string Token;
+  std::stringstream TokenStream(S);
+  while (std::getline(TokenStream, Token, D)) {
+    Tokens.push_back(Token);
+  }
+  return Tokens;
+}
 
 } // namespace macveth
 #endif

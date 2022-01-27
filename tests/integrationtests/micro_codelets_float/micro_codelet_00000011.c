@@ -21,6 +21,11 @@
 
 #define restrict __restrict
 
+#ifdef N
+#undef N
+#define N 8 * 1024 * 1024
+#endif
+
 #ifndef MICRO_CODELET_FILE_NAME
 #define MICRO_CODELET_FILE_NAME "patterns/codelet_00000001.c"
 #endif
@@ -49,19 +54,18 @@
 
 static void codelet(DATA_TYPE POLYBENCH_1D(A, N, n),
                     DATA_TYPE POLYBENCH_1D(x, N, n),
-                    DATA_TYPE POLYBENCH_1D(y, N, n))
-{
+                    DATA_TYPE POLYBENCH_1D(y, N, n)) {
   register int i, j;
 
 #pragma macveth unroll i 1 j full
-for (i = 0; i <= 180358; ++i) {
-    for (j = 0; j <=7; ++j) {
-        y[4*i + 1*j + ORIG_y] += A[8*i + j + ORIG_A] * x[8*i + 1 + ORIG_x];
-     }
-}
+  for (i = 0; i <= 180358; ++i) {
+    for (j = 0; j <= 7; ++j) {
+      y[4 * i + 1 * j + ORIG_y] +=
+          A[8 * i + j + ORIG_A] * x[8 * i + 1 + ORIG_x];
+    }
+  }
 #pragma endmacveth
 }
-
 
 /* Array initialization. */
 static void init_1darray(int n, DATA_TYPE POLYBENCH_1D(x, N, n)) {
@@ -101,7 +105,7 @@ int main(int argc, char **argv) {
   polybench_start_instruments;
 
   /* Run kernel. */
-  codelet(POLYBENCH_ARRAY(A),POLYBENCH_ARRAY(x),POLYBENCH_ARRAY(y));
+  codelet(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y));
 
   /* Stop and print timer. */
   polybench_stop_instruments;

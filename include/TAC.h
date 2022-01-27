@@ -40,6 +40,11 @@ using namespace macveth;
 
 namespace macveth {
 
+class TAC;
+
+/// List of TACs
+using TacListT = std::list<TAC>;
+
 /// Class TAC: three-address-code. This abstraction is a way of representing the
 /// Single-Statement Assignment (SSA).
 /// This class is meant to hold structures such as:
@@ -49,9 +54,9 @@ class TAC {
 
 public:
   /// Unique ID of each TAC
-  inline static int TacUUID = 0;
+  static inline int TacUUID = 0;
   /// Unique ID of each region of each part of the #pragma
-  inline static long TacScop = 0;
+  static inline long TacScop = 0;
   /// For generating TACs
   static inline long RegVal = 0;
 
@@ -79,17 +84,17 @@ public:
       : A(A), B(B), C(C), MVOP(MVOP), TacID(TacID), TScop(TAC::TacScop) {}
 
   /// Get first (result) operand of the TAC expression
-  MVExpr *getA() { return this->A; };
+  MVExpr *getA() const { return this->A; };
   /// Set first (result) operand of the TAC expression
-  void setA(MVExpr *A) { this->A = A; };
+  void setA(MVExpr *const A) { this->A = A; };
   /// Get second operand of the TAC expression
-  MVExpr *getB() { return this->B; };
+  MVExpr *getB() const { return this->B; };
   /// Set second operand of the TAC expression
-  void setB(MVExpr *B) { this->B = B; };
+  void setB(MVExpr *const B) { this->B = B; };
   /// Get third operand of the TAC expression
-  MVExpr *getC() { return this->C; };
+  MVExpr *getC() const { return this->C; };
   /// Set third operand of the TAC expression
-  void setC(MVExpr *C) { this->C = C; };
+  void setC(MVExpr *const C) { this->C = C; };
   /// Set TacID value
   void setTacID(int TacID) { this->TacID = TacID; }
   /// Set scope of the TAC
@@ -103,10 +108,9 @@ public:
   /// Set loop name
   void setLoopName(std::string LoopName) { this->LoopName = LoopName; }
   /// Get loop name
-  std::string getLoopName() { return this->LoopName; }
-
+  std::string getLoopName() const { return this->LoopName; }
   /// Get macveth operation type
-  MVOp getMVOP() { return this->MVOP; };
+  MVOp getMVOP() const { return this->MVOP; };
 
   /// To string method
   std::string toString() {
@@ -123,15 +127,15 @@ public:
 
   /// Inserts TACs in the input TacList and outputs the relation between the
   /// statements and the ordering of the TACs
-  static std::list<TAC> stmtToTAC(clang::Stmt *ST);
+  static TacListT stmtToTAC(clang::Stmt *const ST);
 
   /// Print/render TAC as regular statements
-  static std::string renderTacAsStmt(std::list<TAC> TL, int Offset);
+  static std::string renderTacAsStmt(TacListT TL, int Offset);
 
   /// Unrolls TacList given onto a new list
-  static std::list<TAC> unrollTacList(std::list<TAC> Tac, int UnrollFactor,
-                                      int UpperBound, std::string LoopLevel,
-                                      bool FullUnroll = false);
+  static TacListT unrollTacList(const TacListT &TacList, int UnrollFactor,
+                                int UpperBound, std::string LoopLevel,
+                                bool FullUnroll = false);
 
   /// Unroll a TAC given a LoopLevel, besides its mask, unroll factor, and
   /// the S value which holds the iteration of the unrolling basically
@@ -157,9 +161,6 @@ private:
   /// Represents with a unique ID the part of the
   long TScop = 0;
 };
-
-/// List of TACs
-using TacListType = std::list<TAC>;
 
 } // namespace macveth
 #endif /* !MACVETH_TAC_H */
