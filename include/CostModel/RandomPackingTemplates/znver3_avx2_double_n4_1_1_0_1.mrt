@@ -1,0 +1,2 @@
+#r0:REG# = _mm256_maskload_pd(&#0:0:MEM#,_mm256_set_epi32(0,0,0,0,0,0,-1,0));
+_mv256_blend_mem_pd(#output:REG#,#r0:REG#,#1:-1:MEM#,0x0000000e);

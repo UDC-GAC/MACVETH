@@ -1,0 +1,3 @@
+#r0:REG# = _mm256_maskload_pd(&#0:0:MEM#,_mm256_set_epi32(0,0,0,0,-1,0,-1,0));
+#r2:REG# = _mm_loadu_pd(&#2:0:MEM#);
+#output:REG# = _mm256_insertf128_pd(#r0:REG#,#r2:REG#,0x00000001);

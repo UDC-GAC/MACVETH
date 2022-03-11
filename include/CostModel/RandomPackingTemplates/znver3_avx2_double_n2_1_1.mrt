@@ -1,0 +1,1 @@
+#output:REG# = _mm_maskload_pd(&#0:0:MEM#,_mm_set_epi32(-1,0,-1,0));
