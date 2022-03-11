@@ -71,18 +71,21 @@ NodeVectorT PlcmntAlgo::detectReductions(NodeVectorT *NL) {
     auto Inputs = TmpNode->getInputs();
   loop:
     for (auto In : Inputs) {
-      if (In == nullptr) {
-        MACVETH_DEBUG("PlcmntAlgo", "Skipping");
+      if ((In == nullptr) ||
+          ((std::find(Visited.begin(), Visited.end(), In) != Visited.end()) &&
+           (std::find(LRedux.begin(), LRedux.end(), In) != LRedux.end()))) {
+        MACVETH_DEBUG("PlcmntAlgo", "Skipping " + In->getRegisterValue() +
+                                        ", " + In->getSchedInfoStr());
         continue;
       }
-
       if ((TmpNode->getValue() == In->getValue()) &&
           (TmpNode->getSchedInfo().FreeSched >
            (In->getSchedInfo().FreeSched))) {
 
         MACVETH_DEBUG("PlcmntAlgo", "Reduction found for " +
                                         In->getRegisterValue() + ", " +
-                                        In->getSchedInfoStr());
+                                        In->getSchedInfoStr() + "; " +
+                                        TmpNode->getSchedInfoStr());
         ReductionFound = true;
         Reduction.push_back(In);
         Visited.push_back(In);

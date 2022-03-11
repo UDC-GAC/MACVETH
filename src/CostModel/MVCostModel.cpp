@@ -377,8 +377,10 @@ VectorOPListT MVCostModel::bottomUpConsumer(NodeVectorT &Nodes) {
         VList.splice(VList.end(), consumeNodes(NewRedux));
         List.erase(List.begin(), List.begin() + PS);
       }
-      if (List.size() > 0)
+      if (List.size() > 0) {
+        MACVETH_DEBUG("MVCostModel", "Inserting orphan nodes for = " + LSize);
         OrphanNodes.insert(OrphanNodes.end(), List.begin(), List.end());
+      }
     }
     if (OrphanNodes.size() > 0) {
       std::sort(OrphanNodes.begin(), OrphanNodes.end(),
@@ -404,10 +406,12 @@ VectorOPListT MVCostModel::getVectorOpFromCDAG(NodeVectorT &NList) {
   MACVETH_DEBUG("MVCostModel", "Detecting reductions");
   // Working with a copy
   NodeVectorT NL(NList);
-
+  MACVETH_DEBUG("MVCostModel",
+                "Node list before redux size = " + std::to_string(NL.size()));
   // Divide-and-conquer approach: get reductions first, then deal with the rest
   NodeVectorT NRedux = PlcmntAlgo::detectReductions(&NL);
-
+  MACVETH_DEBUG("MVCostModel",
+                "Node list after redux size = " + std::to_string(NL.size()));
   MACVETH_DEBUG("MVCostModel", "=== REDUCTIONS CASE ===");
   std::sort(NRedux.begin(), NRedux.end(), [](const Node *N0, const Node *N1) {
     return N0->getSchedInfo().NodeID < N1->getSchedInfo().NodeID;
@@ -415,7 +419,8 @@ VectorOPListT MVCostModel::getVectorOpFromCDAG(NodeVectorT &NList) {
   VList.splice(VList.end(), bottomUpConsumer(NRedux));
   MACVETH_DEBUG("MVCostModel", "=== END REDUCTIONS CASE ===");
 
-  MACVETH_DEBUG("MVCostModel", "=== GENERAL CASE ===");
+  MACVETH_DEBUG("MVCostModel",
+                "=== GENERAL CASE === nodes: " + std::to_string(NL.size()));
   VList.splice(VList.end(), greedyOpsConsumer(NL));
   MACVETH_DEBUG("MVCostModel", "=== END GENERAL CASE ===");
 
