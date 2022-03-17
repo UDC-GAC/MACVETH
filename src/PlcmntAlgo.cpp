@@ -56,6 +56,7 @@ void PlcmntAlgo::computeFreeSchedule(NodeVectorT &NL) {
 // ---------------------------------------------
 NodeVectorT PlcmntAlgo::detectReductions(NodeVectorT *NL) {
   NodeVectorT NCopy(*NL);
+  NodeVectorT TmpList;
   NodeVectorT LRedux;
   NodeVectorT Visited;
   NodeVectorT Reduction;
@@ -107,10 +108,20 @@ NodeVectorT PlcmntAlgo::detectReductions(NodeVectorT *NL) {
     if (ReductionFound) {
       LRedux.insert(LRedux.end(), Reduction.begin(), Reduction.end());
     } else {
-      if (!TmpNode->belongsToAReduction())
-        NL->push_back(TmpNode);
+      if (!TmpNode->belongsToAReduction()) {
+        MACVETH_DEBUG("PlcmntAlgo", "Does not belong to reduction: " +
+                                        TmpNode->getSchedInfoStr());
+        TmpList.push_back(TmpNode);
+      }
     }
     Reduction.clear();
+  }
+  // Need to check again if any of the discarded elements belongs to a
+  // reduction
+  for (auto N : TmpList) {
+    if (!N->belongsToAReduction()) {
+      NL->push_back(N);
+    }
   }
   std::reverse(std::begin(*NL), std::end(*NL));
   std::reverse(std::begin(LRedux), std::end(LRedux));
@@ -148,7 +159,6 @@ void PlcmntAlgo::setPlcmtFromFile(NodeVectorT &NL) {
     // For each node, read until lines skipping those with comments. Fail if
     // line with no numbers
     for (auto N : NL) {
-
       std::string L;
       while (getline(CF, L)) {
         if (L.rfind("//", 0) == 0) {
