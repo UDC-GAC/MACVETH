@@ -150,7 +150,7 @@ bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
       DimsDeclFunc.splice(DimsDeclFunc.end(),
                           MVR.rewriteLoops(SL, DimsDeclFunc));
     } else {
-      // This is the most beautiful code I have ever seen
+      // This is the most beautiful code I have ever seen </irony>
       int Code = setjmp(GotoEndScop);
       if (Code) {
         if (IsLastScop) {
@@ -162,49 +162,50 @@ bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
       SInfo = CostModel.computeCostModel(SL);
 
       // if (SInfo.isThereAnyVectorization()) {
-      // FIXME:
-      if (1) {
-        // Rewrite loops
-        DimsDeclFunc.splice(DimsDeclFunc.end(),
-                            MVR.rewriteLoops(SL, DimsDeclFunc));
-        // Comment statements
-        MVR.commentReplacedStmts(SL);
+      // FIXME: fix the cost model to determine wheter there is vectorization
+      // or not...
+      // Rewrite loops
+      DimsDeclFunc.splice(DimsDeclFunc.end(),
+                          MVR.rewriteLoops(SL, DimsDeclFunc));
+      // Comment statements
+      MVR.commentReplacedStmts(SL);
 
-        // Render
-        for (auto InsSIMD : SInfo.SIMDList) {
-          MVR.renderSIMDInstInPlace(InsSIMD, SL);
-        }
-
-        // Render left-overs... this is awful
-        for (auto InsSIMD : SInfo.SIMDList) {
-          MVR.renderSIMDLeftOvers(InsSIMD, SL.back());
-        }
-
-        // Render initializations if needed for special cases such as
-        // reductions
-        for (auto InitRedux : BackEnd->getInitReg()) {
-          MVR.renderSIMDInstBeforePlace(InitRedux, SL);
-        }
-
-        // Add includes if option
-        if (MVOptions::Headers) {
-          MVR.addHeaders(BackEnd->getHeadersNeeded(), Scop->FID);
-          MVOptions::Headers = false;
-        }
-
-        // TODO: generate file
-        // SInfo.generateReport();
-        MVInfo("Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
-               "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
-               "; Scalar cost = " +
-               CostModel.computeCostForStmtWrapperList(SL).toString());
-      } else {
-        MVWarn(
-            "Region not vectorized (SCOP = " + std::to_string(Scop->StartLine) +
-            "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
-            "; Scalar cost = " +
-            CostModel.computeCostForStmtWrapperList(SL).toString());
+      // Render
+      for (auto InsSIMD : SInfo.SIMDList) {
+        MVR.renderSIMDInstInPlace(InsSIMD, SL);
       }
+
+      // Render left-overs... this is awful
+      for (auto InsSIMD : SInfo.SIMDList) {
+        MVR.renderSIMDLeftOvers(InsSIMD, SL.back());
+      }
+
+      // Render initializations if needed for special cases such as
+      // reductions
+      for (auto InitRedux : BackEnd->getInitReg()) {
+        MVR.renderSIMDInstBeforePlace(InitRedux, SL);
+      }
+
+      // Add includes if option
+      if (MVOptions::Headers) {
+        MVR.addHeaders(BackEnd->getHeadersNeeded(), Scop->FID);
+        MVOptions::Headers = false;
+      }
+
+      // TODO: generate SIMD report file
+      // SInfo.generateReport();
+      MVInfo("Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
+             "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
+             "; Scalar cost = " +
+             CostModel.computeCostForStmtWrapperList(SL).toString());
+      // } else {
+      //   MVWarn(
+      //       "Region not vectorized (SCOP = " +
+      //       std::to_string(Scop->StartLine) +
+      //       "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
+      //       "; Scalar cost = " +
+      //       CostModel.computeCostForStmtWrapperList(SL).toString());
+      // }
 
     last_scop:
       // Render the registers we are going to use, declarations

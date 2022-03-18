@@ -427,6 +427,10 @@ VectorOPListT MVCostModel::getVectorOpFromCDAG(NodeVectorT &NList) {
   // Order Vector Operations by TAC ID
   VList.sort([](VectorOP V1, VectorOP V2) { return V1.Order < V2.Order; });
 
+  for (auto V : VList) {
+    MACVETH_DEBUG("MVCostModel", V.toString());
+  }
+
   return VList;
 }
 

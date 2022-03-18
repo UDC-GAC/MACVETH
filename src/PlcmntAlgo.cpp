@@ -118,11 +118,53 @@ NodeVectorT PlcmntAlgo::detectReductions(NodeVectorT *NL) {
   }
   // Need to check again if any of the discarded elements belongs to a
   // reduction
+  NodeVectorT ListToSort;
+  // Filter those nodes which belong to reductions
   for (auto N : TmpList) {
     if (!N->belongsToAReduction()) {
-      NL->push_back(N);
+      ListToSort.push_back(N);
     }
   }
+  // Sort those non-reduction nodes not only regarding their
+  NodeVectorT SortedNodes;
+  for (auto N : ListToSort) {
+    if ((std::find(NL->begin(), NL->end(), N) != NL->end())) {
+      for (auto In : N->getInputs()) {
+        if ((In != nullptr) &&
+            ((std::find(ListToSort.begin(), ListToSort.end(), In) !=
+              ListToSort.end()) &&
+             ((std::find(NL->begin(), NL->end(), In) == NL->end()))) &&
+            ((std::find(SortedNodes.begin(), SortedNodes.end(), In) ==
+              SortedNodes.end()))) {
+          SortedNodes.push_back(In);
+        }
+      }
+      continue;
+    }
+    if ((std::find(SortedNodes.begin(), SortedNodes.end(), N) ==
+         SortedNodes.end()))
+      NL->push_back(N);
+    for (auto In : N->getInputs()) {
+      if ((In != nullptr) &&
+          ((std::find(ListToSort.begin(), ListToSort.end(), In) !=
+            ListToSort.end()) &&
+           ((std::find(NL->begin(), NL->end(), In) == NL->end()))) &&
+          ((std::find(SortedNodes.begin(), SortedNodes.end(), In) ==
+            SortedNodes.end()))) {
+        SortedNodes.push_back(In);
+      }
+    }
+  }
+  NL->insert(NL->end(), SortedNodes.begin(), SortedNodes.end());
+
+  // for (auto N : ListToSort) {
+  //   MACVETH_DEBUG("PlcmntAlgo", N->toStringShort());
+  // }
+  MACVETH_DEBUG("PlcmntAlgo", "=== NEW LIST ===");
+  for (auto N : *NL) {
+    MACVETH_DEBUG("PlcmntAlgo", N->toStringShort());
+  }
+
   std::reverse(std::begin(*NL), std::end(*NL));
   std::reverse(std::begin(LRedux), std::end(LRedux));
   return LRedux;
