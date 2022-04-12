@@ -125,6 +125,8 @@ public:
     AMDDef,
     /// Intel Default
     IntelDef,
+    /// 12th-gen Intel Alder Lake (2021) architecture: AVX2
+    alderlake,
   };
 
   MVCPUInfo() {

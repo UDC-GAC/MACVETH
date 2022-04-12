@@ -78,7 +78,8 @@ static std::map<MVCPUInfo::MVArch, std::string> MVArchStr = {
     {MVCPUInfo::MVArch::znver2, "znver2"},
     {MVCPUInfo::MVArch::znver3, "znver3"},
     {MVCPUInfo::MVArch::AMDDef, "znver1"},
-    {MVCPUInfo::MVArch::IntelDef, "cascadelake"}};
+    {MVCPUInfo::MVArch::IntelDef, "cascadelake"},
+    {MVCPUInfo::MVArch::alderlake, "alderlake"}};
 
 static std::map<std::string, MVCPUInfo::MVArch> MVStrArch = {
     {"Default", MVCPUInfo::MVArch::DEFAULT},
@@ -97,7 +98,8 @@ static std::map<std::string, MVCPUInfo::MVArch> MVStrArch = {
     {"znver2", MVCPUInfo::MVArch::znver2},
     {"znver3", MVCPUInfo::MVArch::znver3},
     {"znver1", MVCPUInfo::MVArch::AMDDef},
-    {"cascadelake", MVCPUInfo::MVArch::IntelDef}};
+    {"cascadelake", MVCPUInfo::MVArch::IntelDef},
+    {"alderlake", MVCPUInfo::MVArch::alderlake}};
 
 /// Mapping between the ISA and supported architectures
 static std::map<MVCPUInfo::MVISA, std::vector<MVCPUInfo::MVArch>>
@@ -110,7 +112,8 @@ static std::map<MVCPUInfo::MVISA, std::vector<MVCPUInfo::MVArch>>
           MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
           MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::znver1,
           MVCPUInfo::MVArch::znver2, MVCPUInfo::MVArch::znver3,
-          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef}},
+          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef,
+	  MVCPUInfo::MVArch::alderlake}},
         {MVCPUInfo::MVISA::AVX,
          {MVCPUInfo::MVArch::sandybridge, MVCPUInfo::MVArch::ivybridge,
           MVCPUInfo::MVArch::haswell, MVCPUInfo::MVArch::broadwell,
@@ -118,14 +121,16 @@ static std::map<MVCPUInfo::MVISA, std::vector<MVCPUInfo::MVArch>>
           MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
           MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::znver1,
           MVCPUInfo::MVArch::znver2, MVCPUInfo::MVArch::znver3,
-          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef}},
+          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef,
+	  MVCPUInfo::MVArch::alderlake}},
         {MVCPUInfo::MVISA::AVX2,
          {MVCPUInfo::MVArch::haswell, MVCPUInfo::MVArch::broadwell,
           MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::kabylake,
           MVCPUInfo::MVArch::coffeelake, MVCPUInfo::MVArch::cascadelake,
           MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::znver1,
           MVCPUInfo::MVArch::znver2, MVCPUInfo::MVArch::znver3,
-          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef}},
+          MVCPUInfo::MVArch::AMDDef, MVCPUInfo::MVArch::IntelDef,
+	  MVCPUInfo::MVArch::alderlake}},
         {MVCPUInfo::MVISA::AVX512,
          {MVCPUInfo::MVArch::skylake, MVCPUInfo::MVArch::cascadelake,
           MVCPUInfo::MVArch::icelake, MVCPUInfo::MVArch::AMDDef,
