@@ -1,36 +1,21 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/markoshorro/MACVETH/master/docs/report/img/MACVETHLOGO.svg?token=ABHMITHSQHUB2GWFSJJ4LCTBP64P6">
+  <img src="https://github.com/UDC-GAC/MACVETH/blob/develop/docs/report/img/MACVETHLOGO.svg">
 </p>
 
 # MACVETH - Multi-dimensional Array C-compiler for VEctorizing Tensors in HPC
 [![CMake Compilation and Test](https://github.com/markoshorro/MACVETH/actions/workflows/cmake.yml/badge.svg)](https://github.com/markoshorro/MACVETH/actions/workflows/cmake.yml)
 [![codecov](https://codecov.io/gh/markoshorro/MACVETH/branch/master/graph/badge.svg?token=BRvGSUAVby)](https://codecov.io/gh/markoshorro/MACVETH)
-[![License: MIT][mit-badge]][mit-link]
-
-Main authors (refer to [License](#license) section for further details):
-
-- Marcos Horro Varela (marcos.horro@udc.es)
-- Dr. Louis-Noël Pouchet (pouchet@colostate.edu)
-- Dr. Gabriel Rodríguez (gabriel.rodriguez@udc.es)
+[![License: Apache License, Version 2.0][apache-badge]][apache-link]
 
 MACVETH is a source-to-source compiler for C/C++ codes to compilable
 SIMD-fashion codes. It is platform or ISA and architecture dependent.
 
-MACVETH stands for Multi-Array C-compiler for VEctorizating Tensors in HPC
-apps. Besides, Macbeth, tragedy written by William Shakespeare, represents the
-detrimental effects of human's narcissism and vanity when looking for the power
-for its own benefits. In contraposition, MACVETH is composed of many
-intermediate representations seeking for a common purpose: optimize vectorization.
-Last but not least, the first and last letter of the acronym stand for the name
-of the main author (Marcos Horro).
-
-Regarding the logo, the symbol within the ellipse is the 23rd letter of ancient
-greek's alphabet Psi. It represents the cost function for our SIMD model.
-This letter is widely used in science (e.g. Schrödinger equations).
-Besides, 'psi' can be transliterated to 'ps', which is the suffix on Intel
-Intrinsics for 'packed-single'. Same way, the shape of Psi greek letter has
-three fleurons, as the Three Witches in the very first Act of the tragedy (or
-is this too twisted?).
+MACVETH stands for Multi-Array C-compiler for VEctorizing Tensors in HPC
+applications. Besides, Macbeth, tragedy written by William Shakespeare,
+represents the detrimental effects of human's narcissism and vanity when looking
+for the power for its own benefits. In contraposition, MACVETH is composed of
+many intermediate representations seeking for a common purpose: optimize
+vectorization.
 
 ## Environments tested:
 
@@ -48,10 +33,8 @@ just installing `*-dev` versions.
 Building LLVM/Clang from sources [can not be done in-tree](https://llvm.org/docs/CMake.html#quick-start). IMHO, I think it
 is better for your health installing LLVM/Clang (or any other huge framework in
 general) using repositories. Nonetheless, if you find yourself in that extraordinary
-position (e.g. shared environment without superuser privileges) ensure that you
-install, at least, `clang` and `clang-tools-extra`.
-
-Be sure to have LLVM/Clang's libraries in `LIBRARY_PATH` (Linux)
+position (e.g., shared environment without superuser privileges) ensure that you
+install, at least, `clang` and `clang-tools-extra`. Be also sure to have LLVM/Clang's libraries in `LIBRARY_PATH` (Linux).
 
 ## Getting started:
 
@@ -84,14 +67,14 @@ User may execute the compiler just typing:
 `$> macveth <input_file.c>`
 
 This will generate a macro-fashion SIMD code (if possible) onto a file named
-macveth_output.c/cpp.
+`macveth_output.c/cpp`.
 
-For displaying all the available options, type:
+For displaying all the available options, please type:
 
 `$> macveth --help`
 
 If the program has includes, they can be specified using `--extra-arg-before`
-Clang's option in order to [not break the parsing](#compilation-database), e.g. we have `bar.cpp` such as:
+Clang's option in order to [not break the parsing](#compilation-database), e.g., we have `bar.cpp` such as:
 
 ```
 #include "mylib/foo.h"
@@ -104,12 +87,12 @@ void bar() {
 
 Which includes `mylib/foo.h`. If this last one is not in the same folder as
 `bar.cpp`, we will need to specify the path using the commented option above,
-e.g.
+e.g.:
 
 `$> macveth --extra-arg-before='-I/path/to/mylib' bar.cpp`
 
 It can be also done using `--` after `macveth` command, as we later explain in
-[Fixed Compilation Database](#fixed-compilation-database), e.g.
+[Fixed Compilation Database](#fixed-compilation-database), e.g.:
 
 `$> macveth bar.cpp -- -I/path/to/mylib`
 
@@ -130,29 +113,69 @@ should be in constant evolution.
 
 In this section we will comment in detail all the options available:
 
-    --debug-mv: Print debug comments, from TAC creation to the backend generator
-    --debug-file=<file>: Print debug output to file
-
-    --func=<string>: target function to vectorize. Useful for large documents with many functions
-    in order to avoid the overhead of analyzing all LOCs in a program.
-
-    --input-cdag=<file>: Input file with placements for the CDAG created as IR
-
-    --march=<arch>: Target architecture (not implemented yet)
-    --misa=<isa>: Target ISA (only AVX2 right now)
-    --fma: FMA support in the architecture
-    --nofma: do not generate FMA instructions even if they are available in the architecture
-    --no-headers: do not print headers in output file
-    --no-svml: disable SVML Intel library (math functions, basically)
-
-    --simd-cost-model=[conservative|aggressive|unlimited]: different algorithms selected
-    by the compiler to decide whether to vectorize or not a concrete region.
-
-    --simd-info=<file>: report with all the SIMD information retrieved
-    --simd-info-missed=<file>: report with all the SIMD opportunities missed due to SIMD cost model or other issues
-
-    -o=<output>: Output file, otherwise macveth_output.c
-    -p=<path>: Build path
+    --debug-file=<string>            - Output file to print the debug information
+    --debug-mv                       - Print debug information
+    --extra-arg=<string>             - Additional argument to append to the compiler command line
+    --extra-arg-before=<string>      - Additional argument to prepend to the compiler command line
+    --fma                            - Support for FMA instructions
+    --format-fallback-style=<string> - The name of the predefined style used as a
+                                       fallback in case clang-format is invoked with
+                                       -format-style=file, but can not find the .clang-format
+                                       file to use.
+                                       Use -format-fallback-style=none to skip formatting.
+    --format-style=<string>          - Coding style, currently supports:
+                                         LLVM, GNU, Google, Chromium, Microsoft, Mozilla, WebKit.
+                                       Use -format-style=file to load style configuration from
+                                       .clang-format file located in one of the parent
+                                       directories of the source file (or current
+                                       directory for stdin).
+                                       Use -format-style="{key: value, ...}" to set specific
+                                       parameters, e.g.:
+                                         -format-style="{BasedOnStyle: llvm, IndentWidth: 8}"
+    --func=<string>                  - Target function
+    --input-cdag=<string>            - Input file to read the custom CDAG placement
+    --march=<value>                  - Target architecture
+      =native                        -   Detect the architecture
+      =nehalem                       -   Intel nehalem (2009) architecture (tock): SSE4.2
+      =westmere                      -   Intel westmere (2010) architecture (tick): SSE4.2
+      =sandybridge                   -   Intel sandybridge (2011) architecture (tock): AVX
+      =ivybridge                     -   Intel ivybridge (2012) architecture (tick): AVX
+      =haswell                       -   Intel haswell (2013) architecture (tock): AVX2
+      =broadwell                     -   Intel broadwell (2014) architecture (tick): AVX2
+      =skylake                       -   Intel skylake (2015) architecture (tock): AVX512
+      =kabylake                      -   Intel Kaby Lake (2016) architecture (tock): AVX2
+      =coffeelake                    -   Intel Coffee Lake (2017) architecture (tock): AVX2
+      =cascadelake                   -   Intel Cascade Lake (2019) architecture (tock): AVX512
+      =icelake                       -   Intel Ice Lake (2020) architecture (tick): AVX512
+      =znver1                        -   AMD Zen1 (2019) architecture: AVX2
+      =znver2                        -   AMD Zen2 (2020) architecture: AVX2
+      =znver3                        -   AMD Zen3 (2020) architecture: AVX2
+      =amd                           -   AMD architecture not specified
+      =intel                         -   Intel architecture not specified
+    --min-redux-size=<int>           - Advanced option: minimum number of reductions to pack together
+    --misa=<value>                   - Target ISA
+      =native                        -   Detect ISA of the architecture
+      =sse                           -   SSE ISA
+      =avx                           -   AVX ISA
+      =avx2                          -   AVX2 ISA
+      =avx512                        -   AVX512 ISA
+    --no-format                      - MACVETH by defaults reformats code as clang-format does, using LLVM style. If this option is enabled, then no reformatting is applied
+    --no-headers                     - If set, do *not* include header files, such as <immintrin.h>
+    --no-svml                        - Disable Intrinsics SVML
+    --nofma                          - Explicitly tell to not generate FMA instructions even if architecture supports them
+    --nofuse                         - Disable the fusion of reductions
+    --novec-orphan-redux             - Disable the vectorization of orphan reductions
+    -o=<string>                      - Output file to write the code, otherwise it will just print int std output
+    -p=<string>                      - Build path
+    --redux-win-size=<int>           - Advanced option: size of window of reductions to consider
+    --scatter                        - Support AVX512 scatter instructions
+    --simd-cost-model=<value>        - SIMD cost model
+      =conservative                  -   Vectorize if and only if the sequential estimation is worse than the vectorized
+      =aggressive                    -   Vectorize partially if beneficial according to cost model
+      =unlimited                     -   Unlimited SIMD cost, i.e., vectorize regardless the cost
+    --simd-info=<string>             - Report with all the SIMD information
+    --simd-info-missed=<string>      - Report with all missed SIMD opportunities
+  
 
 ## Region-of-interest in our code:
 
@@ -185,18 +208,6 @@ Available options for scops are:
     - unroll_and_jam: perform unroll-and-jam in the loops within the scop.
 
     - scalar/nosimd: do not generate SIMD code; useful, for instance, for only unrolling code.
-
-Pragmas to be implemented (soon):
-
-    - hw_alignment [array_name1] [val1] [[array_name2] [val2] [...]]: hint
-    regarding the alignment factor for an array, e.g. A 64 means that we can
-    assume that A[0] % 64 = 0. Per array option.
-
-    - tc {>|>=|=|<|<=} [val]: hint regarding the trip count of the loop, i.e.
-      the expected number of iterations. Per loop option.
-
-    - li val1 val2 [val21 val22 [...]]: loop interchange, interchanges the val1
-        with val2, and so on.
 
 ## Troubleshooting
 
@@ -232,66 +243,6 @@ Specified using a `--` token after specifying the source and all compiler
 options. After this token must follow any other flags or parameters needed to
 compile properly the source code.
 
-#### JSON compilation database:
-
-## SIMD Cost model
-
-We have described in [§CLI Options](#cli-options) the `--simd-cost-model`
-option. In all compilers using modules such as auto-vectorizers there is a step
-where vectorization cost is computed in order to evaluate the benefit.
-
-In MACVETH, cost model is constructed by using instructions characteristics of each
-architecture and ISA. For x86-64 architectures, Intel and AMD basically,
-vectorization is done by replacing code for Intel Intrinsics functions.
-ASM instruction's latency, throughput and port usage are obtained using tables
-available at [uops.info](http://uops.info/table.html) [1]. Nonetheless, this
-table does not provide a direct 1:1 translation onto Intel Intrinsics. For
-this purpose, we use the `XED_iform`. This format is just a representation of
-instructions and their operands in a _unequivocally form_ (discussion
-[here](https://github.com/andreas-abel/XED-to-XML#instruction-variants-vs-xed-iforms)).
-As this ''form'' is available in uops.info, we can pair each ASM
-instruction to its Intel Intrinsic equivalent using [public web
-data](https://software.intel.com/sites/landingpage/IntrinsicsGuide/). Notice
-that not all Intel Intrinsics are translated onto a unique ASM instruction,
-e.g. `vps = _mm_set_ps(v3,v2,v1,v0)`, where each `vX` is a `float` and `vps` a
-`__m128` register, in this case code generated by compiler differs
-significantly depending on the address values of the
-operands, thus if operands are contiguous in memory compiler may generate a
-unique ASM instruction such as `movaps xmm, addr[v0]`, or four different data
-movements (`movss`) if those operands are sparsed in memory. Hence, in our
-model, we have considered always this last worst case, by modeling those `set`
-intrinsics with the same number of data movements as operands.
-
-Basically, any cost model should satisfy the following inequation:
-
-<!-- $$
-\sum{V} \lt \sum{S} \Rightarrow vectorize
-$$ -->
-
-<div align="center"><img src="https://render.githubusercontent.com/render/math?math=%5Csum%7BV%7D%20%5Clt%20%5Csum%7BS%7D%20%5CRightarrow%20vectorize"></div>
-
-Where <!-- $V$ --> <img src="https://render.githubusercontent.com/render/math?math=V"> is the set of vector instructions and <!-- $S$ --> <img src="https://render.githubusercontent.com/render/math?math=S"> the equivalent set of
-sequential or scalar instructions. In our approach, our model is agnostic
-regarding instructions ''already in the pipeline'', so we do not consider
-throughput or port usage in first place. Comparison is done at VectorIR level:
-for a set of packable nodes it is generated the vector operation and,
-therefore, its SIMD equivalent (architecture dependent); cost of these SIMD
-instructions (<!-- $I$ --> <img src="https://render.githubusercontent.com/render/math?math=I">) should be lower than the scalar cost of the nodes (<!-- $N$ --> <img src="https://render.githubusercontent.com/render/math?math=N">).
-
-<!-- $$
-\sum{I} \lt \sum{N} /\exists f:{I,N} \mapsto \mathbb{Z}^{+}
-$$ -->
-
-<div align="center"><img src="https://render.githubusercontent.com/render/math?math=%5Csum%7BI%7D%20%5Clt%20%5Csum%7BN%7D%20%2F%5Cexists%20f%3A%7BI%2CN%7D%20%5Cmapsto%20%5Cmathbb%7BZ%7D%5E%7B%2B%7D"></div>
-
-Where <!-- $f$ --> <img src="https://render.githubusercontent.com/render/math?math=f"> is a function that given either a set of SIMD instructions (<!-- $I$ --> <img src="https://render.githubusercontent.com/render/math?math=I">) or a
-set of nodes (<!-- $N$ --> <img src="https://render.githubusercontent.com/render/math?math=N">) returns a cost integer positive value, according to the
-latency table for that architecture and ISA.
-
-Complexity and increasing intelligence of compilers and their auto-vectorizers
-make impossible to create an accurate SIMD cost model. Nonetheless, providing
-accurate latency information improves the quality of SIMD-zed code.
-
 ## Limitations/restrictions and assumptions:
 
 This the list of restrictions and assumptions that the user must take into
@@ -320,11 +271,11 @@ account when using this compiler:
         in order to be detected properly.
 
 - Declarations within scop:
-    + Not permitted any kind or type of declaration within, e.g. `int var = 42;`
-    + Assignments are permitted, e.g. `var = 42;`
+    + Not permitted any kind or type of declaration within, e.g., `int var = 42;`
+    + Assignments are permitted, e.g., `var = 42;`
 
 - Statements:
-    + Must be binary, i.e. all statements should be contained in the following
+    + Must be binary, i.e., all statements should be contained in the following
     grammar, in Backus-Naur Form:
 
     ```
@@ -366,26 +317,38 @@ account when using this compiler:
             for (int i = 0; ...
 
     + There are no increments in the body of the loop of the region of
-    interest, i.e. the loop condition is only incremented in the for
+    interest, i.e., the loop condition is only incremented in the for
     statement.
 
 ## Testing
 
 Refer to `tests/README`.
 
+## Logo
+
+The symbol within the ellipse is the 23rd letter of ancient
+greek's alphabet Psi. It represents the cost function for our SIMD model.
+This letter is widely used in science (e.g., Schrödinger equations).
+Besides, 'psi' can be transliterated to 'ps', which is the suffix on Intel
+Intrinsics for 'packed-single'. Same way, the shape of Psi greek letter has
+three fleurons, as the Three Witches in the very first Act of the tragedy (or
+is this too twisted?).
+
 ## Software development
 
 - The version number of this compiler follows the Semantic Versioning
   Specification (https://semver.org/spec/v2.0.0.html)
-- Continuous integration using TravisCI
-- Code format using Clang-format (LLVM-style, of course)
+- Continuous integration using GitHub actions.
+- Code formatted using Clang-format (LLVM-style).
 
 ## License
 
-MIT License.
+List of [AUTHORS](AUTHORS).
 
-Copyright (c) 2019-2021 the Colorado State University.
-Copyright (c) 2021 Universidade da Coruña.
+Apache License.
+
+Copyright (c) 2019-2022 the Colorado State University.
+Copyright (c) 2020-2022 Universidade da Coruña.
 
 Under development, code disclosed only under request.
 
@@ -393,6 +356,6 @@ Under development, code disclosed only under request.
 [travis-link]: https://travis-ci.org/markoshorro/MACVETH
 [codecov-badge]: https://codecov.io/gh/markoshorro/MACVETH/branch/develop/graph/badge.svg
 [codecov-link]: https://codecov.io/gh/markoshorro/MACVETH
-[mit-badge]: https://img.shields.io/badge/License-MIT-yellow.svg
-[mit-link]: https://opensource.org/licenses/MIT
+[apache-badge]: https://img.shields.io/badge/license-Apache%202-blue
+[apache-link]: https://opensource.org/licenses/Apache-2.0
 [macveth-logo]: https://github.com/markoshorro/MACVETH/blob/develop/doc/report/img/MACVETHLOGO.svg

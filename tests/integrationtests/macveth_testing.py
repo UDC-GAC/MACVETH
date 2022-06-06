@@ -20,7 +20,6 @@ import sys
 import filecmp
 import re
 import subprocess
-import shutil
 
 # Some path declaration
 cwd = os.getcwd()
@@ -41,16 +40,6 @@ log_file = f"{results_path}macveth_compiler.log"
 
 if not os.path.exists(results_path):
     os.mkdir(results_path)
-
-# if os.path.isdir(fail_path):
-#     shutil.rmtree(fail_path)
-
-# if os.path.isdir(pass_path):
-#     shutil.rmtree(pass_path)
-
-# if os.path.isdir(tmp_path):
-#     shutil.rmtree(tmp_path)
-
 if not os.path.isdir(pass_path):
     os.mkdir(pass_path)
 if not os.path.isdir(fail_path):
@@ -93,7 +82,7 @@ def get_gcc_binary():
 cc = get_gcc_binary()
 mv_poly_flags = [
     "--misa=avx2",
-    "--march=cascadelake",
+    "--mvmarch=cascadelake",
     "--no-format",
     "--simd-cost-model=unlimited",
     "--novec-orphan-redux",
