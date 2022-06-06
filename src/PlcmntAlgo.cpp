@@ -56,6 +56,7 @@ void PlcmntAlgo::computeFreeSchedule(NodeVectorT &NL) {
 // ---------------------------------------------
 NodeVectorT PlcmntAlgo::detectReductions(NodeVectorT *NL) {
   NodeVectorT NCopy(*NL);
+  NodeVectorT TmpList;
   NodeVectorT LRedux;
   NodeVectorT Visited;
   NodeVectorT Reduction;
@@ -71,18 +72,21 @@ NodeVectorT PlcmntAlgo::detectReductions(NodeVectorT *NL) {
     auto Inputs = TmpNode->getInputs();
   loop:
     for (auto In : Inputs) {
-      if (In == nullptr) {
-        MACVETH_DEBUG("PlcmntAlgo", "Skipping");
+      if ((In == nullptr) ||
+          ((std::find(Visited.begin(), Visited.end(), In) != Visited.end()) &&
+           (std::find(LRedux.begin(), LRedux.end(), In) != LRedux.end()))) {
+        MACVETH_DEBUG("PlcmntAlgo", "Skipping " + In->getRegisterValue() +
+                                        ", " + In->getSchedInfoStr());
         continue;
       }
-
       if ((TmpNode->getValue() == In->getValue()) &&
           (TmpNode->getSchedInfo().FreeSched >
            (In->getSchedInfo().FreeSched))) {
 
         MACVETH_DEBUG("PlcmntAlgo", "Reduction found for " +
                                         In->getRegisterValue() + ", " +
-                                        In->getSchedInfoStr());
+                                        In->getSchedInfoStr() + "; " +
+                                        TmpNode->getSchedInfoStr());
         ReductionFound = true;
         Reduction.push_back(In);
         Visited.push_back(In);
@@ -104,11 +108,63 @@ NodeVectorT PlcmntAlgo::detectReductions(NodeVectorT *NL) {
     if (ReductionFound) {
       LRedux.insert(LRedux.end(), Reduction.begin(), Reduction.end());
     } else {
-      if (!TmpNode->belongsToAReduction())
-        NL->push_back(TmpNode);
+      if (!TmpNode->belongsToAReduction()) {
+        MACVETH_DEBUG("PlcmntAlgo", "Does not belong to reduction: " +
+                                        TmpNode->getSchedInfoStr());
+        TmpList.push_back(TmpNode);
+      }
     }
     Reduction.clear();
   }
+  // Need to check again if any of the discarded elements belongs to a
+  // reduction
+  NodeVectorT ListToSort;
+  // Filter those nodes which belong to reductions
+  for (auto N : TmpList) {
+    if (!N->belongsToAReduction()) {
+      ListToSort.push_back(N);
+    }
+  }
+  // Sort those non-reduction nodes not only regarding their
+  NodeVectorT SortedNodes;
+  for (auto N : ListToSort) {
+    if ((std::find(NL->begin(), NL->end(), N) != NL->end())) {
+      for (auto In : N->getInputs()) {
+        if ((In != nullptr) &&
+            ((std::find(ListToSort.begin(), ListToSort.end(), In) !=
+              ListToSort.end()) &&
+             ((std::find(NL->begin(), NL->end(), In) == NL->end()))) &&
+            ((std::find(SortedNodes.begin(), SortedNodes.end(), In) ==
+              SortedNodes.end()))) {
+          SortedNodes.push_back(In);
+        }
+      }
+      continue;
+    }
+    if ((std::find(SortedNodes.begin(), SortedNodes.end(), N) ==
+         SortedNodes.end()))
+      NL->push_back(N);
+    for (auto In : N->getInputs()) {
+      if ((In != nullptr) &&
+          ((std::find(ListToSort.begin(), ListToSort.end(), In) !=
+            ListToSort.end()) &&
+           ((std::find(NL->begin(), NL->end(), In) == NL->end()))) &&
+          ((std::find(SortedNodes.begin(), SortedNodes.end(), In) ==
+            SortedNodes.end()))) {
+        SortedNodes.push_back(In);
+      }
+    }
+  }
+  NL->insert(NL->end(), SortedNodes.begin(), SortedNodes.end());
+
+  // for (auto N : ListToSort) {
+  //   MACVETH_DEBUG("PlcmntAlgo", N->toStringShort());
+  // }
+  MACVETH_DEBUG("PlcmntAlgo", "=== NEW LIST ===");
+  for (auto N : *NL) {
+    MACVETH_DEBUG("PlcmntAlgo", N->toStringShort());
+  }
+
   std::reverse(std::begin(*NL), std::end(*NL));
   std::reverse(std::begin(LRedux), std::end(LRedux));
   return LRedux;
@@ -145,7 +201,6 @@ void PlcmntAlgo::setPlcmtFromFile(NodeVectorT &NL) {
     // For each node, read until lines skipping those with comments. Fail if
     // line with no numbers
     for (auto N : NL) {
-
       std::string L;
       while (getline(CF, L)) {
         if (L.rfind("//", 0) == 0) {

@@ -50,7 +50,7 @@ void SIMDBackEnd::populateTable(MVCPUInfo::MVISA ISA) {
   auto PathISA =
       dir + "/ISA/" + MVISAStr[ISA] + "/" + MVArchStr[MVOptions::Arch] + ".mvi";
   std::ifstream F(PathISA);
-  assert(!F.fail() && "File does not exist for SIMDBackend");
+//  assert(!F.fail() && "File does not exist for SIMDBackend");
   if (F.is_open()) {
     std::string L, W;
     while (getline(F, L)) {

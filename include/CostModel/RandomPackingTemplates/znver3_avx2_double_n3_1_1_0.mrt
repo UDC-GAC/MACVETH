@@ -1,0 +1,1 @@
+#output:REG# = _mm256_maskload_pd(&#0:0:MEM#,_mm256_set_epi32(0,0,-1,0,-1,0,-1,0));

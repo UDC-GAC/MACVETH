@@ -1,0 +1,2 @@
+#r0:REG# = _mm256_loadu_pd(&#0:0:MEM#);
+_mv256_blend_mem_pd(#output:REG#,#r0:REG#,#1:-1:MEM#,0x0000000e);

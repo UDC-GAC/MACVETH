@@ -1,0 +1,5 @@
+#r0:REG# = _mm_load_sd(&#0:0:MEM#);
+_mv_insert_mem_sd(#r1:REG#,#r0:REG#,#1:0:MEM#,0x00000001);
+_mv_blend_mem_pd(#r2:REG#,0x0000000000000000000000000000000000000000000000000000000000000000,#2:0:MEM#,0x00000001);
+_mv_insert_mem_sd(#r3:REG#,#r2:REG#,#3:0:MEM#,0x00000001);
+#output:REG# = _mm256_set_m128d(#r3:REG#,#r1:REG#);

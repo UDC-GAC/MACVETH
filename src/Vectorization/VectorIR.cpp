@@ -243,7 +243,6 @@ bool VOperand::checkIfAlreadyLoaded(Node *PrimaryNode) {
 bool VOperand::checkIfAlreadyStored(NodeVectorT &V) {
   for (int i = 0; i < (int)V.size(); ++i) {
     auto Reg = V[i]->getRegisterValue();
-    MACVETH_DEBUG("VOperand", "already stored reg = " + Reg);
     if (VectorIR::MapStores.find(Reg) != VectorIR::MapStores.end()) {
       MACVETH_DEBUG("VOperand", "already stored reg = " + Reg + " found!");
       if (VectorIR::MapStores[Reg] > 0) {

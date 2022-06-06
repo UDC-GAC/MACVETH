@@ -96,7 +96,7 @@ static llvm::cl::opt<MVCPUInfo::MVISA>
                                     "AVX512 ISA")));
 
 static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
-    "march", llvm::cl::desc("Target architecture"),
+    "mvmarch", llvm::cl::desc("Target architecture"),
     llvm::cl::init(MVCPUInfo::MVArch::NATIVE), llvm::cl::cat(MacvethCategory),
     llvm::cl::values(
         clEnumValN(MVCPUInfo::MVArch::NATIVE, "native",
@@ -132,7 +132,9 @@ static llvm::cl::opt<MVCPUInfo::MVArch> Architecture(
         clEnumValN(MVCPUInfo::MVArch::AMDDef, "amd",
                    "AMD architecture not specified"),
         clEnumValN(MVCPUInfo::MVArch::IntelDef, "intel",
-                   "Intel architecture not specified")));
+                   "Intel architecture not specified"),
+	clEnumValN(MVCPUInfo::MVArch::alderlake, "alderlake",
+		   "Intel Alder Lake (2021) architecture (tick): AVX2")));
 
 // Main format style
 static cl::opt<std::string> Style(
