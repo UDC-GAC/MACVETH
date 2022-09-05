@@ -33,6 +33,7 @@
 #include <cassert>
 #include <list>
 #include <map>
+#include <vector>
 #include <string>
 
 namespace macveth {

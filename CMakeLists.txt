@@ -242,76 +242,47 @@ target_link_libraries(macveth
     coverage_config
     )
 
-target_link_libraries(macveth PRIVATE
-    clangTooling
-    clangBasic
-    clangASTMatchers
-    clangAnalysis
-    clangAST
-    clangASTMatchers
-    clangBasic
-    clangDriver
-    clangEdit
-    clangFrontend
-    clangFrontendTool
-    clangLex
-    clangParse
-    clangSema
-    clangRewrite
-    clangRewriteFrontend
-    clangStaticAnalyzerFrontend
-    clangStaticAnalyzerCheckers
-    clangStaticAnalyzerCore
-    clangCrossTU
-    clangIndex
-    clangSerialization
-    clangToolingCore
-    clangToolingInclusions
-    clangTooling
-    clangFormat
-    )
-
 # MACVETH Clang libraries dependencies
 # Clang libraries needed
-# if(CLANG_LINK_CLANG_DYLIB)
-#     message(STATUS "Linking with clang-cpp library")
-#     target_link_libraries(macveth PRIVATE clang-cpp)
-# else()
-#     target_link_libraries(macveth PRIVATE
-#         clangTooling
-#         clangBasic
-#         clangASTMatchers
-#         clangAnalysis
-#         clangAST
-#         clangASTMatchers
-#         clangBasic
-#         clangDriver
-#         clangEdit
-#         clangFrontend
-#         clangFrontendTool
-#         clangLex
-#         clangParse
-#         clangSema
-#         clangRewrite
-#         clangRewriteFrontend
-#         clangStaticAnalyzerFrontend
-#         clangStaticAnalyzerCheckers
-#         clangStaticAnalyzerCore
-#         clangCrossTU
-#         clangIndex
-#         clangSerialization
-#         clangToolingCore
-#         clangToolingInclusions
-#         clangTooling
-#         clangFormat
-#         )
-# endif()
+if(CLANG_LINK_CLANG_DYLIB)
+    message(STATUS "Linking with clang-cpp library")
+    target_link_libraries(macveth PRIVATE clang-cpp)
+else()
+    target_link_libraries(macveth PRIVATE
+        clangTooling
+        clangBasic
+        clangASTMatchers
+        clangAnalysis
+        clangAST
+        clangASTMatchers
+        clangBasic
+        clangDriver
+        clangEdit
+        clangFrontend
+        clangFrontendTool
+        clangLex
+        clangParse
+        clangSema
+        clangRewrite
+        clangRewriteFrontend
+        clangStaticAnalyzerFrontend
+        clangStaticAnalyzerCheckers
+        clangStaticAnalyzerCore
+        clangCrossTU
+        clangIndex
+        clangSerialization
+        clangToolingCore
+        clangToolingInclusions
+        clangTooling
+        clangFormat
+        )
+endif()
 
-# # LLVM flags needed
-# target_link_libraries(macveth
-#     PRIVATE
-#     LLVM
-#     )
+# LLVM flags needed
+target_link_libraries(macveth
+    PRIVATE
+    LLVM
+    )
 
 # Flags needed
 target_link_libraries(macveth
