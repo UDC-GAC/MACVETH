@@ -350,8 +350,6 @@ Apache License.
 Copyright (c) 2019-2022 the Colorado State University.
 Copyright (c) 2020-2022 Universidade da Coruña.
 
-Under development, code disclosed only under request.
-
 [travis-badge]: https://travis-ci.com/markoshorro/MACVETH.svg?token=NvjC6fzdrgxL3SFrS5bJ&branch=develop
 [travis-link]: https://travis-ci.org/markoshorro/MACVETH
 [codecov-badge]: https://codecov.io/gh/markoshorro/MACVETH/branch/develop/graph/badge.svg
