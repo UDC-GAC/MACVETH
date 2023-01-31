@@ -6,6 +6,8 @@
 [![CMake Compilation and Test](https://github.com/markoshorro/MACVETH/actions/workflows/cmake.yml/badge.svg)](https://github.com/markoshorro/MACVETH/actions/workflows/cmake.yml)
 [![codecov](https://codecov.io/gh/markoshorro/MACVETH/branch/master/graph/badge.svg?token=BRvGSUAVby)](https://codecov.io/gh/markoshorro/MACVETH)
 [![License: Apache License, Version 2.0][apache-badge]][apache-link]
+[![DOI:10.1145/3559009.3569668](https://zenodo.org/badge/DOI/10.1145/3559009.3569668.svg)](https://doi.org/10.1145/3559009.3569668)
+[![Citation Badge](https://api.juleskreuer.eu/citation-badge.php?doi=10.1145/3559009.3569668)](https://juleskreuer.eu/projekte/citation-badge/)
 
 MACVETH is a source-to-source compiler for C/C++ codes to compilable
 SIMD-fashion codes. It is platform or ISA and architecture dependent. [Citation and paper available here](#citation).
@@ -343,7 +345,27 @@ is this too twisted?).
 
 ## Citation
 
-Marcos Horro, Louis-Noël Pouchet, Gabriel Rodríguez, Juan Touriño, Custom High-Performance Vector Code Generation for Data-Specific Sparse Computations. In Proceedings of the 31st International Conference on Parallel Architectures and Compilation Techniques (PACT), Chicago, IL, USA. October 2022. [[preprint]](https://gac.udc.es/~gabriel/files/pact22-final139.pdf)
+Marcos Horro, Louis-Noël Pouchet, Gabriel Rodríguez, Juan Touriño, Custom High-Performance Vector Code Generation for Data-Specific Sparse Computations. In Proceedings of the 31st International Conference on Parallel Architectures and Compilation Techniques (PACT), Chicago, IL, USA. October 2022. [[preprint]](https://dl.acm.org/doi/pdf/10.1145/3559009.3569668)
+
+```
+@inproceedings{10.1145/3559009.3569668,
+  author = {Horro, Marcos and Pouchet, Louis-No\"{e}l and Rodr\'{\i}guez, Gabriel and Touri\~{n}o, Juan},
+  title = {Custom High-Performance Vector Code Generation for Data-Specific Sparse Computations},
+  year = {2023},
+  isbn = {9781450398688},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/3559009.3569668},
+  doi = {10.1145/3559009.3569668},
+  abstract = {Sparse computations, such as sparse matrix-dense vector multiplication, are notoriously hard to optimize due to their irregularity and memory-boundedness. Solutions to improve the performance of sparse computations have been proposed, ranging from hardware-based such as gather-scatter instructions, to software ones such as generalized and dedicated sparse formats, used together with specialized executor programs for different hardware targets. These sparse computations are often performed on read-only sparse structures: while the data themselves are variable, the sparsity structure itself does not change. Indeed, sparse formats such as CSR have a typically high cost to insert/remove nonzero elements in the representation. The typical use case is to not modify the sparsity during possibly repeated computations on the same sparse structure.In this work, we exploit the possibility to generate a specialized executor program dedicated to the particular sparsity structure of an input matrix. It creates opportunities to remove indirection arrays and synthesize regular, vectorizable code for such computations. But, at the same time, it introduces challenges in code size and instruction generation, as well as efficient SIMD vectorization. We present novel techniques and extensive experimental results to efficiently generate SIMD vector code for data-specific sparse computations, and study the limits in terms of applicability and performance of our techniques compared to state-of-practice high-performance libraries like Intel MKL.},
+  booktitle = {Proceedings of the International Conference on Parallel Architectures and Compilation Techniques},
+  pages = {160–171},
+  numpages = {12},
+  keywords = {vectorization, data-specific compilation, sparse data structure},
+  location = {Chicago, Illinois},
+  series = {PACT '22}
+}
+```
 
 ## License
 
