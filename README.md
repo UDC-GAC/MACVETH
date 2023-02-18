@@ -8,7 +8,7 @@
 [![License: Apache License, Version 2.0][apache-badge]][apache-link]
 
 MACVETH is a source-to-source compiler for C/C++ codes to compilable
-SIMD-fashion codes. It is platform or ISA and architecture dependent.
+SIMD-fashion codes. It is platform or ISA and architecture dependent. [Citation and paper available here](#citation).
 
 MACVETH stands for Multi-Array C-compiler for VEctorizing Tensors in HPC
 applications. Besides, Macbeth, tragedy written by William Shakespeare,
@@ -340,6 +340,10 @@ is this too twisted?).
   Specification (https://semver.org/spec/v2.0.0.html)
 - Continuous integration using GitHub actions.
 - Code formatted using Clang-format (LLVM-style).
+
+## Citation
+
+Marcos Horro, Louis-Noël Pouchet, Gabriel Rodríguez, Juan Touriño, Custom High-Performance Vector Code Generation for Data-Specific Sparse Computations. In Proceedings of the 31st International Conference on Parallel Architectures and Compilation Techniques (PACT), Chicago, IL, USA. October 2022. [[preprint]](https://gac.udc.es/~gabriel/files/pact22-final139.pdf)
 
 ## License
 
