@@ -86,6 +86,8 @@ public:
     int UnrollFactor = UBFallback;
     /// Full unroll
     bool FullyUnrolled = false;
+    /// Check if is inner loop
+    bool InnerLoop = false;
     /// Location of the initialization in the loop
     clang::CharSourceRange SRVarInit;
     /// Location of the condition of the loop
@@ -107,14 +109,17 @@ public:
 
     std::string getDim() { return this->Dim; }
 
+    bool isInnerLoop() { return this->InnerLoop; }
+
     /// For debugging purposes
     std::string toString() {
-      return Dim + "; init val = " + std::to_string(InitVal) +
-             ", upperbound = " + std::to_string(UpperBound) +
-             ", step = " + std::to_string(Step) +
-             "; declared = " + std::to_string(Declared) +
-             "; stepunrolled = " + std::to_string(StepUnrolled) +
-             "; knownbounds = " + std::to_string(knownBounds());
+      return Dim + "; init val = " + std::to_string(InitVal)       +
+             ", upperbound = "     + std::to_string(UpperBound)    +
+             ", step = "           + std::to_string(Step)          +
+             "; declared = "       + std::to_string(Declared)      +
+             "; stepunrolled = "   + std::to_string(StepUnrolled)  +
+             "; knownbounds = "    + std::to_string(knownBounds()) +
+             "; inner loop = "     + std::to_string(isInnerLoop());
     }
 
     static void clearDims() { LoopInfo::DimDeclared.clear(); }

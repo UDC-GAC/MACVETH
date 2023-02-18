@@ -160,22 +160,17 @@ bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
       }
 
       SInfo = CostModel.computeCostModel(SL);
-
-      // if (SInfo.isThereAnyVectorization()) {
-      // FIXME: fix the cost model to determine wheter there is vectorization
-      // or not...
-      // Rewrite loops
       DimsDeclFunc.splice(DimsDeclFunc.end(),
                           MVR.rewriteLoops(SL, DimsDeclFunc));
       // Comment statements
       MVR.commentReplacedStmts(SL);
 
-      // Render
+      // Generate code if required
       for (auto InsSIMD : SInfo.SIMDList) {
         MVR.renderSIMDInstInPlace(InsSIMD, SL);
       }
 
-      // Render left-overs... this is awful
+      // Render left-overs
       for (auto InsSIMD : SInfo.SIMDList) {
         MVR.renderSIMDLeftOvers(InsSIMD, SL.back());
       }
@@ -193,20 +188,10 @@ bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
       }
 
       // TODO: generate SIMD report file
-      // SInfo.generateReport();
       MVInfo("Region vectorized (SCOP = " + std::to_string(Scop->StartLine) +
              "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
              "; Scalar cost = " +
              CostModel.computeCostForStmtWrapperList(SL).toString());
-      // } else {
-      //   MVWarn(
-      //       "Region not vectorized (SCOP = " +
-      //       std::to_string(Scop->StartLine) +
-      //       "). SIMD Cost = " + std::to_string(SInfo.TotCost) +
-      //       "; Scalar cost = " +
-      //       CostModel.computeCostForStmtWrapperList(SL).toString());
-      // }
-
     last_scop:
       // Render the registers we are going to use, declarations
       if (IsLastScop) {
@@ -222,7 +207,7 @@ bool MVFuncVisitor::scanScops(FunctionDecl *fd) {
 
 // ---------------------------------------------
 bool MVFuncVisitor::VisitFunctionDecl(FunctionDecl *F) {
-  // Continue if empty function or no pramgas
+  // Continue if empty function or no pragmas
   if ((!F->hasBody()) || (!ScopHandler::funcHasROI(F)))
     return true;
   // Continue if not target function if specified
@@ -384,6 +369,7 @@ void MVFrontendAction::EndSourceFileAction() {
   if (!MVOptions::NoReformat) {
     formatMACVETH(OutFileName);
   }
+  MVInfo("Output written to " + OutFileName);
   // Copy macveth_api.h file if not created
   std::string DstFile =
       OutFileName.substr(0, OutFileName.find_last_of("\\/")) + "/macveth_api.h";

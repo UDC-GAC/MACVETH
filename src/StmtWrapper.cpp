@@ -57,25 +57,25 @@ StmtWrapperVectorT StmtWrapper::genStmtWraps(CompoundStmt *CS, ScopLoc *Scop) {
       SList.push_back(NewStmt);
     } else {
       // Could be inside the loop the region of interest
-      auto FL = dyn_cast<ForStmt>(ST);
-      if (FL) {
-        auto B = dyn_cast<CompoundStmt>(FL->getBody());
-        if (B) {
-          auto NewVector = StmtWrapper::genStmtWraps(B, Scop);
+      auto ForLoop = dyn_cast<ForStmt>(ST);
+      if (ForLoop) {
+        auto Body = dyn_cast<CompoundStmt>(ForLoop->getBody());
+        if (Body) {
+          auto NewVector = StmtWrapper::genStmtWraps(Body, Scop);
           // SList.splice(SList.end(), );
           SList.insert(SList.end(), NewVector.begin(), NewVector.end());
         } else {
-          auto B = dyn_cast<Stmt>(FL->getBody());
-          if (B) {
+          auto Body = dyn_cast<Stmt>(ForLoop->getBody());
+          if (Body) {
             unsigned int Start =
-                Utils::getSourceMgr()->getExpansionLineNumber(B->getBeginLoc());
+                Utils::getSourceMgr()->getExpansionLineNumber(Body->getBeginLoc());
             unsigned int End =
-                Utils::getSourceMgr()->getExpansionLineNumber(B->getEndLoc());
+                Utils::getSourceMgr()->getExpansionLineNumber(Body->getEndLoc());
             if ((Scop->StartLine <= Start) && (Scop->EndLine >= End)) {
               MACVETH_DEBUG("StmtWrapper genStmtWraps",
                             "new StmtWrapper =\n" +
-                                Utils::getStringFromStmt(B));
-              StmtWrapper *NewStmt = new StmtWrapper(B);
+                                Utils::getStringFromStmt(Body));
+              StmtWrapper *NewStmt = new StmtWrapper(Body);
               SList.push_back(NewStmt);
             }
           }
@@ -93,31 +93,34 @@ StmtWrapper::StmtWrapper(clang::Stmt *S) {
   if (auto Loop = dyn_cast<ForStmt>(S)) {
     this->LoopInfoStmt = getLoop(Loop);
     auto Body = dyn_cast<CompoundStmt>(Loop->getBody());
+    bool IsInner = true;
     if (Body) {
       TAC::TacScop++;
       for (auto S : Body->body()) {
         auto SW = new StmtWrapper(S);
+        IsInner &= !SW->isLoop();
         SW->setInnerLoopInfo(this->getLoopInfo());
         this->ListStmt.push_back(SW);
         MACVETH_DEBUG("StmtWrapper", "adding new stmt, TACs in loop = " +
                                          this->getLoopInfo().getDim());
         for (auto T : SW->getTacList()) {
           MACVETH_DEBUG("TAC", T.toString());
-          ;
         }
       }
       TAC::TacScop++;
     } else {
       auto SW = new StmtWrapper(Loop->getBody());
+      IsInner &= !SW->isLoop();
       SW->setInnerLoopInfo(this->getLoopInfo());
       this->ListStmt.push_back(SW);
       MACVETH_DEBUG("StmtWrapper", "adding new stmt, TACs in loop = " +
                                        this->getLoopInfo().getDim());
       for (auto T : SW->getTacList()) {
         MACVETH_DEBUG("TAC", T.toString());
-        ;
       }
     }
+    this->LoopInfoStmt.InnerLoop = IsInner;
+    MACVETH_DEBUG("StmtWrapper", "Updated loop information: " + this->getLoopInfo().toString());
   } else {
     this->setTacList(TAC::stmtToTAC(S));
   }
@@ -311,8 +314,11 @@ bool StmtWrapper::unrollAndJam(std::list<LoopInfo> LI, ScopLoc *Scop) {
     MACVETH_DEBUG("StmtWrapper",
                   "unrollAndJam loop = " + this->LoopInfoStmt.Dim);
     for (auto D : Scop->PA.UnrollDim) {
-      if (this->LoopInfoStmt.Dim == std::get<0>(D)) {
-        if (Scop->PA.FullUnroll[this->LoopInfoStmt.Dim]) {
+      auto ScopDim = std::get<0>(D);
+      if ((this->getLoopInfo().isInnerLoop() && ScopDim == "inner") ||
+          (this->LoopInfoStmt.Dim == ScopDim)) {
+        auto KeyPA = ScopDim == "inner" ? ScopDim : this->LoopInfoStmt.Dim;
+        if (Scop->PA.FullUnroll[KeyPA]) {
           MVAssertSkip(this->LoopInfoStmt.knownBounds(),
                        "Can not full unroll if upperbound is not known",
                        GotoStartScop);
@@ -344,8 +350,14 @@ bool StmtWrapper::unrollByDim(std::list<LoopInfo> LI, ScopLoc *Scop) {
   bool FullUnroll = true;
   if (this->isLoop()) {
     for (auto D : Scop->PA.UnrollDim) {
-      if (this->LoopInfoStmt.Dim == std::get<0>(D)) {
-        if (Scop->PA.FullUnroll[this->LoopInfoStmt.Dim]) {
+      auto ScopDim = std::get<0>(D);
+      bool InnerUnroll = (this->getLoopInfo().isInnerLoop() && ScopDim == "inner");
+      MACVETH_DEBUG("StmtWrapper", "Dimension = " + this->LoopInfoStmt.Dim + "; Scop = " + ScopDim);
+      if (InnerUnroll)
+        MACVETH_DEBUG("StmtWrapper", "Unrolling by inner keyword dim = " + this->LoopInfoStmt.Dim);
+      if (InnerUnroll || (this->LoopInfoStmt.Dim == ScopDim)) {
+        auto KeyPA = ScopDim == "inner" ? ScopDim : this->LoopInfoStmt.Dim;
+        if (Scop->PA.FullUnroll[KeyPA]) {
           MVAssertSkip(this->LoopInfoStmt.knownBounds(),
                        "Can not full unroll if upperbound is not known",
                        GotoStartScop);

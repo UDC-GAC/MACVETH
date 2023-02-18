@@ -216,9 +216,8 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
     // Otherwise it will be a unrolling dimension
     if ((!Tok.isLiteral())) {
       auto IINext = getValue(Tok);
-      if (IINext == nullptr) {
+      if (IINext == nullptr)
         MVErr("Pragma bad formatting");
-      }
       if (IINext->isStr("full")) {
         PA.FullUnroll[II->getName().str()] = true;
         PA.UnrollDim.push_back(
@@ -231,17 +230,15 @@ static ScopLoc::PragmaArgs parseArguments(Preprocessor &PP) {
     }
 
     auto IINext = Tok.getLiteralData();
-    if (IINext == nullptr) {
-      assert(false &&
-             "Bad format: needed a unrolling factor for the dimension");
-    }
+    if (IINext == nullptr)
+      assert(false && "Bad format: needed a unrolling factor for the dimension");
 
     int UnrollFactor = atoi(IINext);
-    if (UnrollFactor == 0) {
+    if (UnrollFactor <= 0)
       assert(false && "Bad value for unrolling factor");
-    }
     PA.UnrollDim.push_back(
         std::tuple<std::string, int>(II->getName().str(), UnrollFactor));
+    MACVETH_DEBUG("MVPragmaHandler", "Dimension: " + II->getName().str() + "; Factor = " + std::to_string(UnrollFactor));
     PP.Lex(Tok);
   }
   return PA;
