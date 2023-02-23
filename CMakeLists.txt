@@ -121,7 +121,7 @@ endif()
 # path returned by your llvm-config --cmakedir
 
 # This list must be in descendant order. This is just a hack...
-set(TESTED_LLVM_MAJOR 14 13 12 11)
+set(TESTED_LLVM_MAJOR 15 14 13 12 11)
 set(TESTED_LLVM_MINOR 1 0)
 set(TESTED_LLVM_PATCH 1 0)
 foreach(LLVM_COMP_MAJOR ${TESTED_LLVM_MAJOR})
